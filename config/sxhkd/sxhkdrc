@@ -1,0 +1,198 @@
+#
+# bspwm hotkeys
+#
+
+super + alt + Escape
+  ~/scripts/bspwm_logout
+  # pkill -x panel; bspc quit
+
+super + w
+  bspc node -c
+
+super + t
+  bspc desktop -l next
+
+super + b
+  bspc node @focused:/ -B
+
+super + {s,f}
+  bspc node --state \~{floating,fullscreen}
+
+super + {grave,Tab}
+  bspc {node,desktop} -f last
+
+super + apostrophe
+  bspc node -s last
+
+super + y
+  bspc node -w last.manual
+
+super + m
+  bspc node -s biggest
+
+super + {_,shift + }{h,j,k,l}
+  bspc node -{f,s} {west,south,north,east}
+
+super + {_,shift + }c
+  bspc node --focus {next,prev}
+
+super + {comma,period}
+  bspc node --focus {prev,next}.local
+
+super + bracket{left,right}
+  bspc desktop --focus {prev,next}
+
+super + ctrl + {h,j,k,l}
+  bspc node -p {west,south,north,east}
+
+super + ctrl + {_,shift + }space
+  bspc {node -p cancel,desktop -c}
+
+super + ctrl + {1-9}
+  bspc node --presel-ratio 0.{1-9}
+
+super + alt + {h,j,k,l}
+  bspc node @{west,south,north,east} -r {-10,+10,-10,+10}
+
+super + alt + shift + {h,j,k,l}
+  bspc node @{east,north,south,west} -r {+10,-10,+10,-10}
+
+super + {_,shift + }{1-9,0}
+  bspc {desktop -f,node -d} ^{1-9,10}
+
+# NOTE: bspwm handles all this pointer behaviour internally
+# TODO remove these unnecessary pointer mappings below
+
+# ~button1
+#   bspc pointer -g focus
+
+# # floating mode:
+# #   - left   => move
+# #   - middle => resize horizontally only
+# #   - right  => resize horizontally, vertically, diagonally
+# # NOTE: may need to change these pointer mappings to use `node -{v, z}` in the future
+# super + button{1-3}
+#   bspc pointer -g {move,resize_side,resize_corner}
+
+# super + !button{1-3}
+#   bspc pointer -t %i %i
+
+# super + @button{1-3}
+#   bspc pointer -u
+
+#
+# wm independent hotkeys
+#
+
+super + {_,shift + } Return
+  {termite,urxvtc}
+
+super + space
+  dmenu_extended_run
+# dmenu_run -z -i -h 35 -sb "#6699cc" -p "run:" -fn "Source Code Pro Medium" \
+#   -hist ~/.config/dmenu.history
+
+# make sxhkd reload its configuration files:
+super + Escape
+  pkill -USR1 -x sxhkd
+
+#
+# my hotkeys
+#
+
+super + q
+  firefox
+
+# NOTE: For Mute/LowerVolume/RaiseVolume we are currently using PulseAudio
+# The commented lines below are for alsa without PulseAudio
+
+# F1
+XF86AudioMute
+  ~/scripts/volume.sh mute
+  # pactl set-sink-mute @DEFAULT_SINK@ toggle
+  # amixer -c 1 sset Master toggle
+
+# F2 NOTE: 1% == 0.6dB
+XF86AudioLowerVolume
+  ~/scripts/volume.sh down
+  # sh -c "pactl set-sink-mute @DEFAULT_SINK@ false ; pactl set-sink-volume @DEFAULT_SINK@ -1%"
+  # amixer -c 1 sset PCM 0.6dB-
+  # amixer -c 1 sset Master 3%-
+
+# F3
+XF86AudioRaiseVolume
+  ~/scripts/volume.sh up
+  # sh -c "pactl set-sink-mute @DEFAULT_SINK@ false ; pactl set-sink-volume @DEFAULT_SINK@ +1%"
+  # amixer -c 1 sset PCM 0.6dB+
+  # amixer -c 1 sset Master 3%+
+
+# F4
+XF86AudioMicMute
+  sh -c "if amixer get Capture,0 | grep -q '\[on\]' ; \
+    then amixer -q set Capture,0 nocap ; else amixer -q set Capture,0 cap; fi"
+
+# F5, F6
+XF86MonBrightness{Up,Down}
+  light -{A,U} 5%
+
+# XF86Display => F7
+# XF86WLAN => F8 - NetworkManager settings ??
+# XF86Tools => F9 - lxappearance ??
+
+#  F10 Fn Button - Rofi/Dmenu
+XF86Search
+  rofi -show run -opacity 80
+
+# F11 Fn Button - runs script to toggle panel
+XF86LaunchA
+  ~/scripts/toggle_polybar
+  # ~/scripts/toggle_panel.sh
+
+# F12 Fn Button - runs thunar
+XF86Explorer
+  thunar
+
+Print
+  scrot '%Y%m%d_$wx$h.png' -e 'mv $f ~/Pictures/screenshots/'
+
+super + z
+  ~/scripts/locker.sh
+
+# Reducing gap on the fly
+alt + {minus,equal}
+    bspc config -d focused window_gap $((`bspc config -d focused window_gap` {+,-} 2 ))
+
+# Preventing closing
+super + ctrl + r
+    bspc node --flag locked
+
+# Sticky nodes
+super + e
+    bspc node --flag sticky
+
+# move a floating window
+super + {Left,Down,Up,Right}
+  bspc node -v {-20 0,0 20,0 -20,20 0}
+
+# TODO: Figure out how to toggle hidden flag on a node
+
+# Start ncmpcpp+mpd
+super + n
+    termite -e ~/scripts/mpd_with_ncmpcpp
+    # urxvtc -geometry 130x40 -e ~/scripts/mpd_with_ncmpcpp
+
+# Hide all nodes on all desktops
+# super + z
+#     bspc control --toggle-visibility
+
+# Rotates nodes in a desktop
+super + {_,shift + } r
+    bspc node @/ -R {90,-90}
+
+# rofi key-bindings
+super + d
+    rofi -show drun
+    # rofi -show run -width 1920 -fg "#6699cc" -bg "#282828" -hlfg "#ffffff" -hlbg "#928374" -lines 8 -opacity 75
+
+super + p
+  tdrop --monitor-aware --auto-detect-wm --width=-10 --y-offset="$PANEL_HEIGHT" termite

@@ -1,0 +1,12 @@
+{
+  "README.md": {"type": "doc"},
+  "*_test.exs": {
+    "type":      "test",
+    "alternate": "{}.exs"
+  },
+  "*.exs": {
+    "type":      "source",
+    "alternate": "{}_test.exs"
+  }
+}
+

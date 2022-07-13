@@ -1,0 +1,34 @@
+#!/usr/bin/sh
+
+# Simple script to download a music track from youtube from any directory and
+# place it it $HOME/Music/new, then switch back to the directory you were in
+# previously.
+
+if which youtube-dl >/dev/null ; then
+
+  if [ $# -eq 1 ]; then
+    # Remember current directory
+    PWD=$(pwd)
+
+    # If new music directory doesn't exist create it
+    if [ ! -d $HOME/Music/new ]; then
+      mkdir -p $HOME/Music/new
+    fi
+
+    # Change directory
+    cd $HOME/Music/new
+
+    # Get audio
+    youtube-dl -x --audio-format "mp3" "$1"
+
+    # Desktop notification
+    /usr/bin/notify-send "ytmp3" "Song Download: $(youtube-dl -e $1) finished!"
+
+    # Return to original directory
+    cd $PWD
+  else
+    echo "Usage: ytmp3 [youtube url]"
+  fi
+else
+  echo "[!!] ERROR: 'youtube-dl' not installed"
+fi

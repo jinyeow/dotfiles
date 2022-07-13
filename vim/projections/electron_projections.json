@@ -1,0 +1,11 @@
+{
+  "README.md": {"type": "doc"},
+  "main.js": {
+    "type": "source",
+    "alternate": "index.html"
+  },
+  "index.html": {
+    "type": "view",
+    "alternate": "main.js"
+  }
+}

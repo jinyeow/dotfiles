@@ -1,0 +1,1024 @@
+2015-12-08 22:20:34		Plugins loaded: alias, aspell, charset, exec, fifo, guile, irc, logger, lua, perl, python, relay, ruby, script, trigger, xfer
+2015-12-08 22:20:57	=!=	You can not write text in this buffer
+2015-12-08 22:21:22		Plugins loaded: alias, aspell, charset, exec, fifo, guile, irc, logger, lua, perl, python, relay, ruby, script, tcl, trigger, xfer
+2015-12-08 22:21:32		[core]
+2015-12-08 22:21:32		  away     buffer   command  debug    filter   history  key      mouse    plugin   proxy    reload   save     set      upgrade  version  window 
+2015-12-08 22:21:32		  bar      color    cursor   eval     help     input    layout   mute     print    quit     repeat   secure   unset    uptime   wait   
+2015-12-08 22:21:32		[ruby]
+2015-12-08 22:21:32		  ruby
+2015-12-08 22:21:32		[lua]
+2015-12-08 22:21:32		  lua
+2015-12-08 22:21:32		[charset]
+2015-12-08 22:21:32		  charset
+2015-12-08 22:21:32		[relay]
+2015-12-08 22:21:32		  relay
+2015-12-08 22:21:32		[irc]
+2015-12-08 22:21:32		  admin       ctcp        die         ison        list        msg         oper        quote       samode      servlist    topic       version     whowas    
+2015-12-08 22:21:32		  allchan     cycle       disconnect  join        lusers      names       part        reconnect   sanick      squery      trace       voice     
+2015-12-08 22:21:32		  allpv       dcc         halfop      kick        map         nick        ping        rehash      sapart      squit       unban       wallchops 
+2015-12-08 22:21:32		  allserv     dehalfop    ignore      kickban     me          notice      pong        remove      saquit      stats       unquiet     wallops   
+2015-12-08 22:21:32		  ban         deop        info        kill        mode        notify      query       restart     server      summon      userhost    who       
+2015-12-08 22:21:32		  connect     devoice     invite      links       motd        op          quiet       sajoin      service     time        users       whois     
+2015-12-08 22:21:32		[aspell]
+2015-12-08 22:21:32		  aspell
+2015-12-08 22:21:32		[python]
+2015-12-08 22:21:32		  python
+2015-12-08 22:21:32		[trigger]
+2015-12-08 22:21:32		  trigger
+2015-12-08 22:21:32		[tcl]
+2015-12-08 22:21:32		  tcl
+2015-12-08 22:21:32		[xfer]
+2015-12-08 22:21:32		  me  xfer
+2015-12-08 22:21:32		[perl]
+2015-12-08 22:21:32		  perl
+2015-12-08 22:21:32		[exec]
+2015-12-08 22:21:32		  exec
+2015-12-08 22:21:32		[logger]
+2015-12-08 22:21:32		  logger
+2015-12-08 22:21:32		[script]
+2015-12-08 22:21:32		  script
+2015-12-08 22:21:32		[alias]
+2015-12-08 22:21:32		  AAWAY    AME      ANICK    BYE      CHAT     CLOSE    IG       K        LEAVE    MSGBUF   N        REDRAW   SIGNOFF  UB       V        WC       WII    
+2015-12-08 22:21:32		  alias    AMSG     BEEP     C        CL       EXIT     J        KB       M        MUB      Q        SAY      T        UMODE    W        WI       WW     
+2015-12-08 22:21:32		[guile]
+2015-12-08 22:21:32		  guile
+2015-12-14 23:50:47		Plugins loaded: alias, aspell, charset, exec, fifo, guile, irc, logger, lua, perl, python, relay, ruby, script, tcl, trigger, xfer
+2015-12-16 21:02:16		Plugins loaded: alias, aspell, charset, exec, fifo, guile, irc, logger, lua, perl, python, relay, ruby, script, tcl, trigger, xfer
+2015-12-16 21:02:18	=!=	Error: ambiguous command "/me": it exists in many plugins and not in "core" plugin
+2015-12-16 21:02:39	=!=	irc: command "nick" must be executed on irc buffer (server or channel)
+2015-12-16 21:05:13		script: downloading list of scripts...
+2015-12-16 21:05:20		script: 299 scripts for WeeChat 1.3
+2015-12-16 21:05:23		perl: loading script "/home/j1n/.weechat/perl/buffers.pl"
+2015-12-16 21:05:23		perl: registered script "buffers", version 5.1 (Sidebar with list of buffers)
+2015-12-16 21:05:23		New key binding (context "mouse"): @bar(buffers):ctrl-wheeldown => hsignal:buffers_mouse
+2015-12-16 21:05:23		New key binding (context "mouse"): @bar(buffers):ctrl-wheelup => hsignal:buffers_mouse
+2015-12-16 21:05:23		New key binding (context "mouse"): @item(buffers):button2* => hsignal:buffers_mouse
+2015-12-16 21:05:23		New key binding (context "mouse"): @item(buffers):button1* => hsignal:buffers_mouse
+2015-12-16 21:05:25		python: loading script "/home/j1n/.weechat/python/buffer_autoclose.py"
+2015-12-16 21:05:25		python: registered script "buffer_autoclose", version 0.3 (Automatically close inactive private message buffers)
+2015-12-16 21:05:28		perl: loading script "/home/j1n/.weechat/perl/iset.pl"
+2015-12-16 21:05:28		perl: registered script "iset", version 3.9 (Interactive Set for configuration options)
+2015-12-16 21:05:28		New key binding (context "mouse"): @chat(perl.iset):button1 => hsignal:iset_mouse
+2015-12-16 21:05:28		New key binding (context "mouse"): @chat(perl.iset):button2* => hsignal:iset_mouse
+2015-12-16 21:05:28		New key binding (context "mouse"): @chat(perl.iset):wheeldown => /repeat 5 /iset **down
+2015-12-16 21:05:28		New key binding (context "mouse"): @chat(perl.iset):wheelup => /repeat 5 /iset **up
+2015-12-16 21:05:30		python: loading script "/home/j1n/.weechat/python/go.py"
+2015-12-16 21:05:30		python: registered script "go", version 2.1 (Quick jump to buffers)
+2015-12-16 21:05:32		python: loading script "/home/j1n/.weechat/python/colorize_nicks.py"
+2015-12-16 21:05:32		python: registered script "colorize_nicks", version 21 (Use the weechat nick colors in the chat area)
+2015-12-16 21:06:08		Option created: weechat.palette.196 = "lightred"  (default: "")
+2015-12-16 21:06:08		Option created: weechat.palette.130 = "brown"  (default: "")
+2015-12-16 21:06:08		Option created: weechat.palette.208 = "orange"  (default: "")
+2015-12-16 21:06:08		Option created: weechat.palette.3 = "yellow"  (default: "")
+2015-12-16 21:06:08		Option created: weechat.palette.113 = "green"  (default: "")
+2015-12-16 21:06:08		Option created: weechat.palette.46 = "lightgreen"  (default: "")
+2015-12-16 21:06:08		Option created: weechat.palette.45 = "aqua"  (default: "")
+2015-12-16 21:06:08		Option created: weechat.palette.81 = "lightblue"  (default: "")
+2015-12-16 21:06:08		Option created: weechat.palette.135 = "purple"  (default: "")
+2015-12-16 21:06:08		Option created: weechat.palette.170 = "magenta"  (default: "")
+2015-12-16 21:06:08		Option created: weechat.palette.201 = "lightmagenta"  (default: "")
+2015-12-16 21:06:08		Option created: weechat.palette.39 = "cyan"  (default: "")
+2015-12-16 21:06:08		Option created: weechat.palette.51 = "lightcyan"  (default: "")
+2015-12-16 21:06:22		Option changed: weechat.bar.status.color_bg = 10  (default: blue)
+2015-12-16 21:06:22		Option changed: weechat.bar.title.color_bg = 10  (default: blue)
+2015-12-16 21:06:35		Notify changed for "core.weechat": "all" to "message"
+2015-12-16 21:06:35		Option changed: weechat.look.buffer_notify_default = message  (default: all)
+2015-12-16 21:06:35		Option changed: irc.look.smart_filter = on
+2015-12-16 21:06:35		Filter "irc_smart" added:
+2015-12-16 21:06:35		  [irc_smart] buffer: * / tags: irc_smart_filter / regex: * 
+2015-12-16 21:06:35		Filter "irc_join_names" added:
+2015-12-16 21:06:35		  [irc_join_names] buffer: * / tags: irc_366,irc_332,irc_333,irc_329,irc_324 / regex: * 
+2015-12-16 21:06:44		Option changed: weechat.look.prefix_same_nick = "⤷"  (default: "")
+2015-12-16 21:07:52	=!=	irc: command "join" must be executed on irc buffer (server or channel)
+2015-12-16 21:08:18		[core]
+2015-12-16 21:08:18		  away     buffer   command  debug    filter   history  key      mouse    plugin   proxy    reload   save     set      upgrade  version  window 
+2015-12-16 21:08:18		  bar      color    cursor   eval     help     input    layout   mute     print    quit     repeat   secure   unset    uptime   wait   
+2015-12-16 21:08:18		[ruby]
+2015-12-16 21:08:18		  ruby
+2015-12-16 21:08:18		[lua]
+2015-12-16 21:08:18		  lua
+2015-12-16 21:08:18		[charset]
+2015-12-16 21:08:18		  charset
+2015-12-16 21:08:18		[relay]
+2015-12-16 21:08:18		  relay
+2015-12-16 21:08:18		[irc]
+2015-12-16 21:08:18		  admin       ctcp        die         ison        list        msg         oper        quote       samode      servlist    topic       version     whowas    
+2015-12-16 21:08:18		  allchan     cycle       disconnect  join        lusers      names       part        reconnect   sanick      squery      trace       voice     
+2015-12-16 21:08:18		  allpv       dcc         halfop      kick        map         nick        ping        rehash      sapart      squit       unban       wallchops 
+2015-12-16 21:08:18		  allserv     dehalfop    ignore      kickban     me          notice      pong        remove      saquit      stats       unquiet     wallops   
+2015-12-16 21:08:18		  ban         deop        info        kill        mode        notify      query       restart     server      summon      userhost    who       
+2015-12-16 21:08:18		  connect     devoice     invite      links       motd        op          quiet       sajoin      service     time        users       whois     
+2015-12-16 21:08:18		[aspell]
+2015-12-16 21:08:18		  aspell
+2015-12-16 21:08:18		[python]
+2015-12-16 21:08:18		  go  python
+2015-12-16 21:08:18		[trigger]
+2015-12-16 21:08:18		  trigger
+2015-12-16 21:08:18		[tcl]
+2015-12-16 21:08:18		  tcl
+2015-12-16 21:08:18		[xfer]
+2015-12-16 21:08:18		  me  xfer
+2015-12-16 21:08:18		[perl]
+2015-12-16 21:08:18		  buffers_detach  buffers_whitelist  iset  perl
+2015-12-16 21:08:18		[exec]
+2015-12-16 21:08:18		  exec
+2015-12-16 21:08:18		[logger]
+2015-12-16 21:08:18		  logger
+2015-12-16 21:08:18		[script]
+2015-12-16 21:08:18		  script
+2015-12-16 21:08:18		[alias]
+2015-12-16 21:08:18		  AAWAY    AME      ANICK    BYE      CHAT     CLOSE    IG       K        LEAVE    MSGBUF   N        REDRAW   SIGNOFF  UB       V        WC       WII    
+2015-12-16 21:08:18		  alias    AMSG     BEEP     C        CL       EXIT     J        KB       M        MUB      Q        SAY      T        UMODE    W        WI       WW     
+2015-12-16 21:08:18		[guile]
+2015-12-16 21:08:18		  guile
+2015-12-16 21:22:06	=!=	irc: command "list" must be executed on irc buffer (server or channel)
+2015-12-16 21:22:12		python scripts loaded: buffer_autoclose, colorize_nicks, go
+2015-12-16 21:22:12		perl scripts loaded: buffers, iset
+2015-12-16 21:22:12		script: 299 scripts for WeeChat 1.3
+2015-12-16 21:22:12		Plugins loaded: alias, aspell, charset, exec, fifo, guile, irc, logger, lua, perl, python, relay, ruby, script, tcl, trigger, xfer
+2015-12-16 21:22:37		[core]
+2015-12-16 21:22:37		  away     buffer   command  debug    filter   history  key      mouse    plugin   proxy    reload   save     set      upgrade  version  window 
+2015-12-16 21:22:37		  bar      color    cursor   eval     help     input    layout   mute     print    quit     repeat   secure   unset    uptime   wait   
+2015-12-16 21:22:37		[ruby]
+2015-12-16 21:22:37		  ruby
+2015-12-16 21:22:37		[lua]
+2015-12-16 21:22:37		  lua
+2015-12-16 21:22:37		[charset]
+2015-12-16 21:22:37		  charset
+2015-12-16 21:22:37		[relay]
+2015-12-16 21:22:37		  relay
+2015-12-16 21:22:37		[irc]
+2015-12-16 21:22:37		  admin       ctcp        die         ison        list        msg         oper        quote       samode      servlist    topic       version     whowas    
+2015-12-16 21:22:37		  allchan     cycle       disconnect  join        lusers      names       part        reconnect   sanick      squery      trace       voice     
+2015-12-16 21:22:37		  allpv       dcc         halfop      kick        map         nick        ping        rehash      sapart      squit       unban       wallchops 
+2015-12-16 21:22:37		  allserv     dehalfop    ignore      kickban     me          notice      pong        remove      saquit      stats       unquiet     wallops   
+2015-12-16 21:22:37		  ban         deop        info        kill        mode        notify      query       restart     server      summon      userhost    who       
+2015-12-16 21:22:37		  connect     devoice     invite      links       motd        op          quiet       sajoin      service     time        users       whois     
+2015-12-16 21:22:37		[aspell]
+2015-12-16 21:22:37		  aspell
+2015-12-16 21:22:37		[python]
+2015-12-16 21:22:37		  go  python
+2015-12-16 21:22:37		[trigger]
+2015-12-16 21:22:37		  trigger
+2015-12-16 21:22:37		[tcl]
+2015-12-16 21:22:37		  tcl
+2015-12-16 21:22:37		[xfer]
+2015-12-16 21:22:37		  me  xfer
+2015-12-16 21:22:37		[perl]
+2015-12-16 21:22:37		  buffers_detach  buffers_whitelist  iset  perl
+2015-12-16 21:22:37		[exec]
+2015-12-16 21:22:37		  exec
+2015-12-16 21:22:37		[logger]
+2015-12-16 21:22:37		  logger
+2015-12-16 21:22:37		[script]
+2015-12-16 21:22:37		  script
+2015-12-16 21:22:37		[alias]
+2015-12-16 21:22:37		  AAWAY    AME      ANICK    BYE      CHAT     CLOSE    IG       K        LEAVE    MSGBUF   N        REDRAW   SIGNOFF  UB       V        WC       WII    
+2015-12-16 21:22:37		  alias    AMSG     BEEP     C        CL       EXIT     J        KB       M        MUB      Q        SAY      T        UMODE    W        WI       WW     
+2015-12-16 21:22:37		[guile]
+2015-12-16 21:22:37		  guile
+2015-12-16 21:22:51	=!=	irc: unable to add temporary server "aniverse" because the addition of temporary servers with command /connect is currently disabled
+2015-12-16 21:22:51	=!=	irc: if you want to add a standard server, use the command "/server add" (see /help server); if you really want to add a temporary server (NOT SAVED), turn on the option irc.look.temporary_servers
+2015-12-16 21:23:02	=!=	irc: unable to add temporary server "freenode" because the addition of temporary servers with command /connect is currently disabled
+2015-12-16 21:23:02	=!=	irc: if you want to add a standard server, use the command "/server add" (see /help server); if you really want to add a temporary server (NOT SAVED), turn on the option irc.look.temporary_servers
+2015-12-16 21:23:17		[irc]  /server  list|listfull [<server>]
+2015-12-16 21:23:17		                add <server> <hostname>[/<port>] [-temp] [-<option>[=<value>]] [-no<option>]
+2015-12-16 21:23:17		                copy|rename <server> <new_name>
+2015-12-16 21:23:17		                reorder <server> [<server>...]
+2015-12-16 21:23:17		                del|keep <server>
+2015-12-16 21:23:17		                deloutq|jump|raw
+2015-12-16 21:23:17		list, add or remove IRC servers
+2015-12-16 21:23:17		    list: list servers (without argument, this list is displayed)
+2015-12-16 21:23:17		listfull: list servers with detailed info for each server
+2015-12-16 21:23:17		     add: add a new server
+2015-12-16 21:23:17		  server: server name, for internal and display use
+2015-12-16 21:23:17		hostname: name or IP address of server, with optional port (default: 6667), many addresses can be separated by a comma
+2015-12-16 21:23:17		    temp: add a temporary server (not saved)
+2015-12-16 21:23:17		  option: set option for server (for boolean option, value can be omitted)
+2015-12-16 21:23:17		nooption: set boolean option to 'off' (for example: -nossl)
+2015-12-16 21:23:17		    copy: duplicate a server
+2015-12-16 21:23:17		  rename: rename a server
+2015-12-16 21:23:17		 reorder: reorder list of servers
+2015-12-16 21:23:17		    keep: keep server in config file (for temporary servers only)
+2015-12-16 21:23:17		     del: delete a server
+2015-12-16 21:23:17		 deloutq: delete messages out queue for all servers (all messages WeeChat is currently sending)
+2015-12-16 21:23:17		    jump: jump to server buffer
+2015-12-16 21:23:17		     raw: open buffer with raw IRC data
+2015-12-16 21:23:17		Examples:
+2015-12-16 21:23:17		  /server listfull
+2015-12-16 21:23:17		  /server add freenode chat.freenode.net
+2015-12-16 21:23:17		  /server add freenode chat.freenode.net/6697 -ssl -autoconnect
+2015-12-16 21:23:17		  /server add chatspike irc.chatspike.net/6667,irc.duckspike.net/6667
+2015-12-16 21:23:17		  /server copy freenode freenode-test
+2015-12-16 21:23:17		  /server rename freenode-test freenode2
+2015-12-16 21:23:17		  /server reorder freenode2 freenode
+2015-12-16 21:23:17		  /server del freenode
+2015-12-16 21:23:17		  /server deloutq
+2015-12-16 21:23:31		No server
+2015-12-16 21:23:53		irc: server freenode added
+2015-12-16 21:24:25		irc: server freenode has been deleted
+2015-12-16 21:24:34		irc: server freenode added
+2015-12-16 21:27:44		Option changed: weechat.bar.status.color_bg = 20  (default: 10)
+2015-12-16 21:27:50		Option changed: weechat.bar.status.color_bg = 15  (default: 10)
+2015-12-16 21:27:52		Option changed: weechat.bar.status.color_bg = 10
+2015-12-16 21:27:54		Option changed: weechat.bar.status.color_bg = 11  (default: 10)
+2015-12-16 21:27:56		Option changed: weechat.bar.status.color_bg = 12  (default: 10)
+2015-12-16 21:28:04		Option changed: weechat.bar.title.color_bg = 12  (default: 10)
+2015-12-16 21:29:42		Option changed: weechat.look.prefix_same_nick = "--"  (default: "")
+2015-12-16 21:33:04		python scripts loaded: buffer_autoclose, colorize_nicks, go
+2015-12-16 21:33:04		perl scripts loaded: buffers, iset
+2015-12-16 21:33:04		script: 299 scripts for WeeChat 1.3
+2015-12-16 21:33:04		Plugins loaded: alias, aspell, charset, exec, fifo, guile, irc, logger, lua, perl, python, relay, ruby, script, tcl, trigger, xfer
+2016-10-22 12:51:42	=!=	Warning: /home/j1n/.weechat/irc.conf, line 30: unknown option for section "look": item_away_message = on
+2016-10-22 12:51:42	=!=	Warning: /home/j1n/.weechat/irc.conf, line 39: unknown option for section "look": nick_color_force = ""
+2016-10-22 12:51:42	=!=	Warning: /home/j1n/.weechat/irc.conf, line 40: unknown option for section "look": nick_color_hash = sum
+2016-10-22 12:51:42	=!=	Warning: /home/j1n/.weechat/irc.conf, line 41: unknown option for section "look": nick_color_stop_chars = "_|["
+2016-10-22 12:51:42	=!=	Warning: /home/j1n/.weechat/irc.conf, line 68: unknown option for section "color": item_away = yellow
+2016-10-22 12:51:42	=!=	Warning: /home/j1n/.weechat/irc.conf, line 84: unknown option for section "network": alternate_nick = on
+2016-10-22 12:51:42	=!=	Warning: /home/j1n/.weechat/irc.conf, line 123: unknown option for section "server_default": default_msg_kick = ""
+2016-10-22 12:51:42	=!=	Warning: /home/j1n/.weechat/irc.conf, line 124: unknown option for section "server_default": default_msg_part = "WeeChat %v"
+2016-10-22 12:51:42	=!=	Warning: /home/j1n/.weechat/irc.conf, line 125: unknown option for section "server_default": default_msg_quit = "WeeChat %v"
+2016-10-22 12:51:42	=!=	irc: error creating server option "freenode.default_msg_kick"
+2016-10-22 12:51:42	=!=	Warning: /home/j1n/.weechat/irc.conf, line 182: invalid value for option: freenode.default_msg_kick
+2016-10-22 12:51:42	=!=	irc: error creating server option "freenode.default_msg_part"
+2016-10-22 12:51:42	=!=	Warning: /home/j1n/.weechat/irc.conf, line 183: invalid value for option: freenode.default_msg_part
+2016-10-22 12:51:42	=!=	irc: error creating server option "freenode.default_msg_quit"
+2016-10-22 12:51:42	=!=	Warning: /home/j1n/.weechat/irc.conf, line 184: invalid value for option: freenode.default_msg_quit
+2016-10-22 12:51:42		python scripts loaded: buffer_autoclose, colorize_nicks, go
+2016-10-22 12:51:42		perl scripts loaded: buffers, iset
+2016-10-22 12:51:42		script: downloading list of scripts...
+2016-10-22 12:51:42		Plugins loaded: alias, aspell, charset, exec, fifo, guile, irc, logger, lua, perl, python, relay, ruby, script, tcl, trigger, xfer
+2016-10-22 12:51:45		script: 310 scripts for WeeChat 1.6
+2016-12-25 14:13:00		python scripts loaded: buffer_autoclose, colorize_nicks, go
+2016-12-25 14:13:00		perl scripts loaded: buffers, iset
+2016-12-25 14:13:01		script: downloading list of scripts...
+2016-12-25 14:13:01		Plugins loaded: alias, aspell, charset, exec, fifo, guile, irc, logger, lua, perl, python, relay, ruby, script, tcl, trigger, xfer
+2016-12-25 14:13:05		script: 328 scripts for WeeChat 1.6
+2016-12-25 14:13:18	=!=	irc: unable to add temporary server "irc.chat.twitch.tv" because the addition of temporary servers with command /connect is currently disabled
+2016-12-25 14:13:18	=!=	irc: if you want to add a standard server, use the command "/server add" (see /help server); if you really want to add a temporary server (NOT SAVED), turn on the option irc.look.temporary_servers
+2016-12-25 14:13:57	=!=	irc: command "join" must be executed on irc buffer (server or channel)
+2016-12-25 14:17:08		irc: server twitch added
+2016-12-25 14:21:11		Options saved to sec.conf
+2016-12-25 14:21:11		Options saved to weechat.conf
+2016-12-25 14:21:11		Options saved to plugins.conf
+2016-12-25 14:21:11		Options saved to charset.conf
+2016-12-25 14:21:11		Options saved to logger.conf
+2016-12-25 14:21:11		Options saved to exec.conf
+2016-12-25 14:21:11		Options saved to trigger.conf
+2016-12-25 14:21:11		Options saved to aspell.conf
+2016-12-25 14:21:11		Options saved to alias.conf
+2016-12-25 14:21:11		Options saved to xfer.conf
+2016-12-25 14:21:11		Options saved to irc.conf
+2016-12-25 14:21:11		Options saved to relay.conf
+2016-12-25 14:21:11		Options saved to colorize_nicks.conf
+2016-12-25 14:21:11		Options saved to buffers.conf
+2016-12-25 14:21:11		Options saved to iset.conf
+2016-12-25 14:21:11		Options saved to script.conf
+2016-12-25 14:47:31		Buffers list:
+2016-12-25 14:47:31		  [1] core.weechat (notify: message)
+2016-12-25 14:47:31		  [1] irc.server.twitch (notify: message)
+2016-12-25 14:47:31		  [2] irc.twitch.doublelift (notify: message)
+2016-12-25 14:47:31		  [3] irc.twitch.#doublelift (notify: message)
+2016-12-25 23:33:18		python scripts loaded: buffer_autoclose, colorize_nicks, go
+2016-12-25 23:33:18		perl scripts loaded: buffers, iset
+2016-12-25 23:33:18		script: 328 scripts for WeeChat 1.6
+2016-12-25 23:33:18		Plugins loaded: alias, aspell, charset, exec, fifo, guile, irc, logger, lua, perl, python, relay, ruby, script, tcl, trigger, xfer
+2016-12-25 23:36:09	=!=	Too few arguments for command "/query" (help on command: /help query)
+2016-12-27 10:28:29		python scripts loaded: buffer_autoclose, colorize_nicks, go
+2016-12-27 10:28:29		perl scripts loaded: buffers, iset
+2016-12-27 10:28:29		script: downloading list of scripts...
+2016-12-27 10:28:29		Plugins loaded: alias, aspell, charset, exec, fifo, guile, irc, logger, lua, perl, python, relay, ruby, script, tcl, trigger, xfer
+2016-12-27 10:28:33		script: 328 scripts for WeeChat 1.6
+2016-12-28 00:15:38		python scripts loaded: buffer_autoclose, colorize_nicks, go
+2016-12-28 00:15:38		perl scripts loaded: buffers, iset
+2016-12-28 00:15:38		script: 328 scripts for WeeChat 1.6
+2016-12-28 00:15:38		Plugins loaded: alias, aspell, charset, exec, fifo, guile, irc, logger, lua, perl, python, relay, ruby, script, tcl, trigger, xfer
+2017-11-12 12:27:06	=!=	Warning: /home/j1n/.weechat/aspell.conf, line 7: unknown option for section "color": suggestions = default
+2017-11-12 12:27:06		New key binding (context "default"): meta-meta-OQ => /bar scroll buflist * e
+2017-11-12 12:27:06		New key binding (context "default"): meta-meta-OP => /bar scroll buflist * b
+2017-11-12 12:27:06		New key binding (context "default"): meta-OQ => /bar scroll buflist * +100%
+2017-11-12 12:27:06		New key binding (context "default"): meta-OP => /bar scroll buflist * -100%
+2017-11-12 12:27:06		python scripts loaded: buffer_autoclose, colorize_nicks, go
+2017-11-12 12:27:06	=!=	buflist: warning: the script buffers.pl is loaded and provides a bar with list of buffers similar to the buflist plugin; you may want to uninstall the script buffers.pl (/script remove buffers.pl) or disable/unload the buflist plugin; see WeeChat release notes for more information
+2017-11-12 12:27:06		perl scripts loaded: buffers, iset
+2017-11-12 12:27:06	=!=	Warning: /home/j1n/.weechat/script.conf, line 50: unknown option for section "scripts": url_force_https = on
+2017-11-12 12:27:06		script: downloading list of scripts...
+2017-11-12 12:27:06		Plugins loaded: alias, aspell, buflist, charset, exec, fifo, guile, irc, logger, lua, perl, python, relay, ruby, script, tcl, trigger, xfer
+2017-11-12 12:27:11		script: 351 scripts for WeeChat 1.9.1
+2017-11-13 22:22:43		python scripts loaded: buffer_autoclose, colorize_nicks, go
+2017-11-13 22:22:43	=!=	buflist: warning: the script buffers.pl is loaded and provides a bar with list of buffers similar to the buflist plugin; you may want to uninstall the script buffers.pl (/script remove buffers.pl) or disable/unload the buflist plugin; see WeeChat release notes for more information
+2017-11-13 22:22:43		perl scripts loaded: buffers, iset
+2017-11-13 22:22:43		script: downloading list of scripts...
+2017-11-13 22:22:43		Plugins loaded: alias, aspell, buflist, charset, exec, fifo, guile, irc, logger, lua, perl, python, relay, ruby, script, tcl, trigger, xfer
+2017-11-13 22:22:50		script: 351 scripts for WeeChat 1.9.1
+2017-11-13 22:23:33		perl: loading script "/home/j1n/.weechat/perl/perlexec.pl"
+2017-11-13 22:23:33		perl: registered script "perlexec", version 0.1 (Execute perl code)
+2017-11-13 22:23:34		python: unloading script "buffer_autoclose"
+2017-11-13 22:23:34		python: script removed: /home/j1n/.weechat/python/autoload/buffer_autoclose.py
+2017-11-13 22:23:34		python: script removed: /home/j1n/.weechat/python/buffer_autoclose.py
+2017-11-13 22:23:34		python: loading script "/home/j1n/.weechat/python/buffer_autoclose.py"
+2017-11-13 22:23:34		python: registered script "buffer_autoclose", version 0.4 (Automatically close inactive private message buffers)
+2017-11-13 22:23:37		python: unloading script "go"
+2017-11-13 22:23:37		python: script removed: /home/j1n/.weechat/python/autoload/go.py
+2017-11-13 22:23:37		python: script removed: /home/j1n/.weechat/python/go.py
+2017-11-13 22:23:37		python: loading script "/home/j1n/.weechat/python/go.py"
+2017-11-13 22:23:37		python: registered script "go", version 2.5 (Quick jump to buffers)
+2017-11-13 22:23:39		python: unloading script "colorize_nicks"
+2017-11-13 22:23:39		python: script removed: /home/j1n/.weechat/python/autoload/colorize_nicks.py
+2017-11-13 22:23:39		python: script removed: /home/j1n/.weechat/python/colorize_nicks.py
+2017-11-13 22:23:39		python: loading script "/home/j1n/.weechat/python/colorize_nicks.py"
+2017-11-13 22:23:39		python: registered script "colorize_nicks", version 24 (Use the weechat nick colors in the chat area)
+2017-11-13 22:23:41		python: loading script "/home/j1n/.weechat/python/autosort.py"
+2017-11-13 22:23:41		python: registered script "autosort", version 3.3 (Flexible automatic (or manual) buffer sorting based on eval expressions.)
+2017-11-13 22:23:43		python: loading script "/home/j1n/.weechat/python/zerotab.py"
+2017-11-13 22:23:43		python: registered script "zerotab", version 1.5 (Will tab complete the last nick in channel without typing anything first. This is good for rapid conversations.)
+2017-11-13 22:23:45		python: loading script "/home/j1n/.weechat/python/urlserver.py"
+2017-11-13 22:23:45		python: registered script "urlserver", version 2.2 (Shorten URLs with own HTTP server)
+2017-11-13 22:23:45		URL server listening on ('127.0.0.1', 40433)
+2017-11-13 22:24:10		Option changed: weechat.bar.status.color_bg = 0  (default: 12)
+2017-11-13 22:24:21		Option changed: weechat.bar.title.color_bg = 0  (default: 12)
+2017-11-13 22:24:54		Option changed: weechat.color.chat_nick_colors = "1,2,3,4,5,6"  (default: "cyan,magenta,green,brown,lightblue,default,lightcyan,lightmagenta,lightgreen,blue")
+2017-11-13 22:25:26		Option changed: buflist.format.hotlist_message = "${color:7}"  (default: "${color:brown}")
+2017-11-13 22:26:04		Option changed: buflist.format.buffer_current = "${color:,7}${format_buffer}"  (default: "${color:,blue}${format_buffer}")
+2017-11-13 22:26:28		Option changed: weechat.bar.buflist.position = top  (default: left)
+2017-11-13 22:26:43		Option changed: weechat.bar.buflist.items = "buflist"  (default: "")
+2017-11-13 22:27:02		autosort: /autosort replacements: command not found
+2017-11-13 22:27:44		autosort: /autosort replacements: command not found
+2017-11-13 22:28:02		autosort: Sorting rules:
+2017-11-13 22:28:02		    0: ${core_first}
+2017-11-13 22:28:02		    1: ${irc_last}
+2017-11-13 22:28:02		    2: ${buffer.plugin.name}
+2017-11-13 22:28:02		    3: ${irc_raw_first}
+2017-11-13 22:28:02		    4: ${if:${plugin}==irc?${server}}
+2017-11-13 22:28:02		    5: ${if:${plugin}==irc?${info:autosort_order,${type},server,*,channel,private}}
+2017-11-13 22:28:02		    6: ${if:${plugin}==irc?${hashless_name}}
+2017-11-13 22:28:02		    7: ${buffer.full_name}
+2017-11-13 22:28:02		    8: irc.server.*.&* = 0
+2017-11-13 22:28:20		autosort: Sorting rules:
+2017-11-13 22:28:20		    0: ${core_first}
+2017-11-13 22:28:20		    1: ${irc_last}
+2017-11-13 22:28:20		    2: ${buffer.plugin.name}
+2017-11-13 22:28:20		    3: ${irc_raw_first}
+2017-11-13 22:28:20		    4: ${if:${plugin}==irc?${server}}
+2017-11-13 22:28:20		    5: ${if:${plugin}==irc?${info:autosort_order,${type},server,*,channel,private}}
+2017-11-13 22:28:20		    6: ${if:${plugin}==irc?${hashless_name}}
+2017-11-13 22:28:20		    7: ${buffer.full_name}
+2017-11-13 22:28:20		    8: irc.server.*.&* = 0
+2017-11-13 22:28:20		    9: irc.server.*.#* = 1
+2017-11-13 22:28:37		autosort: Sorting rules:
+2017-11-13 22:28:37		    0: ${core_first}
+2017-11-13 22:28:37		    1: ${irc_last}
+2017-11-13 22:28:37		    2: ${buffer.plugin.name}
+2017-11-13 22:28:37		    3: ${irc_raw_first}
+2017-11-13 22:28:37		    4: ${if:${plugin}==irc?${server}}
+2017-11-13 22:28:37		    5: ${if:${plugin}==irc?${info:autosort_order,${type},server,*,channel,private}}
+2017-11-13 22:28:37		    6: ${if:${plugin}==irc?${hashless_name}}
+2017-11-13 22:28:37		    7: ${buffer.full_name}
+2017-11-13 22:28:37		    8: irc.server.*.&* = 0
+2017-11-13 22:28:37		    9: irc.server.*.#* = 1
+2017-11-13 22:28:37		    10: irc.server.*.\*status = 2
+2017-11-13 22:28:55		Option changed: irc.look.server_buffer = independent  (default: merge_with_core)
+2017-11-13 22:29:28		Option changed: weechat.look.hotlist_add_conditions = "${away} || ${buffer} != ${window.buffer}"  (default: "${away} || ${buffer.num_displayed} == 0")
+2017-11-13 22:29:41		Option changed: weechat.look.prefix_same_nick = "⤷"  (default: "")
+2017-11-13 22:29:46		Option changed: weechat.look.prefix_error = "⚠"  (default: "=!=")
+2017-11-13 22:29:51		Option changed: weechat.look.prefix_network = "ℹ "  (default: "--")
+2017-11-13 22:29:59		Option changed: weechat.look.prefix_action = "⚡"  (default: " *")
+2017-11-13 22:30:08		Option changed: weechat.look.bar_more_down = "▼▼"  (default: "++")
+2017-11-13 22:30:14		Option changed: weechat.look.bar_more_left = "◀◀"  (default: "<<")
+2017-11-13 22:30:18		Option changed: weechat.look.bar_more_right = "▶▶"  (default: ">>")
+2017-11-13 22:30:28		Option changed: weechat.look.bar_more_up = "▲▲"  (default: "--")
+2017-11-13 22:30:35		Option changed: weechat.look.prefix_suffix = "╡"  (default: "|")
+2017-11-13 22:30:43		Option changed: weechat.look.prefix_align_max = 15  (default: 0)
+2017-11-13 22:30:49		Option changed: weechat.look.buffer_time_format = "${253}%H${245}%M"  (default: "%H:%M:%S")
+2017-11-13 22:31:11		Trigger "windowswitch" created
+2017-11-13 22:31:15		Trigger "bufferswitch" created
+2017-11-13 22:31:19		Trigger "force_redraw" created
+2017-11-13 22:31:23		Trigger "detach" created
+2017-11-13 22:31:28		Trigger "reattach" created
+2017-11-13 22:31:32		Trigger "reattach_on_switch" created
+2017-11-13 22:31:44		Option changed: weechat.look.buffer_notify_default = message  (default: all)
+2017-11-13 22:31:49		Option changed: irc.look.smart_filter = on
+2017-11-13 22:31:52	⚠	Error adding filter "irc_smart": a filter with same name already exists
+2017-11-13 22:32:04	⚠	Error adding filter "irc_join_names": a filter with same name already exists
+2017-11-13 22:32:22		Key "meta-n" unbound (context: "default")
+2017-11-13 22:32:22		New key binding (context "default"): meta-n => /bar toggle nicklist
+2017-11-13 22:32:29		New key binding (context "default"): meta-g => /go
+2017-11-13 22:32:44		URL server stopped
+2017-11-13 22:32:44		URL server listening on ('127.0.0.1', 60211)
+2017-11-13 22:32:44		Option changed: plugins.var.python.urlserver.http_port = "60211"
+2017-11-13 22:32:51		Option changed: logger.file.auto_log = off  (default: on)
+2017-11-13 22:40:07		240 key bindings for context "default":
+2017-11-13 22:40:07		  ctrl-? => /input delete_previous_char
+2017-11-13 22:40:07		  ctrl-A => /input move_beginning_of_line
+2017-11-13 22:40:07		  ctrl-B => /input move_previous_char
+2017-11-13 22:40:07		  ctrl-C_ => /input insert \x1F
+2017-11-13 22:40:07		  ctrl-Cb => /input insert \x02
+2017-11-13 22:40:07		  ctrl-Cc => /input insert \x03
+2017-11-13 22:40:07		  ctrl-Ci => /input insert \x1D
+2017-11-13 22:40:07		  ctrl-Co => /input insert \x0F
+2017-11-13 22:40:07		  ctrl-Cv => /input insert \x16
+2017-11-13 22:40:07		  ctrl-D => /input delete_next_char
+2017-11-13 22:40:07		  ctrl-E => /input move_end_of_line
+2017-11-13 22:40:07		  ctrl-F => /input move_next_char
+2017-11-13 22:40:07		  ctrl-H => /input delete_previous_char
+2017-11-13 22:40:07		  ctrl-I => /input complete_next
+2017-11-13 22:40:07		  ctrl-J => /input return
+2017-11-13 22:40:07		  ctrl-K => /input delete_end_of_line
+2017-11-13 22:40:07		  ctrl-L => /window refresh
+2017-11-13 22:40:07		  ctrl-M => /input return
+2017-11-13 22:40:07		  ctrl-N => /buffer +1
+2017-11-13 22:40:07		  ctrl-P => /buffer -1
+2017-11-13 22:40:07		  ctrl-R => /input search_text_here
+2017-11-13 22:40:07		  ctrl-Sctrl-U => /input set_unread
+2017-11-13 22:40:07		  ctrl-T => /input transpose_chars
+2017-11-13 22:40:07		  ctrl-U => /input delete_beginning_of_line
+2017-11-13 22:40:07		  ctrl-W => /input delete_previous_word
+2017-11-13 22:40:07		  ctrl-X => /input switch_active_buffer
+2017-11-13 22:40:07		  ctrl-Y => /input clipboard_paste
+2017-11-13 22:40:07		  meta-meta-OP => /bar scroll buflist * b
+2017-11-13 22:40:07		  meta-meta-OQ => /bar scroll buflist * e
+2017-11-13 22:40:07		  meta-meta2-1~ => /window scroll_top
+2017-11-13 22:40:07		  meta-meta2-23~ => /bar scroll nicklist * b
+2017-11-13 22:40:07		  meta-meta2-24~ => /bar scroll nicklist * e
+2017-11-13 22:40:07		  meta-meta2-4~ => /window scroll_bottom
+2017-11-13 22:40:07		  meta-meta2-5~ => /window scroll_up
+2017-11-13 22:40:07		  meta-meta2-6~ => /window scroll_down
+2017-11-13 22:40:07		  meta-meta2-7~ => /window scroll_top
+2017-11-13 22:40:07		  meta-meta2-8~ => /window scroll_bottom
+2017-11-13 22:40:07		  meta-meta2-A => /buffer -1
+2017-11-13 22:40:07		  meta-meta2-B => /buffer +1
+2017-11-13 22:40:07		  meta-meta2-C => /buffer +1
+2017-11-13 22:40:07		  meta-meta2-D => /buffer -1
+2017-11-13 22:40:07		  meta-- => /filter toggle @
+2017-11-13 22:40:07		  meta-/ => /input jump_last_buffer_displayed
+2017-11-13 22:40:07		  meta-0 => /buffer *10
+2017-11-13 22:40:07		  meta-1 => /buffer *1
+2017-11-13 22:40:07		  meta-2 => /buffer *2
+2017-11-13 22:40:07		  meta-3 => /buffer *3
+2017-11-13 22:40:07		  meta-4 => /buffer *4
+2017-11-13 22:40:07		  meta-5 => /buffer *5
+2017-11-13 22:40:07		  meta-6 => /buffer *6
+2017-11-13 22:40:07		  meta-7 => /buffer *7
+2017-11-13 22:40:07		  meta-8 => /buffer *8
+2017-11-13 22:40:07		  meta-9 => /buffer *9
+2017-11-13 22:40:07		  meta-< => /input jump_previously_visited_buffer
+2017-11-13 22:40:07		  meta-= => /filter toggle
+2017-11-13 22:40:07		  meta-> => /input jump_next_visited_buffer
+2017-11-13 22:40:07		  meta-OA => /input history_global_previous
+2017-11-13 22:40:07		  meta-OB => /input history_global_next
+2017-11-13 22:40:07		  meta-OC => /input move_next_word
+2017-11-13 22:40:07		  meta-OD => /input move_previous_word
+2017-11-13 22:40:07		  meta-OF => /input move_end_of_line
+2017-11-13 22:40:07		  meta-OH => /input move_beginning_of_line
+2017-11-13 22:40:07		  meta-OP => /bar scroll buflist * -100%
+2017-11-13 22:40:07		  meta-OQ => /bar scroll buflist * +100%
+2017-11-13 22:40:07		  meta-Oa => /input history_global_previous
+2017-11-13 22:40:07		  meta-Ob => /input history_global_next
+2017-11-13 22:40:07		  meta-Oc => /input move_next_word
+2017-11-13 22:40:07		  meta-Od => /input move_previous_word
+2017-11-13 22:40:07		  meta2-15~ => /buffer -1
+2017-11-13 22:40:07		  meta2-17~ => /buffer +1
+2017-11-13 22:40:07		  meta2-18~ => /window -1
+2017-11-13 22:40:07		  meta2-19~ => /window +1
+2017-11-13 22:40:07		  meta2-1;3A => /buffer -1
+2017-11-13 22:40:07		  meta2-1;3B => /buffer +1
+2017-11-13 22:40:07		  meta2-1;3C => /buffer +1
+2017-11-13 22:40:07		  meta2-1;3D => /buffer -1
+2017-11-13 22:40:07		  meta2-1;3F => /window scroll_bottom
+2017-11-13 22:40:07		  meta2-1;3H => /window scroll_top
+2017-11-13 22:40:07		  meta2-1;5A => /input history_global_previous
+2017-11-13 22:40:07		  meta2-1;5B => /input history_global_next
+2017-11-13 22:40:07		  meta2-1;5C => /input move_next_word
+2017-11-13 22:40:07		  meta2-1;5D => /input move_previous_word
+2017-11-13 22:40:07		  meta2-1~ => /input move_beginning_of_line
+2017-11-13 22:40:07		  meta2-200~ => /input paste_start
+2017-11-13 22:40:07		  meta2-201~ => /input paste_stop
+2017-11-13 22:40:07		  meta2-20~ => /bar scroll title * -30%
+2017-11-13 22:40:07		  meta2-21~ => /bar scroll title * +30%
+2017-11-13 22:40:07		  meta2-23;3~ => /bar scroll nicklist * b
+2017-11-13 22:40:07		  meta2-23~ => /bar scroll nicklist * -100%
+2017-11-13 22:40:07		  meta2-24;3~ => /bar scroll nicklist * e
+2017-11-13 22:40:07		  meta2-24~ => /bar scroll nicklist * +100%
+2017-11-13 22:40:07		  meta2-3~ => /input delete_next_char
+2017-11-13 22:40:07		  meta2-4~ => /input move_end_of_line
+2017-11-13 22:40:07		  meta2-5;3~ => /window scroll_up
+2017-11-13 22:40:07		  meta2-5~ => /window page_up
+2017-11-13 22:40:07		  meta2-6;3~ => /window scroll_down
+2017-11-13 22:40:07		  meta2-6~ => /window page_down
+2017-11-13 22:40:07		  meta2-7~ => /input move_beginning_of_line
+2017-11-13 22:40:07		  meta2-8~ => /input move_end_of_line
+2017-11-13 22:40:07		  meta2-A => /input history_previous
+2017-11-13 22:40:07		  meta2-B => /input history_next
+2017-11-13 22:40:07		  meta2-C => /input move_next_char
+2017-11-13 22:40:07		  meta2-D => /input move_previous_char
+2017-11-13 22:40:07		  meta2-F => /input move_end_of_line
+2017-11-13 22:40:07		  meta2-G => /window page_down
+2017-11-13 22:40:07		  meta2-H => /input move_beginning_of_line
+2017-11-13 22:40:07		  meta2-I => /window page_up
+2017-11-13 22:40:07		  meta2-Z => /input complete_previous
+2017-11-13 22:40:07		  meta2-[E => /buffer -1
+2017-11-13 22:40:07		  meta-_ => /input redo
+2017-11-13 22:40:07		  meta-a => /input jump_smart
+2017-11-13 22:40:07		  meta-b => /input move_previous_word
+2017-11-13 22:40:07		  meta-d => /input delete_next_word
+2017-11-13 22:40:07		  meta-f => /input move_next_word
+2017-11-13 22:40:07		  meta-g => /go
+2017-11-13 22:40:07		  meta-h => /input hotlist_clear
+2017-11-13 22:40:07		  meta-jmeta-f => /buffer -
+2017-11-13 22:40:07		  meta-jmeta-l => /buffer +
+2017-11-13 22:40:07		  meta-jmeta-r => /server raw
+2017-11-13 22:40:07		  meta-jmeta-s => /server jump
+2017-11-13 22:40:07		  meta-j01 => /buffer *1
+2017-11-13 22:40:07		  meta-j02 => /buffer *2
+2017-11-13 22:40:07		  meta-j03 => /buffer *3
+2017-11-13 22:40:07		  meta-j04 => /buffer *4
+2017-11-13 22:40:07		  meta-j05 => /buffer *5
+2017-11-13 22:40:07		  meta-j06 => /buffer *6
+2017-11-13 22:40:07		  meta-j07 => /buffer *7
+2017-11-13 22:40:07		  meta-j08 => /buffer *8
+2017-11-13 22:40:07		  meta-j09 => /buffer *9
+2017-11-13 22:40:07		  meta-j10 => /buffer *10
+2017-11-13 22:40:07		  meta-j11 => /buffer *11
+2017-11-13 22:40:07		  meta-j12 => /buffer *12
+2017-11-13 22:40:07		  meta-j13 => /buffer *13
+2017-11-13 22:40:07		  meta-j14 => /buffer *14
+2017-11-13 22:40:07		  meta-j15 => /buffer *15
+2017-11-13 22:40:07		  meta-j16 => /buffer *16
+2017-11-13 22:40:07		  meta-j17 => /buffer *17
+2017-11-13 22:40:07		  meta-j18 => /buffer *18
+2017-11-13 22:40:08		  meta-j19 => /buffer *19
+2017-11-13 22:40:08		  meta-j20 => /buffer *20
+2017-11-13 22:40:08		  meta-j21 => /buffer *21
+2017-11-13 22:40:08		  meta-j22 => /buffer *22
+2017-11-13 22:40:08		  meta-j23 => /buffer *23
+2017-11-13 22:40:08		  meta-j24 => /buffer *24
+2017-11-13 22:40:08		  meta-j25 => /buffer *25
+2017-11-13 22:40:08		  meta-j26 => /buffer *26
+2017-11-13 22:40:08		  meta-j27 => /buffer *27
+2017-11-13 22:40:08		  meta-j28 => /buffer *28
+2017-11-13 22:40:08		  meta-j29 => /buffer *29
+2017-11-13 22:40:08		  meta-j30 => /buffer *30
+2017-11-13 22:40:08		  meta-j31 => /buffer *31
+2017-11-13 22:40:08		  meta-j32 => /buffer *32
+2017-11-13 22:40:08		  meta-j33 => /buffer *33
+2017-11-13 22:40:08		  meta-j34 => /buffer *34
+2017-11-13 22:40:08		  meta-j35 => /buffer *35
+2017-11-13 22:40:08		  meta-j36 => /buffer *36
+2017-11-13 22:40:08		  meta-j37 => /buffer *37
+2017-11-13 22:40:08		  meta-j38 => /buffer *38
+2017-11-13 22:40:08		  meta-j39 => /buffer *39
+2017-11-13 22:40:08		  meta-j40 => /buffer *40
+2017-11-13 22:40:08		  meta-j41 => /buffer *41
+2017-11-13 22:40:08		  meta-j42 => /buffer *42
+2017-11-13 22:40:08		  meta-j43 => /buffer *43
+2017-11-13 22:40:08		  meta-j44 => /buffer *44
+2017-11-13 22:40:08		  meta-j45 => /buffer *45
+2017-11-13 22:40:08		  meta-j46 => /buffer *46
+2017-11-13 22:40:08		  meta-j47 => /buffer *47
+2017-11-13 22:40:08		  meta-j48 => /buffer *48
+2017-11-13 22:40:08		  meta-j49 => /buffer *49
+2017-11-13 22:40:08		  meta-j50 => /buffer *50
+2017-11-13 22:40:08		  meta-j51 => /buffer *51
+2017-11-13 22:40:08		  meta-j52 => /buffer *52
+2017-11-13 22:40:08		  meta-j53 => /buffer *53
+2017-11-13 22:40:08		  meta-j54 => /buffer *54
+2017-11-13 22:40:08		  meta-j55 => /buffer *55
+2017-11-13 22:40:08		  meta-j56 => /buffer *56
+2017-11-13 22:40:08		  meta-j57 => /buffer *57
+2017-11-13 22:40:08		  meta-j58 => /buffer *58
+2017-11-13 22:40:08		  meta-j59 => /buffer *59
+2017-11-13 22:40:08		  meta-j60 => /buffer *60
+2017-11-13 22:40:08		  meta-j61 => /buffer *61
+2017-11-13 22:40:08		  meta-j62 => /buffer *62
+2017-11-13 22:40:08		  meta-j63 => /buffer *63
+2017-11-13 22:40:08		  meta-j64 => /buffer *64
+2017-11-13 22:40:08		  meta-j65 => /buffer *65
+2017-11-13 22:40:08		  meta-j66 => /buffer *66
+2017-11-13 22:40:08		  meta-j67 => /buffer *67
+2017-11-13 22:40:08		  meta-j68 => /buffer *68
+2017-11-13 22:40:08		  meta-j69 => /buffer *69
+2017-11-13 22:40:08		  meta-j70 => /buffer *70
+2017-11-13 22:40:08		  meta-j71 => /buffer *71
+2017-11-13 22:40:08		  meta-j72 => /buffer *72
+2017-11-13 22:40:08		  meta-j73 => /buffer *73
+2017-11-13 22:40:08		  meta-j74 => /buffer *74
+2017-11-13 22:40:08		  meta-j75 => /buffer *75
+2017-11-13 22:40:08		  meta-j76 => /buffer *76
+2017-11-13 22:40:08		  meta-j77 => /buffer *77
+2017-11-13 22:40:08		  meta-j78 => /buffer *78
+2017-11-13 22:40:08		  meta-j79 => /buffer *79
+2017-11-13 22:40:08		  meta-j80 => /buffer *80
+2017-11-13 22:40:08		  meta-j81 => /buffer *81
+2017-11-13 22:40:08		  meta-j82 => /buffer *82
+2017-11-13 22:40:08		  meta-j83 => /buffer *83
+2017-11-13 22:40:08		  meta-j84 => /buffer *84
+2017-11-13 22:40:08		  meta-j85 => /buffer *85
+2017-11-13 22:40:08		  meta-j86 => /buffer *86
+2017-11-13 22:40:08		  meta-j87 => /buffer *87
+2017-11-13 22:40:08		  meta-j88 => /buffer *88
+2017-11-13 22:40:08		  meta-j89 => /buffer *89
+2017-11-13 22:40:08		  meta-j90 => /buffer *90
+2017-11-13 22:40:08		  meta-j91 => /buffer *91
+2017-11-13 22:40:08		  meta-j92 => /buffer *92
+2017-11-13 22:40:08		  meta-j93 => /buffer *93
+2017-11-13 22:40:08		  meta-j94 => /buffer *94
+2017-11-13 22:40:08		  meta-j95 => /buffer *95
+2017-11-13 22:40:08		  meta-j96 => /buffer *96
+2017-11-13 22:40:08		  meta-j97 => /buffer *97
+2017-11-13 22:40:08		  meta-j98 => /buffer *98
+2017-11-13 22:40:08		  meta-j99 => /buffer *99
+2017-11-13 22:40:08		  meta-k => /input grab_key_command
+2017-11-13 22:40:08		  meta-l => /window bare
+2017-11-13 22:40:08		  meta-m => /mute mouse toggle
+2017-11-13 22:40:08		  meta-n => /bar toggle nicklist
+2017-11-13 22:40:08		  meta-p => /window scroll_previous_highlight
+2017-11-13 22:40:08		  meta-r => /input delete_line
+2017-11-13 22:40:08		  meta-s => /mute aspell toggle
+2017-11-13 22:40:08		  meta-u => /window scroll_unread
+2017-11-13 22:40:08		  meta-wmeta-meta2-A => /window up
+2017-11-13 22:40:08		  meta-wmeta-meta2-B => /window down
+2017-11-13 22:40:08		  meta-wmeta-meta2-C => /window right
+2017-11-13 22:40:08		  meta-wmeta-meta2-D => /window left
+2017-11-13 22:40:08		  meta-wmeta2-1;3A => /window up
+2017-11-13 22:40:08		  meta-wmeta2-1;3B => /window down
+2017-11-13 22:40:08		  meta-wmeta2-1;3C => /window right
+2017-11-13 22:40:08		  meta-wmeta2-1;3D => /window left
+2017-11-13 22:40:08		  meta-wmeta-b => /window balance
+2017-11-13 22:40:08		  meta-wmeta-s => /window swap
+2017-11-13 22:40:08		  meta-x => /input zoom_merged_buffer
+2017-11-13 22:40:08		  meta-z => /window zoom
+2017-11-13 22:40:08		  ctrl-_ => /input undo
+2017-11-13 22:40:08		8 key bindings for context "search":
+2017-11-13 22:40:08		  ctrl-I => /input search_switch_where
+2017-11-13 22:40:08		  ctrl-J => /input search_stop_here
+2017-11-13 22:40:08		  ctrl-M => /input search_stop_here
+2017-11-13 22:40:08		  ctrl-Q => /input search_stop
+2017-11-13 22:40:08		  ctrl-R => /input search_switch_regex
+2017-11-13 22:40:08		  meta2-A => /input search_previous
+2017-11-13 22:40:08		  meta2-B => /input search_next
+2017-11-13 22:40:08		  meta-c => /input search_switch_case
+2017-11-13 22:40:08		22 key bindings for context "cursor":
+2017-11-13 22:40:08		  ctrl-J => /cursor stop
+2017-11-13 22:40:08		  ctrl-M => /cursor stop
+2017-11-13 22:40:08		  meta-meta2-A => /cursor move area_up
+2017-11-13 22:40:08		  meta-meta2-B => /cursor move area_down
+2017-11-13 22:40:08		  meta-meta2-C => /cursor move area_right
+2017-11-13 22:40:08		  meta-meta2-D => /cursor move area_left
+2017-11-13 22:40:08		  meta2-1;3A => /cursor move area_up
+2017-11-13 22:40:08		  meta2-1;3B => /cursor move area_down
+2017-11-13 22:40:08		  meta2-1;3C => /cursor move area_right
+2017-11-13 22:40:08		  meta2-1;3D => /cursor move area_left
+2017-11-13 22:40:08		  meta2-A => /cursor move up
+2017-11-13 22:40:08		  meta2-B => /cursor move down
+2017-11-13 22:40:08		  meta2-C => /cursor move right
+2017-11-13 22:40:08		  meta2-D => /cursor move left
+2017-11-13 22:40:08		  @item(buffer_nicklist):K => /window ${_window_number};/kickban ${nick}
+2017-11-13 22:40:08		  @item(buffer_nicklist):b => /window ${_window_number};/ban ${nick}
+2017-11-13 22:40:08		  @item(buffer_nicklist):k => /window ${_window_number};/kick ${nick}
+2017-11-13 22:40:08		  @item(buffer_nicklist):q => /window ${_window_number};/query ${nick};/cursor stop
+2017-11-13 22:40:08		  @item(buffer_nicklist):w => /window ${_window_number};/whois ${nick}
+2017-11-13 22:40:08		  @chat:Q => hsignal:chat_quote_time_prefix_message;/cursor stop
+2017-11-13 22:40:08		  @chat:m => hsignal:chat_quote_message;/cursor stop
+2017-11-13 22:40:08		  @chat:q => hsignal:chat_quote_prefix_message;/cursor stop
+2017-11-13 22:40:08		38 key bindings for context "mouse":
+2017-11-13 22:40:08		  @bar(buffers):ctrl-wheeldown => hsignal:buffers_mouse
+2017-11-13 22:40:08		  @bar(buffers):ctrl-wheelup => hsignal:buffers_mouse
+2017-11-13 22:40:08		  @bar(buflist):ctrl-wheeldown => hsignal:buflist_mouse
+2017-11-13 22:40:08		  @bar(buflist):ctrl-wheelup => hsignal:buflist_mouse
+2017-11-13 22:40:08		  @bar(input):button2 => /input grab_mouse_area
+2017-11-13 22:40:08		  @bar(nicklist):button1-gesture-down => /bar scroll nicklist ${_window_number} +100%
+2017-11-13 22:40:08		  @bar(nicklist):button1-gesture-down-long => /bar scroll nicklist ${_window_number} e
+2017-11-13 22:40:08		  @bar(nicklist):button1-gesture-up => /bar scroll nicklist ${_window_number} -100%
+2017-11-13 22:40:08		  @bar(nicklist):button1-gesture-up-long => /bar scroll nicklist ${_window_number} b
+2017-11-13 22:40:08		  @chat(perl.iset):button1 => hsignal:iset_mouse
+2017-11-13 22:40:08		  @chat(perl.iset):button2* => hsignal:iset_mouse
+2017-11-13 22:40:08		  @chat(perl.iset):wheeldown => /repeat 5 /iset **down
+2017-11-13 22:40:08		  @chat(perl.iset):wheelup => /repeat 5 /iset **up
+2017-11-13 22:40:08		  @chat(script.scripts):button1 => /window ${_window_number};/script go ${_chat_line_y}
+2017-11-13 22:40:08		  @chat(script.scripts):button2 => /window ${_window_number};/script go ${_chat_line_y};/script installremove -q ${script_name_with_extension}
+2017-11-13 22:40:08		  @chat(script.scripts):wheeldown => /script down 5
+2017-11-13 22:40:08		  @chat(script.scripts):wheelup => /script up 5
+2017-11-13 22:40:08		  @item(buffer_nicklist):button1 => /window ${_window_number};/query ${nick}
+2017-11-13 22:40:08		  @item(buffer_nicklist):button1-gesture-left => /window ${_window_number};/kick ${nick}
+2017-11-13 22:40:08		  @item(buffer_nicklist):button1-gesture-left-long => /window ${_window_number};/kickban ${nick}
+2017-11-13 22:40:08		  @item(buffer_nicklist):button2 => /window ${_window_number};/whois ${nick}
+2017-11-13 22:40:08		  @item(buffer_nicklist):button2-gesture-left => /window ${_window_number};/ban ${nick}
+2017-11-13 22:40:08		  @item(buffers):button1* => hsignal:buffers_mouse
+2017-11-13 22:40:08		  @item(buffers):button2* => hsignal:buffers_mouse
+2017-11-13 22:40:08		  @item(buflist):button1* => hsignal:buflist_mouse
+2017-11-13 22:40:08		  @item(buflist):button2* => hsignal:buflist_mouse
+2017-11-13 22:40:08		  @bar:wheeldown => /bar scroll ${_bar_name} ${_window_number} +20%
+2017-11-13 22:40:08		  @bar:wheelup => /bar scroll ${_bar_name} ${_window_number} -20%
+2017-11-13 22:40:08		  @chat:button1 => /window ${_window_number}
+2017-11-13 22:40:08		  @chat:button1-gesture-left => /window ${_window_number};/buffer -1
+2017-11-13 22:40:08		  @chat:button1-gesture-left-long => /window ${_window_number};/buffer 1
+2017-11-13 22:40:08		  @chat:button1-gesture-right => /window ${_window_number};/buffer +1
+2017-11-13 22:40:08		  @chat:button1-gesture-right-long => /window ${_window_number};/input jump_last_buffer
+2017-11-13 22:40:08		  @chat:ctrl-wheeldown => /window scroll_horiz -window ${_window_number} +10%
+2017-11-13 22:40:08		  @chat:ctrl-wheelup => /window scroll_horiz -window ${_window_number} -10%
+2017-11-13 22:40:08		  @chat:wheeldown => /window scroll_down -window ${_window_number}
+2017-11-13 22:40:08		  @chat:wheelup => /window scroll_up -window ${_window_number}
+2017-11-13 22:40:08		  @*:button3 => /cursor go ${_x},${_y}
+2017-11-13 22:40:28		[core]  /buffer  list
+2017-11-13 22:40:28		                 clear [<number>|<name>|-merged|-all [<number>|<name>...]]
+2017-11-13 22:40:28		                 move <number>|-|+
+2017-11-13 22:40:28		                 swap <number1>|<name1> [<number2>|<name2>]
+2017-11-13 22:40:28		                 cycle <number>|<name> [<number>|<name>...]
+2017-11-13 22:40:28		                 merge <number>
+2017-11-13 22:40:28		                 unmerge [<number>|-all]
+2017-11-13 22:40:28		                 hide [<number>|<name>|-all [<number>|<name>...]]
+2017-11-13 22:40:28		                 unhide [<number>|<name>|-all [<number>|<name>...]]
+2017-11-13 22:40:28		                 renumber [<number1> [<number2> [<start>]]]
+2017-11-13 22:40:28		                 close [<n1>[-<n2>]|<name>]
+2017-11-13 22:40:28		                 notify <level>
+2017-11-13 22:40:28		                 localvar
+2017-11-13 22:40:28		                 set <property> <value>
+2017-11-13 22:40:28		                 get <property>
+2017-11-13 22:40:28		                 <number>|-|+|<name>
+2017-11-13 22:40:28		manage buffers
+2017-11-13 22:40:28		    list: list buffers (without argument, this list is displayed)
+2017-11-13 22:40:28		   clear: clear buffer content (number for a buffer, -merged for merged buffers, -all for all buffers, or nothing for current buffer)
+2017-11-13 22:40:28		    move: move buffer in the list (may be relative, for example -1); "-" = move to first buffer number, "+" = move to last buffer number + 1
+2017-11-13 22:40:28		    swap: swap two buffers (swap with current buffer if only one number/name given)
+2017-11-13 22:40:28		   cycle: jump loop between a list of buffers
+2017-11-13 22:40:28		   merge: merge current buffer to another buffer (chat area will be mix of both buffers)
+2017-11-13 22:40:28		          (by default ctrl-x switches between merged buffers)
+2017-11-13 22:40:28		 unmerge: unmerge buffer from other buffers which have same number
+2017-11-13 22:40:28		    hide: hide the buffer
+2017-11-13 22:40:28		  unhide: unhide the buffer
+2017-11-13 22:40:28		renumber: renumber buffers (works only if option weechat.look.buffer_auto_renumber is off)
+2017-11-13 22:40:28		   close: close buffer (number/range or name is optional)
+2017-11-13 22:40:28		  notify: set notify level for current buffer: this level determines whether buffer will be added to hotlist or not:
+2017-11-13 22:40:28		               none: never
+2017-11-13 22:40:28		          highlight: for highlights only
+2017-11-13 22:40:28		            message: for messages from users + highlights
+2017-11-13 22:40:28		                all: all messages
+2017-11-13 22:40:28		              reset: reset to default value (all)
+2017-11-13 22:40:28		localvar: display local variables for current buffer
+2017-11-13 22:40:28		     set: set a property for current buffer
+2017-11-13 22:40:28		     get: display a property of current buffer
+2017-11-13 22:40:28		  number: jump to buffer by number, possible prefix:
+2017-11-13 22:40:28		          '+': relative jump, add number to current
+2017-11-13 22:40:28		          '-': relative jump, sub number to current
+2017-11-13 22:40:28		          '*': jump to number, using option "weechat.look.jump_current_to_previous_buffer"
+2017-11-13 22:40:28		       -: jump to first buffer number
+2017-11-13 22:40:28		       +: jump to last buffer number
+2017-11-13 22:40:28		    name: jump to buffer by (partial) name
+2017-11-13 22:40:28		Examples:
+2017-11-13 22:40:28		  clear current buffer:
+2017-11-13 22:40:28		    /buffer clear
+2017-11-13 22:40:28		  move buffer to number 5:
+2017-11-13 22:40:28		    /buffer move 5
+2017-11-13 22:40:28		  swap buffer 1 with 3:
+2017-11-13 22:40:28		    /buffer swap 1 3
+2017-11-13 22:40:28		  swap buffer #weechat with current buffer:
+2017-11-13 22:40:28		    /buffer swap #weechat
+2017-11-13 22:40:28		  jump on #chan1, #chan2, #chan3 and loop:
+2017-11-13 22:40:28		    /buffer cycle #chan1 #chan2 #chan3
+2017-11-13 22:40:28		  merge with core buffer:
+2017-11-13 22:40:28		    /buffer merge 1
+2017-11-13 22:40:28		  unmerge buffer:
+2017-11-13 22:40:28		    /buffer unmerge
+2017-11-13 22:40:28		  close current buffer:
+2017-11-13 22:40:28		    /buffer close
+2017-11-13 22:40:28		  close buffers 5 to 7:
+2017-11-13 22:40:28		    /buffer close 5-7
+2017-11-13 22:40:28		  jump to #weechat:
+2017-11-13 22:40:28		    /buffer #weechat
+2017-11-13 22:40:28		  jump to next buffer:
+2017-11-13 22:40:28		    /buffer +1
+2017-11-13 22:40:28		  jump to last buffer number:
+2017-11-13 22:40:28		    /buffer +
+2017-11-13 22:41:00		[core]  /window  list
+2017-11-13 22:41:00		                 -1|+1|b#|up|down|left|right [-window <number>]
+2017-11-13 22:41:00		                 <number>
+2017-11-13 22:41:00		                 splith|splitv [-window <number>] [<pct>]
+2017-11-13 22:41:00		                 resize [-window <number>] [h|v][+|-]<pct>
+2017-11-13 22:41:00		                 balance
+2017-11-13 22:41:00		                 merge [-window <number>] [all]
+2017-11-13 22:41:00		                 page_up|page_down [-window <number>]
+2017-11-13 22:41:00		                 refresh
+2017-11-13 22:41:00		                 scroll [-window <number>] [+|-]<value>[s|m|h|d|M|y]
+2017-11-13 22:41:00		                 scroll_horiz [-window <number>] [+|-]<value>[%]
+2017-11-13 22:41:00		                 scroll_up|scroll_down|scroll_top|scroll_bottom|scroll_beyond_end|scroll_previous_highlight|scroll_next_highlight|scroll_unread [-window <number>]
+2017-11-13 22:41:00		                 swap [-window <number>] [up|down|left|right]
+2017-11-13 22:41:00		                 zoom [-window <number>]
+2017-11-13 22:41:00		                 bare [<delay>]
+2017-11-13 22:41:00		manage windows
+2017-11-13 22:41:00		         list: list opened windows (without argument, this list is displayed)
+2017-11-13 22:41:00		           -1: jump to previous window
+2017-11-13 22:41:00		           +1: jump to next window
+2017-11-13 22:41:00		           b#: jump to next window displaying buffer number #
+2017-11-13 22:41:00		           up: switch to window above current one
+2017-11-13 22:41:00		         down: switch to window below current one
+2017-11-13 22:41:00		         left: switch to window on the left
+2017-11-13 22:41:00		        right: switch to window on the right
+2017-11-13 22:41:00		       number: window number (see /window list)
+2017-11-13 22:41:00		       splith: split current window horizontally (to undo: /window merge)
+2017-11-13 22:41:00		       splitv: split current window vertically (to undo: /window merge)
+2017-11-13 22:41:00		       resize: resize window size, new size is <pct> percentage of parent window
+2017-11-13 22:41:00		               if "h" or "v" is specified, the resize affects the nearest parent window with a split of this type (horizontal/vertical)
+2017-11-13 22:41:00		      balance: balance the sizes of all windows
+2017-11-13 22:41:00		        merge: merge window with another (all = keep only one window)
+2017-11-13 22:41:00		      page_up: scroll one page up
+2017-11-13 22:41:00		    page_down: scroll one page down
+2017-11-13 22:41:00		      refresh: refresh screen
+2017-11-13 22:41:00		       scroll: scroll a number of lines (+/-N) or with time: s=seconds, m=minutes, h=hours, d=days, M=months, y=years
+2017-11-13 22:41:00		 scroll_horiz: scroll horizontally a number of columns (+/-N) or percentage of window size (this scrolling is possible only on buffers with free content)
+2017-11-13 22:41:00		    scroll_up: scroll a few lines up
+2017-11-13 22:41:00		  scroll_down: scroll a few lines down
+2017-11-13 22:41:00		   scroll_top: scroll to top of buffer
+2017-11-13 22:41:00		scroll_bottom: scroll to bottom of buffer
+2017-11-13 22:41:00		scroll_beyond_end: scroll beyond the end of buffer
+2017-11-13 22:41:00		scroll_previous_highlight: scroll to previous highlight
+2017-11-13 22:41:00		scroll_next_highlight: scroll to next highlight
+2017-11-13 22:41:00		scroll_unread: scroll to unread marker
+2017-11-13 22:41:00		         swap: swap buffers of two windows (with optional direction for target window)
+2017-11-13 22:41:00		         zoom: zoom on window
+2017-11-13 22:41:00		         bare: toggle bare display (with optional delay in seconds for automatic return to standard display mode)
+2017-11-13 22:41:00		For splith and splitv, pct is a percentage which represents size of new window, computed with current window as size reference. For example 25 means create a new window with size = current_size / 4
+2017-11-13 22:41:00		Examples:
+2017-11-13 22:41:00		  jump to window displaying buffer #1:
+2017-11-13 22:41:00		    /window b1
+2017-11-13 22:41:00		  scroll 2 lines up:
+2017-11-13 22:41:00		    /window scroll -2
+2017-11-13 22:41:00		  scroll 2 days up:
+2017-11-13 22:41:00		    /window scroll -2d
+2017-11-13 22:41:00		  scroll to beginning of current day:
+2017-11-13 22:41:00		    /window scroll -d
+2017-11-13 22:41:00		  zoom on window #2:
+2017-11-13 22:41:00		    /window zoom -window 2
+2017-11-13 22:41:00		  split window horizontally using 30% of space for the window on top:
+2017-11-13 22:41:00		    /window splith 30
+2017-11-13 22:41:00		  resize window to 75% of the parent window size:
+2017-11-13 22:41:00		    /window resize 75
+2017-11-13 22:41:00		  resize vertical split, add 10% in size:
+2017-11-13 22:41:00		    /window resize v+10
+2017-11-13 22:41:00		  remove the split:
+2017-11-13 22:41:00		    /window merge
+2017-11-13 22:41:00		  enable bare display for 2 seconds:
+2017-11-13 22:41:00		    /window bare 2
+2017-11-13 22:41:25		[core]
+2017-11-13 22:41:25		  away     plugin 
+2017-11-13 22:41:25		  bar      print  
+2017-11-13 22:41:25		  buffer   proxy  
+2017-11-13 22:41:25		  color    quit   
+2017-11-13 22:41:25		  command  reload 
+2017-11-13 22:41:25		  cursor   repeat 
+2017-11-13 22:41:25		  debug    save   
+2017-11-13 22:41:25		  eval     secure 
+2017-11-13 22:41:25		  filter   set    
+2017-11-13 22:41:25		  help     unset  
+2017-11-13 22:41:25		  history  upgrade
+2017-11-13 22:41:25		  input    uptime 
+2017-11-13 22:41:25		  key      version
+2017-11-13 22:41:25		  layout   wait   
+2017-11-13 22:41:25		  mouse    window 
+2017-11-13 22:41:25		  mute   
+2017-11-13 22:41:25		[ruby]
+2017-11-13 22:41:25		  ruby
+2017-11-13 22:41:25		[lua]
+2017-11-13 22:41:25		  lua
+2017-11-13 22:41:25		[charset]
+2017-11-13 22:41:25		  charset
+2017-11-13 22:41:25		[relay]
+2017-11-13 22:41:25		  relay
+2017-11-13 22:41:25		[irc]
+2017-11-13 22:41:25		  admin       oper      
+2017-11-13 22:41:25		  allchan     part      
+2017-11-13 22:41:25		  allpv       ping      
+2017-11-13 22:41:25		  allserv     pong      
+2017-11-13 22:41:25		  ban         query     
+2017-11-13 22:41:25		  cap         quiet     
+2017-11-13 22:41:25		  connect     quote     
+2017-11-13 22:41:25		  ctcp        reconnect 
+2017-11-13 22:41:25		  cycle       rehash    
+2017-11-13 22:41:25		  dcc         remove    
+2017-11-13 22:41:25		  dehalfop    restart   
+2017-11-13 22:41:25		  deop        sajoin    
+2017-11-13 22:41:25		  devoice     samode    
+2017-11-13 22:41:25		  die         sanick    
+2017-11-13 22:41:25		  disconnect  sapart    
+2017-11-13 22:41:25		  halfop      saquit    
+2017-11-13 22:41:25		  ignore      server    
+2017-11-13 22:41:25		  info        service   
+2017-11-13 22:41:25		  invite      servlist  
+2017-11-13 22:41:25		  ison        squery    
+2017-11-13 22:41:25		  join        squit     
+2017-11-13 22:41:25		  kick        stats     
+2017-11-13 22:41:25		  kickban     summon    
+2017-11-13 22:41:25		  kill        time      
+2017-11-13 22:41:25		  links       topic     
+2017-11-13 22:41:25		  list        trace     
+2017-11-13 22:41:25		  lusers      unban     
+2017-11-13 22:41:25		  map         unquiet   
+2017-11-13 22:41:25		  me          userhost  
+2017-11-13 22:41:25		  mode        users     
+2017-11-13 22:41:25		  motd        version   
+2017-11-13 22:41:25		  msg         voice     
+2017-11-13 22:41:25		  names       wallchops 
+2017-11-13 22:41:25		  nick        wallops   
+2017-11-13 22:41:25		  notice      who       
+2017-11-13 22:41:25		  notify      whois     
+2017-11-13 22:41:25		  op          whowas    
+2017-11-13 22:41:25		[fifo]
+2017-11-13 22:41:25		  fifo
+2017-11-13 22:41:25		[aspell]
+2017-11-13 22:41:25		  aspell
+2017-11-13 22:41:25		[python]
+2017-11-13 22:41:25		  autosort   python   
+2017-11-13 22:41:25		  go         urlserver
+2017-11-13 22:41:25		[buflist]
+2017-11-13 22:41:25		  buflist
+2017-11-13 22:41:25		[trigger]
+2017-11-13 22:41:25		  trigger
+2017-11-13 22:41:25		[tcl]
+2017-11-13 22:41:25		  tcl
+2017-11-13 22:41:25		[xfer]
+2017-11-13 22:41:25		  me  xfer
+2017-11-13 22:41:25		[perl]
+2017-11-13 22:41:25		  buffers_detach   
+2017-11-13 22:41:25		  buffers_whitelist
+2017-11-13 22:41:25		  iset             
+2017-11-13 22:41:25		  perl             
+2017-11-13 22:41:25		  perlexec         
+2017-11-13 22:41:25		[exec]
+2017-11-13 22:41:25		  exec
+2017-11-13 22:41:25		[logger]
+2017-11-13 22:41:25		  logger
+2017-11-13 22:41:25		[script]
+2017-11-13 22:41:25		  script
+2017-11-13 22:41:25		[alias]
+2017-11-13 22:41:25		  AAWAY    M      
+2017-11-13 22:41:25		  alias    MSGBUF 
+2017-11-13 22:41:25		  AME      MUB    
+2017-11-13 22:41:25		  AMSG     N      
+2017-11-13 22:41:25		  ANICK    Q      
+2017-11-13 22:41:25		  BEEP     REDRAW 
+2017-11-13 22:41:25		  BYE      SAY    
+2017-11-13 22:41:25		  C        SIGNOFF
+2017-11-13 22:41:25		  CHAT     T      
+2017-11-13 22:41:25		  CL       UB     
+2017-11-13 22:41:25		  CLOSE    UMODE  
+2017-11-13 22:41:25		  EXIT     V      
+2017-11-13 22:41:25		  IG       W      
+2017-11-13 22:41:25		  J        WC     
+2017-11-13 22:41:25		  K        WI     
+2017-11-13 22:41:25		  KB       WII    
+2017-11-13 22:41:25		  LEAVE    WW     
+2017-11-13 22:41:25		[guile]
+2017-11-13 22:41:25		  guile
+2017-11-13 22:41:37	⚠	You can not write text in this buffer
+2017-11-13 22:44:26		Option changed: buffers.look.sort = name  (default: number)
+2017-11-13 22:44:47		Option changed: buffers.look.show_number = off  (default: on)
+2017-11-13 22:45:54		Option changed: buflist.look.enabled = off  (default: on)
+2017-11-13 22:46:14		Option changed: buflist.look.enabled = on
+2017-11-13 22:48:49		Option changed: weechat.bar.buffers.filling_left_right = horizontal  (default: vertical)
+2017-11-13 22:49:20		Option changed: weechat.bar.buffers.filling_left_right = columns_horizontal  (default: vertical)
+2017-11-13 22:49:57		Option changed: weechat.bar.buffers.hidden = on
+2017-11-13 22:50:23		Option changed: weechat.bar.buffers.hidden = off  (default: on)
+2017-11-13 22:50:37		Option changed: weechat.bar.buffers.position = top  (default: left)
+2017-11-13 22:51:08		Option changed: buflist.look.enabled = off  (default: on)
+2017-11-13 22:52:09		Option changed: weechat.bar.buflist.hidden = off
+2017-11-13 22:52:23		Option changed: weechat.bar.buflist.hidden = on  (default: off)
+2017-11-13 22:54:07	⚠	irc: command "part" must be executed on irc buffer (server or channel)
+2017-11-13 22:55:22		Plugins loaded:
+2017-11-13 22:55:22		  ruby: Support of ruby scripts
+2017-11-13 22:55:22		  lua: Support of lua scripts
+2017-11-13 22:55:22		  charset: Charset conversions
+2017-11-13 22:55:22		  relay: Relay WeeChat data to remote application (irc/weechat protocols)
+2017-11-13 22:55:22		  irc: IRC (Internet Relay Chat) protocol
+2017-11-13 22:55:22		  fifo: FIFO pipe for remote control
+2017-11-13 22:55:22		  aspell: Spell checker for input (with Aspell)
+2017-11-13 22:55:22		  python: Support of python scripts
+2017-11-13 22:55:22		  buflist: Buffers list
+2017-11-13 22:55:22		  trigger: Text replacement and command execution on events triggered by WeeChat/plugins
+2017-11-13 22:55:22		  tcl: Support of tcl scripts
+2017-11-13 22:55:22		  xfer: DCC file transfer and direct chat
+2017-11-13 22:55:22		  perl: Support of perl scripts
+2017-11-13 22:55:22		  exec: Execution of external commands in WeeChat
+2017-11-13 22:55:22		  logger: Log buffers to files
+2017-11-13 22:55:22		  script: Scripts manager
+2017-11-13 22:55:22		  alias: Alias commands
+2017-11-13 22:55:22		  guile: Support of scheme scripts (with Guile)
+2017-11-13 22:55:32		python: loading script "/home/j1n/.weechat/python/vimode.py"
+2017-11-13 22:55:32		python: registered script "vimode", version 0.5 (Add vi/vim-like modes and keybindings to WeeChat.)
+2017-11-13 22:55:32		[vimode.py] Problematic keybindings detected:
+2017-11-13 22:55:32		[vimode.py]     meta-jmeta-f -> /buffer -
+2017-11-13 22:55:32		[vimode.py]     meta-jmeta-l -> /buffer +
+2017-11-13 22:55:32		[vimode.py]     meta-jmeta-r -> /server raw
+2017-11-13 22:55:32		[vimode.py]     meta-jmeta-s -> /server jump
+2017-11-13 22:55:32		[vimode.py]     meta-wmeta-meta2-A -> /window up
+2017-11-13 22:55:32		[vimode.py]     meta-wmeta-meta2-B -> /window down
+2017-11-13 22:55:32		[vimode.py]     meta-wmeta-meta2-C -> /window right
+2017-11-13 22:55:32		[vimode.py]     meta-wmeta-meta2-D -> /window left
+2017-11-13 22:55:32		[vimode.py]     meta-wmeta2-1;3A -> /window up
+2017-11-13 22:55:32		[vimode.py]     meta-wmeta2-1;3B -> /window down
+2017-11-13 22:55:32		[vimode.py]     meta-wmeta2-1;3C -> /window right
+2017-11-13 22:55:32		[vimode.py]     meta-wmeta2-1;3D -> /window left
+2017-11-13 22:55:32		[vimode.py]     meta-wmeta-b -> /window balance
+2017-11-13 22:55:32		[vimode.py]     meta-wmeta-s -> /window swap
+2017-11-13 22:55:32		[vimode.py] These keybindings may conflict with vimode.
+2017-11-13 22:55:32		[vimode.py] You can remove problematic key bindings and add recommended ones by using /vimode bind_keys, or only list them with /vimode bind_keys --list
+2017-11-13 22:55:32		[vimode.py] For help, see: https://github.com/GermainZ/weechat-vimode/blob/master/FAQ#problematic-key-bindings.md
+2017-11-13 22:55:32		[vimode.py] To force disable warnings, you can set plugins.var.python.vimode.no_warn to 'on'

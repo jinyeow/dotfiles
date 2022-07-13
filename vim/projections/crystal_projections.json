@@ -1,0 +1,15 @@
+{
+  "src/*.cr": {
+    "type": "source",
+    "alternate": "spec/{}_spec.cr"
+  },
+  "spec/*_spec.cr": {
+    "type": "test",
+    "alternate": "src/{}.cr",
+    "dispatch": "crystal spec"
+  },
+  "lib/*.cr": { "type": "include" },
+  "shards.yml": { "type": "config" },
+  "README.md": { "type": "doc" },
+  "*": { "make": "crystal" }
+}

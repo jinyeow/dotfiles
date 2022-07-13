@@ -1,0 +1,11 @@
+{
+  "README.md": { "type": "docs" },
+  "lib/*.rb": {
+    "type": "source",
+    "alternate": "spec/{}_spec.rb"
+  },
+  "spec/*_spec.rb": {
+    "type": "test",
+    "alternate": "lib/{}.rb"
+  }
+}

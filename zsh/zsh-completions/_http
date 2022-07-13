@@ -1,0 +1,42 @@
+#compdef http
+
+_http() {
+  local -a _http_args
+  _http_args=(
+    "--json:(default) Data items from the command line are serialized as a JSON object"
+    "--form:Data items from the command line are serialized as form fields"
+    "--pretty:Controls output processing"
+    "--style:Set style"
+    "--print:Print response/request head/body"
+    "--verbose:Print the whole request as well as the response"
+    "--headers:Print only the response headers"
+    "--body:Print only the response body"
+    "--stream:Always stream the output by line"
+    "--output:Save output to FILE"
+    "--download:Download response and store it in a file"
+    "--continue:Resume an interrupted download"
+    "--session:Create, or reuse and update a session"
+    "--session-read-only:Create/read a session without updating it from the request/response exchange"
+    "--auth-type:The authentication mechanism to be used. Defaults to \"basic\""
+    "--follow:Set this flag if full redirects are allowed"
+    "--verify:Set to \"no\" to skip checking the host's SSL certificate"
+    "--cert:Specify a local cert to use as client side SSL certificate"
+    "--cert-key:The private key to use with SSL"
+    "--timeout:The connection timeout of the request in seconds"
+    "--check-status:This flag instructs HTTPie to check the HTTP status code and exit with an error if the status indicates one"
+    "--ignore-stdin:Do not attempt to read stdin"
+    "--help:Show help message and exit"
+    "--version:Show version and exit"
+    "--traceback:Prints exception traceback should one occur"
+    "--debug:Prints debugging information for HTTPie"
+  )
+
+  if (( CURRENT >= 2 )); then
+    _describe -t commands "http" _http_args
+  fi
+
+  return 0
+}
+
+_http
+

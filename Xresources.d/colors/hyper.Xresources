@@ -1,0 +1,36 @@
+URxvt.background: black
+URxvt.foreground: white
+
+!! black dark/light
+*color0: #000000
+*color8: #808080
+
+!! red dark/light
+*color1: #ff0000
+*color9: #ff0000
+
+!! green dark/light
+*color2: #33ff00
+*color10: #33ff00
+
+!! yellow dark/light
+*color3: #ffff00
+*color11: #ffff00
+
+!! blue dark/light
+*color4: #0066ff
+*color12: #0066ff
+
+!! magenta dark/light
+*color5: #cc00ff
+*color13: #cc00ff
+
+!! cyan dark/light
+*color6: #00ffff
+*color14: #00ffff
+
+!! white dark/light
+*color7: #d0d0d0
+*color15: #ffffff
+
+! vim:ft=cfg

@@ -1,0 +1,9 @@
+*.pyc
+Session.vim
+tags
+.mix_tasks
+_build
+*.tags
+.tags
+.tasks
+.projections.json

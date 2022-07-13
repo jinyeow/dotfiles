@@ -1,0 +1,250 @@
+# i3 config file (v4)
+# Last Updated: 15 July 2015 00:03
+#
+# Please see http://i3wm.org/docs/userguide.html for a complete reference!
+
+#-------------------------------------------------------------#
+#------------------Configuration Variables--------------------#
+#-------------------------------------------------------------#
+set $mod Mod4
+set $alt Mod1
+# Set Workspace Variables
+set $ws1 1::main
+set $ws2 2::web
+set $ws3 3::code
+set $ws4 4::term
+set $ws5 5::mail
+set $ws6 6::media
+set $ws7 7::misc
+set $ws8 8::pdfs
+set $ws9 9::notes
+set $ws10 10::playback
+
+#-------------------------------------------------------------#
+#-----------------------Appearance----------------------------#
+#-------------------------------------------------------------#
+# Set font
+font pango:DejaVu Sans Mono 10
+# Set window appearence
+client.focused          #aaabad #aaabad #000000 #aaabad
+client.focused_inactive #252525 #252525 #cc342b
+client.unfocused        #252525 #252525 #888888
+# Set i3-gaps
+# Line below fixes bug with i3 and gaps (apparently not needed).
+# Instead use the 'new_window pixel' to do same thing.
+# for_window [class="^.*"] border pixel 0
+gaps inner 0
+new_float pixel 2
+new_window pixel 2
+
+#-------------------------------------------------------------#
+#----------------------KeyBindings----------------------------#
+#-------------------------------------------------------------#
+# Use Mouse+$mod to drag floating windows to their wanted position
+floating_modifier $mod
+
+bindsym $mod+Return exec --no-startup-id i3-sensible-terminal
+bindsym $mod+q exec --no-startup-id firefox
+bindsym $mod+Shift+q kill
+bindsym $mod+z exec lock
+bindsym Print exec --no-startup-id scrot '%Y%m%d_$wx$h.png' -e 'mv $f ~/Pictures/screenshots'
+bindsym $mod+Tab exec --no-startup-id rofi -switchers "file:rofi-file-browser.sh" -show file
+
+# Function Keybindings for ThinkPad
+bindsym XF86AudioMute exec --no-startup-id amixer set Master toggle
+bindsym XF86AudioLowerVolume exec --no-startup-id amixer set Master 5%- unmute
+bindsym XF86AudioRaiseVolume exec --no-startup-id amixer set Master 5%+ unmute
+# bindsym XF86AudioMicMute
+bindsym XF86MonBrightnessDown exec light -U 5
+bindsym XF86MonBrightnessUp exec light -A 5
+
+# change focus
+bindsym $mod+h focus left
+bindsym $mod+j focus down
+bindsym $mod+k focus up
+bindsym $mod+l focus right
+
+# alternatively, you can use the cursor keys:
+bindsym $mod+Left focus left
+bindsym $mod+Down focus down
+bindsym $mod+Up focus up
+bindsym $mod+Right focus right
+
+# move focused window
+bindsym $mod+Shift+h move left
+bindsym $mod+Shift+j move down
+bindsym $mod+Shift+k move up
+bindsym $mod+Shift+l move right
+
+# alternatively, you can use the cursor keys:
+bindsym $mod+Shift+Left move left
+bindsym $mod+Shift+Down move down
+bindsym $mod+Shift+Up move up
+bindsym $mod+Shift+Right move right
+
+bindsym $mod+x split h
+bindsym $mod+v split v
+bindsym $mod+f fullscreen
+
+# change container layout (stacked, tabbed, toggle split)
+bindsym $mod+s layout stacking
+bindsym $mod+w layout tabbed
+bindsym $mod+e layout toggle split
+
+# toggle tiling / floating
+bindsym $mod+Shift+space floating toggle
+
+# change focus between tiling / floating windows
+bindsym $mod+space focus mode_toggle
+
+# focus the parent container
+bindsym $mod+a focus parent
+
+# focus the child container
+bindsym $mod+c focus child
+
+# move to previous/next workspace
+bindsym $mod+n workspace next
+bindsym $mod+p workspace prev
+
+# switch to workspace
+bindsym $mod+1 workspace $ws1
+bindsym $mod+2 workspace $ws2
+bindsym $mod+3 workspace $ws3
+bindsym $mod+4 workspace $ws4
+bindsym $mod+5 workspace $ws5
+bindsym $mod+6 workspace $ws6
+bindsym $mod+7 workspace $ws7
+bindsym $mod+8 workspace $ws8
+bindsym $mod+9 workspace $ws9
+bindsym $mod+0 workspace $ws10
+
+# move focused container to workspace
+bindsym $mod+Shift+1 move container to workspace $ws1
+bindsym $mod+Shift+2 move container to workspace $ws2
+bindsym $mod+Shift+3 move container to workspace $ws3
+bindsym $mod+Shift+4 move container to workspace $ws4
+bindsym $mod+Shift+5 move container to workspace $ws5
+bindsym $mod+Shift+6 move container to workspace $ws6
+bindsym $mod+Shift+7 move container to workspace $ws7
+bindsym $mod+Shift+8 move container to workspace $ws8
+bindsym $mod+Shift+9 move container to workspace $ws9
+bindsym $mod+Shift+0 move container to workspace $ws10
+
+# reload the configuration file
+bindsym $mod+Shift+c reload
+# restart i3 inplace (preserves your layout/session, can be used to upgrade i3)
+bindsym $mod+Shift+r restart
+# exit i3 (logs you out of your X session)
+bindsym $mod+Shift+e exec "i3-nagbar -t warning -m 'You pressed the exit shortcut. Do you really want to exit i3? This will end your X session.' -b 'Yes, exit i3' 'i3-msg exit'"
+
+# resize window (you can also use the mouse for that)
+mode "resize" {
+
+        bindsym h resize shrink width 5 px or 5 ppt
+        bindsym j resize grow height 5 px or 5 ppt
+        bindsym k resize shrink height 5 px or 5 ppt
+        bindsym l resize grow width 5 px or 5 ppt
+
+        bindsym Left resize shrink width 5 px or 5 ppt
+        bindsym Down resize grow height 5 px or 5 ppt
+        bindsym Up resize shrink height 5 px or 5 ppt
+        bindsym Right resize grow width 5 px or 5 ppt
+
+        bindsym Return mode "default"
+        bindsym Escape mode "default"
+}
+
+bindsym $mod+r mode "resize"
+
+bar {
+        # status_command i3status
+        status_command python ~/Dropbox/Some/dotfiles/i3/scripts/i3status.py 0.5
+        position top
+        strip_workspace_numbers yes
+        # tray_output none
+        font pango:Ubuntu Mono derivative Powerline, FontAwesome 11
+
+        colors {
+          statusline  #ECF0F1
+          background  #111111
+          focused_workspace  #597B9E #597B9E #e5e5e5
+          active_workspace   #1ABC9C #111111 #597B9E
+          inactive_workspace #111111 #111111 #597B9E
+          urgent_workspace   #f92672 #111111 #597B9E
+        }
+}
+
+# bar toggle
+bindsym $mod+m bar mode toggle
+
+# Gaps Mode
+set $mode_gaps Gaps: (o) outer, (i) inner
+set $mode_gaps_outer Outer Gaps: +|-|0 (local), Shift + +|-|0 (global)
+set $mode_gaps_inner Inner Gaps: +|-|0 (local), Shift + +|-|0 (global)
+bindsym $mod+Shift+g mode "$mode_gaps"
+
+mode "$mode_gaps" {
+        bindsym o      mode "$mode_gaps_outer"
+        bindsym i      mode "$mode_gaps_inner"
+
+        bindsym Return mode "default"
+        bindsym Escape mode "default"
+}
+
+mode "$mode_gaps_inner" {
+        bindsym plus  gaps inner current plus 5
+        bindsym minus gaps inner current minus 5
+        bindsym 0     gaps inner current set 0
+
+        bindsym Shift+plus  gaps inner all plus 5
+        bindsym Shift+minus gaps inner all minus 5
+        bindsym Shift+0     gaps inner all set 0
+
+        bindsym Return mode "default"
+        bindsym Escape mode "default"
+}
+
+mode "$mode_gaps_outer" {
+        bindsym plus  gaps outer current plus 5
+        bindsym minus gaps outer current minus 5
+        bindsym 0     gaps outer current set 0
+
+        bindsym Shift+plus  gaps outer all plus 5
+        bindsym Shift+minus gaps outer all minus 5
+        bindsym Shift+0     gaps outer all set 0
+
+        bindsym Return mode "default"
+        bindsym Escape mode "default"
+}
+
+### Scratchpad Keybindings ###
+bindsym $mod+backslash move scratchpad
+bindsym $mod+bracketright scratchpad show
+
+# Automatic Back-and-Forth Switching
+workspace_auto_back_and_forth yes
+
+# Correct handling of floating dialogs
+for_window [window_role="pop-up"] floating enable
+for_window [window_role="task_dialog"] floating enable
+for_window [title="File Operation Progress"] floating enable
+for_window [title="Preferences$"] floating enable
+for_window [window_role="SessionPrompt"] floating enable
+
+# Assign certain applications to specific workspaces
+assign [class="Google-chrome-stable"] $ws2
+assign [class="Firefox"] $ws2
+assign [class="mpv|Mplayer|Vlc"] $ws6
+assign [class="Thunar"] $ws7
+assign [class="Evince"] $ws8
+assign [class="VirtualBox"] $ws10
+assign [class="Atom"] $ws3
+assign [class="Thunderbird"] $ws5
+assign [class="libreoffice"] $ws9
+assign [class="Cherrytree"] $ws9
+assign [class="Keepnote"] $ws9
+assign [class="Lxappearance"] $ws7
+assign [class="Nitrogen"] $ws7
+assign [class="Wireshark"] $ws10
+assign [class="burp-StartBurp"] $ws10

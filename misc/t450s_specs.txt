@@ -1,0 +1,41 @@
+[?25l[?7l[0m[36m[1m                   -` 
+                  .o+` 
+                 `ooo/ 
+                `+oooo: 
+               `+oooooo: 
+               -+oooooo+: 
+             `/:-:++oooo+: 
+            `/++++/+++++++: 
+           `/++++++++++++++: 
+          `/+++o[0m[36m[1moooooooo[0m[36m[1moooo/` 
+[0m[36m[1m         [0m[36m[1m./[0m[36m[1mooosssso++osssssso[0m[36m[1m+` 
+[0m[36m[1m        .oossssso-````/ossssss+` 
+       -osssssso.      :ssssssso. 
+      :osssssss/        osssso+++. 
+     /ossssssss/        +ssssooo/- 
+   `/ossssso+/:-        -:/+osssso+- 
+  `+sso+:-`                 `.-/+oso: 
+ `++:.                           `-/+/ 
+ .`                                 `/ 
+[19A[9999999D[40C[0m[1m[36m[1mj1n[0m@[36m[1mtp_t450s[0m
+[40C[0m------------[0m
+[40C[0m[36m[1mModel[0m[0m:[0m 20BXCTO1WW ThinkPad T450s[0m
+[40C[0m[36m[1mOS[0m[0m:[0m Arch Linux x86_64[0m
+[40C[0m[36m[1mKernel[0m[0m:[0m 4.13.12-1-ARCH[0m
+[40C[0m[36m[1mUptime[0m[0m:[0m 7 minutes[0m
+[40C[0m[36m[1mPackages[0m[0m:[0m 1108[0m
+[40C[0m[36m[1mShell[0m[0m:[0m zsh 5.4.2[0m
+[40C[0m[36m[1mResolution[0m[0m:[0m 1920x1080[0m
+[40C[0m[36m[1mWM[0m[0m:[0m bspwm[0m
+[40C[0m[36m[1mTheme[0m[0m:[0m Arc-Flatabulous-Darker [GTK2/3][0m
+[40C[0m[36m[1mIcons[0m[0m:[0m Paper-Mono-Dark [GTK2/3][0m
+[40C[0m[36m[1mTerminal[0m[0m:[0m termite[0m
+[40C[0m[36m[1mTerminal Font[0m[0m:[0m Hack 12[0m
+[40C[0m[36m[1mCPU[0m[0m:[0m Intel i5-5300U (4) @ 2.900GHz[0m
+[40C[0m[36m[1mGPU[0m[0m:[0m Intel Integrated Graphics[0m
+[40C[0m[36m[1mMemory[0m[0m:[0m 559MiB / 11898MiB[0m
+
+[40C[0m[30m[40m   [0m[31m[41m   [0m[32m[42m   [0m[33m[43m   [0m[34m[44m   [0m[35m[45m   [0m[36m[46m   [0m[37m[47m   [0m
+
+
+[?25h[?7h

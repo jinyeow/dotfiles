@@ -1,0 +1,19 @@
+#compdef comments
+
+_comments() {
+  local -a _comments_args
+  _comments_args=(
+    "--sub:Define the subreddit."
+    "--id:Define the post id."
+    "--help:Print this message."
+  )
+
+  if (( CURRENT >= 2 )); then
+    _describe -t commands "comments" _comments_args
+  fi
+
+  return 0
+}
+
+_comments
+

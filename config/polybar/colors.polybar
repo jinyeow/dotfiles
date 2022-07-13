@@ -1,0 +1,26 @@
+; default
+black  = #000
+white  = #fff
+gray   = #66
+red    = #ff5c56
+aqua   = #259E83
+purple = #9f78e1
+
+primary = #ffb52a
+
+; base16
+base16-blue = #6699CC
+
+; bar/top
+background-top = #FF252527
+foreground-top = #FFFFFF
+
+; power-menu-improved
+background     = #222
+background-alt = #444
+foreground     = #dfdfdf
+foreground-alt = #555
+secondary      = #e60053
+alert          = #bd2c40
+
+; vim:ft=dosini

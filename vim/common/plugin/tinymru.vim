@@ -1,0 +1,33 @@
+" MRU command-line completion
+" UPDATED: 26/06/20 21:23
+" The Fzf version of this exists as :History or :FzfHistory as long as you have Fzf.vim installed.
+
+if exists("g:loaded_tinymru") || v:version < 703 || &compatible || &rtp=~'fzf.vim'
+  finish
+endif
+let g:loaded_tinymru = 1
+
+let s:save_cpo = &cpo
+set cpo&vim
+
+" MRU command-line completion
+function! s:MRUComplete(ArgLead, CmdLine, CursorPos)
+    return filter(copy(v:oldfiles), 'v:val =~ a:ArgLead')
+endfunction
+
+" MRU function
+function! s:MRU(command, arg)
+    if a:command == "tabedit"
+        execute a:command . " " . a:arg . "\|lcd %:p:h"
+    else
+        execute a:command . " " . a:arg
+    endif
+endfunction
+
+" commands
+command! -nargs=1 -complete=customlist,<sid>MRUComplete ME call <sid>MRU('edit', fnameescape(<f-args>))
+command! -nargs=1 -complete=customlist,<sid>MRUComplete MS call <sid>MRU('split', fnameescape(<f-args>))
+command! -nargs=1 -complete=customlist,<sid>MRUComplete MV call <sid>MRU('vsplit', fnameescape(<f-args>))
+command! -nargs=1 -complete=customlist,<sid>MRUComplete MT call <sid>MRU('tabedit', fnameescape(<f-args>))
+
+let &cpo = s:save_cpo

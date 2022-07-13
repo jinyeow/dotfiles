@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Description: Display cover for the current playing song using notify-send
+
+# source colors
+. $HOME/scripts/color-parser
+
+# create notify title
+title="<span foreground='$BLUE'>Now Playing</span>"
+
+# get current album
+# album=$(ncmpcpp --current-song={%b} 2> /dev/null)
+
+notify-send "$title" "$(mpc status | head -n 2)"
+

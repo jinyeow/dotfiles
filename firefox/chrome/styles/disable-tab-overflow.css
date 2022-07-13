@@ -1,0 +1,8 @@
+/* Disable tab overflow - similar to Prevent Tab Overflow addon */
+/* Note: won't work if there is a "flexible space" in front/back of tab bar */
+.tabbrowser-tab {
+  min-width: initial !important;
+}
+.tab-content {
+  overflow: hidden !important;
+}

@@ -1,0 +1,8 @@
+{
+  "config/routes.rb":             { "type": "routes" },
+  "Gemfile":                      { "type": "gemfile" },
+  "config/database.yml":          { "type": "database" },
+  "app/views/layouts/*.html.erb": { "type": "layout" },
+  "app/helpers/*_helper.rb":      { "type": "helper" },
+  "app/assets/stylesheets/*":     { "type": "stylesheet" }
+}

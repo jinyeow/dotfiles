@@ -1,0 +1,73 @@
+# i3status configuration file.
+# see "man i3status" for documentation.
+
+# It is important that this file is edited as UTF-8.
+# The following line should contain a sharp s:
+# ß
+# If the above line is not correctly displayed, fix your editor first!
+
+general {
+  colors = true
+  interval = 1
+}
+
+# order += "ipv6"
+order += "disk /"
+order += "disk /home"
+order += "wireless wlp4s0"
+order += "volume master"
+order += "battery 0"
+order += "load"
+order += "tztime local"
+
+wireless wlp4s0 {
+        format_up = ": %quality at %essid, %bitrate"
+        format_down = "W: down"
+}
+
+# ThinkPad Yoga has no Ethernet
+ethernet eth0 {
+        # if you use %speed, i3status requires root privileges
+        format_up = "E: %ip (%speed)"
+        format_down = "E: down"
+}
+
+volume master {
+        format = ": %volume"
+        format_muted = ": %volume"
+        device = "default"
+        mixer = "Master"
+        mixer_idx = 0
+}
+
+battery 0 {
+        format = ": %status %percentage %remaining"
+        last_full_capacity = true
+        path = "/sys/class/power_supply/BAT0/uevent"
+        low_threshold = 10
+        threshold_type = percentage
+}
+
+run_watch DHCP {
+        pidfile = "/var/run/dhclient*.pid"
+}
+
+run_watch VPN {
+        pidfile = "/var/run/vpnc/pid"
+}
+
+tztime local {
+        format = ": %a %d %b, : %H:%M:%S"
+}
+
+load {
+        format = "%1min"
+}
+
+disk "/" {
+        format = ": / %free"
+}
+
+disk "/home" {
+        format = ": /home %free"
+}

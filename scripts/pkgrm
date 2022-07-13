@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+
+declare by_size
+
+has() {
+  local verbose=0
+  if [[ $1 = '-v' ]]; then
+    verbose=1
+    shift
+  fi
+  for c; do c="${c%% *}"
+    if ! command -v "$c" &> /dev/null; then
+      (( "$verbose" > 0 )) && err "$c not found"
+      return 1
+    fi
+  done
+}
+
+err() {
+  printf "\e[31m%s\e[0m\n" "$*" >&2
+}
+
+die() {
+  (( $# > 0 )) && err "$*"
+  exit 1
+}
+
+has -v fzf || die
+
+fzf() {
+  command fzf -e --multi --no-hscroll --inline-info --cycle --bind='Ctrl-a:toggle-all' "$@"
+}
+
+case $1 in
+  -s|--size) by_size=1; shift;
+esac
+
+if (( $# > 0 )); then
+  sudo pacman -Rcusn "$@"
+  exit
+fi
+
+if (( by_size )); then
+  mapfile -t pkgs < <(expac -H M '%m\t%n' | sort -hr | fzf --preview='pacman -Si {3}' -q '!^lib ' | cut -f2)
+else
+  mapfile -t pkgs < <(expac '%n' | fzf --preview='pacman -Si {1}' -q '!^lib ' | cut -d' ' -f1)
+fi
+
+(( ${#pkgs[@]} > 0 )) && sudo pacman -Rcusn "${pkgs[@]}"

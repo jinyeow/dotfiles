@@ -1,0 +1,1 @@
+You should `fstrim -a -v` once a week.

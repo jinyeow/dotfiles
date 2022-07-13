@@ -1,0 +1,66 @@
+# vim:foldmethod=marker:foldlevel=0
+#########################################
+# =>    ROFI {{{                        #
+#########################################
+#define black    #282828
+#define darkgrey #928374
+#define darkblue #6699cc
+
+rofi.modi:              drun,run,ssh,window,windowcd
+rofi.width:             100
+rofi.lines:             10
+rofi.columns:           1
+rofi.font:              mono 12
+rofi.bw:                0
+rofi.location:          0
+rofi.padding:           485
+rofi.yoffset:           0
+rofi.xoffset:           0
+rofi.fixed-num-lines:   true
+rofi.show-icons:        true
+rofi.terminal:          termite
+rofi.ssh-client:        ssh
+rofi.ssh-command:       {terminal} -e {ssh-client} {host}
+rofi.run-command:       {cmd}
+!rofi.run-list-command:  {cmd}
+rofi.run-shell-command: {terminal} -e {cmd}
+rofi.window-command:    xkill -id {window}
+!rofi.drun-icon-theme:
+rofi.disable-history:   false
+rofi.sort:              false
+rofi.levenshtein-sort:  false
+rofi.case-sensitive:    false
+rofi.cycle:             true
+rofi.sidebar-mode:      true
+rofi.eh:                1
+rofi.auto-select:       false
+rofi.parse-hosts:       false
+rofi.parse-known-hosts: true
+rofi.combi-modi:        window,run
+rofi.matching:          fuzzy
+rofi.tokenize:          true
+rofi.m:                 -5
+rofi.line-margin:       2
+rofi.line-padding:      5
+!rofi.filter:
+rofi.separator-style:   solid
+rofi.hide-scrollbar:    false
+rofi.fullscreen:        false
+rofi.fake-transparency: true
+rofi.dpi:               -1
+rofi.threads:           0
+rofi.scrollbar-width:   10
+rofi.scroll-method:     0
+rofi.fake-background:   screenshot
+rofi.click-to-exit:     true
+rofi.show-match:        true
+!rofi.theme:
+rofi.color-enabled:     true
+rofi.color-normal:      #88000000, darkblue, #88000000, darkblue, #f8f6f2
+rofi.color-urgent:      #88000000, darkblue, #88000000, darkblue, #f8f6f2
+rofi.color-active:      #88000000, darkblue, #88000000, darkblue, #f8f6f2
+rofi.color-window:      #88000000
+rofi.plugin-path:       /usr/lib/rofi
+rofi.pid:               /run/user/1000/rofi.pid
+
+}}}

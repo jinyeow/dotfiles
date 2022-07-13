@@ -1,0 +1,11 @@
+{
+  "README.md": {"type": "doc"},
+  "*.spec.js": {
+    "type":      "test",
+    "alternate": "{}.js"
+  },
+  "*.js": {
+    "type":      "source",
+    "alternate": "{}.spec.js"
+  }
+}

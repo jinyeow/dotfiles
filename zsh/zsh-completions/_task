@@ -1,0 +1,25 @@
+#compdef task
+
+_task() {
+  local -a _task_args
+  _task_args=(
+    "help:Print this message."
+    "add:Add a task."
+    "remove:Remove a task."
+    "list:List all tasks."
+    "clear:Clear all tasks."
+    "root:Print task root directory."
+    "show:Print task directory."
+  )
+
+  # TODO add a case for the command "task remove" that lists the tasks that I
+  # can tab through to remove one.
+  if (( CURRENT >= 2 )); then
+    _describe -t commands "task" _task_args
+  fi
+
+  return 0
+}
+
+_task
+

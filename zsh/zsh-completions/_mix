@@ -1,0 +1,84 @@
+#compdef mix
+
+###############################################################################
+#                             ==MIX zsh completion==                          #
+# * Description: Completion script for mix                                    #
+#                     (http://elixir-lang.org/docs/v1.1/mix/Mix.html)         #
+# * Author: Jin-Yeow Justin Puah                                              #
+###############################################################################
+
+# TODO: update this; match mix-fast zsh plugin to speed up
+_mix() {
+  local -a _mix_arguments
+  _mix_arguments=(
+    "${(@f)$(mix help | egrep "^mix " | tail -n+2 | sed 's/^mix //;s/\s\+#\s/:/')}"
+    '--help:Describe available tasks'
+    '--version:Prints the Elixir version information'
+  )
+
+  # TODO: Figure out difference between CURRENT == 2 and CURRENT == 1
+  if (( CURRENT == 2)); then
+    _describe -t commands "mix" _mix_arguments
+  fi
+
+  return 0
+}
+
+_mix
+
+# NOTE: my_array=("${(@f)$(my_command)}")
+# The above uses the lines of the output of my_command as the elements of my_array.
+# f is the expansion flag to split on newlines (instead of on IFS)
+
+# NOTE: {{{
+# These were my default `mix` arguments. BUT I realised that depending on
+# the project's dependencies, there may be additional `mix` commands.
+# i.e. `mix phoenix.server` when building a phoenix web app
+# So, I am dynamically generating the mix commands using the following:
+# "${(@f)$(mix help | egrep "^mix " | tail -n+2 | sed 's/^mix //;s/\s\+#\s/:/')}"
+#
+# _mix_arguments=(
+#   "app.start:Starts all registered apps"
+#   "archive:Lists all archives"
+#   "archive.build:Archives this project into a .ez file"
+#   "archive.install:Installs an archive locally"
+#   "archive.uninstall:Uninstalls archives"
+#   "clean:Deletes generated application files"
+#   "cmd:Executes the given command"
+#   "compile:Compiles source files"
+#   "deps:Lists dependencies and their status"
+#   "deps.clean:Deletes the given dependencies' files"
+#   "deps.compile:Compiles dependencies"
+#   "deps.get:Gets all out of date dependencies"
+#   "deps.unlock:Unlocks the given dependencies"
+#   "deps.update:Updates the given dependencies"
+#   "do:Executes the tasks separated by comma"
+#   "dogma:Check Elixir source files for style violations"
+#   "escript.build:Builds an escript for the project"
+#   "help:Prints help information for tasks"
+#   "hex:Prints Hex help information"
+#   "hex.build:Builds a new package version locally"
+#   "hex.config:Reads or updates Hex config"
+#   "hex.docs:Publishes docs for package"
+#   "hex.info:Prints Hex information"
+#   "hex.key:Hex API key tasks"
+#   "hex.outdated:Shows outdated Hex deps for the current project"
+#   "hex.owner:Hex package ownership tasks"
+#   "hex.publish:Publishes a new package version"
+#   "hex.registry:Hex registry tasks"
+#   "hex.search:Searches for package names"
+#   "hex.user:Hex user tasks"
+#   "loadconfig:Loads and persists the given configuration"
+#   "local:Lists local tasks"
+#   "local.hex:Installs Hex locally"
+#   "local.public_keys:Manages public keys"
+#   "local.rebar:Installs rebar locally"
+#   "new:Creates a new Elixir project"
+#   "phoenix.new:Create a new Phoenix v1.0.3 application"
+#   "profile.fprof:Profiles the given file or expression with fprof"
+#   "run:Runs the given file or expression"
+#   "test:Runs a project's tests"
+# )
+#
+# }}}
+# vim:foldmethod=marker:foldlevel=0

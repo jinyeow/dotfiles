@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if [ "$(pgrep mpd)" != "" ]
+then
+  mpd --kill
+fi
+mpd
+ncmpcpp
+# urxvt -e ncmpcpp &

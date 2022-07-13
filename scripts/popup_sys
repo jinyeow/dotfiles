@@ -1,0 +1,24 @@
+#!/bin/bash
+
+if ! pgrep dzen2 ; then
+  swidth="$(xdpyinfo | grep  -oP " dimensions: +\K[0-9]+(?=x[0-9]+.*)")"
+  width="260"
+  offset="10"
+  y="40"
+  brightness=$(light | awk '{printf("%.2f\n", $1)}')
+  root=$(df -hlP / | grep / | sed 's/ \+/ /g' | cut -d' ' -f4)
+  free=$(df -hlP /home | grep /home | sed 's/ \+/ /g' | cut -d' ' -f4)
+  dropbox=$(dropbox-cli status)
+  (
+  echo '=Sysinfo='
+  echo "+-----------+------------+"
+  echo " hostname   | $(hostname) "
+  echo ' /          |' $root 'free'
+  echo ' /home      |' $free 'free'
+  echo ' Brightness |' $brightness
+  echo ' Dropbox    |' $dropbox
+  echo "+-----------+------------+"
+  ) | dzen2 -p -x "$((swidth-width-offset))" -y "$y" -w "$width" -sa "l" -l 7 -e "onstart=uncollapse,unhide" -fn "Inconsolata" -fg "#f3f3f3" -bg "#252527"
+else
+  killall dzen2
+fi

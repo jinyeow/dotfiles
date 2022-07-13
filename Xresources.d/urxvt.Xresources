@@ -1,0 +1,78 @@
+!-- URXVT
+
+#define FONT_SIZE 12
+!#define FONT_MAIN Hack
+#define FONT_MAIN Hack
+#define FONT_2    Source Code Pro for Powerline
+#define ICON_FONT Symbola
+#define FONT_3    DejaVu Sans Mono
+
+! No extra padding
+URxvt.internalBorder: 10
+URxvt.externalBorder: 0
+URxvt.linespace:      0
+URxvt.scrollBar:      false
+URxvt.saveLines:      10000
+
+! Bell
+URxvt.urgentOnBell: 1
+URxvt.visualBell:   true
+
+! Blinking cursor
+URxvt.cursorBlink:     1
+URxvt.cursorUnderline: 0
+
+! Disable "Picture Insert Mode" <Ctrl+Shift>
+URxvt.iso14755:    false
+URxvt.iso14755_52: false
+
+! Font
+URxvt*.font: \
+        xft:FONT_MAIN:size=FONT_SIZE, \
+        xft:FONT_2:size=FONT_SIZE, \
+        xft:ICON_FONT:size=FONT_SIZE, \
+        xft:FONT_3:size=FONT_SIZE, \
+        xft:Unifont:size=FONT_SIZE:style=medium
+
+! bold
+URxvt*.boldfont: \
+        xft:FONT_MAIN:size=FONT_SIZE:style=bold, \
+        xft:FONT_2:size=FONT_SIZE:style=bold, \
+        xft:ICON_FONT:size=FONT_SIZE:style=bold, \
+        xft:FONT_3:size=FONT_SIZE:style=bold, \
+        xft:Unifont:size=FONT_SIZE:style=bold
+
+! italic
+URxvt*.italicfont: \
+        xft:FONT_MAIN:size=FONT_SIZE:style=italic, \
+        xft:FONT_2:size=FONT_SIZE:style=italic, \
+        xft:ICON_FONT:size=FONT_SIZE:style=italic, \
+        xft:FONT_3:size=FONT_SIZE:style=italic, \
+        xft:Unifont:size=FONT_SIZE:style=italic
+
+! Urxvt Perl Plugins
+URxvt.perl-ext-common:      default,clipboard,url-select,keyboard-select
+URxvt.url-select.launcher:  /usr/bin/firefox
+URxvt.url-select.underline: true
+URxvt.keysym.M-u:           perl:url-select:select_next
+URxvt.url-select.button:    2
+URxvt.keysym.M-Escape:      perl:keyboard-select:activate
+URxvt.keysym.M-s:           perl:keyboard-select:search
+
+! Add in clipboard copy/paste later
+URxvt.clipboard.copycmd:  xclip -i -selection clipboard
+URxvt.clipboard.pastecmd: xclip -o -selection clipboard
+URxvt.keysym.C-C:         perl:clipboard:copy
+URxvt.keysym.C-V:         perl:clipboard:paste
+!URxvt.keysym.M-C-v:       perl:clipboard:paste_escaped
+
+! Set the key to be interpreted as the Meta key to: alt, meta, hyper, super, mod1, mod2, mod3, mod4, mod5; option -mod.
+!URxvt.modifier: Mod4
+URxvt.modifier: meta
+URxvt.loginShell: true
+URxvt.meta8: false
+!URxvt.depth: 32 -- This option screws with ranger img preview.
+URxvt.transparent: false
+URxvt.fading: 0
+
+! vim:ft=xdefaults

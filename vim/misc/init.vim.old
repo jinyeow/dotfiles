@@ -1,0 +1,1446 @@
+" #############################################################################
+" #                                 ==NVIMRC==                                #
+" # Author: Jin-Yeow Justin Puah                                              #
+" # Created At: Fri, 06 November 2015. 22:06                                  #
+" #                           * ------------------ *                          #
+" # Last Updated:           16/11/17 22:56                                    #
+" # Plugins Last Updated:   17/11/17 20:55                                    #
+" # vim-plug Last Upgraded: 16/10/17 21:11                                    #
+" #############################################################################
+
+" => CHEATSHEET OF MAPPINGS: {{{
+" <Leader>n, p, d         -> buffer next/previous/delete
+" <Leader>fml             -> vim-follow-my-leader
+" <Leader>tc              -> Colorizer
+" <Leader>M               -> Magit
+" <Leader>ws              -> :call DeleteTrailingWS()<CR>:w<CR>
+"
+" CtrlP ----------------------------------------------------------------------
+" <Leader>fu/fU           -> ctrlp-funky
+" <Leader>tj/<c-]>        -> ctrlp-tjump
+" <Leader>bu              -> ctrlp-buffers
+" <Leader>rm, rc, rv      -> ctrlp-rails [models, controllers, views]
+"
+" fzf.vim --------------------------------------------------------------------
+" <Leader>ff              -> FzfFiles
+" <Leader>fF              -> FzfFiles ~
+" <Leader>fb              -> FzfBuffers
+" <Leader>fg              -> FzfGitFiles
+" <Leader>ft              -> FzfTags
+" <Leader>fT              -> FzfBTags
+" <Leader>fl              -> FzfLines
+" <Leader>fL              -> FzfBLines
+" <Leader>fs              -> FzfSnippets
+" <Leader>fM              -> FzfMarks
+"
+" vim-test -------------------------------------------------------------------
+" <Leader>t               -> :TestNearest
+" <Leader>T               -> :TestFile
+" <Leader>a               -> :TestSuite
+" <Leader>l               -> :TestLast
+" <Leader>v               -> :TestVisit
+"
+" javacomplete2 --------------------------------------------------------------
+" <Leader>ja              -> :JCgenerateAccessorSetterGetter
+" <Leader>j*              -> misc. javacomplete2 commands
+"
+" vimcmdline -----------------------------------------------------------------
+" <LocalLeader>s          -> start the interpreter
+" <Space>                 -> send the current line to the interpreter
+" <LocalLeader>q          -> send the quit command to the interpreter
+" <LocalLeader>p          -> send from the line to the end of paragraph
+" <LocalLeader>b          -> send block of code between two closest marks
+" <LocalLeader>f          -> send the entire file to the interpreter
+
+" => Other 'MODES':
+" c.vim     -> \[additional characters] (see c-support-mappings.txt)
+" vimtex    -> \l[additional characters]
+"           -> \lv
+"           -> \li
+"           -> \lg
+"           -> \lc
+"
+" => 'netrw' KEYBINDINGS:
+" <S-Tab> -> :Explore (netrw)
+" gh      -> toggle hidden items
+"
+" => 'emmet' KEYBINDINGS:
+" <C-y>, -> activate HTML snippet
+"
+" => 'splitjoin' KEYBINDINGS:
+" gS -> split
+" gJ -> join
+"
+" => SEARCH:
+" /  -> incsearch forwards
+" ?  -> incsearch backwards
+" g/ -> incsearch stay
+"
+" => MISCELLANEOUS:
+" <C-Q>   -> :q<CR>
+" #!!<CR> -> '#!/usr/bin/env {ft}
+
+" }}}
+" => fzf-vim-commands {{{
+"  -----------------+----------------------------------------------------------
+"  Command          | List                                                                ~
+"  -----------------+----------------------------------------------------------
+" `Files [PATH]`    | Files (similar to  `:FZF` )
+" `GitFiles`        | Git files
+" `Buffers`         | Open buffers
+" `Colors`          | Color schemes
+" `Ag [PATTERN]`    | {ag}{5} search result (ALT-A to select all, ALT-D to deselect all)
+" `Lines`           | Lines in loaded buffers
+" `BLines`          | Lines in the current buffer
+" `Tags`            | Tags in the project ( `ctags -R` )
+" `BTags`           | Tags in the current buffer
+" `Marks`           | Marks
+" `Windows`         | Windows
+" `Locate PATTERN`  |  `locate`  command output
+" `History`         |  `v:oldfiles`  and open buffers
+" `History:`        | Command history
+" `History/`        | Search history
+" `Snippets`        | Snippets ({UltiSnips}{6})
+" `Commits`         | Git commits (requires {fugitive.vim}{7})
+" `BCommits`        | Git commits for the current buffer
+" `Commands`        | Commands
+" `Maps`            | Normal mode mappings
+" `Helptags`        | Help tags [1]
+"-----------------+------------------------------------------------------------
+"
+" }}}
+" => jdaddy {{{
+" ij   - inner json textobj
+" aj   - outer json textobj
+" gqij - prettyprint 'ij'
+" gqaj - prettyprint 'aj'
+"
+" }}}
+
+" NOTE: = assigns; ^= prepends; += appends
+" NOTE: use 'gn' textobj instead of multiple-cursors
+" NOTE: use Grepper and Ags to search files
+" NOTE: :GV opens git browser
+" NOTE: g-/g+ more thorough undo/redo
+
+" TODO: configure tmuxline (maybe without separators?)
+" TODO: Look for golang textobj
+
+" ========================================================================
+" => FUNCTIONS {{{
+" ========================================================================
+" Delete trailing whitespace on save, taken from eddie blundell vimrc
+" getpos() returns an array of [?, ROW, COL, ?]
+" The 'if' checks that the 'z' mark is not set in the current row already.
+" Otherwise errors may occur (this is due to conflicts with vim-signature).
+func! DeleteTrailingWS()
+  if getpos("'z")[1] != line(".")
+    exe "normal mz"
+  endif
+    %s/\s\+$//ge
+    exe "normal `z"
+endfunc
+
+" :A
+function! s:a()
+  let name = expand('%:r')
+  let ext = tolower(expand('%:e'))
+  let sources = ['c', 'cc', 'cpp', 'cxx']
+  let headers = ['h', 'hh', 'hpp', 'hxx']
+  for pair in [[sources, headers], [headers, sources]]
+    let [set1, set2] = pair
+    if index(set1, ext) >= 0
+      for h in set2
+        let aname = name.'.'.h
+        for a in [aname, toupper(aname)]
+          if filereadable(a)
+            execute 'e' a
+            return
+          end
+        endfor
+      endfor
+    endif
+  endfor
+endfunction
+" command! A call s:a()
+
+" Follow symlinks when opening a file
+" NOTE: this happens with directory symlinks anyway (due to Vim's chdir/getcwd
+" magic when getting filenames).
+" Sources:
+" - https://github.com/tpope/vim-fugitive/issues/147#issuecomment-7572351
+" - http://www.reddit.com/r/vim/comments/yhsn6/is_it_possible_to_work_around_the_symlink_bug/c5w91qw
+function! MyFollowSymlink(...)
+  if exists('w:no_resolve_symlink') && w:no_resolve_symlink
+    return
+  endif
+  let fname = a:0 ? a:1 : expand('%')
+  if fname =~ '^\w\+:/'
+    " do not mess with 'fugitive://' etc
+    return
+  endif
+  let fname = simplify(fname)
+
+  let resolvedfile = resolve(fname)
+  if resolvedfile == fname
+    return
+  endif
+  let resolvedfile = fnameescape(resolvedfile)
+  echohl WarningMsg | echomsg 'Resolving symlink' fname '=>' resolvedfile | echohl None
+  " exec 'noautocmd file ' . resolvedfile
+  " XXX: problems with AutojumpLastPosition: line("'\"") is 1 always.
+  exec 'file ' . resolvedfile
+endfunction
+" command! FollowSymlink call MyFollowSymlink()
+
+" }}}
+" ========================================================================
+" => PLUGINS - refer to |:Plug-examples.| {{{
+" ========================================================================
+" Installs vim-plug if it isn't found in ~/.config/nvim/autoload/
+if empty(glob('~/.config/nvim/autoload/plug.vim'))
+    silent !curl -fLo ~/.config/nvim/autoload/plug.vim --create-dirs
+    \ https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+  autocmd VimEnter * PlugInstall
+endif
+
+call plug#begin('~/.config/nvim/plugged')
+
+" => AutoCompletes
+Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+Plug 'Raimondi/delimitMate'
+Plug 'mattn/emmet-vim', { 'for': ['html', 'xml', 'xhtml', 'eelixir', 'eruby', 'jsx'] }
+
+" => Browsing/Side-Bars
+Plug 'mbbill/undotree', { 'on': 'UndotreeToggle' }
+if v:version >= 703
+  Plug 'majutsushi/tagbar'
+endif
+
+" => Colorscheme(s)
+Plug 'iCyMind/NeoSolarized'
+Plug 'drewtempelmeyer/palenight.vim'
+Plug 'chriskempson/base16-vim'
+Plug 'mhartington/oceanic-next'
+Plug 'morhetz/gruvbox'
+Plug 'kristijanhusak/vim-hybrid-material'
+Plug 'NLKNguyen/papercolor-theme'
+" Plug 'noahfrederick/vim-noctu'
+" Plug 'flaflasun/vim-nightowl'
+" Plug 'mhinz/vim-janah'
+
+" => Elixir
+Plug 'elixir-lang/vim-elixir',  { 'for': 'elixir' }
+Plug 'slashmili/alchemist.vim', { 'for': 'elixir' }
+
+" => Fuzzy Search
+Plug 'ctrlpvim/ctrlp.vim'
+Plug 'sgur/ctrlp-extensions.vim'
+Plug 'Felikz/ctrlp-py-matcher'
+Plug 'tacahiroy/ctrlp-funky'
+Plug 'd11wtq/ctrlp_bdelete.vim'
+Plug 'iurifq/ctrlp-rails.vim'
+Plug 'ivalkeen/vim-ctrlp-tjump'
+
+" => Git
+Plug 'tpope/vim-fugitive'
+Plug 'tommcdo/vim-fubitive'
+Plug 'airblade/vim-gitgutter'
+" Plug 'shumphrey/fugitive-gitlab.vim'
+" Plug 'jreybert/vimagit', { 'on': 'Magit' }
+" Plug 'mattn/gist-vim'
+" if v:version >= 703
+"   " NOTE: vim-signify is like vim-gitgutter but for ALL VCS
+"   "       As a result it loses some functionality, but the basics (like
+"   "       showing symbols) are still there.
+"   Plug 'mhinz/vim-signify'
+" endif
+
+" => Golang
+Plug 'fatih/vim-go',      { 'for': 'go' }
+" Plug 'zchee/deoplete-go', { 'for': 'go' }
+
+" => Grepping
+Plug 'gabesoft/vim-ags'
+Plug 'mhinz/vim-grepper'
+
+" => Lang
+Plug 'sheerun/vim-polyglot'
+Plug 'vim-scripts/c.vim',                { 'for': ['c', 'h', 'cpp', 'hpp'] }
+Plug 'NLKNguyen/c-syntax.vim',           { 'for': ['c', 'h'] }
+Plug 'elzr/vim-json'
+Plug 'mitsuhiko/vim-python-combined',    { 'for': 'python' }
+Plug 'pangloss/vim-javascript',          { 'for': 'javascript' }
+" Plug 'artur-shaik/vim-javacomplete2', { 'for': 'java' }
+
+" => Motion
+Plug 'kshenoy/vim-signature'
+
+" => Ruby
+Plug 'vim-ruby/vim-ruby',      { 'for': ['ruby', 'eruby'] }
+Plug 'tpope/vim-rails',        { 'for': ['ruby', 'eruby'] }
+" Plug 'tpope/vim-bundler', { 'for': ['ruby'] }
+" Plug 'keith/rspec.vim', { 'for': 'ruby' } " provides Rspec syntax highlighting
+
+" => Statusline
+Plug 'vim-airline/vim-airline' | Plug 'vim-airline/vim-airline-themes'
+
+" => Syntax/Linting
+Plug 'neomake/neomake'
+" NOTE: for these avr syntax files to work use ':set syntax=[avr-syntax-file.vim]'
+" Plug 'jinyeow/avr.vim', { 'for': 'asm' }
+
+" => Testing
+Plug 'janko-m/vim-test'
+
+" => Textobj
+Plug 'wellle/targets.vim'
+Plug 'kana/vim-textobj-user'
+Plug 'tek/vim-textobj-ruby',     { 'for': ['ruby', 'eruby'] }
+Plug 'andyl/vim-textobj-elixir', { 'for': ['elixir', 'escript'] }
+" Plug 'kana/vim-textobj-function'
+" Plug 'whatyouhide/vim-textobj-xmlattr'
+" Plug 'bps/vim-textobj-python', { 'for': 'python' }
+
+" => Tmux
+Plug 'christoomey/vim-tmux-navigator'
+Plug 'edkolev/tmuxline.vim'
+Plug 'tmux-plugins/vim-tmux'
+
+" => UI
+Plug 'terryma/vim-smooth-scroll'
+Plug 'zhaocai/GoldenView.Vim', { 'on': 'ToggleGoldenViewAutoResize' }
+Plug 'lilydjwg/colorizer'
+Plug 'Yggdroot/indentLine'
+Plug 'mhinz/vim-startify'
+" Plug 'zhamlin/tiler.vim'
+" Plug 'simeji/winresizer', { 'on': 'WinResizeStartResize' }
+
+" => Misc
+Plug 'jalvesaq/nvim-r', { 'for': 'r' }
+Plug 'lervag/vimtex',   { 'for': ['tex', 'bib', 'plaintex'] }
+Plug 'duggiefresh/vim-easydir'
+Plug 'haya14busa/incsearch.vim'
+Plug 'henrik/vim-indexed-search'
+Plug 'Valloric/MatchTagAlways'
+Plug 'kballenegger/vim-autoreadwatch'
+Plug 'airblade/vim-rooter'
+Plug 'ktonga/vim-follow-my-lead'
+Plug 'AndrewRadev/splitjoin.vim'
+Plug 'powerman/vim-plugin-AnsiEsc'
+Plug 'rbgrouleff/bclose.vim' | Plug 'francoiscabrol/ranger.vim'
+" Plug 'kassio/neoterm'
+" Plug 'zweifisch/pipe2eval'
+" Plug 'c0r73x/neotags.nvim' " Async alternative to gutentags ?
+" Plugin 'eugen0329/vim-esearch' " Async find-and-replace
+" Plug 'AndrewRadev/tagfinder.vim'
+" Plug 'fidian/hexmode'
+" Plug 'vim-scripts/LargeFile'
+" Plug 'chrisbra/vim-diff-enhanced'
+
+" => junegunn Plugins
+Plug 'junegunn/vim-peekaboo'
+Plug 'junegunn/vim-easy-align', { 'on': ['<Plug>(EasyAlign)', 'EasyAlign'] }
+Plug 'junegunn/fzf',            { 'dir': '~/.fzf', 'do': './install --all' }
+Plug 'junegunn/fzf.vim'
+Plug 'junegunn/gv.vim'
+Plug 'junegunn/vim-slash'
+
+" => tpope Plugins
+Plug 'tpope/vim-markdown', { 'for': ['markdown', 'md'] }
+Plug 'tpope/vim-endwise'
+Plug 'tpope/vim-eunuch'
+Plug 'tpope/vim-surround'
+Plug 'tpope/vim-unimpaired'
+Plug 'tpope/vim-commentary'
+Plug 'tpope/vim-repeat'
+Plug 'tpope/vim-projectionist'
+Plug 'tpope/vim-dispatch' | Plug 'radenling/vim-dispatch-neovim'
+Plug 'tpope/vim-ragtag'
+Plug 'tpope/vim-jdaddy' " textobj, prettyprint, extra for JSON
+" Plug 'tpope/vim-vinegar'
+
+call plug#end()
+
+" }}}
+" ========================================================================
+" => LEADER {{{
+" ========================================================================
+let mapleader      = " "
+let g:mapleader    = " "
+let maplocalleader = "\\"
+
+" alternate escapes
+inoremap jj <esc>
+
+" }}}
+" ========================================================================
+" => AUTOCMD {{{
+" ========================================================================
+augroup vimrc
+  autocmd!
+  " Reload vimrc when edited
+  autocmd BufWritePost init.vim
+        \ so % | if has('gui_running') | so % | endif
+
+  " Change working directory to current file's directory
+  " autocmd BufEnter * lcd %:p:h
+
+  autocmd BufRead,BufNewFile *.h,*.c set filetype=c.doxygen
+  autocmd BufRead,BufNewFile *.h,*.c command! A call s:a()
+
+  " Save on losing focus i.e. tabbing away from vim
+  autocmd FocusLost * :wa
+
+  autocmd! BufWritePost * Neomake
+
+  " If you prefer the Omni-Completion tip window to close when a selection is
+  " made, these lines close it on movement in insert mode or when leaving
+  " insert mode
+  autocmd CursorMovedI * if pumvisible() == 0|pclose|endif
+  autocmd InsertLeave * if pumvisible() == 0|pclose|endif
+
+  autocmd BufNewFile,BufReadPost *.md set filetype=markdown
+
+  autocmd BufNewFile,BufRead *.rb,*.rbw,*.gemspec setlocal filetype=ruby
+  autocmd FileType ruby set tabstop=2|set shiftwidth=2|set expandtab
+
+  autocmd FileType asm,s,S setlocal syntax=avr.vim
+  autocmd BufRead,BufNewFile *.asm,*.s,*.S set syntax=avr.vim
+
+  " Unset paste on InsertLeave
+  autocmd InsertLeave * silent! set nopaste
+
+  " vim-javacomplete2
+  " autocmd FileType java set omnifunc=javacomplete#Complete
+
+  " Mark filetype on BufLeave. Makes it easy to go back to latest buffer of
+  " [filetype].
+  " NOTE: maybe change mC to *.c filetypes and mJ to *.java filetypes ??
+  autocmd BufLeave *.css,*.less,*scss normal! mC
+  autocmd BufLeave *.html             normal! mH
+  autocmd BufLeave *.js               normal! mJ
+  autocmd BufLeave *.c,*.cpp          normal! mC
+  autocmd BufLeave *.h                normal! mH
+  autocmd BufLeave *.java             normal! mJ
+  autocmd BufLeave *.py               normal! mP
+  autocmd BufLeave *.rb               normal! mR
+  autocmd BufLeave *.ex,*.exs         normal! mE
+  autocmd BufLeave *.go               normal! mG
+  autocmd BufLeave *.md               normal! mM
+  autocmd BufLeave vimrc,*.vim        normal! mV
+
+  autocmd FileType css setlocal omnifunc=csscomplete#CompleteCSS
+  autocmd FileType html,markdown setlocal omnifunc=htmlcomplete#CompleteTags
+  autocmd FileType javascript setlocal omnifunc=javascriptcomplete#CompleteJS
+  autocmd FileType xml setlocal omnifunc=xmlcomplete#CompleteTags
+augroup END
+
+" }}}
+" ========================================================================
+" => BASIC SETTINGS {{{
+" ========================================================================
+
+filetype plugin indent on " load filetype-specific indent files
+syntax enable " enable syntax processing
+
+scriptencoding utf-8 " allows for arrows to display in NERDTree
+set encoding=utf-8
+set fileencoding=utf-8
+
+" Search recursively into subdirectories
+set path+=**
+
+" This snippet tells Vim to look for tags files in the directory of the current
+" file and in the current directory and up and up until /
+set tags=./tags,tags;$HOME
+
+" => Spaces & Tabs
+set tabstop=2 " numberof visual spaces per TAB
+set softtabstop=2 " number of spaces in tab when editing
+set expandtab " tabs are spaces
+set shiftwidth=2 " indenting a line with >> or << will indent or un-indent by 2
+set smarttab " indent to correct location with tab
+set autoindent
+set copyindent
+
+" if filetype is c, python, assembly, java, go set tab to 4 spaces instead of 2
+if has("autocmd")
+  autocmd FileType python,c,h,cpp,hpp,asm,java,go setlocal tabstop=4
+  autocmd FileType python,c,h,cpp,hpp,asm,java,go setlocal shiftwidth=4
+  autocmd FileType python,c,h,cpp,hpp,asm,java,go setlocal softtabstop=4
+  autocmd FileType python,c,h,cpp,hpp,asm,java,go setlocal nowrap
+endif
+
+" => matchit.vim
+" enable matchit plugin which ships with vim and greatly enhances '%'
+" '%' key now matches (), {}, [], def end, etc.
+runtime macros/matchit.vim
+
+set number " show line numbers
+set numberwidth=3
+set relativenumber " show relative line numbers
+set ruler
+
+set showcmd " show command in bottom bar
+set showmode
+
+set cursorline " highlight current line
+
+set wildmenu " visual autocomplete for command menu
+set wildmode=full
+
+set lazyredraw
+set showmatch
+set laststatus=2
+set modeline " always show file name
+
+set textwidth=110
+set colorcolumn=80 " column 80 is a different color
+set backspace=indent,eol,start " makes backspace behave normally
+
+set history=10000
+set undolevels=10000 " more undos
+set undofile
+set undodir=~/dotfiles/vimundo/
+
+set hidden " hides buffers; allows changing buffers without saving it first
+
+set complete=.,b,u,w,i,]
+set completeopt=menu,preview
+" set complete=.,b,u,]
+" set completeopt-=preview
+
+set list listchars=tab:▸\ ,eol:¬,trail:·
+set splitbelow splitright " Open new split panes to right and bottom
+" set virtualedit=onemore " allow for cursor beyond last character
+set virtualedit=all
+set autoread " Set to auto read when file is changed from the outside
+set scrolloff=5
+set visualbell
+
+" Lower the delay of escaping out of other modes
+set timeout timeoutlen=1000 ttimeoutlen=1
+
+" when reading files try unix line endings then dos, also use unix for new buffers
+set fileformats=unix,dos
+set fileformat=unix " set unix line endings
+set exrc
+set secure
+
+" Set clipboard to use system clipboard
+set clipboard^=unnamed,unnamedplus
+
+set shell=/bin/zsh
+
+set noswapfile
+set nobackup
+set nowb
+
+set incsearch " search as characters are entered
+set hlsearch " highlight matches
+set ignorecase " ignore case when searching
+set smartcase " ...unless there's a capital letter in the query
+
+set nojoinspaces
+set diffopt=filler,vertical
+
+set grepformat=%f:%l:%c:%m,%f:%l:%m
+set nrformats=hex
+
+" NOTE: I am trying the following options out.
+set breakindent " wrapped lines are visually idented
+set linebreak
+
+" Set netrw config
+let g:netrw_liststyle = 3 " tree style listing
+let g:netrw_winsize   = 20 " when :Vexplore limit window size for aesthetics
+
+set mouse=""
+
+" Disable cursor-styling (I don't like the thin line cursor in insert-mode)
+set guicursor=
+
+" }}}
+" ========================================================================
+" => FOLDING {{{
+" ========================================================================
+
+" NOTE: The below set of options allows for automatic opening and closing of
+" folds as you move through them.
+" To disable set 'nofoldenable' or set the foldlevel to a high number i.e. foldlevel=99.
+" Moving between folds with 'zj' and 'zk'.
+
+" set foldclose=all " Close folds if you leave them in any way
+" set foldcolumn=0 " Show the foldcolumn
+" set foldenable " Turn on folding
+" set foldlevel=0 " Autofold everything by default
+" set foldmethod=marker " Fold on the marker '{' x3
+" set foldnestmax=1 " I only like to fold outer functions
+" set foldopen=all " Open folds if you touch them in any way
+
+" use [of, ]of, =of to enable/disable/toggle the automatic closing/opening of folds.
+fu! s:open_folds(action) abort
+    if a:action ==# 'is_active'
+        return exists('s:open_folds')
+    elseif a:action ==# 'enable' && !exists('s:open_folds')
+        let s:open_folds = {
+        \                    'close'   : &foldclose,
+        \                    'column'  : &foldcolumn,
+        \                    'enable'  : &foldenable,
+        \                    'level'   : &foldlevel,
+        \                    'method'  : &foldmethod,
+        \                    'nestmax' : &foldnestmax,
+        \                    'open'    : &foldopen,
+        \                  }
+        set foldclose=all
+        set foldcolumn=1
+        set foldenable
+        set foldlevel=0
+        set foldmethod=marker
+        set foldnestmax=1
+        set foldopen=all
+        echo '[auto open folds] ON'
+    elseif a:action ==# 'disable' && exists('s:open_folds')
+        for op in keys(s:open_folds)
+            exe 'let &fold'.op.' = s:open_folds.'.op
+        endfor
+        unlet! s:open_folds
+        echo '[auto open folds] OFF'
+    endif
+endfu
+
+nno <silent> [of :<c-u>call <sid>open_folds('enable')<cr>
+nno <silent> ]of :<c-u>call <sid>open_folds('disable')<cr>
+nno <silent> =of :<c-u>call <sid>open_folds(<sid>open_folds('is_active') ? 'disable' : 'enable')<cr>
+
+" }}}
+" ========================================================================
+" => COLOR CHANGES/SCHEMES & FONT {{{
+" ========================================================================
+set t_co=256
+
+let hour = strftime("%H")
+if 7 <= hour && hour < 18 " i.e. daytime
+  set background=light
+else
+  set background=dark
+endif
+
+if (has("termguicolors"))
+  set termguicolors
+  colorscheme NeoSolarized
+  " colorscheme palenight
+endif
+
+" " To output all highlight groups use Ex-Mode command ':so $VIMRUNTIME/syntax/hitest.vim'
+" hi LineNr                    ctermfg=green     ctermbg=black
+" hi SignColumn                ctermbg=black     ctermbg=black
+" hi GitGutterAdd              ctermfg=green     ctermbg=black
+" hi GitGutterChange           ctermfg=yellow    ctermbg=black
+" hi GitGutterDelete           ctermfg=red       ctermbg=black
+" hi GitGutterChangeDelete     ctermfg=blue      ctermbg=black
+" hi Pmenu                                       ctermbg=238
+" hi ColorColumn                                 ctermbg=238
+" hi CursorLine                                  ctermbg=238
+" hi Folded                                      ctermbg=black
+" hi VertSplit                 ctermfg=white     ctermbg=238
+" hi WildMenu                  ctermfg=black     ctermbg=white
+" hi Visual                                      ctermbg=238
+" hi Todo                      ctermfg=yellow    ctermbg=238
+" " hi SyntasticStyleWarningSign ctermfg=yellow    ctermbg=black
+" " hi SyntasticStyleErrorSign   ctermfg=red       ctermbg=black
+" " hi SyntasticWarningSign      ctermfg=yellow    ctermbg=black
+" " hi SyntasticErrorSign        ctermfg=red       ctermbg=black
+" hi StatusLine                ctermfg=white     ctermbg=black
+" hi clear SignColumn
+
+" syn keyword myTodo contained TODO FIXME NOTE REVIEW HACK XXX OPTIMIZE
+" hi def link myTodo Todo
+
+" }}}
+" ========================================================================
+" => MAPPINGS {{{
+" ========================================================================
+" move vertically by visual line
+nnoremap j gj
+nnoremap k gk
+
+" move to begging/end of line
+map 0 ^
+
+" unmap arrow keys
+nnoremap <up> <nop>
+nnoremap <down> <nop>
+nnoremap <left> <nop>
+nnoremap <right> <nop>
+
+" Buffer navigation
+noremap <leader>p :bp<CR>
+noremap <leader>n :bn<CR>
+nnoremap <S-right> <ESC>:bn<CR>
+nnoremap <S-left> <ESC>:bp<CR>
+
+" Close buffer
+noremap <leader>d :bd<CR>
+
+" Retain visual selection after indenting
+vnoremap < <gv
+vnoremap > >gv
+vnoremap <S-Tab> <gv
+vnoremap <Tab> >gv
+
+" Make Y behave like other capitals
+nnoremap Y y$
+
+" turn off search highlight
+nnoremap <silent>  <space> :nohlsearch<CR>
+
+" changes the default Vim regexes to sane/regular regex. or something.
+nnoremap / /\v
+vnoremap / /\v
+nnoremap ? ?\v
+vnoremap ? ?\v
+nnoremap :s/ :s/\v
+
+set gdefault " defaults substitutions globally on lines
+
+" center screen when scrolling search results
+nnoremap n nzz
+nnoremap N Nzz
+
+" Have the help split vertically instead of the default horizontally.
+" cnoremap help vert help
+cabbrev h vert h
+
+nnoremap <Leader>ws :call DeleteTrailingWS()<CR>:w<CR>
+
+" Quit
+inoremap <C-Q> <esc>:q<cr>
+nnoremap <C-Q> :q<cr>
+vnoremap <C-Q> <esc>
+
+" Readline-style key bindings in command-line (excerpt from rsi.vim)
+cnoremap        <C-A> <Home>
+cnoremap        <C-E> <End>
+cnoremap        <C-B> <Left>
+cnoremap <expr> <C-D> getcmdpos()>strlen(getcmdline())?"\<Lt>C-D>":"\<Lt>Del>"
+cnoremap <expr> <C-F> getcmdpos()>strlen(getcmdline())?&cedit:"\<Lt>Right>"
+cnoremap        <M-b> <S-Left>
+cnoremap        <M-f> <S-Right>
+silent! exe "set <S-Left>=\<Esc>b"
+silent! exe "set <S-Right>=\<Esc>f"
+
+" #!! | Shebang
+inoreabbrev <expr> #!! "#!/usr/bin/env" . (empty(&filetype) ? '' : ' '.&filetype)
+
+" Easy pane resizing
+nnoremap <Left> <C-w><
+nnoremap <Down> <C-w>-
+nnoremap <Up> <C-w>+
+nnoremap <Right> <C-w>>
+
+" }}}
+" ========================================================================
+" => COMMANDS {{{
+" ========================================================================
+" :Chomp trailing whitespace
+command! Chomp silent! normal! :%s/\s\+$//<CR>
+
+" Split XML/HTML from a single-line to multi-line
+" command! HTMLSplit normal! cit<CR><C-r>"<CR><ESC>
+" command! HTMLSplit normal! :s;>\s*<;>\r<;g<CR>='[
+
+" :SwapLine [line] will swap the current line with the given line number.
+" NOTE: :SwapLine will overwrite the line below if given a count that is the
+" same as the line number of the current line.
+command! -count SwapLine silent! normal! msyy<count>ggPjdd`sVpms
+
+" :SwapRel{Next,Prev} will swap lines relative to the current line
+command! -count SwapRelNext silent! normal! msyy<count>jPjdd`sVpms
+command! -count SwapRelPrev silent! normal! msyy<count>kpkdd`sVpms
+
+" :Swap{Next,Prev}. Swaps the current line with the next/previous line
+command! SwapNext silent! normal! :SwapRelNext 1<CR>
+command! SwapPrev silent! normal! :SwapRelPrev 1<CR>
+
+" Scroll/cursor bind the current window and the previous window
+" So they move together like in vimdiff
+command! BindOn set scrollbind cursorbind | wincmd p |
+      \set scrollbind cursorbind | wincmd p
+command! BindOff set noscrollbind nocursorbind | wincmd p |
+      \set noscrollbind nocursorbind | wincmd p
+
+" }}}
+" ========================================================================
+" => PLUGINS CONFIG {{{
+" ========================================================================
+
+" ========================================================================
+" => VIM-PLUG
+" ========================================================================
+let g:plug_threads = 80
+
+" ========================================================================
+" => ACK/AG
+" ========================================================================
+if executable('ag')
+  let &grepprg = 'ag --nogroup --nocolor --column'
+  let g:ag_working_path_mode="r"
+else
+  let &grepprg = 'grep -rn $* *'
+endif
+command! -nargs=1 -bar Grep execute 'silent! grep! <q-args>' | redraw! | copen
+
+" ========================================================================
+" => VIM-AIRLINE
+" ========================================================================
+" NOTE: using vim-airline-themes plugin.
+" AirlineTheme should default to colorscheme; i.e. solarized
+" let g:airline_theme                                  = 'b16'
+let g:airline_detect_modified                        = 1
+let g:airline_detect_paste                           = 1
+let g:airline_inactive_collapse                      = 1
+let g:airline_powerline_fonts                        = 1
+
+let g:airline#extensions#branch#enabled              = 1
+let g:airline#extensions#branch#displayed_head_limit = 10
+
+" disable so that tmuxline doesn't get overwritten when airline theme changes
+let g:airline#extensions#tmuxline#enabled            = 0
+
+let g:airline#extensions#ctrlp#show_adjacent_modes   = 1
+let g:airline#extensions#tagbar#enabled              = 1
+let g:airline#extensions#obsession#enabled           = 1
+" let g:airline#extensions#eclim#enabled               = 0
+
+" Tabline - the bar at the top
+let g:airline#extensions#tabline#enabled           = 1
+let g:airline#extensions#tabline#show_buffers      = 1
+let g:airline#extensions#tabline#tabs_min_count    = 2
+let g:airline#extensions#tabline#buffer_min_count  = 2
+let g:airline#extensions#tabline#show_close_button = 0
+
+let g:airline_left_sep       = ''
+let g:airline_left_alt_sep   = '|'
+let g:airline_right_sep      = ''
+let g:airline_right_alt_sep  = '|'
+
+if !exists('g:airline_symbols')
+  let g:airline_symbols = {}
+endif
+
+let g:airline_symbols.linenr    = ''
+let g:airline_symbols.maxlinenr = ''
+
+" ========================================================================
+" => ALCHEMIST.VIM
+" ========================================================================
+" let g:alchemist_tag_disable = 1
+let g:alchemist#elixir_erlang_src = "/usr/local/share/src"
+
+" ========================================================================
+" => C-SUPPORT
+" ========================================================================
+let g:C_Ctrl_j   = 'off'
+
+" ========================================================================
+" => CTRLP
+" ========================================================================
+let g:ctrlp_map = '<C-p>'
+let g:ctrlp_cmd = 'CtrlP'
+nnoremap <Leader>bu :CtrlPBuffer<CR>
+
+let g:ctrlp_extensions = ['funky', 'menu', 'changes', 'mixed', 'dir']
+
+" First checks for ripgrep (rg) since that's the fastest.
+" If no rg, then checks for ag.
+" NOTE: change made 27/10/17 23:57. Seems ok so far.
+if executable('rg') " Ripgrep
+  set grepprg=rg\ --no-heading\ -H\ --color=never
+
+  let g:ctrlp_user_command = 'rg %s --files --color=never --no-heading -H --hidden
+      \ --glob !.git
+      \ --glob !.svn
+      \ --glob !.hg
+      \ --glob !.DS_Store
+      \ --glob !"**/*.pyc"
+      \ --glob ""'
+
+  let g:ctrlp_use_caching = 0
+elseif executable('ag') " The Silver Searcher
+  set grepprg=ag\ --nogroup\ --nocolor
+
+  " Use ag in CtrlP for listing files. Lightning fast and respects .gitignore
+  let g:ctrlp_user_command = 'ag %s -l --nocolor --nogroup --hidden
+      \ --ignore .git
+      \ --ignore .svn
+      \ --ignore .hg
+      \ --ignore .DS_Store
+      \ --ignore "**/*.pyc"
+      \ -g ""'
+
+  " Ag is fast enough that ctrlp does not need to cache
+  let g:ctrlp_use_caching = 0
+else
+  " Set as default.
+  " Found from /r/vim/comments/78tmh3/turbocharge_the_ctrlp_vim_plugin/dowt37n/
+  let g:ctrlp_user_command = 'find %s -not -path "*/\.*" -type f -exec grep
+      \ -Iq . {} \; -and -print'
+endif
+
+" Ignore some folders and files for CtrlP indexing
+let g:ctrlp_custom_ignore = {
+  \ 'dir': '\.git$\|\.yardoc\|public$|log\|tmp$',
+  \ 'file': '\.so$\|\.dat$|\.DS_Store$'
+  \ }
+
+let g:ctrlp_working_path_mode   = 'ra'
+let g:ctrlp_show_hidden         = 1
+let g:ctrlp_clear_cache_on_exit = 0
+let g:ctrlp_tilde_homedir       = 1
+
+if has('win32')
+  set wildignore+=*\\.git\\*,*\\.hg\\*,*\\.svn\\*
+  let g:ctrlp_user_command = 'dir %s /-n /b /s /a-d'
+else
+  set wildignore+=*/.git/*,*/.hg/*,*/.svn/*
+endif
+
+let g:ctrlp_match_func = { 'match': 'pymatcher#PyMatch' }
+
+" ========================================================================
+" => CTRLP-FUNKY
+" ========================================================================
+nnoremap <Leader>fu :CtrlPFunky<Cr>
+" narrow the list down with a word under cursor
+nnoremap <Leader>fU :execute 'CtrlPFunky ' . expand('<cword>')<Cr>
+
+let g:ctrlp_funky_syntax_highlight = 1
+let g:ctrlp_funky_multi_buffers    = 1
+
+" ========================================================================
+" => CTRLP_BDELETE
+" ========================================================================
+call ctrlp_bdelete#init()
+
+" ========================================================================
+" => CTRLP-RAILS
+" ========================================================================
+nnoremap <Leader>rm :CtrlPModels<Cr>
+nnoremap <Leader>rc :CtrlPControllers<Cr>
+nnoremap <Leader>rv :CtrlPViews<Cr>
+
+" ========================================================================
+" => CTRLP-TJUMP
+" ========================================================================
+nnoremap <Leader>tj :CtrlPtjump<cr>
+vnoremap <Leader>tj :CtrlPtjumpVisual<cr>
+nnoremap <Leader><c-]> :CtrlPtjump<cr>
+vnoremap <Leader><c-]> :CtrlPtjumpVisual<cr>
+let g:ctrlp_tjump_only_silent = 1
+" let g:ctrlp_tjump_skip_tag_name = 1
+
+" ========================================================================
+" => DELIMITMATE
+" ========================================================================
+let g:delimitMate_expand_cr          = 1
+let g:delimitMate_expand_space       = 1
+let g:delimitMate_balance_matchpairs = 1
+
+" ========================================================================
+" => DEOPLETE.NVIM
+" ========================================================================
+let g:deoplete#enable_at_startup            = 1
+let g:deoplete#enable_smart_case            = 1
+let g:deoplete#auto_completion_start_length = 1
+
+let g:deoplete#ignore_sources               = {}
+
+let g:deoplete#omni#functions      = get(g:, 'deoplete#omni#functions', {})
+let g:deoplete#omni#functions.ruby = 'rubycomplete#Complete'
+
+let g:EclimCompletionMethod        = 'omnifunc'
+
+" Uncomment the line below when using deoplete-go
+" let g:deoplete#sources#go = 'vim-go'
+
+" vim-javacomplete2 deoplete setup
+" let g:deoplete#enable_refresh_always = 1
+let g:deoplete#omni#input_patterns = get(g:,'deoplete#omni#input_patterns',{})
+let g:deoplete#omni#input_patterns.java = [
+    \'[^. \t0-9]\.\w*',
+    \'[^. \t0-9]\->\w*',
+    \'[^. \t0-9]\::\w*',
+    \]
+let g:deoplete#omni#input_patterns.jsp = ['[^. \t0-9]\.\w*']
+
+inoremap <expr><C-h> deoplete#mappings#smart_close_popup()."\<C-h>"
+
+" The following is commented out since it interferes with delimitMate BS.
+" inoremap <expr><BS> deoplete#mappings#smart_close_popup()."\<C-h>"
+
+" ========================================================================
+" => VIM-FOLLOW-MY-LEAD
+" ========================================================================
+let g:fml_all_sources = 1
+
+" ========================================================================
+" => FUGITIVE-GITLAB
+" ========================================================================
+" To use private gitlab repositories add the follow to your .vimrc
+" let g:fugitive_gitlab_domains = ['http://mygitlab', 'http://mygitlab.mydomain.com']
+
+" ========================================================================
+" => FZF.VIM
+" ========================================================================
+" function! s:find_root()
+"   for vcs in ['.git', '.svn', '.hg']
+"     let dir = finddir(vcs.'/..', ';')
+"     if !empty(dir)
+"       execute 'Files' dir
+"       return
+"     endif
+"   endfor
+"   Files
+" endfunction
+" command! FZFR call s:find_root()
+
+" function! s:find_git_root()
+"   return system('git rev-parse --show-toplevel 2> /dev/null')[:-2]
+" endfunction
+" command! ProjectFiles execute 'Files' s:find_git_root()
+
+let $FZF_DEFAULT_OPTS .= ' --inline-info'
+let g:fzf_command_prefix = 'Fzf'
+
+" Rails Models/Views/Controllers
+command! FzfModels execute 'Files app/models/'
+command! FzfViews execute 'Files app/views'
+command! FzfControllers execute 'Files app/controllers'
+
+" FzfAg but with option for preview using '?'
+command! -bang -nargs=* FzfAg
+  \ call fzf#vim#ag(<q-args>,
+  \                 <bang>0 ? fzf#vim#with_preview('up:60%')
+  \                         : fzf#vim#with_preview('right:50%:hidden', '?'),
+  \                 <bang>0)
+
+" Like FzfAg but using Ripgrep
+command! -bang -nargs=* FzfRg
+  \ call fzf#vim#grep(
+  \   'rg --column --line-number --no-heading --color=always '.shellescape(<q-args>), 1,
+  \   <bang>0 ? fzf#vim#with_preview('up:60%')
+  \           : fzf#vim#with_preview('right:50%:hidden', '?'),
+  \   <bang>0)
+
+nnoremap <Leader>fa :FzfAg<CR>
+nnoremap <Leader>fr :FzfRg<CR>
+
+nnoremap <Leader>ff :FzfFiles<CR>
+nnoremap <Leader>fF :FzfFiles ~<CR>
+nnoremap <Leader>fb :FzfBuffers<CR>
+nnoremap <Leader>fw :FzfWindows<CR>
+
+nnoremap <Leader>fg :FzfGitFiles<CR>
+nnoremap <Leader>fc :FzfCommits<CR>
+
+nnoremap <Leader>ft :FzfTags<CR>
+nnoremap <Leader>fT :FzfBTags<CR>
+
+nnoremap <Leader>fl :FzfLines<CR>
+nnoremap <Leader>fL :FzfBLines<CR>
+
+nnoremap <Leader>fM :FzfMarks<CR>
+nnoremap <Leader>fh :FzfHistory<CR>
+
+" nnoremap <Leader>fs :FzfSnippets<CR>
+
+let g:fzf_layout = { 'down': '~25%' }
+
+" let g:fzf_action = {
+"   \ 'ctrl-t': 'tab split',
+"   \ 'ctrl-x': 'split',
+"   \ 'ctrl-v': 'vsplit' }
+
+" [Files] Extra options for fzf
+"   e.g. File preview using Highlight
+"        (http://www.andre-simon.de/doku/highlight/en/highlight.html)
+let g:fzf_files_options =
+  \ '--preview "(highlight -O ansi {} || cat {}) 2> /dev/null | head -'.&lines.'"'
+
+" [Buffers] Jump to the existing window if possible
+let g:fzf_buffers_jump = 1
+
+" [[B]Commits] Customize the options used by 'git log':
+let g:fzf_commits_log_options = '--graph --color=always --format="%C(auto)%h%d %s %C(black)%C(bold)%cr"'
+
+" [Tags] Command to generate tags file
+let g:fzf_tags_command = 'ctags -R'
+
+" [Commands] --expect expression for directly executing the command
+let g:fzf_commands_expect = 'alt-enter,ctrl-x'
+
+" Replace the default dictionary completion with fzf-based fuzzy completion
+" inoremap <expr> <c-x><c-k> fzf#complete('cat /usr/share/dict/words')
+
+" ========================================================================
+" => GITGUTTER
+" ========================================================================
+let g:gitgutter_map_keys = 0
+
+" ========================================================================
+" => VIM-GO
+" ========================================================================
+" disable fmt on save
+let g:go_fmt_autosave = 0
+
+" Syntax highlighting for Functions, Methods, and Structs
+let g:go_highlight_functions = 1
+let g:go_highlight_methods = 1
+let g:go_highlight_structs = 1
+let g:go_highlight_operators = 1
+let g:go_highlight_build_constraints = 1
+
+" ========================================================================
+" => GOLDENVIEW
+" ========================================================================
+let g:goldenview__enable_default_mapping = 0
+
+" ========================================================================
+" => VIM-GREPPER
+" ========================================================================
+let g:grepper = {
+      \ 'tools': ['rg', 'ag', 'git', 'grep'],
+      \ 'highlight': 1,
+      \ }
+
+" ========================================================================
+" => INCSEARCH
+" ========================================================================
+map /  <Plug>(incsearch-forward)
+map ?  <Plug>(incsearch-backward)
+map g/ <Plug>(incsearch-stay)
+
+" ========================================================================
+" => VIM-INDEXED-SEARCH
+" ========================================================================
+" this lets vim-indexed-search play nicely with vim-slash
+let g:indexed_search_mappings = 0
+
+" ========================================================================
+" => VIM-JSON
+" ========================================================================
+let g:vim_json_syntax_conceal = 0
+
+" ========================================================================
+" => NEOMAKE
+" ========================================================================
+let g:neomake_open_list                = 2
+let g:neomake_list_height              = 5
+let g:neomake_serialize                = 1
+let g:neomake_serialize_abort_on_error = 1
+let g:neomake_verbose                  = 2
+
+let g:neomake_c_enabled_makers      = ['gcc']
+let g:neomake_c_gcc_args            = ['-fsyntax-only', '-Wall']
+
+let g:neomake_elixir_mix_maker = {
+      \ 'exe': 'mix',
+      \ 'args': ['compile', '--warnings-as-errors'],
+      \ 'cwd': getcwd(),
+      \ 'errorformat':
+      \ '** %s %f:%l: %m,' .
+      \ '%f:%l: warning: %m'
+      \ }
+
+let g:neomake_elixir_enabled_makers = ['mix']
+
+let g:neomake_ruby_enabled_makers   = ['mri']
+
+let g:neomake_tex_chktex_args       = ['-n 8']
+
+" ========================================================================
+" => PALENIGHT.VIM
+" ========================================================================
+" Italics for my favorite color scheme
+" let g:palenight_terminal_italics=1
+
+" ========================================================================
+" => RANGER.VIM
+" ========================================================================
+let g:ranger_map_keys = 0
+noremap - :Ranger<CR>
+
+" open ranger when vim open a directory
+let g:ranger_replace_netrw = 1
+
+" ========================================================================
+" => VIM-ROOTER
+" ========================================================================
+let g:rooter_change_directory_for_non_project_files = 'current'
+
+let g:rooter_disable_map  = 1
+let g:rooter_manual_only  = 0
+let g:rooter_use_lcd      = 1
+let g:rooter_silent_chdir = 0
+let g:rooter_resolve_links = 1
+
+" Default patterns
+let g:rooter_patterns = [
+      \ 'Rakefile',
+      \ 'mix.exs',
+      \ 'Gemfile',
+      \ '.projections.json',
+      \ '.agignore',
+      \ '.ignore',
+      \ 'tags',
+      \ 'Makefile',
+      \ 'README.md',
+      \ '.git',
+      \ '.git/',
+      \ '_darcs/',
+      \ '.hg/',
+      \ '.bzr/',
+      \ '.svn/'
+      \ ]
+
+" ========================================================================
+" => VIM-SLASH
+" ========================================================================
+" This makes vim-indexed-search play nice with vim-slash
+noremap <silent> <Plug>(slash-after) :ShowSearchIndex<CR>
+
+" ========================================================================
+" => VIM-SMOOTH-SCROLL
+" ========================================================================
+nnoremap <silent> <C-u> :call smooth_scroll#up(&scroll, 0, 2)<CR>
+nnoremap <silent> <C-d> :call smooth_scroll#down(&scroll, 0, 2)<CR>
+nnoremap <silent> <C-b> :call smooth_scroll#up(&scroll*2, 0, 4)<CR>
+nnoremap <silent> <C-f> :call smooth_scroll#down(&scroll*2, 0, 4)<CR>
+
+" ========================================================================
+" => STARTIFY
+" ========================================================================
+let g:startify_change_to_dir  = 1
+let g:startify_mapping_nowait = 0
+
+" ========================================================================
+" => TAGBAR
+" ========================================================================
+" <F10> | Tagbar
+if v:version >= 703
+  inoremap <F10> <ESC>:TagbarToggle<CR>
+  nnoremap <F10> :TagbarToggle<CR>
+  let g:tagbar_sort      = 1
+  let g:tagbar_autofocus = 1
+
+  let g:tagbar_type_css = {
+      \ 'ctagstype' : 'Css',
+      \ 'kinds'     : [
+          \ 'c:classes',
+          \ 's:selectors',
+          \ 'i:identities'
+      \ ]
+  \ }
+
+  let g:tagbar_type_ruby = {
+      \ 'kinds' : [
+          \ 'm:modules',
+          \ 'c:classes',
+          \ 'd:describes',
+          \ 'C:contexts',
+          \ 'f:methods',
+          \ 'F:singleton methods'
+      \ ]
+  \ }
+
+  let g:tagbar_type_elixir = {
+      \ 'ctagstype' : 'elixir',
+      \ 'kinds' : [
+          \ 'f:functions',
+          \ 'functions:functions',
+          \ 'c:callbacks',
+          \ 'd:delegates',
+          \ 'e:exceptions',
+          \ 'i:implementations',
+          \ 'a:macros',
+          \ 'o:operators',
+          \ 'm:modules',
+          \ 'p:protocols',
+          \ 'r:records',
+          \ 't:tests'
+      \ ]
+  \ }
+
+  let g:tagbar_type_go = {
+      \ 'ctagstype' : 'go',
+      \ 'kinds'     : [
+      \ 'p:package',
+      \ 'i:imports',
+      \ 'c:constants',
+      \ 'v:variables',
+      \ 't:types',
+      \ 'n:interfaces',
+      \ 'w:fields',
+      \ 'e:embedded',
+      \ 'm:methods',
+      \ 'r:constructor',
+      \ 'f:functions'
+      \ ],
+      \ 'sro' : '.',
+      \ 'kind2scope' : {
+          \ 't' : 'ctype',
+          \ 'n' : 'ntype'
+      \ },
+      \ 'scope2kind' : {
+          \ 'ctype' : 't',
+          \ 'ntype' : 'n'
+      \ },
+      \ 'ctagsbin'  : "~/go/bin/gotags",
+      \ 'ctagsargs' : '-sort -silent'
+  \ }
+
+  let g:tagbar_type_make = {
+      \ 'kinds':[
+          \ 'm:macros',
+          \ 't:targets'
+      \ ]
+  \ }
+
+  let g:tagbar_type_markdown = {
+    \ 'ctagstype' : 'markdown',
+    \ 'kinds' : [
+        \ 'h:Heading_L1',
+        \ 'i:Heading_L2',
+        \ 'k:Heading_L3'
+    \ ]
+  \ }
+
+  let g:tagbar_type_rust = {
+    \ 'ctagstype' : 'rust',
+    \ 'kinds' : [
+        \'T:types,type definitions',
+        \'f:functions,function definitions',
+        \'g:enum,enumeration names',
+        \'s:structure names',
+        \'m:modules,module names',
+        \'c:consts,static constants',
+        \'t:traits,traits',
+        \'i:impls,trait implementations',
+    \ ]
+  \ }
+
+  let g:tagbar_type_typescript = {
+    \ 'ctagstype': 'typescript',
+    \ 'kinds': [
+      \ 'c:classes',
+      \ 'n:modules',
+      \ 'f:functions',
+      \ 'v:variables',
+      \ 'v:varlambdas',
+      \ 'm:members',
+      \ 'i:interfaces',
+      \ 'e:enums',
+    \ ]
+  \ }
+
+  let g:tagbar_type_xsd = {
+    \ 'ctagstype' : 'XSD',
+    \ 'kinds'     : [
+        \ 'e:elements',
+        \ 'c:complexTypes',
+        \ 's:simpleTypes'
+    \ ]
+  \ }
+
+  let g:tagbar_type_xslt = {
+    \ 'ctagstype' : 'xslt',
+    \ 'kinds' : [
+      \ 'v:variables',
+      \ 't:templates'
+    \ ]
+  \ }
+endif
+
+" ========================================================================
+" => VIM-TEST
+" ========================================================================
+if has('nvim')
+  let test#strategy = 'neovim'
+else
+  let test#strategy = 'dispatch'
+endif
+
+nnoremap <silent> <leader>t :TestNearest<CR>
+nnoremap <silent> <leader>T :TestFile<CR>
+nnoremap <silent> <leader>a :TestSuite<CR>
+nnoremap <silent> <leader>l :TestLast<CR>
+nnoremap <silent> <leader>g :TestVisit<CR>
+
+" ========================================================================
+" => TMUX NAVIGATOR
+" ========================================================================
+let g:tmux_navigator_save_on_switch = 1
+if has('nvim')
+    nmap <silent> <BS> :<C-u>TmuxNavigateLeft<CR>
+endif
+
+" ========================================================================
+" => UNDOTREE
+" ========================================================================
+let g:undotree_WindowLayout = 2
+nnoremap U :UndotreeToggle<CR>
+" nnoremap <F11> :UndotreeToggle<CR>
+
+" ========================================================================
+" => VIM-EASY-ALIGN
+" ========================================================================
+let g:easy_align_delimiters = {
+\ '>': { 'pattern': '>>\|=>\|->\|>' },
+\ '\': { 'pattern': '\\' },
+\ '/': { 'pattern': '//\+\|/\*\|\*/', 'delimiter_align': 'l', 'ignore_groups': ['!Comment'] },
+\ ']': {
+\     'pattern':       '[[\]]',
+\     'left_margin':   0,
+\     'right_margin':  0,
+\     'stick_to_left': 0
+\   },
+\ ')': {
+\     'pattern':       '[()]',
+\     'left_margin':   0,
+\     'right_margin':  0,
+\     'stick_to_left': 0
+\   },
+\ 'f': {
+\     'pattern': ' \(\S\+(\)\@=',
+\     'left_margin': 0,
+\     'right_margin': 0
+\   },
+\ 'd': {
+\     'pattern': ' \ze\S\+\s*[;=]',
+\     'left_margin': 0,
+\     'right_margin': 0
+\   }
+\ }
+
+" Start interactive EasyAlign in visual mode
+xmap ga <Plug>(EasyAlign)
+
+" Start interactive EasyAlign with a Vim movement
+nmap ga <Plug>(EasyAlign)
+nmap gaa ga_
+
+" ========================================================================
+" => VIMTEX
+" ========================================================================
+let g:polyglot_disabled          = ['latex']
+
+let g:vimtex_enabled             = 1
+let g:tex_flavor                 = 'latex'
+let g:vimtex_view_general_viewer = 'evince'
+let g:vimtex_latexmk_continuous  = 1
+
+" }}}
+" ========================================================================
+" vim:foldmethod=marker:foldlevel=0

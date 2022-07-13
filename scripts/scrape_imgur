@@ -1,0 +1,279 @@
+#!/usr/bin/env ruby
+
+#
+# Written: 16/09/2015
+# Last Updated: 19/06/2016
+# Author: Jin-Yeow Justin Puah
+#
+# Scrapes images from:
+#  - Imgur (Albums, Single)
+#  - Tumblr (Single)
+#  - Gfycat (webm, mp4, gif)
+#  - thechive (Page gallery)
+#  - Generic URLs with the filename in the URL
+#    e.g. www.some_image_host.com/filename.ext
+#
+# Writes to local folder in ~/Pictures/ -> either scraped, kpics, or nsfw
+#
+# TODO: turn this into a gem
+# TODO: add Scraper base class
+# TODO: add *Scraper classes for each host
+# TODO: add gif support from imgur
+# TODO: add classes for objects
+# TODO: handle multiple hosts (i.e. ig, fb, deviantart, artstation, gfycat, etc)
+# TODO: change how I get the filename and extension so that when scraping (e.g.
+#       tumblr images) you don't save the file as filename.ext.ext
+# TODO: add Threads to speedup batch downloading
+# TODO: add --verbose to show images as they are downloading (as it currently is)
+#       or --quiet to hide.
+#
+
+require 'open-uri'
+require 'fileutils'
+require 'json'
+require 'optparse'
+require 'pp'
+require 'nokogiri'
+require_relative 'scrape_tumblr' # contains TumblrScraper class
+
+# ============ CONSTANTS ============
+# imgur api related globals
+API_VERSION = 3
+CLIENT_ID = 'b5f97137be15df2'.freeze
+
+# ============ FUNCTIONS ============
+# get imgur data json
+def get_data(id, collection = true)
+  type = collection ? 'album' : 'image'
+  api_url = "https://api.imgur.com/#{API_VERSION}/#{type}/#{id}"
+  open(api_url,
+       'Authorization' => "Client-ID #{CLIENT_ID}",
+       open_timeout: nil,
+       read_timeout: nil)
+end
+
+# make directory to save image and cd into it
+def mkdir(title = nil, where = 'scraped')
+  location = "#{Dir.home}/Pictures/#{where}/"
+  location += title.to_s if title
+  puts "\t-- saving images to #{location}"
+  FileUtils.mkdir_p location
+  Dir.chdir location
+  puts "\t-- chdir #{location}"
+end
+
+# write image data to file
+def scrape(img, filename)
+  # "Escape" unwanted characters
+  filename.gsub!(%r{\/}, '_')
+
+  File.open(filename, 'wb') do |f|
+    f.write open(img[:link]).read
+  end
+end
+
+# Add a number to the end of duplicate filenames
+def uniq_filename(filename)
+  duplicate_num = 0
+  ext = File.extname filename
+  namae = File.basename filename, ext
+  while File.exist?(filename)
+    duplicate_num += 1
+    filename = namae + '_' + duplicate_num.to_s + ext
+  end
+  filename
+end
+
+def valid?(url)
+  uri = URI.parse(url)
+  %w( http https ).include? uri.scheme
+rescue URI::BadURIError
+  false
+rescue URI::InvalidURIError
+  false
+end
+
+# check if url links to album or gallery
+def collection?(url)
+  url =~ %r{\/a\/|\/gallery\/} ? true : false
+end
+
+# returns the number of digits in a given number
+# if num = 0 then the above code returns -Infinity,
+# in that case just return 1
+def number_of_digits(num)
+  Math.log10(num).to_i + 1
+rescue FloatDomainError
+  1
+end
+
+# returns a number with leading zeroes as a String
+def add_leading_zeroes(size, counter)
+  num_of_leading_zeroes = number_of_digits(size) - number_of_digits(counter + 1)
+  output = ('0' * num_of_leading_zeroes) << (counter + 1).to_s << '. '
+  output
+end
+
+# ========= OPTIONS/FLAGS ===========
+# If no arguments provided show help
+ARGV.push '-h' if ARGV.empty?
+
+# Using OptionParser to handle commandline flags/arguments
+options = {}
+OptionParser.new do |opts|
+  opts.banner = "Usage: #{$PROGRAM_NAME} [OPTIONS] [URL]"
+
+  opts.on('-h', '--help', 'Show this message') do |h|
+    options[:help] = h
+    puts opts
+    exit
+  end
+
+  opts.on('-o', '--output DIR', 'Specify directory to scrape to') do |o|
+    options[:output] = o
+  end
+
+  opts.on('-t', '--title TITLE', 'Specify filename for a single image') do |t|
+    options[:title] = t
+  end
+
+  # maybe if -n and -k is given, should handle as error and quit with msg??
+  opts.on('-n', '--nsfw', "Use the 'nsfw' directory instead of 'scraped'") do
+    options[:nsfw] = 'nsfw' unless options[:kpics]
+  end
+  opts.on('-k', '--kpics', "Use the 'kpics' directory instead of 'scraped'") do
+    options[:kpics] = 'kpics' unless options[:nsfw]
+  end
+
+  opts.on('--throttle TIME', 'Wait TIME seconds between downloads') do |t|
+    options[:throttle] = t.to_i
+  end
+  opts.on('--sleep TIME', 'Wait TIME seconds between sets of images') do |t|
+    options[:sleep] = t.to_i
+  end
+
+  opts.on('--add-ordering', 'Prepend ordered number to filenames') do |n|
+    options[:number] = n
+  end
+
+  opts.on('-d', '--debug', 'Print out image data for debugging purposes') do |d|
+    options[:debug] = d
+  end
+end.parse!
+
+# ============ MAIN CODE ============
+Signal.trap('INT') do
+  puts "\n!!Terminating scrape_imgur."
+  exit
+end
+
+abort 'Error: No image URL provided. USAGE: scrape_imgur [OPTIONS] [URL(s)]' \
+  if ARGV.empty?
+
+# for each album/image given
+ARGV.each do |url|
+  abort "!! Invalid URL: #{url}" unless valid? url
+
+  count = 0
+  failed = 0
+
+  url_info = {}
+  url_info[:collection] = collection? url
+  url_info[:type] = url_info[:collection] ? 'Album' : 'Image'
+  url_info[:host] = URI.parse(url).host
+
+  # BEGIN_STATUS
+  print "[+] Scraping #{url}: "
+
+  # Handle scraping differently dependng on host
+  if url_info[:host] =~ /tumblr/i
+    scraper = Scraper::TumblrScraper.new(url)
+    data = { link: url, id: scraper.name, ext: scraper.ext }
+  elsif url_info[:host] =~ /imgur/i
+    url_info[:id] = url.match(/([a-z0-9_]+{5,7})(\.\w+)?$/i).captures.first
+    data = JSON.parse(get_data(url_info[:id], url_info[:collection]).read, \
+                      symbolize_names: true)
+
+    data[:success] ? data = data[:data] : abort('!! Scrape failed')
+    title = data[:title] || "#{url_info[:type]}_#{url_info[:id]}"\
+      if url_info[:collection]
+  elsif url_info[:host] =~ /gfycat/i
+    page = Nokogiri::HTML(open(url))
+    id   = url.match(/\w+$/)
+    webm = page.css('source#webmSource').attr('src').value
+    mp4  = page.css('source#mp4Source').attr('src').value
+    gif  = "https://giant.gfycat.com/#{id}.gif"
+    data = { images:
+      [
+        { link: webm, id: id.to_s, ext: File.extname(webm) },
+        { link: mp4, id: id.to_s, ext: File.extname(mp4) },
+        { link: gif, id: id.to_s, ext: File.extname(gif) }
+      ] }
+  elsif url_info[:host] =~ /thechive/i
+    scraper = Scraper::ChiveScraper.new(url)
+    data = scraper.data
+  # elsif url_info[:host] =~ /artstation/i
+  #   scraper = Scraper::ArtStationScraper.new(url)
+  #   data = scraper.data
+  elsif url =~ %r{\/([a-z0-9\-_]+)(\.\w+)$}i
+    id, ext = url =~ %r{\/([a-z0-9\-_]+)(\.\w+).*$}i
+    data = { link: url, id: id, ext: ext }
+  else
+    abort "[!!] URL [#{url}] not supported."
+  end
+
+  print "#{title}...complete!\n"
+  if options[:debug]
+    pp data
+    exit
+  end
+
+  # array of images; each image is a hash of data (might change to Image obj)
+  images = data[:images] || [] << data
+
+  puts "\t-- found #{images.size} " + (images.size > 1 ? 'images' : 'image')
+
+  # choose output directory depending on flags
+  title = options[:output] if options[:output]
+  if options[:nsfw]
+    mkdir(title, options[:nsfw])
+  elsif options[:kpics]
+    mkdir(title, options[:kpics])
+  else
+    mkdir(title)
+  end
+
+  # SCRAPE_STATUS
+  puts '  [+] Scraping images now...'
+  images.each_with_index do |img, i|
+    filetype = img[:ext] || img[:link].match(/\.\w+$/)
+    filename = ((options[:title] || img[:title] || img[:id]) + \
+                filetype.to_s).tr(' ', '_')
+
+    filename = uniq_filename(filename)
+    printf("\t%4s. #{filename}...", i + 1)
+    filename = add_leading_zeroes(images.length, i) << filename \
+      if options[:number]
+
+    begin
+      scrape(img, filename)
+    rescue
+      print "failed!\n"
+      File.delete(filename)
+      failed += 1
+    else
+      print "done!\n"
+      count += 1
+    ensure
+      sleep options[:throttle] if options[:throttle] && img != images.last
+    end
+  end
+
+  # END_STATUS
+  count_str = count > 1 ? "#{count} images" : "#{count} image"
+  puts "  [*] Finished scraping #{url}: #{count_str} successfully scraped."
+  puts "\tScrape failed: #{failed} images." if failed > 0
+  puts "\n\n" unless url == ARGV.last
+
+  sleep options[:sleep] if options[:sleep] && url != ARGV.last
+end

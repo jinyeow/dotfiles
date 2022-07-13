@@ -1,0 +1,10 @@
+[Trigger]
+Operation = Upgrade
+Type = Package
+Target = *
+
+[Action]
+Description = Removing old cached packages ...
+When = PostTransaction
+Exec = /usr/bin/paccache -vrk2
+

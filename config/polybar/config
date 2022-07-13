@@ -1,0 +1,173 @@
+;=====================================================
+;
+;   To learn more about how to configure Polybar
+;   go to https://github.com/jaagr/polybar
+;
+;   The README contains alot of information
+;
+;=====================================================
+
+; TODO: make a [symbols] section that contains the icons i wanna use
+;       saved under symbols.polybar or icons.polybar
+
+[colors]
+include-file = ~/.config/polybar/colors.polybar
+
+[global/wm]
+;margin-top = 5
+;margin-bottom = 5
+
+[settings]
+; The throttle settings lets the eventloop swallow up til X events
+; if they happen within Y millisecond after first event was received.
+; This is done to prevent flood of update event.
+;
+; For example if 5 modules emit an update event at the same time, we really
+; just care about the last one. But if we wait too long for events to swallow
+; the bar would appear sluggish so we continue if timeout
+; expires or limit is reached.
+throttle-output = 5
+throttle-output-for = 10
+
+; Time in milliseconds that the input handler will wait between processing events
+throttle-input-for = 30
+
+; Reload upon receiving XCB_RANDR_SCREEN_CHANGE_NOTIFY events
+;screenchange-reload = true
+
+[bar/top]
+;monitor = ${env:MONITOR}
+;monitor-strict = true
+width = 100%
+height = 35
+bottom = false
+offset-x = 0
+offset-y = 0
+
+spacing = 1
+padding-left = 0
+padding-right = 1
+
+; Number of spaces to add before/after each module
+; Individual side values can be defined using:
+;   module-margin-{left,right}
+module-margin = 1
+;module-margin-left = 1
+;module-margin-right = 2
+
+; The separator will be inserted between the output of each module
+separator = |
+
+background = ${colors.background-top}
+foreground = ${colors.foreground-top}
+
+overline-size = 0
+;overline-color = #f00
+underline-size = 5
+underline-color = ${colors.base16-blue}
+
+font-0 = Hack:style=Regular:size=11;1
+font-1 = Symbola:fontformat=truetype:size=11;1
+font-2 = Font Awesome:fontformat=truetype:size=11;1
+
+;border-bottom-size = 0
+;border-bottom-color = ${colors.background}
+
+; Position of the system tray window
+; If empty or undefined, tray support will be disabled
+; NOTE: A center aligned tray will cover center aligned modules
+;
+; Available positions:
+;   left
+;   center
+;   right
+tray-position = left
+
+; If true, the bar will not shift its
+; contents when the tray changes
+tray-detached = false
+
+; Tray icon max size
+tray-maxsize = 24
+
+; Enable pseudo transparency
+; Will automatically be enabled if a fully transparent
+; background color is defined using `tray-background`
+tray-transparent = false
+
+; Background color for the tray container
+; By default the tray container will use the bar
+; background color.
+; Note: 32 bit alpha blending is not supported.
+tray-background = ${root.background}
+
+; Tray offset defined as pixel value (e.g. 35) or percentage (e.g. 50%)
+tray-offset-x = 0
+tray-offset-y = 0
+
+; Pad the sides of each tray icon
+tray-padding = 0
+
+; Scale factor for tray clients
+tray-scale = 1.0
+
+; Prefer fixed center position for the `modules-center` block
+; When false, the center position will be based on the size of the other blocks.
+fixed-center = true
+
+wm-name = topbar
+
+modules-left = title
+modules-center = bspwm
+modules-right = pkg reddwatch backlight battery date filesystem-menu volume power-menu-improved
+
+[module/backlight]
+include-file = ~/.config/polybar/backlight.polybar
+
+[module/battery]
+include-file = ~/.config/polybar/battery.polybar
+
+[module/bspwm]
+include-file = ~/.config/polybar/bspwm.polybar
+
+[module/date]
+include-file = ~/.config/polybar/date.polybar
+
+[module/filesystem-menu]
+include-file = ~/.config/polybar/filesystem-menu.polybar
+
+[module/mpd]
+include-file = ~/.config/polybar/mpd.polybar
+
+[module/network]
+include-file = ~/.config/polybar/network.polybar
+
+[module/pkg]
+include-file = ~/.config/polybar/pkg.polybar
+
+[module/power]
+include-file = ~/.config/polybar/power.polybar
+
+[module/power-menu]
+include-file = ~/.config/polybar/power-menu.polybar
+
+[module/power-menu-improved]
+include-file = ~/.config/polybar/power-menu-improved.polybar
+
+[module/reddwatch]
+include-file = ~/.config/polybar/reddwatch.polybar
+
+[module/song]
+include-file = ~/.config/polybar/song.polybar
+
+[module/title]
+type = internal/xwindow
+label-maxlen = 25
+format-padding = 5
+format-foregroud = #4F5B47
+
+[module/volume]
+include-file = ~/.config/polybar/volume.polybar
+; include-file = ~/.config/polybar/vol.polybar
+
+; vim:ft=dosini

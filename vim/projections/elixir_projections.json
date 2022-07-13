@@ -1,0 +1,18 @@
+{
+  "README.md": {"type": "doc"},
+  "config/*.exs": {"type": "config"},
+  "mix.exs": {"type": "mix"},
+  "test/*_test.exs": {
+    "type":      "test",
+    "alternate": "lib/{}.ex"
+  },
+  "lib/*.ex": {
+    "type":      "source",
+    "alternate": "test/{}_test.exs"
+  },
+  "*.exs": {
+    "console":  "iex",
+    "dispatch": "mix test"
+  }
+}
+

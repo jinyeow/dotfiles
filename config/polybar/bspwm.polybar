@@ -1,0 +1,76 @@
+type = internal/bspwm
+
+; Only show workspaces defined on the same output as the bar
+; NOTE: The bspwm and XRandR monitor names must match, which they do by default.
+; Default: true
+pin-workspaces = true
+
+; Output mode flags after focused state label
+; Default: false
+inline-mode = false
+
+; Create click handler used to focus workspace
+; Default: true
+enable-click = true
+
+; Create scroll handlers used to cycle workspaces
+; Default: true
+enable-scroll = false
+
+; Set the scroll cycle direction
+; Default: true
+reverse-scroll = false
+
+; Use fuzzy (partial) matching on labels when assigning
+; icons to workspaces
+; Example: code;♚ will apply the icon to all workspaces
+; containing 'code' in the label
+; Default: false
+fuzzy-match = false
+
+; Available tags:
+;   <label-monitor>
+;   <label-state> - gets replaced with <label-(focused|urgent|occupied|empty)>
+;   <label-mode> - gets replaced with <label-(monocle|tiled|fullscreen|floating|locked|sticky|private)>
+; Default: <label-state>
+format = <label-state>
+
+; This is using circle-thin from Font Awesome 4 and below.
+; Use this icon for 'label-focused-empty' and 'label-empty' as well.
+ws-icon-default = 
+
+; From Font Awesome 5 use circle-notch OR use 'circle' with the Regular style
+; ws-icon-default = 
+; ws-icon-default = %{T5}%{T-}
+
+label-focused-occupied = 
+;label-visible-occupied-underline = ${colors.white}
+label-focused-occupied-foreground = ${colors.base16-blue}
+label-focused-occupied-underline = ${colors.base16-blue}
+label-focused-occupied-padding = 1
+
+label-focused-empty = %{T2}%{T-}
+;label-visible-empty-underline = ${colors.white}
+label-focused-empty-foreground = ${colors.base16-blue}
+label-focused-empty-underline = ${colors.base16-blue}
+label-focused-empty-padding = 1
+
+label-focused-foreground = ${colors.base16-blue}
+label-focused-underline = ${colors.base16-blue}
+label-focused-padding = 1
+
+label-occupied = 
+label-occupied-foreground = ${colors.white}
+;label-occupied-underline = ${colors.white}
+label-occupied-padding = 1
+
+label-empty = %{T2}%{T-}
+label-empty-foreground = ${colors.white}
+;label-empty-underline = ${colors.white}
+label-empty-padding = 1
+
+label-urgent = 
+label-urgent-foreground = ${colors.red}
+label-urgent-padding = 1
+
+; vim:ft=dosini

@@ -1,0 +1,86 @@
+#!/bin/bash
+
+# Script to add/remove a motd to the shell.
+
+MOTD_DIR="$HOME/.motd.d"
+ADD_CMD="add"
+REM_CMD="remove"
+PRINT_CMD="print"
+HELP_CMD="help"
+
+function help_msg() {
+  echo "USAGE: motd [command] [file|message]"
+  echo "OPTIONS:"
+  echo "  help:   Print this message."
+  echo "  add:    (over)Writes a motd."
+  echo "  append: Appends to the motd."
+  echo "  edit:   Edit the motd."
+  echo "  remove: Remove the motd."
+  echo "  print:  Print the motd."
+}
+
+if (( $# < 1 )); then
+  echo "ERROR: Invalid number of arguments."
+  help_msg
+  exit 1
+fi
+
+# Create the directory if it doesn't exist
+if ! [ -d "$MOTD_DIR" ]; then
+  mkdir "$MOTD_DIR"
+fi
+
+case $1 in
+  add|--add|-a|a)
+    if [ -z "$2" ]; then
+      echo "ERROR: no motd supplied. Please provide a file or message."
+      echo "USAGE: motd $ADD_CMD [file|message]"
+      exit 2
+    elif [ -e "$2" ]; then
+      cat "$2" > "$MOTD_DIR/motd"
+    else
+      echo "$2" > "$MOTD_DIR/motd"
+    fi
+    ;;
+  rm|remove|--remove|-r|r)
+    rm -f "$MOTD_DIR/motd"
+    ;;
+  append|--append|app*)
+    if ! [ -t 0 ]; then
+      echo "$(cat)" >> $MOTD_DIR/motd
+    elif [ -z "$2" ]; then
+      echo "ERROR: no motd supplied."
+    else
+      echo "$2" >> $MOTD_DIR/motd
+    fi
+    ;;
+  print|--print|-p|p)
+    if [ -e "$MOTD_DIR/motd" ]; then
+      cat "$MOTD_DIR/motd"
+    else
+      echo "No motd set."
+    fi
+    ;;
+  help|-h|--help|h)
+    help_msg
+    ;;
+  edit|-e|--edit|e)
+    $EDITOR "$MOTD_DIR/motd"
+    ;;
+  llogin)
+    # 1. newline
+    # 2. last login date
+    # 3. newline
+    # 4. motd ... <--- data starts here
+    data=$(motd print | tail -n +3)
+    echo -e "\nLast Login: $(date)" > "$MOTD_DIR/motd"
+    echo -e "$data" | motd append
+    ;;
+  *)
+    echo "ERROR: $1 is not a valid command."
+    echo "USAGE: motd [$ADD_CMD|$REM_CMD] [message]"
+    exit 3
+    ;;
+esac
+
+exit 0

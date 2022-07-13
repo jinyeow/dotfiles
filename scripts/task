@@ -1,0 +1,205 @@
+#!/usr/bin/env bash
+
+# Script to init and handle add/remove of tasks in a project.
+
+MAX_DEPTH=10
+if [ $(git rev-parse --show-toplevel 2>/dev/null) ]; then
+  ROOTDIR="$(git rev-parse --show-toplevel)"
+  TASKDIR="$ROOTDIR/.tasks"
+else
+  ROOTDIR="$(pwd)"
+  TASKDIR=".tasks"
+fi
+
+function task_find_root () {
+  depth=$1
+  if [ $(git rev-parse --show-toplevel 2>/dev/null) ]; then
+    echo $(git rev-parse --show-toplevel)
+    return 0
+  elif (( $depth > 0 )); then
+    if [[ -d "$TASKDIR" ]]; then
+      echo "$(pwd)"
+      return 0
+    else
+      cd ..
+      task_find_root $(( $depth - 1 ))
+    fi
+  else
+    echo "Not an initialized task list."
+    return 1
+  fi
+}
+
+help_msg () {
+  echo "USAGE: task [command] [task|task number]"
+  echo "COMMANDS:"
+  echo "    init:  Initialize the task directory."
+  echo "    add:   Add a task or tasks."
+  echo "    rm:    Remove a task or tasks."
+  echo "    clear: Clear all tasks."
+  echo "    show:  Print task directory."
+  echo "    list:  List all tasks."
+  echo "    help:  Print this message."
+}
+
+if (( $# < 1 )); then
+  echo "ERROR: invalid number of args."
+  help_msg
+  exit 1
+elif [[ $(task_find_root $MAX_DEPTH) && $? == 0 ]]; then
+  ROOTDIR="$(task_find_root $MAX_DEPTH)"
+  TASKDIR="$ROOTDIR/.tasks"
+fi
+
+task_init_project () {
+  if ! [[ -d "$TASKDIR" ]]; then
+    mkdir "$TASKDIR"
+
+    if [ -e ".gitignore" ]; then
+      echo ".tasks/" >> .gitignore
+    fi
+
+    echo "Initialized tasks list."
+    exit 0
+  else
+    echo "Tasks already initialized."
+    exit 1
+  fi
+}
+
+task_add () {
+  if [ -z "$1" ]; then
+    echo "ERROR: no task supplied. please provide a task."
+    echo "USAGE: task add [task]"
+    exit 2
+  else
+    task_number=$(( $(ls $TASKDIR | sort -n | tail -n 1) + 1 ))
+    for task in "$@"
+    do
+      echo "$task" > "$TASKDIR/$task_number"
+      task_number=$(($task_number + 1))
+    done
+  fi
+}
+
+task_rm () {
+  if [ -z "$1" ]; then
+    echo "ERROR: no task supplied. please provide a task."
+    echo "USAGE: task remove [task]"
+    exit 2
+  fi
+
+  for task in $*
+  do
+    if [ -e "$TASKDIR/$task" ]; then
+      rm -f "$TASKDIR/$task"
+    else
+      echo "ERROR: Cannot remove $task. Task does not exist."
+      exit 3
+    fi
+  done
+
+  task_reorder
+}
+
+task_reorder () {
+  first=$(ls $TASKDIR | sort -n | head -n 1)
+  last=$(ls $TASKDIR | sort -n | tail -n 1)
+
+  if [ ! -z "$first" ] && [ ! -z "$last" ]; then
+    if [ "$first" -gt 1 ]; then
+      first=1
+    fi
+
+    # Determine the missing files
+    for task in $(seq $first $last)
+    do
+      # Find the first missing task
+      if ! [ -e "$TASKDIR/$task" ]; then
+        missing=$task
+        break
+      fi
+    done
+
+    # Only reorder if $missing tasks exist
+    if ! [[ -z "$missing" ]]; then
+      # Reorder/Re-number the task files
+      curr=$missing
+      for task in $(seq $missing $last)
+      do
+        if [ -e "$TASKDIR/$task" ]; then
+          mv "$TASKDIR/$task" "$TASKDIR/$curr"
+          curr=$(($curr + 1))
+        fi
+      done
+    fi
+  fi
+}
+
+task_clear () {
+  rm -f $TASKDIR/*
+  echo "task list cleared."
+}
+
+task_check_dir () {
+  if [ -d $TASKDIR ]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+task_list () {
+  if ! task_check_dir; then
+    echo "Not an initialized task list."
+    exit 1
+  fi
+
+  if (( $(ls $TASKDIR | wc -l) > 0 )); then
+    echo "TASK LIST:"
+    for task in $(ls $TASKDIR/ | sort -n)
+    do
+      task_number=$(echo "$task" | egrep -o "[0-9]+$")
+      task_content=$(cat "$TASKDIR/$task_number")
+      echo "  $task_number. $task_content"
+    done
+  else
+    echo "No tasks."
+  fi
+}
+
+case $1 in
+  init|-i)
+    task_init_project
+    ;;
+  add|-a|--add)
+    shift 1
+    task_add "$@"
+    ;;
+  rm|remove|-r|--remove)
+    shift 1
+    task_rm "$@"
+    ;;
+  clear|-c|--clear)
+    task_clear
+    ;;
+  list|--list|-l)
+    task_list
+    ;;
+  help|-h|--help)
+    help_msg
+    ;;
+  --show-toplevel|show)
+    echo "$TASKDIR"
+    ;;
+  dir|root)
+    echo $ROOTDIR
+    ;;
+  *)
+    "ERROR: invalid command."
+    help_msg
+    exit 2
+    ;;
+esac
+
+exit 0

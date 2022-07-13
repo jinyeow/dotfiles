@@ -1,0 +1,114 @@
+# Snippets for
+# Authored by Trevor Sullivan <trevor@trevorsullivan.net>
+
+# PowerShell Class
+snippet class
+	class {
+		[string] ${1:FirstName}
+	}
+endsnippet
+
+# PowerShell Advanced Function
+snippet function
+	function ${1:name} {
+		[CmdletBinding()]
+		param (
+			[Parameter(Mandatory = $true)]
+			[string] ${2:Param}
+		)
+
+		begin {
+		}
+
+		process {
+		}
+
+		end {
+		}
+	}
+endsnippet
+
+# PowerShell Splatting
+snippet splatting
+	$Params = @{
+		${1:Param1} = '{2:Value1}'
+		${3:Param2} = '{4:Value2}'
+	}
+	${5:CommandName} @Params
+endsnippet
+
+# PowerShell Enumeration
+snippet enum
+	enum ${1:name} {
+		${2:item1}
+		${3:item2}
+	}
+endsnippet
+
+# PowerShell if..then
+snippet if
+	if (${1:condition}) {
+		${2:statement}
+	}
+endsnippet
+
+# PowerShell if..else
+snippet ife
+	if ( ${1:condition} ) {
+		${2}
+	}
+	else {
+		${3}
+	}
+endsnippet
+
+# PowerShell While Loop
+snippet while
+	while (${1:condition}) {
+		${2:statement}
+	}
+endsnippet
+
+# PowerShell Filter..Sort
+snippet filtersort
+	${1:command} | Where-Object -FilterScript { $PSItem.${2:property} -${3:operator} '${4:expression}' } | Sort-Object -Property ${5:sortproperty}
+endsnippet
+
+# PowerShell foreach
+snippet foreach
+	foreach ( $${1:iterator} in $${2:collection} ) {
+		${3:statement}
+	}
+endsnippet
+
+# PowerShell export-csv
+snippet epcsv
+	Export-CSV -NoTypeInformation -Path ${1:path}
+endsnippet
+
+# Powershell Comment Based Help
+snippet help
+	<#
+	.SYNOPSIS
+		${1:Short Description}
+	.DESCRIPTION
+		${2:Full Description}
+	.PARAMETER ${3:Param1}
+		${4: $3 usage}
+	.EXAMPLE
+		${5:Example}
+	.NOTES
+		${6:notes}
+	.LINK
+		${7:online help}
+	#>
+endsnippet
+
+# Powershell switch statement
+snippet switch
+	switch ( ${1:test} ){
+		${2:condition1} { ${3:action} }
+		${4:condition2} { ${5:action} }
+		default { ${6:action} }
+endsnippet
+
