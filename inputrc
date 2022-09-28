@@ -1,8 +1,9 @@
 # Sym link this file to ~/.inputrc to use with shells that use Readline.
 
 # ------------- /etc/inputrc START --------------------------------------------
+$include /etc/inputrc
 # do not bell on tab-completion
-#set bell-style none
+set bell-style none
 
 set meta-flag on
 set input-meta on
@@ -42,3 +43,6 @@ $endif
 # These settings will set vi mode
 set editing-mode vi
 set blink-matching-paren on
+
+# enable case-insensitive tab completion
+set completion-ignore-case On
