@@ -2,6 +2,7 @@
 
 # List of dotfiles/modules:
 # - Bash
+# - Git
 # - Neovim
 # - Tmux
 # - Vim
@@ -29,9 +30,11 @@ while getopts ":fd:D" opt; do
       if [[ $OPTARG == 'all' ]]; then
         modules=(
           bash
-          vim
+          git
           nvim
           tmux
+          vim
+          #zsh
         )
       else
         modules+=($OPTARG)
