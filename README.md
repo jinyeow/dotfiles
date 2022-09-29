@@ -15,6 +15,13 @@ Use `make` to install dotfiles and packages.
 
 Author: [jinyeow](https://github.com/jinyeow)
 
+TODO
+----
+* Combine 'bootstrap.sh' and 'dotfiles-setup.sh'
+* Clean up dotfiles, remove unused, update as needed
+* Add to 'dotfiles-setup.sh' (or the combined one) to mv/backup the existing dotfile (if it exists) BEFORE doing a symlink
+* Add WINDOWS version using PowerShell
+
 Setup Description
 -----------------
 * Bar `polybar`
