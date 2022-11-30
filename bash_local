@@ -1,0 +1,30 @@
+# Bamboo related
+export AZURE_AD_TENANT_ID='b46c165f-dafc-4f6c-8798-3a8f3348e2d4'
+export AZURE_SUBSCRIPTION_DIGITAL='11857cca-8f48-40ac-a79c-05b19cb921ac'
+export AZURE_SUBSCRIPTION_DEVTEST='632680d7-f442-451d-b26f-9deb3cd66be6'
+export bamboo_db_password='WER3nrF2yqAK^3Sw*s'
+
+# re-wrote the script above
+bind '"\C-r": "\C-x1\e^\er"'
+bind -x '"\C-x1": __fzf_history';
+
+__fzf_history ()
+{
+__ehc $(history | fzf --tac --tiebreak=index | perl -ne 'm/^\s*([0-9]+)/ and print "!$1"')
+}
+
+__ehc()
+{
+if
+        [[ -n $1 ]]
+then
+        bind '"\er": redraw-current-line'
+        bind '"\e^": magic-space'
+        READLINE_LINE=${READLINE_LINE:+${READLINE_LINE:0:READLINE_POINT}}${1}${READLINE_LINE:+${READLINE_LINE:READLINE_POINT}}
+        READLINE_POINT=$(( READLINE_POINT + ${#1} ))
+else
+        bind '"\er":'
+        bind '"\e^":'
+fi
+}
+
