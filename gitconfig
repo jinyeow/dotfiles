@@ -21,17 +21,17 @@
   date = relative
 
 [color]
-  ui = auto
   branch = auto
   diff = auto
   grep = auto
   interactive = auto
   status = auto
+  ui = auto
 
 [core]
+  attributesfile = ~/.gitattributes
   editor = vim
   excludesfile = ~/.gitignore
-  attributesfile = ~/.gitattributes
 
   # Treat spaces before tabs and all kinds of trailing whitespace as an error
   # [default] trailing-space: looks for spaces at the end of a line
