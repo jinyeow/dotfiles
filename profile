@@ -1,7 +1,1 @@
-# XDG_CONFIG_HOME="$HOME/.config"
-# PANEL_WM_NAME=bspwm_panel
-# PANEL_FIFO="/tmp/panel-fifo"
-# PANEL_HEIGHT=35
-
-# export PANEL_FIFO PANEL_HEIGHT PANEL_WM_NAME XDG_CONFIG_HOME
-export PATH="$HOME/.rbenv/bin:$PATH"
+test -d "$HOME/.rbenv/bin" && export PATH="$HOME/.rbenv/bin:$PATH" || true
