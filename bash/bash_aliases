@@ -1,29 +1,47 @@
-alias up='cd ..'
-alias vim='nvim'
-
-if which terraform.exe >/dev/null; then
-  alias terraform='terraform.exe'
+# Editor
+if command -v nvim &> /dev/null; then
+    alias vim='nvim'
 fi
 
+# Git
 function git_add_commit_push() {
-  git add . && git commit -m "$1"
-  git push
+    git add . && git commit -m "$1"
+    git push
 }
 
-if ! command -v git &> /dev/null; then
-  if ! command -v sed &> /dev/null; then
-    alias current_branch="git symbolic-ref -q HEAD | sed -e 's|^refs/heads/||'"
-  fi
-  alias ga='git add'
-  alias gacp='git_add_commit_push'
-  alias gap='git add -p' # git add with interactive prompt
-  alias gc='git commit'
-  alias gcm='git commit -m'
-  alias gco='git checkout'
-  alias gd='git diff'
-  alias gdh='git diff HEAD --'
-  alias gl='git lg'
-  alias glo='git log --oneline'
-  alias gp='git push'
-  alias gst='git status'
+if command -v git &> /dev/null; then
+    if command -v sed &> /dev/null; then
+        alias current_branch="git symbolic-ref -q HEAD | sed -e 's|^refs/heads/||'"
+    fi
+    alias ga='git add'
+    alias gacp='git_add_commit_push'
+    alias gap='git add -p' # git add with interactive prompt
+    alias gc='git commit'
+    alias gcm='git commit -m'
+    alias gco='git checkout'
+    alias gd='git diff'
+    alias gdh='git diff HEAD --'
+    alias gl='git lg'
+    alias glo='git log --oneline'
+    alias gp='git push'
+    alias gst='git status'
+fi
+
+# ls
+if command -v exa &> /dev/null; then
+	alias ls='exa'                                                         # ls
+	alias l='exa -lbF --git'                                               # list, size, type, git
+	alias ll='exa -lbGF --git'                                             # long list
+	alias llm='exa -lbGd --git --sort=modified'                            # long list, modified date sort
+	alias la='exa -lbhHigUmuSa --time-style=long-iso --git --color-scale'  # all list
+	alias lx='exa -lbhHigUmuSa@ --time-style=long-iso --git --color-scale' # all + extended list
+
+	# specialty views
+	alias lS='exa -1'                                                      # one column, just names
+	alias lt='exa --tree --level=2'                                        # tree
+fi
+
+# Terraform
+if command -v terraform.exe >/dev/null; then
+  alias terraform='terraform.exe'
 fi
