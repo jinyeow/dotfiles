@@ -1,0 +1,5 @@
+# Can be used instead of ~/.profile, but it is read by bash only.
+# It is not read by any other shell, e.g. sh, zsh, fish
+
+if [ -r ~/.profile ]; then . ~/.profile; fi
+case "$-" in *i*) if [ -r ~/.bashrc ]; then . ~/.bashrc; fi;; esac
