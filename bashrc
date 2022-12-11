@@ -34,12 +34,12 @@ shopt -s globstar
 
 # set variable identifying the chroot you work in (used in the prompt below)
 if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
-  debian_chroot=$(cat /etc/debian_chroot)
+    debian_chroot=$(cat /etc/debian_chroot)
 fi
 
 # set a fancy prompt (non-color, unless we know we "want" color)
 case "$TERM" in
-  xterm-color|*-256color) color_prompt=yes;;
+    xterm-color|*-256color) color_prompt=yes;;
 esac
 
 # uncomment for a colored prompt, if the terminal has the capability; turned
@@ -48,45 +48,51 @@ esac
 force_color_prompt=yes
 
 if [ -n "$force_color_prompt" ]; then
-  if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
-    # We have color support; assume it's compliant with Ecma-48
-    # (ISO/IEC-6429). (Lack of such support is extremely rare, and such
-    # a case would tend to support setf rather than setaf.)
-    color_prompt=yes
-  else
-    color_prompt=
-  fi
+    if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
+        # We have color support; assume it's compliant with Ecma-48
+        # (ISO/IEC-6429). (Lack of such support is extremely rare, and such
+        # a case would tend to support setf rather than setaf.)
+        color_prompt=yes
+    else
+        color_prompt=
+    fi
 fi
 
 # shorten the directory path except for current directory
 function short_pwd {
-  cwd=$(pwd | perl -F/ -ane 'print join( "/", map { $i++ < @F - 1 ?  substr $_,0,1 : $_ } @F)')
-  echo -n $cwd
+    cwd=$(pwd | perl -F/ -ane 'print join( "/", map { $i++ < @F - 1 ?  substr $_,0,1 : $_ } @F)')
+    echo -n $cwd
 }
 
 # get current status of git repo
 function parse_git_dirty {
-  STATUS="$(git status 2> /dev/null)"
-  if [[ $? -ne 0 ]]; then printf "-"; return; else printf "["; fi
-  if echo ${STATUS} | grep -c "renamed:"         &> /dev/null; then printf ">"; else printf ""; fi
-  if echo ${STATUS} | grep -c "branch is ahead:" &> /dev/null; then printf "!"; else printf ""; fi
-  if echo ${STATUS} | grep -c "new file::"       &> /dev/null; then printf "+"; else printf ""; fi
-  if echo ${STATUS} | grep -c "Untracked files:" &> /dev/null; then printf "?"; else printf ""; fi
-  if echo ${STATUS} | grep -c "modified:"        &> /dev/null; then printf "*"; else printf ""; fi
-  if echo ${STATUS} | grep -c "deleted:"         &> /dev/null; then printf "-"; else printf ""; fi
-  printf "]"
+    STATUS="$(git status 2> /dev/null)"
+    if [[ $? -ne 0 ]]; then printf "-"; return; else printf "["; fi
+    if echo ${STATUS} | grep -c "up to date"       &> /dev/null; then printf "="; else printf ""; fi
+    if echo ${STATUS} | grep -c "renamed:"         &> /dev/null; then printf ">"; else printf ""; fi
+    if echo ${STATUS} | grep -c "branch is ahead:" &> /dev/null; then printf "!"; else printf ""; fi
+    if echo ${STATUS} | grep -c "new file::"       &> /dev/null; then printf "+"; else printf ""; fi
+    if echo ${STATUS} | grep -c "Untracked files:" &> /dev/null; then printf "?"; else printf ""; fi
+    if echo ${STATUS} | grep -c "modified:"        &> /dev/null; then printf "*"; else printf ""; fi
+    if echo ${STATUS} | grep -c "deleted:"         &> /dev/null; then printf "-"; else printf ""; fi
+    printf "]"
 }
 
 function parse_git_branch() {
-  # Long form
-  git rev-parse --abbrev-ref HEAD 2> /dev/null
-  # Short form
-  # git rev-parse --abbrev-ref HEAD 2> /dev/null | sed -e 's/.*\/\(.*\)/\1/'
+    # Long form
+    git rev-parse --abbrev-ref HEAD 2> /dev/null
+    # Short form
+    # git rev-parse --abbrev-ref HEAD 2> /dev/null | sed -e 's/.*\/\(.*\)/\1/'
 }
 
-# __export_ps1() {
-#     export PS1="\n[\033[32m\]\w\033[00m\]] (\033[33m\]\$(parse_git_branch)\[\033[31m\]\$(parse_git_dirty)\[\033[00m\]) \n[\u@\h]$ "
-# }
+# Show git prompt only if in git repo.
+function custom_git_ps1() {
+    if [ ! -z $(parse_git_branch) ]; then
+        printf -- "-(%b)" "\033[33m$(parse_git_branch) \033[31m$(parse_git_dirty)\033[00m\033[;32m"
+    else
+        printf ""
+    fi
+}
 
 if [ "$color_prompt" = yes ]; then
     # override default virtualenv indicator in prompt
@@ -100,8 +106,9 @@ if [ "$color_prompt" = yes ]; then
         info_color='\[\033[1;31m\]'
         prompt_symbol=💀
     fi
-    #PS1=$prompt_color'┌──${debian_chroot:+($debian_chroot)──}${VIRTUAL_ENV:+(\[\033[0;1m\]$(basename $VIRTUAL_ENV)'$prompt_color')}('$info_color'\u${prompt_symbol}\h'$prompt_color')-[\[\033[0;1m\]\w'$prompt_color']\n'$prompt_color'└─'$info_color'\$\[\033[0m\] '
-    PS1="$prompt_color┌──${debian_chroot:+($debian_chroot)──}${VIRTUAL_ENV:+(\[\033[0;1m\]$(basename $VIRTUAL_ENV)$prompt_color)}($info_color\u$prompt_color)-[\[\033[0;1m\]\$(short_pwd)$prompt_color] (\033[33m\]\$(parse_git_branch)\[\033[31m\]\$(parse_git_dirty)\[\033[00m\]$prompt_color)\n$prompt_color└─$info_color\$\[\033[0m\] "
+    PS1="$prompt_color┌──${debian_chroot:+($debian_chroot)──}($info_color\u$prompt_color)-[\[\033[0;1m\]\$(short_pwd)$prompt_color]"
+    PS1+="\$(custom_git_ps1)"
+    PS1+="\n$prompt_color└─$info_color\$\[\033[0m\] "
 else
     PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
 fi
@@ -179,7 +186,7 @@ alias l='ls -CF'
 alias la='ls -A'
 alias ll='ls -alF'
 
-alias cp='cp-i'
+alias cp='cp -i'
 alias mv='mv -i'
 alias rm='rm -i'
 
