@@ -16,6 +16,7 @@ if command -v git &> /dev/null; then
     alias ga='git add'
     alias gacp='git_add_commit_push'
     alias gap='git add -p' # git add with interactive prompt
+    alias gb='git branch'
     alias gc='git commit'
     alias gcm='git commit -m'
     alias gco='git checkout'
