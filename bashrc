@@ -186,15 +186,6 @@ alias rm='rm -i'
 test -s $DOTFILES/bash/bash_aliases && source $DOTFILES/bash/bash_aliases || true
 test -s ~/.bash_aliases && source ~/.bash_aliases || true
 
-# Exports
-if command -v vim &> /dev/null; then
-    export GIT_EDITOR=vim
-    export EDITOR=vim
-    export VISUAL=vim
-else
-    export GIT_EDITOR=vi
-fi
-
 ### CUSTOM INSTALLS ###
 # fzf
 if command -v fzf &> /dev/null; then
