@@ -173,10 +173,13 @@ export DOTFILES="$HOME/dotfiles"
 alias up='cd ..'
 
 ## ls
-alias ll='ls -l'
-alias la='ls -la'
-alias lA='ls -A'
 alias l='ls -CF'
+alias la='ls -A'
+alias ll='ls -alF'
+
+alias cp='cp-i'
+alias mv='mv -i'
+alias rm='rm -i'
 
 test -s $DOTFILES/bash/bash_aliases && source $DOTFILES/bash/bash_aliases || true
 test -s ~/.bash_aliases && source ~/.bash_aliases || true
@@ -184,6 +187,8 @@ test -s ~/.bash_aliases && source ~/.bash_aliases || true
 # Exports
 if command -v vim &> /dev/null; then
     export GIT_EDITOR=vim
+    export EDITOR=vim
+    export VISUAL=vim
 else
     export GIT_EDITOR=vi
 fi
