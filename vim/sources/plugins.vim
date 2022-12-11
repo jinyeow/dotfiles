@@ -9,13 +9,8 @@ let plug_path = vim_dotdir . '/common'
 call plug#begin(plug_path . '/plugged')
 
 " => AutoCompletes {{{
-Plug 'neoclide/coc.nvim', {'branch': 'release'}
-Plug 'SirVer/ultisnips'
+" Plug 'neoclide/coc.nvim', {'branch': 'release'}
 Plug 'jiangmiao/auto-pairs'
-
-" Plug 'Raimondi/delimitMate'
-"Plug 'mattn/emmet-vim', { 'for': ['html', 'xml', 'xhtml', 'eelixir', 'eruby', 'jsx'] }
-"Plug 'racer-rust/vim-racer', { 'for': 'rust' }
 " }}}
 " => Browsing/Side-Bars {{{
 Plug 'mbbill/undotree', { 'on': 'UndotreeToggle' }
@@ -42,7 +37,6 @@ Plug 'skbolton/embark'
 " }}}
 " => Git {{{
 Plug 'tpope/vim-fugitive'
-"Plug 'airblade/vim-gitgutter'
 " }}}
 " => Grepping {{{
 Plug 'mhinz/vim-grepper'
@@ -52,19 +46,10 @@ Plug 'mhinz/vim-grepper'
 " Uncomment the languages you need
 if has('win32')
   Plug 'PProvost/vim-ps1'
-elseif has('unix')
-  Plug 'vim-scripts/c.vim',       { 'for': ['c', 'h', 'cpp', 'hpp'] }
-  Plug 'tpope/vim-rails',         { 'for': ['ruby', 'eruby'] }
-  " Plug 'lervag/vimtex',   { 'for': ['tex', 'bib', 'plaintex'] }
-  " NOTE: for these avr syntax files to work use ':set syntax=[avr-syntax-file.vim]'
-  " Plug 'jinyeow/avr.vim', { 'for': 'asm' }
 endif
 
 " NOTE: js/ts support
 Plug 'pangloss/vim-javascript'    " JavaScript support
-Plug 'leafgarland/typescript-vim' " TypeScript syntax
-Plug 'maxmellon/vim-jsx-pretty'   " JS and JSX syntax
-Plug 'jparise/vim-graphql'        " GraphQL syntax
 " }}}
 " => Misc {{{
 Plug 'duggiefresh/vim-easydir'
@@ -78,9 +63,6 @@ Plug 'chrisbra/vim-diff-enhanced'
 Plug 'haya14busa/vim-asterisk'
 Plug 'farmergreg/vim-lastplace'
 
-" NOTE: install for CSS/HTML only.
-" Plug 'lilydjwg/colorizer'
-
 if has('unix')
   Plug 'powerman/vim-plugin-AnsiEsc'
   Plug 'francoiscabrol/ranger.vim'
@@ -90,12 +72,6 @@ endif
 " }}}
 " => Textobj {{{
 Plug 'wellle/targets.vim'
-" Plug 'kana/vim-textobj-user'
-" Plug 'tek/vim-textobj-ruby',     { 'for': ['ruby', 'eruby'] }
-" Plug 'andyl/vim-textobj-elixir', { 'for': ['elixir', 'escript'] }
-" Plug 'bps/vim-textobj-python', { 'for': 'python' }
-" Plug 'kana/vim-textobj-function'
-" Plug 'whatyouhide/vim-textobj-xmlattr'
 " }}}
 " => Tmux {{{
 if has('unix')
@@ -103,10 +79,10 @@ if has('unix')
   Plug 'tmux-plugins/vim-tmux'
 endif
 " }}}
+
 " => UI {{{
 if has('unix') | Plug 'terryma/vim-smooth-scroll' | endif
 Plug 'Yggdroot/indentLine'
-" Plug 'zhamlin/tiler.vim'
 " }}}
 
 " => junegunn Plugins {{{
@@ -116,6 +92,7 @@ Plug 'junegunn/fzf',            { 'do': { -> fzf#install() } }
 Plug 'junegunn/fzf.vim'
 Plug 'junegunn/vim-slash'
 " }}}
+
 " => tpope Plugins {{{
 Plug 'tpope/vim-endwise'
 Plug 'tpope/vim-eunuch'
@@ -130,11 +107,10 @@ Plug 'tpope/vim-ragtag'
 " Plug 'tpope/vim-dispatch'
 
 if has('unix')
-  Plug 'tpop/vim-vinegar' " NOTE: some errors with installing on Windows
+  Plug 'tpope/vim-vinegar' " NOTE: some errors with installing on Windows
 endif
 " }}}
 
 call plug#end()
 
 let g:plug_threads = 80
-

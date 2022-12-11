@@ -113,4 +113,3 @@ if has("autocmd")
     autocmd QuickFixCmdPost [^l]* cwindow
   augroup END " }}}
 endif
-
