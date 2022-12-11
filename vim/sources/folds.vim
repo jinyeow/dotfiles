@@ -50,4 +50,3 @@ nnoremap <silent> [of :<c-u>call <sid>open_folds('enable')<cr>
 nnoremap <silent> ]of :<c-u>call <sid>open_folds('disable')<cr>
 nnoremap <silent> =of :<c-u>call <sid>open_folds(<sid>open_folds('is_active') ?
   \ 'disable' : 'enable')<cr>
-
