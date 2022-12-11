@@ -69,8 +69,10 @@ function parse_git_dirty {
     STATUS="$(git status 2> /dev/null)"
     if [[ $? -ne 0 ]]; then printf "-"; return; else printf "["; fi
     if echo ${STATUS} | grep -c "up to date"       &> /dev/null; then printf "="; else printf ""; fi
+    if echo ${STATUS} | grep -c "branch is ahead"  &> /dev/null; then printf ">"; else printf ""; fi
+    if echo ${STATUS} | grep -c "branch is behind" &> /dev/null; then printf "<"; else printf ""; fi
     if echo ${STATUS} | grep -c "renamed:"         &> /dev/null; then printf ">"; else printf ""; fi
-    if echo ${STATUS} | grep -c "branch is ahead:" &> /dev/null; then printf "!"; else printf ""; fi
+    # if echo ${STATUS} | grep -c "branch is ahead:" &> /dev/null; then printf "!"; else printf ""; fi
     if echo ${STATUS} | grep -c "new file::"       &> /dev/null; then printf "+"; else printf ""; fi
     if echo ${STATUS} | grep -c "Untracked files:" &> /dev/null; then printf "?"; else printf ""; fi
     if echo ${STATUS} | grep -c "modified:"        &> /dev/null; then printf "*"; else printf ""; fi
