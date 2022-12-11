@@ -42,15 +42,15 @@ $PSReadLineOptions = @{
 Set-PSReadLineOption @PSReadLineOptions
 
 Set-PSReadLineKeyHandler -Chord Shift+Tab -Function MenuComplete
-Set-PSReadLineKeyHandler -Chord Ctrl+w -Function BackwardDeleteWord
 Set-PSReadLineKeyHandler -Chord Ctrl+f -Function ForwardChar
 Set-PSReadLineKeyHandler -Chord Ctrl+b -Function BackwardChar
 Set-PSReadLineKeyHandler -Chord Ctrl+f -Function ForwardChar
 Set-PSReadLineKeyHandler -Chord Ctrl+p -Function PreviousHistory
 Set-PSReadLineKeyHandler -Chord Ctrl+n -Function NextHistory
 Set-PSReadLineKeyHandler -Chord Ctrl+Oem4 -Function ViCommandMode # NOTE: see https://github.com/PowerShell/PSReadLine/issues/906#issuecomment-916847040
-Set-PSReadLineKeyHandler -Key Ctrl+a -Function BeginningOfLine
-Set-PSReadLineKeyHandler -Key Ctrl+e -Function EndOfLine
+Set-PSReadLineKeyHandler -Chord Ctrl+a -Function BeginningOfLine
+Set-PSReadLineKeyHandler -Chord Ctrl+e -Function EndOfLine
+Set-PSReadLineKeyHandler -Chord Ctrl+w -Function BackwardDeleteWord
 
 Import-Module Az.Tools.Predictor
 Set-PSReadLineOption -PredictionSource HistoryAndPlugin
@@ -188,8 +188,6 @@ function prompt {
 
   $global:LASTEXITCODE = $currentLastExitCode
 }
-
-Set-PSReadLineOption -EditMode Vi -BellStyle None
 
 # == STARTUP ==
 #if (-Not (Get-Module -ListAvailable -Name Pscx)) {
