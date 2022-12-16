@@ -1132,19 +1132,6 @@ cnoremap <C-r><C-l> <C-r>=getline('.')<CR>
 "=================================================================
 "   Plugins:                                                     =
 "=================================================================
-if has('nvim')
-  " Neovim (~/.local/share/nvim/site/autoload)
-  " $XDG_DATA_HOME = $HOME/.local/share
-  if !filereadable($HOME.'/.local/share/nvim/site/autoload/plug.vim')
-    !curl -fLo $HOME/.local/share/nvim/site/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
-  endif
-else
-  " Vim (~/.vim/autoload)
-  if !filereadable($HOME.'/.vim/autoload/plug.vim')
-    !curl -fLo $HOME/.vim/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
-  endif
-endif
-
 " NOTE: Don't load plugins if plugin manager/plugins not installed.
 if ! empty(globpath(&rtp, 'autoload/plug.vim'))
   " Plugins will be downloaded under the specified directory.
