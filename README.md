@@ -8,21 +8,85 @@
           ▀▀▀ ▀▀    ▀▀▀▀       ▀▀▀▀     ▀▀      ▀▀▀▀▀▀▀▀     ▀▀▀▀     ▀▀▀▀▀    ▀▀▀▀▀▀  
 ```
 
-Overview
+## Overview
 --------
 This is my github repository for my dotfiles.
-Use `make` to install dotfiles and packages.
 
 Author: [jinyeow](https://github.com/jinyeow)
 
-TODO
-----
-* Combine 'bootstrap.sh' and 'dotfiles-setup.sh'
-* Clean up dotfiles, remove unused, update as needed
-* Add to 'dotfiles-setup.sh' (or the combined one) to mv/backup the existing dotfile (if it exists) BEFORE doing a symlink
-* Add WINDOWS version using PowerShell
+## Installation
+### Setup of WSL for Alpine with Nix
+```powershell
+# Enable Hyper-V (for WSL 2) and WSL features for Windows
+Enable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform
+Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
 
-Setup Description
+# use WSL 2 by default
+wsl.exe --set-default-version 2
+```
+Then install Alpine WSL from [Microsoft Store](https://www.microsoft.com/en-gb/p/alpine-wsl/9p804crf0395#activetab=pivot:overviewtab) or [Winget](https://docs.microsoft.com/en-us/windows/package-manager/winget/).
+
+### Bootstrapping Nix in Alpine-WSL
+------------
+```bash
+# Change user to root and install `sudo`
+su -
+apk add --no-cache sudo
+
+# Enable group `wheel` to use `sudo` (this is convention)
+echo '%wheel ALL=(ALL) ALL' > /etc/sudoers.d/wheel
+
+# Add user to the `wheel` group
+adduser <USERNAME> wheel
+
+# Set password for your user. Not set by default in Alpine-WSL
+passwd <USERNAME>
+
+# Return to original user shell
+exit
+
+# Other pre-requisites for Nix
+sudo apk add --no-cache curl xz
+
+# Fetch and execute `nix` install script
+# Single-user installation of Nix
+sh <(curl -L https://nixos.org/nix/install) --no-daemon
+
+# The install script asks you to do the following (there may be differences based on the OS you use):
+echo ". /home/<USERNAME>/.nix-profile/etc/profile.d/nix.sh" >> ~/.profile
+```
+
+### Installation of dotfiles
+------------
+#### Pre-requisites
+1. Install `git` and `ssh` if not installed.
+2. Setup SSH keys and add them to GitHub ssh keys
+
+#### Setup
+```bash
+# Clone dotfiles repository
+$ git clone git@github.com:jinyeow/dotfiles.git $HOME/dotfiles
+
+# Move into dotfiles directory.
+$ cd $HOME/dotfiles
+
+# Run Home Manager
+home-manager switch
+
+# To set `fish` as the login shell (if that is your `$SHELL`)
+sudo echo '/home/<USERNAME>/.nix-profile/bin/fish' >> /etc/shells
+chsh -s /home/<USERNAME>/.nix-profile/bin/fish
+```
+
+## TODO
+----
+* [ ] Setup Home Manager for dotfiles/packages
+* [ ] Combine 'bootstrap.sh' and 'dotfiles-setup.sh' into a single install.sh
+* [ ] Clean up dotfiles, remove unused, update as needed
+* [ ]Add to 'dotfiles-setup.sh' (or the combined one) to mv/backup the existing dotfile (if it exists) BEFORE doing a symlink
+* [ ] Add WINDOWS version using PowerShell
+
+Linux Laptop Setup Description
 -----------------
 * Bar `polybar`
 * Browser `firefox`
@@ -40,19 +104,19 @@ Setup Description
 * Terminal: `alacritty, termite, urxvt`
 * WM: `bspwm`
 
-Installation
+Installation (old)
 ------------
 ```bash
 # Clone repo.
-$. git clone https://www.github.com/jinyeow/dotfiles $HOME/dotfiles
+$ git clone https://www.github.com/jinyeow/dotfiles $HOME/dotfiles
 # Move into dotfiles directory.
-$. cd $HOME/dotfiles
+$ cd $HOME/dotfiles
 # Install official arch packages.
-$. make install
+$ make install
 # Install packages from AUR.
-$. make aur
+$ make aur
 # Symlink configuration files.
-$. make init
+$ make init
 ```
 
 Packages Installed
