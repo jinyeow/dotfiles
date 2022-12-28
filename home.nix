@@ -21,6 +21,7 @@
   
   # Raw configuration files
   home.file.".vimrc".source = ./vimrc;
+  home.file.".gitconfig".source = ./gitconfig;
 
   # This value determines the Home Manager release that your
   # configuration is compatible with. This helps avoid breakage
