@@ -14,18 +14,22 @@
   # Packages to install
   home.packages = [
     # pkgs is the set of all packages in the default home.nix implementation
-    pkgs.bash
+    pkgs.bashInteractive
+    pkgs.coreutils
     pkgs.exa
     pkgs.fzf
     pkgs.go
+    pkgs.htop
     pkgs.jq
     pkgs.neovim
     pkgs.openssh
-    pkgs.readline
     pkgs.ripgrep
     pkgs.tig
+    pkgs.tree
     pkgs.tmux
+    pkgs.unzip
     pkgs.vim
+    pkgs.wget
     pkgs.yq
     pkgs.zoxide
   ];
@@ -39,12 +43,14 @@
   home.file.".tmux.conf".source = ./tmux.conf;
   home.file.".vimrc".source = ./vimrc;
 
+  home.file.".config/nvim/init.vim".source = ./vimrc;
+
   # home.file.".gitconfig".source = ./gitconfig;
 
   # Git config using Home Manager modules
   programs.git = {
     enable = true;
-    userName = "jinyeow";
+    userName = "Justin Puah";
     userEmail = "justin@puah.dev";
     aliases = {
       a = "add";
