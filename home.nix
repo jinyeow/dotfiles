@@ -9,35 +9,40 @@
   # Environment Variables
   home.sessionVariables = {
     EDITOR = "vim";
+    MANPAGER = "nvim +Man! -";
+    LANG = "en_US.UTF-8";
   };
 
   # Packages to install
-  home.packages = [
+  home.packages = with pkgs; [
     # pkgs is the set of all packages in the default home.nix implementation
-    pkgs.bashInteractive
-    pkgs.coreutils
-    pkgs.exa
-    pkgs.fzf
-    pkgs.go
-    pkgs.htop
-    pkgs.jq
-    pkgs.neovim
-    pkgs.openssh
-    pkgs.ripgrep
-    pkgs.tig
-    pkgs.tree
-    pkgs.tmux
-    pkgs.unzip
-    pkgs.vim
-    pkgs.wget
-    pkgs.yq
-    pkgs.zoxide
+    bashInteractive
+    coreutils
+    exa
+    fzf
+    go
+    htop
+    jq
+    ncurses
+    neovim
+    openssh
+    perl
+    ripgrep
+    tig
+    tree
+    tmux
+    unzip
+    vim
+    wget
+    yq
+    zoxide
   ];
   
   # Raw configuration files
   home.file.".bashrc".source = ./bashrc;
   home.file.".bash_aliases".source = ./bash/bash_aliases;
   home.file.".bash_profile".source = ./bash/bash_profile;
+  home.file.".gitignore".source = ./gitignore;
   home.file.".inputrc".source = ./inputrc;
   home.file.".profile".source = ./profile;
   home.file.".tmux.conf".source = ./tmux.conf;
