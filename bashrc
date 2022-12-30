@@ -90,7 +90,7 @@ function parse_git_branch() {
 # Show git prompt only if in git repo.
 function custom_git_ps1() {
     if [ ! -z $(parse_git_branch) ]; then
-        printf -- "-(%b)" "\033[33m$(parse_git_branch) \033[31m$(parse_git_dirty)\033[00m\033[;32m"
+        printf -- "%b" "\033[0;1m on \033[33m$(parse_git_branch) \033[31m$(parse_git_dirty)\033[00m\033[;32m"
     else
         printf ""
     fi
@@ -108,9 +108,9 @@ if [ "$color_prompt" = yes ]; then
         info_color='\[\033[1;31m\]'
         prompt_symbol=💀
     fi
-    PS1="$prompt_color┌──${debian_chroot:+($debian_chroot)──}($info_color\u$prompt_color)-[\[\033[0;1m\]\$(short_pwd)$prompt_color]"
+    PS1="$prompt_color${debian_chroot:+($debian_chroot)──}$info_color\u\[\033[0;1m\] in $prompt_color\$(short_pwd)$prompt_color"
     PS1+="\$(custom_git_ps1)"
-    PS1+="\n$prompt_color└─$info_color\$\[\033[0m\] "
+    PS1+="\n$prompt_color>\[\033[0m\] "
 else
     PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
 fi
