@@ -18,8 +18,11 @@
     # pkgs is the set of all packages in the default home.nix implementation
     bashInteractive
     coreutils
+    dig
     exa
+    fd
     fzf
+    git-extras
     go
     htop
     jq
@@ -27,6 +30,8 @@
     neovim
     openssh
     perl
+    ranger
+    rclone
     ripgrep
     tig
     tree
@@ -55,8 +60,14 @@
       '';
       profileExtra = ''
         ${builtins.readFile ./profile}
+
+        # To let home-manager add bash completions
         export XDG_DATA_DIRS=$HOME/.nix-profile/share:$XDG_DATA_DIRS
       '';
+    };
+
+    bat = {
+      enable = true;
     };
   };
 
