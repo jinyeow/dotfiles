@@ -8,6 +8,7 @@
 
   # Environment Variables
   home.sessionVariables = {
+    dotfiles = "$HOME/dotfiles";
     EDITOR = "vim";
     LANG = "en_US.UTF-8";
     MANPAGER = "nvim +Man! -";
