@@ -55,6 +55,7 @@
       enable = true;
       enableCompletion = true;
       initExtra = ''
+        ${builtins.readFile ./bash/sensible.bash}
         ${builtins.readFile ./bashrc}
         ${builtins.readFile ./bash/bash_aliases}
       '';

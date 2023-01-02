@@ -11,7 +11,7 @@ case $- in
       *) return;;
 esac
 
-test -s ./bash/sensible.bash && source ./bash/sensible.bash || true
+#test -s ./bash/sensible.bash && source ./bash/sensible.bash || true
 
 # don't put duplicate lines or lines starting with space in the history.
 HISTCONTROL=ignoreboth
