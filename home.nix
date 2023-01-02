@@ -5,12 +5,12 @@
   # paths it should manage.
   home.username = "jinyeow";
   home.homeDirectory = "/home/jinyeow";
-  
+
   # Environment Variables
   home.sessionVariables = {
     EDITOR = "vim";
-    MANPAGER = "nvim +Man! -";
     LANG = "en_US.UTF-8";
+    MANPAGER = "nvim +Man! -";
   };
 
   # Packages to install
@@ -39,18 +39,26 @@
   ];
   
   # Raw configuration files
-  home.file.".bashrc".source = ./bashrc;
-  home.file.".bash_aliases".source = ./bash/bash_aliases;
-  home.file.".bash_profile".source = ./bash/bash_profile;
   home.file.".gitignore".source = ./gitignore;
   home.file.".inputrc".source = ./inputrc;
-  home.file.".profile".source = ./profile;
   home.file.".tmux.conf".source = ./tmux.conf;
   home.file.".vimrc".source = ./vimrc;
-
   home.file.".config/nvim/init.vim".source = ./vimrc;
 
-  # home.file.".gitconfig".source = ./gitconfig;
+  programs = {
+    bash = {
+      enable = true;
+      enableCompletion = true;
+      initExtra = ''
+        ${builtins.readFile ./bashrc}
+        ${builtins.readFile ./bash/bash_aliases}
+      '';
+      profileExtra = ''
+        ${builtins.readFile ./profile}
+        export XDG_DATA_DIRS=$HOME/.nix-profile/share:$XDG_DATA_DIRS
+      '';
+    };
+  };
 
   # Git config using Home Manager modules
   programs.git = {

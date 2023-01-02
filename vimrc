@@ -1200,6 +1200,8 @@ if ! empty(globpath(&rtp, 'autoload/plug.vim'))
   Plug 'haya14busa/vim-asterisk'
   Plug 'Yggdroot/indentLine'
 
+  Plug 'LnL7/vim-nix'
+
   call plug#end()
 
   "=================================================================
