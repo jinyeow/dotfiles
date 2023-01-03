@@ -55,6 +55,11 @@ if command -v exa &> /dev/null; then
 fi
 
 # Terraform
-if command -v terraform.exe >/dev/null; then
+if command -v terraform.exe &> /dev/null; then
   alias terraform='terraform.exe'
+fi
+
+# tmux
+if command -v tmux &> /dev/null; then
+  alias tmux='tmux attach || tmux'
 fi
