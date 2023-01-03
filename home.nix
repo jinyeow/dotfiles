@@ -64,7 +64,7 @@
         ${builtins.readFile ./profile}
 
         # To let home-manager add bash completions
-        export XDG_DATA_DIRS=$HOME/.nix-profile/share:$XDG_DATA_DIRS
+        test -d "$HOME/.nix-profile" && export XDG_DATA_DIRS=$HOME/.nix-profile/share:$XDG_DATA_DIRS || true
       '';
     };
 
