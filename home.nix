@@ -19,28 +19,20 @@
     # pkgs is the set of all packages in the default home.nix implementation
     bashInteractive
     coreutils
-    dig
     exa
     fd
     fzf
     git-extras
-    go
     htop
-    jq
     ncurses
-    neovim
     openssh
     perl
-    ranger
     rclone
     ripgrep
-    tig
-    tree
     tmux
     unzip
     vim
     wget
-    yq
     zoxide
   ];
   
