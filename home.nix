@@ -19,6 +19,7 @@
     # pkgs is the set of all packages in the default home.nix implementation
     bashInteractive
     coreutils
+    direnv
     exa
     fd
     fzf

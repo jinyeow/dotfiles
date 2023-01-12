@@ -198,10 +198,24 @@ test -s $DOTFILES/bash/bash_aliases && source $DOTFILES/bash/bash_aliases || tru
 test -s ~/.bash_aliases && source ~/.bash_aliases || true
 
 ### CUSTOM INSTALLS ###
+# direnv
+if command -v direnv &> /dev/null; then
+  eval "$(direnv hook bash)"
+fi
+
+# fastly cli
+if command -v fastly &> /dev/null; then
+  eval "$(fastly --completion-script-bash)"
+fi
+
 # fzf
 if command -v fzf &> /dev/null; then
     test -s $DOTFILES/fzfrc && source $DOTFILES/fzfrc || true
 fi
+
+# nvm
+export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
 
 # zoxide (dir jumping)
 if command -v zoxide &> /dev/null; then
