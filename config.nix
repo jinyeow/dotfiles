@@ -13,6 +13,7 @@
         jq
         neovim
         nginx
+        pwgen
         ranger
         silver-searcher
         tig
