@@ -1212,5 +1212,6 @@ if ! empty(globpath(&rtp, 'autoload/plug.vim'))
   "=================================================================
   "   Plugin Configs:
   "=================================================================
-  colorscheme catppuccin_mocha
+  " colorscheme catppuccin-mocha
+  colorscheme palenight
 endif

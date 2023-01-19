@@ -36,6 +36,7 @@
         ffmpeg
         go
         jq
+        lua
         neovim
         nginx
         nixfmt
