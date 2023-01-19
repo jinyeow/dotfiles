@@ -179,7 +179,7 @@ del_path () {
         sed -e "s;:$1:;:;g" -e "s;^:;;" -e "s;:\$;;"`
 }
 
-export DOTFILES="$HOME/dotfiles"
+export dotfiles="$HOME/dotfiles"
 
 # Alias definitions.
 ## Common
@@ -194,7 +194,7 @@ alias cp='cp -i'
 alias mv='mv -i'
 alias rm='rm -i'
 
-test -s $DOTFILES/bash/bash_aliases && source $DOTFILES/bash/bash_aliases || true
+test -s $dotfiles/bash/bash_aliases && source $dotfiles/bash/bash_aliases || true
 test -s ~/.bash_aliases && source ~/.bash_aliases || true
 
 ### CUSTOM INSTALLS ###
@@ -210,7 +210,7 @@ fi
 
 # fzf
 if command -v fzf &> /dev/null; then
-    test -s $DOTFILES/fzfrc && source $DOTFILES/fzfrc || true
+    test -s $dotfiles/fzfrc && source $dotfiles/fzfrc || true
 fi
 
 # nvm
