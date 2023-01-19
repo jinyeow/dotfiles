@@ -691,7 +691,7 @@ endfunction
 " => COLOR SETTINGS "
 " ------------------"
 
-" set t_co=256
+set t_co=256
 let hour = strftime("%H")
 if 7 <= hour && hour < 18 " i.e. daytime
     set background=light
@@ -1190,6 +1190,7 @@ if ! empty(globpath(&rtp, 'autoload/plug.vim'))
     Plug 'tmux-plugins/vim-tmux'
     Plug 'terryma/vim-smooth-scroll'
     Plug 'tpope/vim-vinegar' " NOTE: some errors with installing on Windows
+    Plug 'LnL7/vim-nix'
   endif
 
   Plug 'henrik/vim-indexed-search'
@@ -1200,12 +1201,16 @@ if ! empty(globpath(&rtp, 'autoload/plug.vim'))
   Plug 'haya14busa/vim-asterisk'
   Plug 'Yggdroot/indentLine'
 
-  Plug 'LnL7/vim-nix'
+  if has('nvim')
+    Plug 'catppuccin/nvim', { 'as': 'catppuccin' }
+  else
+    Plug 'catppuccin/vim', { 'as': 'catppuccin' }
+  endif
 
   call plug#end()
 
   "=================================================================
-  "   Plugin Configs:                                                     =
+  "   Plugin Configs:
   "=================================================================
-  colorscheme palenight
+  colorscheme catppuccin_mocha
 endif

@@ -38,6 +38,7 @@
   ];
   
   # Raw configuration files
+  home.file.".config/direnv/direnv.toml".source = ./config/direnv/direnv.toml;
   home.file.".gitignore".source = ./gitignore;
   home.file.".inputrc".source = ./inputrc;
   home.file.".tmux.conf".source = ./tmux.conf;
