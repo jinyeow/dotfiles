@@ -1200,6 +1200,7 @@ if ! empty(globpath(&rtp, 'autoload/plug.vim'))
   Plug 'chrisbra/vim-diff-enhanced'
   Plug 'haya14busa/vim-asterisk'
   Plug 'Yggdroot/indentLine'
+  " Plug 'her/central.vim' " centralizes backupdir,swapdir,undodir
 
   if has('nvim')
     Plug 'catppuccin/nvim', { 'as': 'catppuccin' }
