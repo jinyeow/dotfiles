@@ -79,6 +79,7 @@
       branches = "branch -a";
       c = "commit";
       co = "checkout";
+      cm = "commit -m";
       ctags = "!.git/hooks/ctags";
       delete = "rm -r --cached";
       discard = "checkout --";
