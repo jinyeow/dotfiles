@@ -38,12 +38,17 @@
   ];
   
   # Raw configuration files
+  home.file.".curlrc".source = ./curlrc;
   home.file.".config/direnv/direnv.toml".source = ./config/direnv/direnv.toml;
   home.file.".gitignore".source = ./gitignore;
   home.file.".inputrc".source = ./inputrc;
+  home.file.".ripgreprc".source = ./ripgreprc;
+  home.file.".tigrc".source = ./tigrc;
+  home.file.".tigrc.vim".source = ./tigrc.vim;
   home.file.".tmux.conf".source = ./tmux.conf;
   home.file.".vimrc".source = ./vimrc;
   home.file.".config/nvim/init.vim".source = ./vimrc;
+  home.file.".wgetrc".source = ./wgetrc;
 
   programs = {
     bash = {

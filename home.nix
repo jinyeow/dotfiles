@@ -43,6 +43,8 @@
   home.file.".gitignore".source = ./gitignore;
   home.file.".inputrc".source = ./inputrc;
   home.file.".ripgreprc".source = ./ripgreprc;
+  home.file.".tigrc".source = ./tigrc;
+  home.file.".tigrc.vim".source = ./tigrc.vim;
   home.file.".tmux.conf".source = ./tmux.conf;
   home.file.".vimrc".source = ./vimrc;
   home.file.".config/nvim/init.vim".source = ./vimrc;
