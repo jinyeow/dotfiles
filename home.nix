@@ -1,10 +1,18 @@
-{ config, pkgs, ... }:
+# Core
+{ config, pkgs, lib, ... }:
 
+let
+  name = "Justin Puah";
+  username = builtins.getEnv "USER";
+  email = "justin@puah.me";
+  devEmail = "justin@puah.dev";
+  hostname = builtins.getEnv "HOSTNAME";
+in
 {
   # Home Manager needs a bit of information about you and the
   # paths it should manage.
-  home.username = "jinyeow";
-  home.homeDirectory = "/home/jinyeow";
+  home.username = username;
+  home.homeDirectory = "/home/${username}";
 
   # Environment Variables
   home.sessionVariables = {
@@ -75,8 +83,8 @@
   # Git config using Home Manager modules
   programs.git = {
     enable = true;
-    userName = "Justin Puah";
-    userEmail = "justin@puah.dev";
+    userName = "${name}";
+    userEmail = lib.mkDefault "${devEmail}";
     aliases = {
       a = "add";
       aliases = "config --get-regexp alias";
@@ -88,6 +96,7 @@
       ctags = "!.git/hooks/ctags";
       delete = "rm -r --cached";
       discard = "checkout --";
+      fa = "fetch --all";
       filediff = "diff --name-status";
       graph = "log --graph -50 --branches --remotes --tags  --format=format:'%Cgreen%h %Creset• <(75,trunc)%s (%cN, %cr) %Cred%d' --date-order";
       ignore = "'!gi() { curl -L -s https://www.gitignore.io/api/$@ ;}; gi'";
@@ -95,14 +104,57 @@
       lg = "log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative";
       remotes = "remote -v";
       s = "status";
+      st = "status";
       stashes = "stash list";
       tags = "tag";
       uncommit = "reset --mixed HEAD~";
       unstage = "reset -q HEAD --";
       unmerged = "diff --name-only --diff-filter=U";
-      test = "status";
+      delete-merged-branches = "!git branch --merged | grep -v \\* | xargs -I % git branch -d %";
     };
+    extraConfig = {
+      core = {
+        excludesfile = "~/.gitignore";
+        preloadindex = "true";
+        untrackedCache = "true";
+      };
+      color = {
+        ui = "auto";
+      };
+      commit = {
+        gpgsign = "false";
+      };
+      diff = {
+        tool = "vimdiff";
+        algorithm = "histogram";
+      };
+      gpg = {
+        program = "gpg";
+      };
+      help = {
+        autocorrect = "1";
+      };
+      push = {
+        default = "simple";
+      };
+      tag = {
+        gpgsign = "false";
+      };
+    };
+    ignores = [
+      "**/&undodir"
+      "**/*.swp"
+      "*.pyc"
+      "**/*.tags"
+      "**/tags"
+      "**Session.vim"
+      "**/_build"
+    ];
   };
+
+  imports = if hostname == "NRL-5CG1380ZN7"
+  then [ ./nix/nrl.nix ]
+  else [ ./nix/null.nix ];
 
   # This value determines the Home Manager release that your
   # configuration is compatible with. This helps avoid breakage
