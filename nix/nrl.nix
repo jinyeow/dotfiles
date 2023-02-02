@@ -1,5 +1,5 @@
 # National Rugby League
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 let
   email = "jpuah@nrl.com.au";
@@ -21,6 +21,6 @@ in
 
   # Git config using Home Manager modules
   programs.git = {
-    userEmail = "${email}";
+    userEmail = lib.mkForce "${email}";
   };
 }

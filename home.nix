@@ -6,7 +6,6 @@ let
   username = builtins.getEnv "USER";
   email = "justin@puah.me";
   devEmail = "justin@puah.dev";
-  hostname = builtins.getEnv "HOSTNAME";
 in
 {
   # Home Manager needs a bit of information about you and the
@@ -152,7 +151,7 @@ in
     ];
   };
 
-  imports = if hostname == "NRL-5CG1380ZN7"
+  imports = if username == "jpuah"
   then [ ./nix/nrl.nix ]
   else [ ./nix/null.nix ];
 
