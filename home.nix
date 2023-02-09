@@ -108,6 +108,7 @@ in
       stashes = "stash list";
       tags = "tag";
       uncommit = "reset --mixed HEAD~";
+      undo = "reset --hard HEAD~";
       unstage = "reset -q HEAD --";
       unmerged = "diff --name-only --diff-filter=U";
       delete-merged-branches = "!git branch --merged | grep -v \\* | xargs -I % git branch -d %";
