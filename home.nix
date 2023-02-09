@@ -95,6 +95,7 @@ in
       cm = "commit -m";
       ctags = "!.git/hooks/ctags";
       delete = "rm -r --cached";
+      delete-merged-branches = "!git branch --merged | grep -v \\* | grep -v deploy/* | xargs -I % git branch -d %";
       discard = "checkout --";
       fa = "fetch --all";
       filediff = "diff --name-status";
@@ -111,7 +112,6 @@ in
       undo = "reset --hard HEAD~";
       unstage = "reset -q HEAD --";
       unmerged = "diff --name-only --diff-filter=U";
-      delete-merged-branches = "!git branch --merged | grep -v \\* | xargs -I % git branch -d %";
     };
     extraConfig = {
       core = {
