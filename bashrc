@@ -11,15 +11,17 @@ case $- in
       *) return;;
 esac
 
+#test -s ./bash/sensible.bash && source ./bash/sensible.bash || true
+
 # don't put duplicate lines or lines starting with space in the history.
-HISTCONTROL=ignoreboth
+HISTCONTROL="erasedups:ignoreboth"
 
 # append to the history file, don't overwrite it
 shopt -s histappend
 
 # for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
-HISTSIZE=10000
-HISTFILESIZE=10000
+HISTSIZE=500000
+HISTFILESIZE=100000
 
 # check the window size after each command and, if necessary,
 # update the values of LINES and COLUMNS.
@@ -48,7 +50,7 @@ esac
 force_color_prompt=yes
 
 if [ -n "$force_color_prompt" ]; then
-    if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
+    if ([ -x /usr/bin/tput ] || [ -x $HOME/.nix-profile/bin/tput ]) && tput setaf 1 >&/dev/null; then
         # We have color support; assume it's compliant with Ecma-48
         # (ISO/IEC-6429). (Lack of such support is extremely rare, and such
         # a case would tend to support setf rather than setaf.)
@@ -90,7 +92,7 @@ function parse_git_branch() {
 # Show git prompt only if in git repo.
 function custom_git_ps1() {
     if [ ! -z $(parse_git_branch) ]; then
-        printf -- "-(%b)" "\033[33m$(parse_git_branch) \033[31m$(parse_git_dirty)\033[00m\033[;32m"
+        printf -- "%b" "\033[0;1m on \033[33m$(parse_git_branch) \033[31m$(parse_git_dirty)\033[00m\033[;32m"
     else
         printf ""
     fi
@@ -108,9 +110,9 @@ if [ "$color_prompt" = yes ]; then
         info_color='\[\033[1;31m\]'
         prompt_symbol=💀
     fi
-    PS1="$prompt_color┌──${debian_chroot:+($debian_chroot)──}($info_color\u$prompt_color)-[\[\033[0;1m\]\$(short_pwd)$prompt_color]"
+    PS1="$prompt_color${debian_chroot:+($debian_chroot)──}$info_color\u\[\033[0;1m\] in $prompt_color\$(short_pwd)$prompt_color"
     PS1+="\$(custom_git_ps1)"
-    PS1+="\n$prompt_color└─$info_color\$\[\033[0m\] "
+    PS1+="\n$prompt_color>\[\033[0m\] "
 else
     PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
 fi
@@ -177,7 +179,7 @@ del_path () {
         sed -e "s;:$1:;:;g" -e "s;^:;;" -e "s;:\$;;"`
 }
 
-export DOTFILES="$HOME/dotfiles"
+export dotfiles="$HOME/dotfiles"
 
 # Alias definitions.
 ## Common
@@ -192,14 +194,28 @@ alias cp='cp -i'
 alias mv='mv -i'
 alias rm='rm -i'
 
-test -s $DOTFILES/bash/bash_aliases && source $DOTFILES/bash/bash_aliases || true
+test -s $dotfiles/bash/bash_aliases && source $dotfiles/bash/bash_aliases || true
 test -s ~/.bash_aliases && source ~/.bash_aliases || true
 
 ### CUSTOM INSTALLS ###
+# direnv
+if command -v direnv &> /dev/null; then
+  eval "$(direnv hook bash)"
+fi
+
+# fastly cli
+if command -v fastly &> /dev/null; then
+  eval "$(fastly --completion-script-bash)"
+fi
+
 # fzf
 if command -v fzf &> /dev/null; then
-    test -s $DOTFILES/fzfrc && source $DOTFILES/fzfrc || true
+    test -s $dotfiles/fzfrc && source $dotfiles/fzfrc || true
 fi
+
+# nvm
+export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
 
 # zoxide (dir jumping)
 if command -v zoxide &> /dev/null; then

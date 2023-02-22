@@ -691,7 +691,7 @@ endfunction
 " => COLOR SETTINGS "
 " ------------------"
 
-" set t_co=256
+set t_co=256
 let hour = strftime("%H")
 if 7 <= hour && hour < 18 " i.e. daytime
     set background=light
@@ -1134,8 +1134,8 @@ cnoremap <C-r><C-l> <C-r>=getline('.')<CR>
 "=================================================================
 " Install vim-plug if not found
 let data_dir = has('nvim') ? stdpath('data') . '/site' : '~/.vim'
-if empty(glob(data_dir . 'autoload/plug.vim'))
-  silent execute '!curl -fLo '.data_dir.'autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
+if empty(glob(data_dir . '/autoload/plug.vim'))
+  silent execute '!curl -fLo '.data_dir.'/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
   " autocmd VimEnter * PlugInstall --sync | source $MYVIMRC
 endif
 
@@ -1190,6 +1190,7 @@ if ! empty(globpath(&rtp, 'autoload/plug.vim'))
     Plug 'tmux-plugins/vim-tmux'
     Plug 'terryma/vim-smooth-scroll'
     Plug 'tpope/vim-vinegar' " NOTE: some errors with installing on Windows
+    Plug 'LnL7/vim-nix'
   endif
 
   Plug 'henrik/vim-indexed-search'
@@ -1199,11 +1200,19 @@ if ! empty(globpath(&rtp, 'autoload/plug.vim'))
   Plug 'chrisbra/vim-diff-enhanced'
   Plug 'haya14busa/vim-asterisk'
   Plug 'Yggdroot/indentLine'
+  " Plug 'her/central.vim' " centralizes backupdir,swapdir,undodir
+
+  if has('nvim')
+    Plug 'catppuccin/nvim', { 'as': 'catppuccin' }
+  else
+    Plug 'catppuccin/vim', { 'as': 'catppuccin' }
+  endif
 
   call plug#end()
 
   "=================================================================
-  "   Plugin Configs:                                                     =
+  "   Plugin Configs:
   "=================================================================
-  colorscheme palenight
+  colorscheme catppuccin-mocha
+  " colorscheme palenight
 endif

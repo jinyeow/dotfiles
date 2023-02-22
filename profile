@@ -41,3 +41,5 @@ else
 fi
 
 test -d "$HOME/.rbenv/bin" && export PATH="$HOME/.rbenv/bin:$PATH" || true
+
+test -s "$HOME/.nix-profile/etc/profile.d/nix.sh" && source $HOME/.nix-profile/etc/profile.d/nix.sh || true

@@ -52,4 +52,6 @@ $if mode=vi
 	set keymap vi-insert
 	"\C-p": history-search-backward # This is needed to fix ctrl-p in vi-mode
 	"\C-n": history-search-forward  # This is needed to fix ctrl-n in vi-mode
+	"\C-a": beginning-of-line
+	"\C-e": end-of-line
 $endif

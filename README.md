@@ -56,11 +56,25 @@ sh <(curl -L https://nixos.org/nix/install) --no-daemon
 echo ". /home/<USERNAME>/.nix-profile/etc/profile.d/nix.sh" >> ~/.profile
 ```
 
+### Installing Home Manager
+[Standalone installation](https://rycee.gitlab.io/home-manager/index.html#sec-install-standalone)
+```bash
+nix-channel --add https://github.com/rycee/home-manager/archive/master.tar.gz home-manager
+nix-channel --update
+
+# On non-NixOS, you may have to add:
+export NIX_PATH=$HOME/.nix-defexpr/channels:/nix/var/nix/profiles/per-user/root/channels${NIX_PATH:+:$NIX_PATH}
+
+nix-shell '<home-manager>' -A install
+
+# Install `git` and `ssh` so we can fetch dotfiles from the web
+nix-env -i git openssh
+```
+
 ### Installation of dotfiles
 ------------
 #### Pre-requisites
-1. Install `git` and `ssh` if not installed.
-2. Setup SSH keys and add them to GitHub ssh keys
+1. Setup SSH keys and add them to GitHub ssh keys
 
 #### Setup
 ```bash
@@ -70,12 +84,16 @@ $ git clone git@github.com:jinyeow/dotfiles.git $HOME/dotfiles
 # Move into dotfiles directory.
 $ cd $HOME/dotfiles
 
-# Run Home Manager
-home-manager switch
+# Remove default created `home.nix` configuration and replace with the our custom one
+ln -s $(pwd)/home.nix $HOME/.config/nixpkgs/home.nix
+
+# Install everything as specified in config (move any existing config files to *.backup versions)
+home-manager switch -b backup
 
 # To set `fish` as the login shell (if that is your `$SHELL`)
-sudo echo '/home/<USERNAME>/.nix-profile/bin/fish' >> /etc/shells
-chsh -s /home/<USERNAME>/.nix-profile/bin/fish
+cd ~
+sudo echo "$(pwd)/.nix-profile/bin/fish" >> /etc/shells
+chsh -s $(pwd)/.nix-profile/bin/fish
 ```
 
 ## TODO
