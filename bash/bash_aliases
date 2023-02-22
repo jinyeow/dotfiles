@@ -1,8 +1,21 @@
 # vi:syntax=sh
 
 # Default
-alias refresh='source ~/.bash_profile'
 alias c='clear'
+alias cp='cp -i'
+alias du1='du -h -d 1'
+alias free='free -m -h'
+alias h='history'
+alias jsonprettify='function _jsonprettify() { python -m json.tool $1; }; _jsonprettify()'
+alias mv='mv -i'
+alias ports='netstat -a | grep -i "listen"'
+alias publicip='curl -q ifconfig.me; echo'
+alias refresh='source ~/.bash_profile'
+alias rm='rm -i'
+alias search='function _search() { grep -r --exclude-dir={.git,.svn} $1 *; }; _search'
+alias to='function _to() { cd "$@" && tree; }; _to'
+alias today='date +"%A, %B %d, %Y"'
+alias weather='function _weather() { curl -q wttr.in/$1; }; _weather'
 alias wget='wget -c'
 
 # Get last command (https://unix.stackexchange.com/a/38075/63527)
