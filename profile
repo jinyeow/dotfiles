@@ -32,7 +32,11 @@ fi
 export XDG_CONFIG_HOME="$HOME/.config"
 
 # vim
-if command -v vim &> /dev/null; then
+if command -v nvim &> /dev/null; then
+    export GIT_EDITOR=nvim
+    export EDITOR=nvim
+    export VISUAL=nvim
+elif command -v vim &> /dev/null; then
     export GIT_EDITOR=vim
     export EDITOR=vim
     export VISUAL=vim
