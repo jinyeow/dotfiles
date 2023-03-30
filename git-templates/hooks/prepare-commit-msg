@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Hook for prepending git commit messages with Jira story IDs
+
 # Include any branches for which you wish to disable this script
 if [ -z "$BRANCHES_TO_SKIP" ]; then
   BRANCHES_TO_SKIP=(master develop staging test deploy/dev deploy/qa deploy/prod deploy/production)
@@ -12,6 +14,6 @@ TRIMMED=$(echo $BRANCH_NAME | sed -e 's:^.*/\([^-]*-[^-]*\)-.*:\1:' -e \
     'y/abcdefghijklmnopqrstuvwxyz/ABCDEFGHIJKLMNOPQRSTUVWXYZ/')
 # If it isn't excluded, preprend the trimmed branch identifier to the given message
 if [ -n "$BRANCH_NAME" ] &&  ! [[ $BRANCH_EXCLUDED -eq 1 ]]; then
-  sed -i.bak -e "1s@^@[$TRIMMED]-@" $1
+  sed -i.bak -e "1s:^:[$TRIMMED]-:" $1
 fi
 
