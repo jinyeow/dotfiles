@@ -22,5 +22,10 @@ in
   # Git config using Home Manager modules
   programs.git = {
     userEmail = lib.mkForce "${email}";
+    extraConfig = {
+      init = {
+        templatedir = "~/dotfiles/git-templates/";
+      };
+    };
   };
 }
