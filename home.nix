@@ -49,6 +49,7 @@ in
   home.file.".config/direnv/direnv.toml".source = ./config/direnv/direnv.toml;
   home.file.".gitignore".source = ./gitignore;
   home.file.".inputrc".source = ./inputrc;
+  home.file.".config/powershell/Microsoft.PowerShell_profile.ps1".source = ./pwsh_profile.ps1;
   home.file.".ripgreprc".source = ./ripgreprc;
   home.file.".tigrc".source = ./tigrc;
   home.file.".tigrc.vim".source = ./tigrc.vim;
