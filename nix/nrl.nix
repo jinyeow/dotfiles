@@ -23,6 +23,9 @@ in
   programs.git = {
     userEmail = lib.mkForce "${email}";
     extraConfig = {
+      core = {
+        hooksPath = "~/dotfiles/git-templates/hooks";
+      };
       init = {
         templatedir = "~/dotfiles/git-templates/";
       };
