@@ -189,6 +189,8 @@ alias up='cd ..'
 alias l='ls -CF'
 alias la='ls -A'
 alias ll='ls -alF'
+alias lsdir='ls -ldTh */'
+alias lsrdir='ls -ldTh **/'
 
 alias cp='cp -i'
 alias mv='mv -i'
