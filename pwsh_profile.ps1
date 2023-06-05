@@ -115,14 +115,15 @@ function dirtrim {
     $consoleWidth = [Console]::WindowWidth
     $maxPath = [int]($consoleWidth / 3)
     if ($currentDirectory.Length -gt $maxPath) {
-        $parents = $currentDirectory -Split '\\'
+        $separator = [IO.Path]::DirectorySeparatorChar
+        $parents = $currentDirectory -Split "\${separator}"
         $drive = $parents[0]
         $leaf = $(Split-Path -Path $currentDirectory -Leaf)
-        $parent = "$($drive)\"
+        $parent = "$($drive)${separator}"
         # Remove the drive and the current directory from list of parent directories
         $parents = $($parents | Select-Object -Skip 1 | Select-Object -SkipLast 1)
         foreach ($p in $parents) {
-            $parent += "$($p[0])\"
+            $parent += "$($p[0])${separator}"
         }
         $currentDirectory = "${parent}${leaf}$($color.Reset)"
         #$currentDirectory = "`u{2026}" + $currentDirectory.SubString($currentDirectory.Length - $maxPath) + "$($color.Reset)"
@@ -208,7 +209,7 @@ function prompt {
     }
 
     $currentDirectory = dirtrim
-    $userName = "$($color.Blue)$Env:UserName$($color.Reset)"
+    $userName = "$($color.Blue)$([string]::IsNullOrEmpty($Env:UserName) ? $Env:USER : $Env:UserName)$($color.Reset)"
 
     "${lastCmdTime}${userName} in ${currentDirectory}${gitBranch}${devBuild}`n${lastExit}PS$($color.Reset)$('>' * ($nestedPromptLevel + 1)) "
 
