@@ -1,6 +1,8 @@
 # gist:4f51b2f23ae8b90e160877e8a8f29bb5
 #Requires -Version 7
 
+Import-Module posh-git
+
 <#
 	Install Scoop:
 	> Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
@@ -81,12 +83,60 @@ Set-PsFzfOption -PSReadlineChordProvider 'Ctrl+f' -PSReadlineChordReverseHistory
 
 # NOTE: taken from - https://gist.github.com/SteveL-MSFT/a208d2bd924691bae7ec7904cab0bd8e
 # == Prompt ==
+function parse_git_dirty {
+    $STATUS = "$(git status)"
+    $output = ''
+    if ([string]::IsNullOrEmpty($STATUS)) {
+        $output += '-'
+        return
+    } else {
+        $output += '['
+    }
+
+    if ($STATUS | Select-String -Pattern 'up to date') { $output += '=' }
+    if ($STATUS | Select-String -Pattern 'branch is ahead') { $output += '>' }
+    if ($STATUS | Select-String -Pattern 'branch is behind') { $output += '<' }
+    if ($STATUS | Select-String -Pattern 'renamed:') { $output += 'R' }
+    if ($STATUS | Select-String -Pattern 'new file:') { $output += '+' }
+    if ($STATUS | Select-String -Pattern 'Untracked files:') { $output += '?' }
+    if ($STATUS | Select-String -Pattern 'modified:') { $output += '*' }
+    if ($STATUS | Select-String -Pattern 'deleted:') { $output += '-' }
+
+    if (-not ([string]::IsNullOrEmpty($STATUS))) {
+        $output += ']'
+    }
+
+    $output
+}
+
+function dirtrim {
+    # truncate the current location if too long
+    $currentDirectory = $executionContext.SessionState.Path.CurrentLocation.Path
+    $consoleWidth = [Console]::WindowWidth
+    $maxPath = [int]($consoleWidth / 3)
+    if ($currentDirectory.Length -gt $maxPath) {
+        $parents = $currentDirectory -Split '\\'
+        $drive = $parents[0]
+        $leaf = $(Split-Path -Path $currentDirectory -Leaf)
+        $parent = "$($drive)\"
+        # Remove the drive and the current directory from list of parent directories
+        $parents = $($parents | Select-Object -Skip 1 | Select-Object -SkipLast 1)
+        foreach ($p in $parents) {
+            $parent += "$($p[0])\"
+        }
+        $currentDirectory = "${parent}${leaf}$($color.Reset)"
+        #$currentDirectory = "`u{2026}" + $currentDirectory.SubString($currentDirectory.Length - $maxPath) + "$($color.Reset)"
+    }
+    "$($color.Green)${currentDirectory}"
+}
+
 function prompt {
     $currentLastExitCode = $LASTEXITCODE
     $lastSuccess = $?
 
     $color = @{
         Reset         = "`e[0m"
+        Blue          = "`e[34;1m"
         Red           = "`e[31;1m"
         Green         = "`e[32;1m"
         Yellow        = "`e[33;1m"
@@ -133,7 +183,7 @@ function prompt {
             # need to do this so the stderr doesn't show up in $error
             $ErrorActionPreferenceOld = $ErrorActionPreference
             $ErrorActionPreference = 'Ignore'
-            $branch = git rev-parse --abbrev-ref --symbolic-full-name '@{u}'
+            $branch = $(git rev-parse --abbrev-ref --symbolic-full-name '@{u}') -replace 'origin/', ''
             $ErrorActionPreference = $ErrorActionPreferenceOld
 
             # handle case where branch is local
@@ -141,24 +191,14 @@ function prompt {
                 $branch = git rev-parse --abbrev-ref HEAD
             }
 
-            $branchColor = $color.Green
+            $branchColor = $color.Yellow
+            $branchStatus = "$(parse_git_dirty)"
 
-            if ($branch -match '/master') {
-                $branchColor = $color.Red
-            }
-            $gitBranch = " $($color.Grey)[$branchColor$branch$($color.Grey)]$($color.Reset)"
+            $gitBranch = " $($color.Grey)on $branchColor$branch $($color.Red)$branchStatus$($color.Reset)"
             break
         }
 
         $path = Split-Path -Path $path -Parent
-    }
-
-    # truncate the current location if too long
-    $currentDirectory = $executionContext.SessionState.Path.CurrentLocation.Path
-    $consoleWidth = [Console]::WindowWidth
-    $maxPath = [int]($consoleWidth / 2)
-    if ($currentDirectory.Length -gt $maxPath) {
-        $currentDirectory = "`u{2026}" + $currentDirectory.SubString($currentDirectory.Length - $maxPath)
     }
 
     # check if running dev built pwsh
@@ -167,7 +207,10 @@ function prompt {
         $devBuild = " $($color.White)$($color.RedBackground)DevPwsh$($color.Reset)"
     }
 
-    "${lastCmdTime}${currentDirectory}${gitBranch}${devBuild}`n${lastExit}PS$($color.Reset)$('>' * ($nestedPromptLevel + 1)) "
+    $currentDirectory = dirtrim
+    $userName = "$($color.Blue)$Env:UserName$($color.Reset)"
+
+    "${lastCmdTime}${userName} in ${currentDirectory}${gitBranch}${devBuild}`n${lastExit}PS$($color.Reset)$('>' * ($nestedPromptLevel + 1)) "
 
     # set window title
     # try {
@@ -214,4 +257,3 @@ $ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
 if (Test-Path($ChocolateyProfile)) {
     Import-Module "$ChocolateyProfile"
 }
-
