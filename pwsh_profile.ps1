@@ -56,19 +56,6 @@ Set-PSReadLineKeyHandler -Chord Ctrl+w -Function BackwardDeleteWord
 Import-Module Az.Tools.Predictor
 Set-PSReadLineOption -PredictionSource HistoryAndPlugin
 
-# == zoxide ==
-# For zoxide v0.8.0+
-Invoke-Expression (& {
-        $hook = if ($PSVersionTable.PSVersion.Major -lt 6) { 'prompt' } else { 'pwd' }
-		(zoxide init --hook $hook powershell | Out-String)
-    })
-
-# # For older versions of zoxide
-# Invoke-Expression (& {
-# 		$hook = if ($PSVersionTable.PSVersion.Major -lt 6) { 'prompt' } else { 'pwd' }
-# 		(zoxide init --hook $hook powershell) -join "`n"
-# 	})
-
 # == PSFzf ==
 #Remove-PSReadLineKeyHandler 'Ctrl+r'
 #Remove-PSReadLineKeyHandler 'Ctrl+t'
@@ -229,6 +216,9 @@ function prompt {
     # 	# do nothing if can't be set
     # }
 
+    # We check if the command exists to not cause errors.
+    if(Test-Path function:/Update-Dotenv) { Dotenv\Update-Dotenv }
+
     $global:LASTEXITCODE = $currentLastExitCode
 }
 
@@ -236,21 +226,30 @@ function prompt {
 #if (-Not (Get-Module -ListAvailable -Name Pscx)) {
 #  Install-Module Pscx -Scope CurrentUser -Force
 #}
+Import-Module Dotenv -ErrorAction SilentlyContinue
+Enable-Dotenv -ErrorAction SilentlyContinue # by default the module is disabled
 
 # == ALIASES ==
 if ($PSVersionTable.PSVersion.Major -eq 5) {
     Remove-Item alias:wget
     Remove-Item alias:curl
 }
+
+Set-Alias c clear -Force
 Set-Alias gcif Get-ChildItem -Force
+Set-Alias nvim vim -Force
 
 # == FUNCTIONS ==
-function Edit-VimRC {
-    vim %HOMEPATH%\_vimrc
-}
-
 function gst {
     git status
+}
+function chocoRefresh {
+    Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+    RefreshEnv
+}
+
+function golangci-lint {
+    docker run --rm -v ${pwd}:/app -v ~/.cache/golangci-lint/1.53.2:/root/.cache -w /app golangci/golangci-lint:v1.53.2 golangci-lint run -v
 }
 
 # == Chocolatey profile
@@ -258,3 +257,5 @@ $ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
 if (Test-Path($ChocolateyProfile)) {
     Import-Module "$ChocolateyProfile"
 }
+# == zoxide ==
+Invoke-Expression (& { (zoxide init powershell | Out-String) })
