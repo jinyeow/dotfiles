@@ -1,9 +1,0 @@
-type             = custom/script
-interval         = 60
-format           = <label>
-format-underline = ${colors.base16-blue}
-label            = %output%
-exec             = ~/.config/polybar/scripts/reddwatch.sh
-exec-if          = test -x $HOME/.rbenv/shims/reddwatch
-
-; vim:ft=dosini

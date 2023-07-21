@@ -1,5 +1,0 @@
-type = custom/script
-exec = mpc | head -1
-interval = 2
-click-left = mpc toggle
-
