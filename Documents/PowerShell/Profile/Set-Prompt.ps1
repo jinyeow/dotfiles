@@ -4,13 +4,13 @@
 # Configuration
 $global:PromptConfig = @{
     ShowUsername = $true
-    MaxPathLength = 50
-    MaxBranchLength = 30
+    MaxPathLength = 30
+    MaxBranchLength = 35
     ShowWorktree = $true
     TimeThresholds = @{
-        Fast = 1      # Green if under 1 second
-        Medium = 5    # Yellow if under 5 seconds
-                      # Red if over 5 seconds
+        Fast = 1    # Green if under 1 second
+        Medium = 5  # Yellow if under 5 seconds
+                    # Red if over 5 seconds
     }
     AsyncTimeout = 100  # Milliseconds to wait for async results
 }
@@ -81,15 +81,45 @@ function Start-AsyncGitStatus {
 
         # Get ahead/behind counts
         $aheadBehind = git rev-list --left-right --count '@{upstream}...HEAD' 2>$null
-        if ($aheadBehind -match '(\d+)\s+(\d+)') {
-            $status.Behind = [int]$matches[1]
-            $status.Ahead = [int]$matches[2]
+        if ($aheadBehind -match '(?<behind>\d+)\s+(?<ahead>\d+)') {
+            $status.Behind = [int]$matches.behind
+            $status.Ahead = [int]$matches.ahead
         }
 
         # Check for changes
         $statusOutput = git status --porcelain 2>$null
         $status.HasChanges = $statusOutput.Length -gt 0
 
+        if ($statusOutput) {
+            $status.HasChanges = $true
+            foreach ($line in $statusOutput) {
+                if ($line.Length -lt 2) { continue }
+                $index = $line[0]
+                $workTree = $line[1]
+                # Check for conflicts (unmerged paths)
+                if ($index -in 'U','A','D' -and $workTree -in 'U','A','D') {
+                    $status.Conflicts++
+                    continue
+                }
+                # Index (staged) status
+                switch ($index) {
+                    'M' { $status.Staged++ }
+                    'A' { $status.Staged++ }
+                    'D' { $status.Staged++ }
+                    'R' { $status.Renamed++ }
+                    'C' { $status.Copied++ }
+                }
+                # Working tree status
+                switch ($workTree) {
+                    'M' { $status.Modified++ }
+                    'D' { $status.Deleted++ }
+                }
+                # Untracked files
+                if ($index -eq '?' -and $workTree -eq '?') {
+                    $status.Untracked++
+                }
+            }
+        }
         return $status
     })
 
@@ -247,6 +277,18 @@ function prompt {
     $lastSuccess = $?
     $lastExit = $LASTEXITCODE
 
+    $color = @{
+        Reset         = "`e[0m"
+        Blue          = "`e[34;1m"
+        Red           = "`e[31;1m"
+        Green         = "`e[32;1m"
+        Yellow        = "`e[33;1m"
+        Grey          = "`e[37;0m"
+        White         = "`e[37;1m"
+        Invert        = "`e[7m"
+        RedBackground = "`e[41m"
+    }
+
     # Calculate execution time
     $executionTime = $null
     if ($global:PromptStopwatch) {
@@ -261,6 +303,9 @@ function prompt {
     if ($pathChanged) {
         $global:PromptCache.LastPath = $currentPath
         # Start new async operations
+    }
+
+    if ($executionTime -gt 5) {
         Start-AsyncGitStatus -Path $currentPath
         Start-AsyncAzureStatus
     }
@@ -320,14 +365,43 @@ function prompt {
         $branchColor = if ($gitStatus.HasChanges) { '31' } else { '33' }
         $prompt += "$([char]27)[${branchColor}m±$shortBranch$([char]27)[0m"
 
-        # Ahead/Behind
-        if ($gitStatus.Ahead -gt 0) {
-            $prompt += " $([char]27)[92m↑$($gitStatus.Ahead)$([char]27)[0m"
-        }
-        if ($gitStatus.Behind -gt 0) {
-            $prompt += " $([char]27)[91m↓$($gitStatus.Behind)$([char]27)[0m"
+        # Upstream status (ahead/behind)
+        if ($gitStatus.Ahead -gt 0 -and $gitStatus.Behind -gt 0) {
+            $statusIndicators += "$([char]27)[93m↕$([char]27)[0m"  # Yellow for diverged
+        } elseif ($gitStatus.Ahead -gt 0) {
+            $statusIndicators += "$([char]27)[92m↑$($gitStatus.Ahead)$([char]27)[0m"
+        } elseif ($gitStatus.Behind -gt 0) {
+            $statusIndicators += "$([char]27)[91m↓$($gitStatus.Behind)$([char]27)[0m"
+        } else {
+            $statusIndicators += "$([char]27)[92m=$([char]27)[0m"  # Up to date
         }
 
+        # File status indicators
+        if ($gitStatus.Conflicts -gt 0) {
+            $statusIndicators += "$([char]27)[91m!$($gitStatus.Conflicts)$([char]27)[0m"  # Conflicts
+        }
+        if ($gitStatus.Staged -gt 0) {
+            $statusIndicators += "$([char]27)[92m+$($gitStatus.Staged)$([char]27)[0m"  # Staged (green)
+        }
+        if ($gitStatus.Modified -gt 0) {
+            $statusIndicators += "$([char]27)[93m*$($gitStatus.Modified)$([char]27)[0m"  # Modified (yellow)
+        }
+        if ($gitStatus.Deleted -gt 0) {
+            $statusIndicators += "$([char]27)[91m-$($gitStatus.Deleted)$([char]27)[0m"  # Deleted (red)
+        }
+        if ($gitStatus.Renamed -gt 0) {
+            $statusIndicators += "$([char]27)[96mR$($gitStatus.Renamed)$([char]27)[0m"  # Renamed (cyan)
+        }
+        if ($gitStatus.Copied -gt 0) {
+            $statusIndicators += "$([char]27)[96mC$($gitStatus.Copied)$([char]27)[0m"  # Copied (cyan)
+        }
+        if ($gitStatus.Untracked -gt 0) {
+            $statusIndicators += "$([char]27)[95m?$($gitStatus.Untracked)$([char]27)[0m"  # Untracked (magenta)
+        }
+
+        if ($statusIndicators) {
+            $prompt += " $statusIndicators"
+        }
         # Worktree
         if ($PromptConfig.ShowWorktree -and $gitStatus.IsWorktree) {
             $prompt += " $([char]27)[95m[wt:$($gitStatus.WorktreePath)]$([char]27)[0m"
@@ -363,7 +437,29 @@ function prompt {
         } else {
             '91' # Red
         }
-        $prompt += "$([char]27)[${timeColor}m⏱️ $($executionTime.ToString('0.00'))s$([char]27)[0m "
+        # $prompt += "$([char]27)[${timeColor}m⏱️ $($executionTime.ToString('0.00'))s$([char]27)[0m "
+    }
+
+    # Get the execution time of the last command
+    $lastCmdTime = ''
+    $lastCmd = Get-History -Count 1
+    if ($null -ne $lastCmd) {
+        $cmdTime = $lastCmd.Duration.TotalMilliseconds
+        $units = 'ms'
+        $timeColor = $color.Green
+        if ($cmdTime -gt 250 -and $cmdTime -lt 1000) {
+            $timeColor = $color.Yellow
+        } elseif ($cmdTime -ge 1000) {
+            $timeColor = $color.Red
+            $units = 's'
+            $cmdTime = $lastCmd.Duration.TotalSeconds
+            if ($cmdTime -ge 60) {
+                $units = 'm'
+                $cmdTIme = $lastCmd.Duration.TotalMinutes
+            }
+        }
+        $lastCmdTime = "$($color.Grey)[$timeColor$($cmdTime.ToString('#.##'))$units$($color.Grey)]$($color.Reset) "
+        $prompt += "$lastCmdTime"
     }
 
     # Exit code
@@ -375,8 +471,19 @@ function prompt {
         $prompt += "$([char]27)[91m✗$([char]27)[0m "
     }
 
-    # Final prompt character
-    $prompt += "$([char]27)[97m❯$([char]27)[0m "
+    # Check if running in privileged mode or not
+    $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object System.Security.Principal.WindowsPrincipal($identity)
+    $promptCharacter = if ($principal.IsInRole('Administrators')) {
+        '#'
+    } else {
+        '$'
+        # '>'
+        # '❯'
+    }
+
+    # Final prompt character multiplied by the nested level
+    $prompt += "$([char]27)[97m$($promptCharacter * ($NestedPromptLevel + 1))$([char]27)[0m "
 
     # Reset LASTEXITCODE if it was 0
     if ($lastExit -eq 0) {
@@ -391,3 +498,4 @@ $global:PromptStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
 Write-Host "Advanced PowerShell prompt loaded!" -ForegroundColor Green
 Write-Host "Configuration available in `$PromptConfig" -ForegroundColor Cyan
+
