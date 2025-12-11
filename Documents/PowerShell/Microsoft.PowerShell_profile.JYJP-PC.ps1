@@ -1,21 +1,13 @@
 # gist:4f51b2f23ae8b90e160877e8a8f29bb5
 #Requires -Version 7
+
+# For documentation purposes of required modules. Disabled to speed up PROFILE start time
+$null = @'
 #Requires -Module @{ ModuleName = 'PSReadLine'; ModuleVersion = '2.2.0' }
-
-using module PSReadLine
-
-Import-Module posh-git
-
-<#
-	Install Scoop:
-	> Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-	> irm get.scoop.sh | iex
-
-	Install Chocolatey
-	> Set-ExecutionPolicy Bypass -Scope Process -Force; \
-		[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; \
-		iex ((New-Object System.Net.WebClient).DownloadString(‘https://community.chocolatey.org/install.ps1'))
-#>
+#Requires -Module 'PSFzf'
+#Requires -Module 'posh-git'
+#Requires -Module 'Az.Tools.Predictor'
+'@
 
 # === PSReadLine ===
 if (Get-Module -ListAvailable -Name 'PsReadLine' -ErrorAction SilentlyContinue) {
@@ -69,13 +61,10 @@ if (Get-Module -ListAvailable -Name 'PsReadLine' -ErrorAction SilentlyContinue) 
     Set-PSReadLineKeyHandler -Chord Ctrl+u -Function BackwardDeleteLine
 }
 
-Import-Module Az.Tools.Predictor
 Set-PSReadLineOption -PredictionSource HistoryAndPlugin
 
 # == PSFzf ==
-Import-Module PSFzf -Force -ErrorAction SilentlyContinue
-
-if (Get-Module -ListAvailable -Name 'PsFzf' -ErrorAction SilentlyContinue) {
+if (Get-Module -ListAvailable -Name 'PSFzf' -ErrorAction SilentlyContinue) {
     Set-Alias -Name frg -Value Invoke-PsFzfRipgrep
 
     # Replace standard TAB completion
@@ -123,13 +112,6 @@ if ($null -ne (Get-Command -Name az -ErrorAction SilentlyContinue)) {
     }
 }
 
-# == STARTUP ==
-#if (-Not (Get-Module -ListAvailable -Name Pscx)) {
-#  Install-Module Pscx -Scope CurrentUser -Force
-#}
-Import-Module Dotenv -ErrorAction SilentlyContinue
-Enable-Dotenv -ErrorAction SilentlyContinue # by default the module is disabled
-
 # == ALIASES ==
 if ($PSVersionTable.PSVersion.Major -eq 5) {
     Remove-Item alias:wget
@@ -143,14 +125,6 @@ Set-Alias gcif Get-ChildItem -Force
 # == FUNCTIONS ==
 function gst {
     git status
-}
-function chocoRefresh {
-    Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
-    RefreshEnv
-}
-
-function golangci-lint {
-    docker run --rm -v ${pwd}:/app -v ~/.cache/golangci-lint/1.53.2:/root/.cache -w /app golangci/golangci-lint:v1.53.2 golangci-lint run -v
 }
 
 function which ($command) {
@@ -174,6 +148,5 @@ if ($null -ne (Get-Command -Name zoxide -ErrorAction SilentlyContinue)) {
 }
 
 #f45873b3-b655-43a6-b217-97c00aa0db58 PowerToys CommandNotFound module
-
 Import-Module -Name Microsoft.WinGet.CommandNotFound
 #f45873b3-b655-43a6-b217-97c00aa0db58
