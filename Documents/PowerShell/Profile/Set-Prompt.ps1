@@ -34,7 +34,6 @@ $ExecutionContext.InvokeCommand.CommandNotFoundAction = {
 
 # Use PowerShell's built-in prompt timing
 $null = [System.Diagnostics.Stopwatch]::StartNew()
-
 function Start-AsyncGitStatus {
     param([string]$Path)
 
@@ -341,12 +340,10 @@ function prompt {
     $prompt = ""
 
     # Windows Terminal directory tracking (must be first)
-    # $prompt += "`e]9;9;`"$($PWD.Path)`"`e\"
-    $out = ''
+    $loc = Get-Location
     if ($loc.Provider.Name -eq 'FileSystem') {
-        $out += "$([char]27)]9;9;`"$($loc.ProviderPath)`"$([char]27)\"
+        $prompt += "$([char]27)]9;9;`"$($loc.ProviderPath)`"$([char]27)\"
     }
-    $prompt += "${out}"
 
 
     # Username
