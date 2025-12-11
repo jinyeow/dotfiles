@@ -3,6 +3,7 @@
 
 # Configuration
 $global:PromptConfig = @{
+    AsyncCheckWaitTime = 3
     ShowUsername = $true
     MaxPathLength = 30
     MaxBranchLength = 35
@@ -47,7 +48,7 @@ function Start-AsyncGitStatus {
 
     $runspace = [runspacefactory]::CreateRunspace()
     $runspace.Open()
-    $runspace.SessionStateProxy.Path.SetLocation($Path)
+    $null = $runspace.SessionStateProxy.Path.SetLocation($Path)
 
     $ps = [powershell]::Create()
     $ps.Runspace = $runspace
@@ -168,7 +169,8 @@ function Start-AsyncAzureStatus {
         # Check Azure CLI
         if (Get-Command az -ErrorAction SilentlyContinue) {
             try {
-                $cliAccount = az account show --query "{account:user.name, subscription:name}" -o json 2>$null | ConvertFrom-Json
+                $cliAccount = az account show --query "{account:user.name, subscription:name}" -o json 2>$null |
+                    ConvertFrom-Json
                 if ($cliAccount) {
                     $azStatus.CLIAccount = $cliAccount.account
                     $azStatus.CLISubscription = $cliAccount.subscription
@@ -248,13 +250,13 @@ function Get-ShortenedPath {
         $middle += "$($parent[0])$([IO.Path]::DirectorySeparatorChar)"
     }
 
-    $shortened = "$first\$middle$last"
+    $shortened = "$first$([IO.Path]::DirectorySeparatorChar)$middle$last"
 
     # If still too long, truncate the last part
     if ($shortened.Length -gt $MaxLength) {
         $maxLast = $MaxLength - $first.Length - $middle.Length - 5
         $last = $last.Substring(0, [Math]::Max(1, $maxLast)) + '...'
-        $shortened = "$first\$middle$last"
+        $shortened = "$first$([IO.Path]::DirectorySeparatorChar)$middle$last"
     }
 
     return $shortened
@@ -302,9 +304,11 @@ function prompt {
     if ($pathChanged) {
         $global:PromptCache.LastPath = $currentPath
         # Start new async operations
+        Start-AsyncGitStatus -Path $currentPath
+        Start-AsyncAzureStatus
     }
 
-    if ($executionTime -gt 5) {
+    if ($executionTime -gt $PromptConfig.AsyncCheckWaitTime) {
         Start-AsyncGitStatus -Path $currentPath
         Start-AsyncAzureStatus
     }
@@ -370,7 +374,8 @@ function prompt {
         } elseif ($gitStatus.Behind -gt 0) {
             $statusIndicators += "$([char]27)[91m↓$($gitStatus.Behind)$([char]27)[0m"
         } else {
-            $statusIndicators += "$([char]27)[92m=$([char]27)[0m"  # Up to date
+            # No indicator required if up to date
+            # $statusIndicators += "$([char]27)[92m=$([char]27)[0m"  # Up to date
         }
 
         # File status indicators
@@ -489,6 +494,7 @@ function prompt {
 
     return $prompt
 }
+
 
 # Initialize stopwatch
 $global:PromptStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
