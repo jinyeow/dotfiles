@@ -1,0 +1,13 @@
+#!/bin/bash
+
+GLOBAL_HOOK_LOCATION="$HOME/.git_templates/hooks"
+LOCAL_HOOK_LOCATION="$(git rev-parse --show-toplevel)/.git/hooks"
+ADO_PS_HOOK_FILENAME="prepare-commit-msg.ado.ps1"
+if [ -f "$GLOBAL_HOOK_LOCATION/$ADO_PS_HOOK_FILENAME" ]; then
+    pwsh -NoProfile -File "$GLOBAL_HOOK_LOCATION/$ADO_PS_HOOK_FILENAME" "$1" "$2" "$3"
+elif [ -f "$LOCAL_HOOK_LOCATION/$ADO_PS_HOOK_FILENAME" ]; then
+    pwsh -NoProfile -File "$LOCAL_HOOK_LOCATION/$ADO_PS_HOOK_FILENAME" "$1" "$2" "$3"
+else
+    echo "ERROR: Cannot find $ADO_PS_HOOK_FILENAME in global or local hooks locations."
+    exit 1
+fi
