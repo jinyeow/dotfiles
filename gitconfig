@@ -4,9 +4,9 @@
     amend = commit --amend
     branches = branch -a
     c = commit
-    cached = git diff --cached
+    cached = diff --cached
     co = checkout
-    conflicts = git diff --name-only --diff-filter=U
+    conflicts = diff --name-only --diff-filter=U
     ctags = !.git/hooks/ctags
     delete = rm -r --cached
     discard = checkout --
@@ -18,12 +18,12 @@
     ignore = '!gi() { curl -L -s https://www.gitignore.io/api/$@ ;}; gi'
     last = log -1 HEAD --format=format:"%Cred%H"
     lg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative
-    listconflicts = git diff --name-only --diff-filter=U
+    listconflicts = diff --name-only --diff-filter=U
     remotes = remote -v
     s = status --short
     st = status
     sp = status --porcelain
-    staged = git diff --staged
+    staged = diff --staged
     stashes = stash list
     tags = tag
     uncommit = reset --mixed HEAD~
@@ -54,12 +54,13 @@
 [core]
     attributesfile = ~/.gitattributes
     autocrlf = false
+    commitGraph = true
     editor = nvim
     excludesfile = ~/.gitignore
     fsmonitor = true
     hooksPath = ~/.git_templates/hooks
     ignoreCase = true
-	longpaths = true
+    longpaths = true
     pager = delta
     # Speed up commands involving untracked files such as `git status`.
     # https://git-scm.com/docs/git-update-index#_untracked_cache
@@ -95,8 +96,9 @@
 
 [fetch]
     # automatically delete remote tracking branches that have been deleted
-	prune = true
+    prune = true
     prunetags = true
+    writeCommitGraph = true
 
 [gpg]
     # allow you to sign commits with SSH keys
@@ -114,7 +116,7 @@
     diffFilter = delta --color-only
 
 [i18n]
-	filesEncoding = utf-8
+    filesEncoding = utf-8
 
 [log]
     date = iso
@@ -123,7 +125,7 @@
 [merge]
     # https://www.ductile.systems/zdiff3/
     conflictstyle = zdiff3
-	guitool = vscode
+    guitool = vscode
     # Include summaries of merged commits in newly created merge commit messages
     log = true
     # tool = nvim
@@ -135,7 +137,7 @@
 
 [pull]
     ff = only
-	rebase = false
+    rebase = false
 
 [push]
     autoSetupRemote = true

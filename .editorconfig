@@ -14,7 +14,7 @@ insert_final_newline = true
 [.{,ba}sh*]
 indent_size = 4
 
-[.git*]
+[.git*,git*]
 indent_size = 4
 
 [*.json{,c}]
