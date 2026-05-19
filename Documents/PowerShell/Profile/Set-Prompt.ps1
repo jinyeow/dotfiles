@@ -1,504 +1,441 @@
-# Advanced PowerShell Prompt Configuration
-# Add this to your PowerShell profile ($PROFILE)
+# ============================================================================
+# Set-Prompt.ps1 — Event-driven prompt with sync git + async Az context
+# ============================================================================
+# Git:  synchronous (fast enough for interactive use)
+# Az:   async via long-lived runspace, refreshed every 60 seconds
+# ============================================================================
 
-# Configuration
-$global:PromptConfig = @{
-    AsyncCheckWaitTime = 3
-    ShowUsername = $true
-    MaxPathLength = 30
+# --- Computed-once constants ------------------------------------------------
+$global:PromptConst = @{
+    IsAdmin = ([System.Security.Principal.WindowsPrincipal](
+        [System.Security.Principal.WindowsIdentity]::GetCurrent()
+    )).IsInRole('Administrators')
+
+    # ANSI escape sequences
+    ESC          = [char]27
+    Reset        = "`e[0m"
+    Bold         = "`e[1m"
+    Blue         = "`e[34m"
+    BrightBlue   = "`e[94m"
+    Red          = "`e[91m"
+    Green        = "`e[92m"
+    Yellow       = "`e[93m"
+    Cyan         = "`e[36m"
+    Magenta      = "`e[95m"
+    BrightCyan   = "`e[96m"
+    Grey         = "`e[37m"
+    White        = "`e[97m"
+    DimWhite     = "`e[37;2m"
+
+    # Prompt settings
+    MaxPathLength   = 30
     MaxBranchLength = 35
-    ShowWorktree = $true
-    TimeThresholds = @{
-        Fast = 1    # Green if under 1 second
-        Medium = 5  # Yellow if under 5 seconds
-                    # Red if over 5 seconds
-    }
-    AsyncTimeout = 100  # Milliseconds to wait for async results
+    ShowWorktree    = $true
+    ShowUsername     = $true
 }
 
-# Global cache for async results
+# --- Az context async infrastructure ---------------------------------------
 $global:PromptCache = @{
-    GitStatus = $null
-    AzureStatus = $null
-    LastPath = $null
-    GitRunspace = $null
-    AzureRunspace = $null
+    AzContext       = $null       # cached result hashtable
+    AzRunspace      = $null       # runspace info hashtable
+    AzTimerDisposed = $false
 }
 
-# Track command execution time
-$global:CommandStartTime = $null
+function Start-AzContextRefresh {
+    <#
+    .SYNOPSIS
+    Fires a background runspace to fetch Get-AzContext. Non-blocking.
+    Safe to call repeatedly — disposes previous runspace if still running.
+    #>
 
-# Pre-command: Record start time
-$ExecutionContext.InvokeCommand.CommandNotFoundAction = {
-    param($commandName, $eventArgs)
-}
+    # Bail if Az.Accounts isn't available
+    if (-not $global:ProfileModules['Az.Accounts']) { return }
 
-# Use PowerShell's built-in prompt timing
-$null = [System.Diagnostics.Stopwatch]::StartNew()
-function Start-AsyncGitStatus {
-    param([string]$Path)
-
-    # Clean up previous runspace if it exists
-    if ($global:PromptCache.GitRunspace) {
+    # Clean up previous if exists
+    if ($global:PromptCache.AzRunspace) {
         try {
-            $global:PromptCache.GitRunspace.PowerShell.Dispose()
-            $global:PromptCache.GitRunspace.Runspace.Dispose()
+            $global:PromptCache.AzRunspace.PowerShell.Stop()
+            $global:PromptCache.AzRunspace.PowerShell.Dispose()
+            $global:PromptCache.AzRunspace.Runspace.Dispose()
         } catch {}
+        $global:PromptCache.AzRunspace = $null
     }
 
     $runspace = [runspacefactory]::CreateRunspace()
     $runspace.Open()
-    $null = $runspace.SessionStateProxy.Path.SetLocation($Path)
 
     $ps = [powershell]::Create()
     $ps.Runspace = $runspace
 
+    # UseLocalScope = $true to prevent variable scope creep
     $null = $ps.AddScript({
-        if (-not (Get-Command git -ErrorAction SilentlyContinue)) { return $null }
-
-        $gitDir = git rev-parse --git-dir 2>$null
-        if (-not $gitDir) { return $null }
-
-        $status = @{
-            Branch = $null
-            Ahead = 0
-            Behind = 0
-            HasChanges = $false
-            IsWorktree = $false
-            WorktreePath = $null
-        }
-
-        # Get branch name
-        $branch = git rev-parse --abbrev-ref HEAD 2>$null
-        $status.Branch = $branch
-
-        # Check if it's a worktree
-        $gitCommonDir = git rev-parse --git-common-dir 2>$null
-        if ($gitDir -ne $gitCommonDir) {
-            $status.IsWorktree = $true
-            $status.WorktreePath = Split-Path (git rev-parse --show-toplevel 2>$null) -Leaf
-        }
-
-        # Get ahead/behind counts
-        $aheadBehind = git rev-list --left-right --count '@{upstream}...HEAD' 2>$null
-        if ($aheadBehind -match '(?<behind>\d+)\s+(?<ahead>\d+)') {
-            $status.Behind = [int]$matches.behind
-            $status.Ahead = [int]$matches.ahead
-        }
-
-        # Check for changes
-        $statusOutput = git status --porcelain 2>$null
-        $status.HasChanges = $statusOutput.Length -gt 0
-
-        if ($statusOutput) {
-            $status.HasChanges = $true
-            foreach ($line in $statusOutput) {
-                if ($line.Length -lt 2) { continue }
-                $index = $line[0]
-                $workTree = $line[1]
-                # Check for conflicts (unmerged paths)
-                if ($index -in 'U','A','D' -and $workTree -in 'U','A','D') {
-                    $status.Conflicts++
-                    continue
-                }
-                # Index (staged) status
-                switch ($index) {
-                    'M' { $status.Staged++ }
-                    'A' { $status.Staged++ }
-                    'D' { $status.Staged++ }
-                    'R' { $status.Renamed++ }
-                    'C' { $status.Copied++ }
-                }
-                # Working tree status
-                switch ($workTree) {
-                    'M' { $status.Modified++ }
-                    'D' { $status.Deleted++ }
-                }
-                # Untracked files
-                if ($index -eq '?' -and $workTree -eq '?') {
-                    $status.Untracked++
+        try {
+            Import-Module Az.Accounts -ErrorAction Stop
+            $ctx = Get-AzContext -ErrorAction Stop
+            if ($ctx) {
+                @{
+                    Account      = $ctx.Account.Id
+                    Subscription = $ctx.Subscription.Name
+                    TenantId     = $ctx.Tenant.Id
+                    Environment  = $ctx.Environment.Name
+                    Timestamp    = [datetime]::Now
                 }
             }
+        } catch {
+            $null
         }
-        return $status
-    })
+    }, $true)
 
     $handle = $ps.BeginInvoke()
 
-    $global:PromptCache.GitRunspace = @{
+    $global:PromptCache.AzRunspace = @{
         PowerShell = $ps
-        Runspace = $runspace
-        Handle = $handle
+        Runspace   = $runspace
+        Handle     = $handle
     }
 }
 
-function Start-AsyncAzureStatus {
-    # Clean up previous runspace if it exists
-    if ($global:PromptCache.AzureRunspace) {
+function Update-AzPrompt {
+    <#
+    .SYNOPSIS
+    Manually trigger an Az context refresh. Call after Connect-AzAccount.
+    #>
+    Start-AzContextRefresh
+    Write-Host 'Az context refresh triggered.' -ForegroundColor Cyan
+}
+
+function Get-AzAsyncResult {
+    <#
+    .SYNOPSIS
+    Non-blocking check for Az context result. Returns cached value if not ready.
+    #>
+    $info = $global:PromptCache.AzRunspace
+    if (-not $info) { return $global:PromptCache.AzContext }
+
+    if ($info.Handle.IsCompleted) {
         try {
-            $global:PromptCache.AzureRunspace.PowerShell.Dispose()
-            $global:PromptCache.AzureRunspace.Runspace.Dispose()
+            $result = $info.PowerShell.EndInvoke($info.Handle)
+            if ($result) {
+                $global:PromptCache.AzContext = $result
+            }
+        } catch {} finally {
+            try {
+                $info.PowerShell.Dispose()
+                $info.Runspace.Dispose()
+            } catch {}
+            $global:PromptCache.AzRunspace = $null
+        }
+    }
+
+    return $global:PromptCache.AzContext
+}
+
+# --- Az context auto-refresh timer (60s) ------------------------------------
+function Initialize-AzTimer {
+    # Idempotent: unregister existing before re-registering
+    # NOTE: Get-EventSubscriber -SourceIdentifier does NOT support wildcards,
+    #       so we filter with Where-Object. Use -Force to find -SupportEvent subs.
+    Get-EventSubscriber -Force -ErrorAction SilentlyContinue |
+        Where-Object { $_.SourceIdentifier -like 'Profile.Az*' } |
+        Unregister-Event -Force
+
+    # Dispose previous timer object if reloading profile
+    if ($global:PromptCache.AzTimer) {
+        $global:PromptCache.AzTimer.Stop()
+        $global:PromptCache.AzTimer.Dispose()
+        $global:PromptCache.AzTimer = $null
+    }
+
+    if (-not $global:ProfileModules['Az.Accounts']) { return }
+
+    $timer = [System.Timers.Timer]::new(60000)  # 60 seconds
+    $timer.AutoReset = $true
+
+    # The -Action scriptblock of Register-ObjectEvent runs in a separate runspace
+    # and cannot see functions from the main session. We bridge back via New-Event
+    # which fires a custom engine event handled by Register-EngineEvent below.
+    Register-ObjectEvent -InputObject $timer -EventName Elapsed `
+        -SourceIdentifier 'Profile.AzTimer.Elapsed' `
+        -Action { New-Event -SourceIdentifier 'Profile.AzRefreshRequested' } `
+        -SupportEvent | Out-Null
+
+    # This handler runs in the main session where Start-AzContextRefresh is visible
+    Register-EngineEvent -SourceIdentifier 'Profile.AzRefreshRequested' `
+        -Action { Start-AzContextRefresh } | Out-Null
+
+    $timer.Start()
+    $global:PromptCache.AzTimer = $timer
+
+    # Fire initial refresh immediately
+    Start-AzContextRefresh
+}
+
+# Clean up on exit (idempotent for . $PROFILE reloads)
+# -SupportEvent subscribers are hidden; -Force is required to find and unregister them
+Get-EventSubscriber -Force -ErrorAction SilentlyContinue |
+    Where-Object { $_.SourceIdentifier -eq 'PowerShell.Exiting' -and $_.SupportEvent } |
+    Unregister-Event -Force
+Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action {
+    if ($global:PromptCache.AzTimer) {
+        $global:PromptCache.AzTimer.Stop()
+        $global:PromptCache.AzTimer.Dispose()
+    }
+    if ($global:PromptCache.AzRunspace) {
+        try {
+            $global:PromptCache.AzRunspace.PowerShell.Stop()
+            $global:PromptCache.AzRunspace.PowerShell.Dispose()
+            $global:PromptCache.AzRunspace.Runspace.Dispose()
         } catch {}
     }
+} -SupportEvent | Out-Null
 
-    $runspace = [runspacefactory]::CreateRunspace()
-    $runspace.Open()
+# --- Git helpers (synchronous) ----------------------------------------------
+function Get-GitPromptInfo {
+    <#
+    .SYNOPSIS
+    Returns a hashtable with git status info, or $null if not in a repo.
+    All git calls are synchronous — fast enough for interactive prompt.
+    Uses 3 git processes total: rev-parse (combined), rev-list, status.
+    #>
 
-    $ps = [powershell]::Create()
-    $ps.Runspace = $runspace
+    # Single rev-parse call: branch, git-dir, git-common-dir
+    # Fails entirely if not in a repo, so this doubles as the gate check
+    $revParts = git rev-parse --abbrev-ref HEAD --git-dir --git-common-dir 2>$null
+    if ($LASTEXITCODE -ne 0 -or -not $revParts) { return $null }
 
-    $null = $ps.AddScript({
-        $azStatus = @{
-            PowerShellAccount = $null
-            PowerShellSubscription = $null
-            CLIAccount = $null
-            CLISubscription = $null
-        }
+    # rev-parse returns one value per line
+    $revLines = @($revParts)
+    $branch      = $revLines[0]
+    $gitDir      = if ($revLines.Count -gt 1) { $revLines[1] } else { $null }
+    $gitCommonDir = if ($revLines.Count -gt 2) { $revLines[2] } else { $null }
 
-        # Check Azure PowerShell
-        if (Get-Command Get-AzContext -ErrorAction SilentlyContinue) {
-            try {
-                $context = Get-AzContext -ErrorAction SilentlyContinue
-                if ($context) {
-                    $azStatus.PowerShellAccount = $context.Account.Id
-                    $azStatus.PowerShellSubscription = $context.Subscription.Name
-                }
-            } catch {}
-        }
-
-        # Check Azure CLI
-        if (Get-Command az -ErrorAction SilentlyContinue) {
-            try {
-                $cliAccount = az account show --query "{account:user.name, subscription:name}" -o json 2>$null |
-                    ConvertFrom-Json
-                if ($cliAccount) {
-                    $azStatus.CLIAccount = $cliAccount.account
-                    $azStatus.CLISubscription = $cliAccount.subscription
-                }
-            } catch {}
-        }
-
-        return $azStatus
-    })
-
-    $handle = $ps.BeginInvoke()
-
-    $global:PromptCache.AzureRunspace = @{
-        PowerShell = $ps
-        Runspace = $runspace
-        Handle = $handle
+    $info = @{
+        Branch     = $branch
+        IsWorktree = $false
+        Ahead      = 0
+        Behind     = 0
+        Staged     = 0
+        Modified   = 0
+        Deleted    = 0
+        Untracked  = 0
+        Conflicts  = 0
+        Renamed    = 0
+        HasChanges = $false
     }
+
+    # Worktree detection: git-dir differs from git-common-dir in linked worktrees
+    if ($gitDir -and $gitCommonDir -and ($gitDir -ne $gitCommonDir)) {
+        $info.IsWorktree = $true
+    }
+
+    # Ahead/behind
+    $ab = git rev-list --left-right --count '@{upstream}...HEAD' 2>$null
+    if ($LASTEXITCODE -eq 0 -and $ab -match '(\d+)\s+(\d+)') {
+        $info.Behind = [int]$Matches[1]
+        $info.Ahead  = [int]$Matches[2]
+    }
+
+    # Porcelain status parse
+    $status = git status --porcelain 2>$null
+    if ($status) {
+        $info.HasChanges = $true
+        foreach ($line in $status) {
+            if ($line.Length -lt 2) { continue }
+            $idx = $line[0]
+            $wt  = $line[1]
+
+            # Untracked
+            if ($idx -eq '?' -and $wt -eq '?') { $info.Untracked++; continue }
+
+            # Conflicts (unmerged)
+            if ($idx -in 'U','A','D' -and $wt -in 'U','A','D') { $info.Conflicts++; continue }
+
+            # Staged
+            switch ($idx) {
+                'M' { $info.Staged++ }
+                'A' { $info.Staged++ }
+                'D' { $info.Staged++ }
+                'R' { $info.Renamed++ }
+            }
+
+            # Working tree
+            switch ($wt) {
+                'M' { $info.Modified++ }
+                'D' { $info.Deleted++ }
+            }
+        }
+    }
+
+    return $info
 }
 
-function Get-AsyncResult {
-    param(
-        [hashtable]$RunspaceInfo,
-        [int]$TimeoutMs
-    )
-
-    if (-not $RunspaceInfo) { return $null }
-
-    try {
-        $completed = $RunspaceInfo.Handle.AsyncWaitHandle.WaitOne($TimeoutMs)
-
-        if ($completed) {
-            $result = $RunspaceInfo.PowerShell.EndInvoke($RunspaceInfo.Handle)
-            $RunspaceInfo.PowerShell.Dispose()
-            $RunspaceInfo.Runspace.Dispose()
-            return $result
-        } else {
-            # Still running, return null and let it continue
-            return $null
-        }
-    } catch {
-        # Error occurred, clean up
-        try {
-            $RunspaceInfo.PowerShell.Dispose()
-            $RunspaceInfo.Runspace.Dispose()
-        } catch {}
-        return $null
-    }
-}
-
+# --- Path shortening --------------------------------------------------------
 function Get-ShortenedPath {
-    param([int]$MaxLength = 50)
+    param([int]$MaxLength = 30)
 
     $path = $PWD.Path
-
-    # Replace home directory with ~
     if ($path.StartsWith($HOME)) {
-        $path = $path.Replace($HOME, '~')
+        $path = '~' + $path.Substring($HOME.Length)
     }
 
-    if ($path.Length -le $MaxLength) {
-        return $path
-    }
+    if ($path.Length -le $MaxLength) { return $path }
 
-    # Shorten by keeping first and last parts
-    $parts = $path.Split([IO.Path]::DirectorySeparatorChar)
+    $sep = [IO.Path]::DirectorySeparatorChar
+    $parts = $path.Split($sep)
     if ($parts.Count -le 3) {
         return $path.Substring(0, $MaxLength - 3) + '...'
     }
 
+    # Keep first segment, abbreviate middle to initials, keep last
     $first = $parts[0]
-    $last = $parts[-1]
-    $parents = $($parts |
-        Select-Object -Skip 1 |
-        Select-Object -SkipLast 1)
-    $middle = ''
-    foreach ($parent in $parents) {
-        $middle += "$($parent[0])$([IO.Path]::DirectorySeparatorChar)"
-    }
+    $last  = $parts[-1]
+    $middle = ($parts[1..($parts.Count - 2)] | ForEach-Object { $_[0] }) -join $sep
+    $shortened = "${first}${sep}${middle}${sep}${last}"
 
-    $shortened = "$first$([IO.Path]::DirectorySeparatorChar)$middle$last"
-
-    # If still too long, truncate the last part
     if ($shortened.Length -gt $MaxLength) {
-        $maxLast = $MaxLength - $first.Length - $middle.Length - 5
-        $last = $last.Substring(0, [Math]::Max(1, $maxLast)) + '...'
-        $shortened = "$first$([IO.Path]::DirectorySeparatorChar)$middle$last"
+        $available = $MaxLength - $first.Length - $middle.Length - $sep.Length * 2 - 3
+        if ($available -gt 0) {
+            $last = $last.Substring(0, [Math]::Min($last.Length, $available)) + '...'
+        }
+        $shortened = "${first}${sep}${middle}${sep}${last}"
     }
 
     return $shortened
 }
 
 function Get-ShortenedBranch {
-    param([string]$Branch, [int]$MaxLength = 30)
-
-    if ($Branch.Length -le $MaxLength) {
-        return $Branch
-    }
-
-    # Keep beginning and end
-    $keepLength = [Math]::Floor($MaxLength / 2) - 2
-    return $Branch.Substring(0, $keepLength) + '...' + $Branch.Substring($Branch.Length - $keepLength)
+    param([string]$Branch, [int]$MaxLength = 35)
+    if (-not $Branch -or $Branch.Length -le $MaxLength) { return $Branch }
+    $keep = [Math]::Floor($MaxLength / 2) - 2
+    return $Branch.Substring(0, $keep) + '...' + $Branch.Substring($Branch.Length - $keep)
 }
 
+# --- Prompt function --------------------------------------------------------
 function prompt {
+    # Capture immediately before any commands corrupt these
     $lastSuccess = $?
-    $lastExit = $LASTEXITCODE
+    $savedExit   = $LASTEXITCODE
 
-    $color = @{
-        Reset         = "`e[0m"
-        Blue          = "`e[34;1m"
-        Red           = "`e[31;1m"
-        Green         = "`e[32;1m"
-        Yellow        = "`e[33;1m"
-        Grey          = "`e[37;0m"
-        White         = "`e[37;1m"
-        Invert        = "`e[7m"
-        RedBackground = "`e[41m"
-    }
+    $c = $global:PromptConst
+    $out = [System.Text.StringBuilder]::new(256)
 
-    # Calculate execution time
-    $executionTime = $null
-    if ($global:PromptStopwatch) {
-        $executionTime = $global:PromptStopwatch.Elapsed.TotalSeconds
-    }
-    $global:PromptStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-
-    # Check if path changed or if we don't have cached results
-    $currentPath = $PWD.Path
-    $pathChanged = $currentPath -ne $global:PromptCache.LastPath
-
-    if ($pathChanged) {
-        $global:PromptCache.LastPath = $currentPath
-        # Start new async operations
-        Start-AsyncGitStatus -Path $currentPath
-        Start-AsyncAzureStatus
-    }
-
-    if ($executionTime -gt $PromptConfig.AsyncCheckWaitTime) {
-        Start-AsyncGitStatus -Path $currentPath
-        Start-AsyncAzureStatus
-    }
-
-    # Try to get results from async operations
-    $gitStatus = Get-AsyncResult -RunspaceInfo $global:PromptCache.GitRunspace -TimeoutMs $PromptConfig.AsyncTimeout
-    if ($gitStatus) {
-        $global:PromptCache.GitStatus = $gitStatus
-        $global:PromptCache.GitRunspace = $null
-    } else {
-        # Use cached result if async not complete
-        $gitStatus = $global:PromptCache.GitStatus
-    }
-
-    $azStatus = Get-AsyncResult -RunspaceInfo $global:PromptCache.AzureRunspace -TimeoutMs $PromptConfig.AsyncTimeout
-    if ($azStatus) {
-        $global:PromptCache.AzureStatus = $azStatus
-        $global:PromptCache.AzureRunspace = $null
-    } else {
-        # Use cached result if async not complete
-        $azStatus = $global:PromptCache.AzureStatus
-    }
-
-    # If we still don't have results and no async operation is running, start new ones
-    if (-not $gitStatus -and -not $global:PromptCache.GitRunspace) {
-        Start-AsyncGitStatus -Path $currentPath
-    }
-    if (-not $azStatus -and -not $global:PromptCache.AzureRunspace) {
-        Start-AsyncAzureStatus
-    }
-
-    # Build prompt
-    $prompt = ""
-
-    # Windows Terminal directory tracking (must be first)
+    # --- Windows Terminal CWD tracking (OSC 9;9) ---
     $loc = Get-Location
     if ($loc.Provider.Name -eq 'FileSystem') {
-        $prompt += "$([char]27)]9;9;`"$($loc.ProviderPath)`"$([char]27)\"
+        $null = $out.Append("$($c.ESC)]9;9;`"$($loc.ProviderPath)`"$($c.ESC)\")
     }
 
+    # --- Line 1: user path git az ---
 
     # Username
-    if ($PromptConfig.ShowUsername) {
-        $prompt += "$([char]27)[34m$([Environment]::UserName)$([char]27)[0m "
+    if ($c.ShowUsername) {
+        $null = $out.Append("$($c.Blue)$([Environment]::UserName)$($c.Reset) ")
     }
 
-    # Current path
-    $shortPath = Get-ShortenedPath -MaxLength $PromptConfig.MaxPathLength
-    $prompt += "in $([char]27)[32m$shortPath$([char]27)[0m "
+    # Path
+    $shortPath = Get-ShortenedPath -MaxLength $c.MaxPathLength
+    $null = $out.Append("in $($c.Green)$shortPath$($c.Reset) ")
 
-    # Git information
-    if ($gitStatus) {
-        # Branch
-        $shortBranch = Get-ShortenedBranch -Branch $gitStatus.Branch -MaxLength $PromptConfig.MaxBranchLength
-        $branchColor = if ($gitStatus.HasChanges) { '31' } else { '33' }
-        $prompt += "$([char]27)[${branchColor}m±$shortBranch$([char]27)[0m"
+    # Git
+    $git = Get-GitPromptInfo
+    if ($git -and $git.Branch) {
+        $branchDisplay = Get-ShortenedBranch -Branch $git.Branch -MaxLength $c.MaxBranchLength
+        $branchColor = if ($git.HasChanges) { $c.Red } else { $c.Yellow }
 
-        # Upstream status (ahead/behind)
-        if ($gitStatus.Ahead -gt 0 -and $gitStatus.Behind -gt 0) {
-            $statusIndicators += "$([char]27)[93m↕$([char]27)[0m"  # Yellow for diverged
-        } elseif ($gitStatus.Ahead -gt 0) {
-            $statusIndicators += "$([char]27)[92m↑$($gitStatus.Ahead)$([char]27)[0m"
-        } elseif ($gitStatus.Behind -gt 0) {
-            $statusIndicators += "$([char]27)[91m↓$($gitStatus.Behind)$([char]27)[0m"
+        # wt: prefix for worktrees, ± for normal repos
+        if ($c.ShowWorktree -and $git.IsWorktree) {
+            $null = $out.Append("${branchColor}wt:${branchDisplay}$($c.Reset)")
         } else {
-            # No indicator required if up to date
-            # $statusIndicators += "$([char]27)[92m=$([char]27)[0m"  # Up to date
+            $null = $out.Append("${branchColor}±${branchDisplay}$($c.Reset)")
         }
 
-        # File status indicators
-        if ($gitStatus.Conflicts -gt 0) {
-            $statusIndicators += "$([char]27)[91m!$($gitStatus.Conflicts)$([char]27)[0m"  # Conflicts
-        }
-        if ($gitStatus.Staged -gt 0) {
-            $statusIndicators += "$([char]27)[92m+$($gitStatus.Staged)$([char]27)[0m"  # Staged (green)
-        }
-        if ($gitStatus.Modified -gt 0) {
-            $statusIndicators += "$([char]27)[93m*$($gitStatus.Modified)$([char]27)[0m"  # Modified (yellow)
-        }
-        if ($gitStatus.Deleted -gt 0) {
-            $statusIndicators += "$([char]27)[91m-$($gitStatus.Deleted)$([char]27)[0m"  # Deleted (red)
-        }
-        if ($gitStatus.Renamed -gt 0) {
-            $statusIndicators += "$([char]27)[96mR$($gitStatus.Renamed)$([char]27)[0m"  # Renamed (cyan)
-        }
-        if ($gitStatus.Copied -gt 0) {
-            $statusIndicators += "$([char]27)[96mC$($gitStatus.Copied)$([char]27)[0m"  # Copied (cyan)
-        }
-        if ($gitStatus.Untracked -gt 0) {
-            $statusIndicators += "$([char]27)[95m?$($gitStatus.Untracked)$([char]27)[0m"  # Untracked (magenta)
+        # Upstream indicators
+        if ($git.Ahead -gt 0 -and $git.Behind -gt 0) {
+            $null = $out.Append(" $($c.Yellow)↕$($c.Reset)")
+        } elseif ($git.Ahead -gt 0) {
+            $null = $out.Append(" $($c.Green)↑$($git.Ahead)$($c.Reset)")
+        } elseif ($git.Behind -gt 0) {
+            $null = $out.Append(" $($c.Red)↓$($git.Behind)$($c.Reset)")
         }
 
-        if ($statusIndicators) {
-            $prompt += " $statusIndicators"
-        }
-        # Worktree
-        if ($PromptConfig.ShowWorktree -and $gitStatus.IsWorktree) {
-            $prompt += " $([char]27)[95m[wt:$($gitStatus.WorktreePath)]$([char]27)[0m"
-        }
+        # File status
+        $indicators = [System.Text.StringBuilder]::new(32)
+        if ($git.Conflicts -gt 0) { $null = $indicators.Append(" $($c.Red)!$($git.Conflicts)$($c.Reset)") }
+        if ($git.Staged -gt 0)    { $null = $indicators.Append(" $($c.Green)+$($git.Staged)$($c.Reset)") }
+        if ($git.Modified -gt 0)  { $null = $indicators.Append(" $($c.Yellow)*$($git.Modified)$($c.Reset)") }
+        if ($git.Deleted -gt 0)   { $null = $indicators.Append(" $($c.Red)-$($git.Deleted)$($c.Reset)") }
+        if ($git.Renamed -gt 0)   { $null = $indicators.Append(" $($c.BrightCyan)R$($git.Renamed)$($c.Reset)") }
+        if ($git.Untracked -gt 0) { $null = $indicators.Append(" $($c.Magenta)?$($git.Untracked)$($c.Reset)") }
+        $null = $out.Append($indicators.ToString())
 
-        $prompt += " "
+        $null = $out.Append(' ')
     }
 
-    # Azure status
-    if ($azStatus -and ($azStatus.PowerShellSubscription -or $azStatus.CLISubscription)) {
-        $prompt += "`n$([char]27)[94m☁️ Az:$([char]27)[0m "
+    # --- Line 2 (conditional): Az context + background jobs ---
+    # Only shown when there's something to display
+    $contextLine = [System.Text.StringBuilder]::new(64)
 
-        if ($azStatus.PowerShellSubscription) {
-            $prompt += "$([char]27)[36mPS:$($azStatus.PowerShellSubscription)$([char]27)[0m "
-        }
-
-        if ($azStatus.CLISubscription -and ($azStatus.CLISubscription -ne $azStatus.PowerShellSubscription)) {
-            $prompt += "$([char]27)[36mCLI:$($azStatus.CLISubscription)$([char]27)[0m "
-        }
-
-        $prompt += ""
+    # Az context (non-blocking read of async result)
+    $az = Get-AzAsyncResult
+    if ($az -and $az.Subscription) {
+        $null = $contextLine.Append("$($c.BrightBlue)☁$($c.Reset) ")
+        $null = $contextLine.Append("$($c.Cyan)$($az.Subscription)$($c.Reset) ")
     }
 
-    # New line for execution time and exit code
-    $prompt += "`n"
-
-    # Execution time
-    if ($null -ne $executionTime) {
-        $timeColor = if ($executionTime -lt $PromptConfig.TimeThresholds.Fast) {
-            '92' # Green
-        } elseif ($executionTime -lt $PromptConfig.TimeThresholds.Medium) {
-            '93' # Yellow
-        } else {
-            '91' # Red
-        }
-        # $prompt += "$([char]27)[${timeColor}m⏱️ $($executionTime.ToString('0.00'))s$([char]27)[0m "
+    # Background jobs count
+    $runningJobs = @(Get-Job -State Running).Count
+    if ($runningJobs -gt 0) {
+        $null = $contextLine.Append("$($c.Yellow)⚙ ${runningJobs}$($c.Reset) ")
     }
 
-    # Get the execution time of the last command
-    $lastCmdTime = ''
+    if ($contextLine.Length -gt 0) {
+        $null = $out.Append("`n")
+        $null = $out.Append($contextLine.ToString())
+    }
+
+    # --- Final line: duration status promptchar ---
+    $null = $out.Append("`n")
+
+    # Last command duration
     $lastCmd = Get-History -Count 1
-    if ($null -ne $lastCmd) {
-        $cmdTime = $lastCmd.Duration.TotalMilliseconds
-        $units = 'ms'
-        $timeColor = $color.Green
-        if ($cmdTime -gt 250 -and $cmdTime -lt 1000) {
-            $timeColor = $color.Yellow
-        } elseif ($cmdTime -ge 1000) {
-            $timeColor = $color.Red
-            $units = 's'
-            $cmdTime = $lastCmd.Duration.TotalSeconds
-            if ($cmdTime -ge 60) {
-                $units = 'm'
-                $cmdTIme = $lastCmd.Duration.TotalMinutes
-            }
+    if ($lastCmd) {
+        $ms = $lastCmd.Duration.TotalMilliseconds
+        if ($ms -ge 60000) {
+            $timeStr = "$($lastCmd.Duration.TotalMinutes.ToString('#.##'))m"
+            $timeColor = $c.Red
+        } elseif ($ms -ge 1000) {
+            $timeStr = "$($lastCmd.Duration.TotalSeconds.ToString('#.##'))s"
+            $timeColor = $c.Red
+        } elseif ($ms -ge 250) {
+            $timeStr = "$($ms.ToString('#'))ms"
+            $timeColor = $c.Yellow
+        } else {
+            $timeStr = "$($ms.ToString('#'))ms"
+            $timeColor = $c.Green
         }
-        $lastCmdTime = "$($color.Grey)[$timeColor$($cmdTime.ToString('#.##'))$units$($color.Grey)]$($color.Reset) "
-        $prompt += "$lastCmdTime"
+        $null = $out.Append("$($c.DimWhite)[${timeColor}${timeStr}$($c.DimWhite)]$($c.Reset) ")
     }
 
-    # Exit code
-    if ($null -ne $lastExit -and $lastExit -ne 0) {
-        $prompt += "$([char]27)[91m✗ `$?:$lastExit$([char]27)[0m "
-    } elseif ($lastSuccess) {
-        $prompt += "$([char]27)[92m✓$([char]27)[0m "
+    # Exit status
+    if (-not $lastSuccess) {
+        if ($savedExit -and $savedExit -ne 0) {
+            $null = $out.Append("$($c.Red)✗ $savedExit$($c.Reset) ")
+        } else {
+            $null = $out.Append("$($c.Red)✗$($c.Reset) ")
+        }
     } else {
-        $prompt += "$([char]27)[91m✗$([char]27)[0m "
+        $null = $out.Append("$($c.Green)✓$($c.Reset) ")
     }
 
-    # Check if running in privileged mode or not
-    $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
-    $principal = New-Object System.Security.Principal.WindowsPrincipal($identity)
-    $promptCharacter = if ($principal.IsInRole('Administrators')) {
-        '#'
-    } else {
-        '$'
-        # '>'
-        # '❯'
-    }
+    # Prompt character
+    $promptChar = if ($c.IsAdmin) { '#' } else { '$' }
+    $null = $out.Append("$($c.White)$($promptChar * ($NestedPromptLevel + 1))$($c.Reset) ")
 
-    # Final prompt character multiplied by the nested level
-    $prompt += "$([char]27)[97m$($promptCharacter * ($NestedPromptLevel + 1))$([char]27)[0m "
+    # Restore LASTEXITCODE so git calls in the prompt don't leak
+    $global:LASTEXITCODE = $savedExit
 
-    # Reset LASTEXITCODE if it was 0
-    if ($lastExit -eq 0) {
-        $global:LASTEXITCODE = 0
-    }
-
-    return $prompt
+    return $out.ToString()
 }
 
-
-# Initialize stopwatch
-$global:PromptStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-
-Write-Host "Advanced PowerShell prompt loaded!" -ForegroundColor Green
-Write-Host "Configuration available in `$PromptConfig" -ForegroundColor Cyan
-
+# --- Initialize async Az context -------------------------------------------
+Initialize-AzTimer
