@@ -14,7 +14,7 @@ Machine-specific variants use the suffix `.<HOSTNAME>` before the extension and 
 - `Documents/PowerShell/Microsoft.PowerShell_profile.JYJP-PC.ps1` (home)
 - `Documents/PowerShell/Microsoft.PowerShell_profile.WORK-PC.ps1` (work)
 - `gitconfig` vs `gitconfig.WORK-PC`
-- `config/nvim/init.lua` vs `config/nvim/init.WORK-PC.lua`
+- `config/nvim/` — no per-machine variant yet; use `.<HOSTNAME>` suffix on `init.lua` when needed
 - `git_templates/hooks/prepare-commit-msg` (bash, JIRA-style `PROJ-123`) vs `prepare-commit-msg.WORK-PC` vs `prepare-commit-msg.ado.ps1` (Azure DevOps `#1234`)
 
 When changing behaviour shared across machines, update the base file *and* mirror the change into the `.WORK-PC` variant unless the difference is intentional.
@@ -23,9 +23,11 @@ When changing behaviour shared across machines, update the base file *and* mirro
 
 | Script | Target | Notes |
 |---|---|---|
-| `install.ps1` | Windows | Hardlinks `Documents/PowerShell/Microsoft.PowerShell_profile.ps1` into the three PS profile locations (PS5, VSCode PS, PS7). Backs up existing as `*.bak`. |
-| `install.sh` | VSCode devcontainers | Minimal `cp` of bashrc, gitconfig, nvim, tmux. Not a full install. |
-| `dotfiles-setup.sh` | Linux | `-d <module>` symlinks one of bash/git/nvim/tmux/vim/zsh; `-d all` does the lot. `-f` adds `ln -f`. |
+| `setup.ps1` | Windows | Module-based installer. `-Module neovim,vim,powershell` or `-Module all`. Supports `-DryRun`. |
+| `setup.sh` | Linux / WSL | Module-based installer. `-m neovim,vim,powershell` or `-m all`. Supports `--dry-run`. |
+| `install.ps1` | Windows (legacy) | Old PS profile hardlinker — superseded by `setup.ps1 -Module powershell`. |
+| `install.sh` | VSCode devcontainers (legacy) | Minimal `cp` installer — superseded by `setup.sh`. |
+| `dotfiles-setup.sh` | Linux (legacy) | Module symlinker — superseded by `setup.sh`. |
 | `bootstrap.sh`, `Makefile` | Arch Linux (legacy) | Heavy package install + symlinks; do not run on Windows. |
 
 ## PowerShell profile architecture
@@ -64,133 +66,24 @@ When adding to the profile, classify by cost first — anything that loads .NET 
 
 ## Neovim (`config/nvim/`)
 
-Lua-based, `lazy.nvim` for plugins, `<Space>` as leader. `init.lua` is the active config; `init.WORK-PC.lua` is the work variant. Helpers in `lua/core/functions.lua` and `lua/core/mappings.lua` are loaded first. The standalone `vimrc` at the repo root and the `vim/` directory are the older Vimscript setup — kept for the Linux legacy path, not the active config.
+Modular Lua config targeting Neovim 0.11+. Uses Neovim's built-in package system (`pack/*/start/`) with a lightweight auto-install wrapper — no external plugin manager. LSP is configured via the native `vim.lsp.config` / `vim.lsp.enable` API (not the lspconfig Lua framework).
 
----
-# Claude Code Context — Dotfiles (Neovim Rebuild)
+Load order: `performance` → `user` → `plugins` → `options` → `keymaps` → `autocmds` → `treesitter` → `lsp` → `gitsigns` → `ui`
 
-This file gives Claude Code context on decisions made during the initial build of this dotfiles repo.
-Append this to the existing `CLAUDE.md` in the repo root.
+The `vimrc` at the repo root and the `vim/` directory are the older Vimscript setup — kept as the Linux fallback, not the active Neovim config.
 
----
+### Key decisions (do not reverse without asking)
 
-## Neovim — New Config (In Progress)
+- **Plugin manager**: built-in `pack/*/start/` only. Plugins cloned via `git clone --depth=1` on first launch by `ensure_plugin()` in `plugins.lua`.
+- **LSP API**: `vim.lsp.config` / `vim.lsp.enable` only. Do not use `require('lspconfig').xxx.setup{}`.
+- **`_G.user_config`**: defined in `user.lua`, read by `lsp.lua` and `ui.lua`. Controls `profile` (`full`/`minimal`), LSP tool paths, and sunrise/sunset fallback hours for theme detection.
+- **Profile system**: `NVIM_PROFILE=minimal` disables all plugins and uses a built-in colorscheme. Each module guards itself with an early return so the env var is the only thing to set.
+- **Theme detection**: `ui.lua` queries OS dark/light mode (Windows registry → macOS `defaults` → GNOME `gsettings` → KDE `kreadconfig5`), falls back to `sunrise_hour`/`sunset_hour` from `user.lua`.
+- **`vim.loader.enable()`**: must remain the first line of `performance.lua`.
+- **Bicep filetype**: no built-in Neovim support — autocmd in `lsp.lua` registers `filetype = bicep` for `*.bicep`, only when `bicep_lsp_path` is non-empty.
+- **Azure Pipelines filetype**: `autocmds.lua` sets `filetype = azure-pipelines` for `*.azure-pipelines.yml/yaml` so `azure_pipelines_ls` attaches exclusively and `yamlls` does not compete.
+- **No per-machine variants yet**: single `init.lua` only — no `init.WORK-PC.lua`. Apply the `.<HOSTNAME>` suffix convention when machine-specific behaviour is needed.
 
-A new Neovim configuration is being built from scratch alongside the existing one at `config/nvim/`.
-The new config lives at `nvim/` and is **not yet active**. The existing `config/nvim/` config
-(lazy.nvim-based, documented in the section above) is still the live config and should not be
-modified until explicitly asked.
+### Install
 
-### Why a new config
-
-The new config was designed from first principles with the following goals:
-
-- Use the **built-in package manager** instead of lazy.nvim — intentional preference for native tooling
-- Use the **Neovim 0.11+ native LSP API** (`vim.lsp.config` / `vim.lsp.enable`) instead of the
-  deprecated `require('lspconfig').xxx.setup{}` pattern
-- Modular file structure (`lua/config/*.lua`) so each concern is isolated and easy to maintain
-- Performance-first from the start (`vim.loader.enable()`, disabled unused providers, scoped plugin activation)
-- Tailored language support for the active stack: Bicep, JSON, YAML, PowerShell, Azure DevOps pipelines
-
-### Planned next step
-
-Once the new config is stable, Claude Code will be asked to compare `config/nvim/` and `nvim/`,
-identify anything worth carrying over (keymaps, options, plugin equivalents), and then remove the
-old config. Do not do this automatically — wait to be asked.
-
-### New config location
-
-```
-nvim/                        # new config source (not yet installed)
-├── init.lua
-└── lua/config/
-    ├── performance.lua
-    ├── user.lua
-    ├── plugins.lua
-    ├── options.lua
-    ├── keymaps.lua
-    ├── autocmds.lua
-    ├── treesitter.lua
-    ├── lsp.lua
-    ├── gitsigns.lua
-    └── ui.lua
-```
-
-Install scripts at the repo root copy `nvim/` to the OS config location:
-
-| Script | Platform |
-|---|---|
-| `install.sh` | Linux (`~/.config/nvim`) |
-| `install.ps1` | Windows (`%LOCALAPPDATA%\nvim`) |
-| `install.py` | Cross-platform (Python 3.10+) |
-
-The Python installer exposes `install(source_dir: Path | None)` so it can be called from a future
-dotfiles orchestrator without shelling out.
-
-### Key decisions made (do not reverse without asking)
-
-**Plugin manager — built-in only**
-Do not suggest lazy.nvim. The built-in package manager was chosen deliberately. Plugins are cloned
-via `git clone --depth=1` into `stdpath('data')/site/pack/plugins/start/` on first launch.
-
-**LSP API — `vim.lsp.config` / `vim.lsp.enable`**
-Do not use `require('lspconfig').xxx.setup{}` — deprecated in Neovim 0.11+. nvim-lspconfig is
-still included as a plugin for its server definitions, but the Lua framework is not used.
-
-**`_G.user_config` global**
-Defined in `user.lua`, read by `lsp.lua`. Holds paths to the Bicep Language Server `.dll` and the
-PowerShell Editor Services bundle. Both LSPs are silently skipped if the path is empty string.
-This avoids errors on machines where those tools are not installed.
-
-**Bicep filetype detection**
-Neovim has no built-in `.bicep` filetype support. An autocmd in `lsp.lua` sets
-`filetype = 'bicep'` on `BufNewFile`/`BufRead` for `*.bicep`. Only registered when
-`bicep_lsp_path` is non-empty.
-
-**Azure Pipelines filetype detection**
-`*.azure-pipelines.yml` and `*.azure-pipelines.yaml` are set to `filetype = azure-pipelines`
-in `autocmds.lua` so `azure_pipelines_ls` attaches exclusively and `yamlls` does not compete.
-
-**Python provider kept**
-All other providers (`ruby`, `perl`, `node`) are disabled for startup performance.
-`python3_provider` is retained (`nil`, not `0`) for future AI/ML plugin work.
-
-**render-markdown.nvim scoped**
-Scoped to `file_types = { 'markdown' }` and `render_modes = { 'n', 'v' }`. Does not activate
-in insert mode — intentional for performance.
-
-**`vim.loader.enable()` must remain first**
-This is the first line of `performance.lua`, which is the first module loaded. Do not move it.
-
-**Per-machine convention**
-The existing dotfiles repo uses a `.<HOSTNAME>` suffix convention for machine-specific variants
-(e.g. `init.WORK-PC.lua`). The new config does not yet have work/home variants — this will be
-addressed when the old config is retired and combined.
-
-### Plugins in the new config
-
-| Plugin | Purpose |
-|---|---|
-| nvim-treesitter | Syntax highlighting and text objects |
-| nvim-treesitter-textobjects | Function/class text objects |
-| fzf + fzf.vim | Fuzzy finding |
-| vim-fugitive | Git commands |
-| vim-commentary | Commenting (`gcc`) |
-| vim-repeat | Better `.` repeat |
-| catppuccin | Colour scheme (mocha) |
-| mini.surround | Surround text objects |
-| nvim-lspconfig | LSP server definitions |
-| schemastore.nvim | JSON/YAML schema catalogue |
-| gitsigns.nvim | In-buffer git signs and hunk actions |
-| render-markdown.nvim | In-buffer markdown rendering |
-
-### LSP servers
-
-| Server | Language | Notes |
-|---|---|---|
-| jsonls | JSON | schemastore schemas |
-| yamlls | YAML | schemastore schemas |
-| azure_pipelines_ls | Azure Pipelines YAML | |
-| marksman | Markdown | |
-| bicep | Bicep | requires `bicep_lsp_path` in user.lua |
-| powershell_es | PowerShell | requires `pwsh_bundle_path` in user.lua |
+Installed via `setup.ps1` (Windows) or `setup.sh` (Linux) at the repo root — see the Installation entry points section. The per-tool install scripts inside `config/nvim/` (`install.sh`, `install.ps1`, `install.py`) are an older standalone installer kept for backward compatibility.
