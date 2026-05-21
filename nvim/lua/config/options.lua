@@ -39,8 +39,9 @@ opt.splitbelow = true
 opt.completeopt = 'menu,menuone,noselect'
 opt.backspace   = 'indent,eol,start'
 
-opt.lazyredraw = true
 opt.synmaxcol  = 240
+opt.nrformats  = 'hex'   -- <C-a>/<C-x> increments decimal and hex only, not octal
+opt.showmatch  = true    -- briefly flash matching bracket/paren on insertion
 opt.wildmode   = 'list:longest,full'  -- Tab: fill to longest common prefix + list, then cycle
 
 opt.list      = true
