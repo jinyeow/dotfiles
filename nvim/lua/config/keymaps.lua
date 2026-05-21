@@ -44,9 +44,8 @@ map('n', '<C-u>', '<C-u>zz')
 map('n', 'n',     'nzzzv')
 map('n', 'N',     'Nzzzv')
 
--- File explorer / buffer delete
-map('n', '<C-S-e>',   vim.cmd.Ex,         { desc = 'File explorer' })
-map('n', '<leader>d', '<cmd>bdelete<CR>', { desc = 'Delete buffer' })
+-- File explorer
+map('n', '<C-S-e>', vim.cmd.Ex, { desc = 'File explorer' })
 
 -- Command-line
 -- h expands to vert h only when typed as a standalone command
@@ -60,7 +59,6 @@ if _G.user_config.profile ~= 'minimal' then
   map('n', '<leader>ff', '<cmd>Files<CR>',    { desc = 'Find files' })
   map('n', '<leader>fg', '<cmd>Rg<CR>',       { desc = 'Find in files' })
   map('n', '<leader>fb', '<cmd>Buffers<CR>',  { desc = 'Find buffers' })
-  map('n', '<leader>fh', '<cmd>Help<CR>',     { desc = 'Find help' })
   map('n', '<leader>fc', '<cmd>Commands<CR>', { desc = 'Find commands' })
   map('n', '<leader>fl', '<cmd>Lines<CR>',    { desc = 'Find lines' })
 

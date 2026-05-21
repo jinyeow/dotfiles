@@ -179,7 +179,6 @@ Servers with empty paths are silently skipped.
 | Key | Action |
 |---|---|
 | `<C-S-e>` | File explorer (netrw) |
-| `<leader>d` | Delete buffer |
 | `<Esc>` | Clear search highlight |
 | `<C-h/j/k/l>` | Window navigation |
 | `<S-h>` / `<S-l>` | Previous/next buffer |
@@ -214,7 +213,6 @@ Servers with empty paths are silently skipped.
 | `<leader>ff` | Find files |
 | `<leader>fg` | Grep in files |
 | `<leader>fb` | Find buffers |
-| `<leader>fh` | Find help |
 | `<leader>fc` | Find commands |
 | `<leader>fl` | Find lines |
 
