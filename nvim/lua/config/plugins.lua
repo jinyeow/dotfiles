@@ -1,5 +1,5 @@
 vim.g.mapleader      = ' '
-vim.g.maplocalleader = ' '
+vim.g.maplocalleader = '\\'
 
 if _G.user_config.profile == 'minimal' then return end
 
