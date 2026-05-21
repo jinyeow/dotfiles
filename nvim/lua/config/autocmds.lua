@@ -36,6 +36,28 @@ autocmd({ 'FocusGained', 'BufEnter' }, {
   end,
 })
 
+-- Save all modified buffers when Neovim loses focus
+autocmd('FocusLost', {
+  callback = function() vim.cmd('silent! wall') end,
+})
+
+-- Equalise window sizes when the terminal is resized
+autocmd('VimResized', {
+  callback = function() vim.cmd('wincmd =') end,
+})
+
+-- Show absolute line numbers in insert mode, relative in normal mode
+autocmd('InsertEnter', {
+  callback = function()
+    if vim.wo.number then vim.wo.relativenumber = false end
+  end,
+})
+autocmd('InsertLeave', {
+  callback = function()
+    if vim.wo.number then vim.wo.relativenumber = true end
+  end,
+})
+
 -- Disable automatic comment leader continuation on Enter
 autocmd('FileType', {
   pattern  = '*',

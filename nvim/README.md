@@ -183,6 +183,29 @@ Servers with empty paths are silently skipped.
 | `<Esc>` | Clear search highlight |
 | `<C-h/j/k/l>` | Window navigation |
 | `<S-h>` / `<S-l>` | Previous/next buffer |
+| `<C-Up/Down>` | Resize window height |
+| `<C-Left/Right>` | Resize window width |
+
+#### Editing
+
+| Key | Action |
+|---|---|
+| `Y` | Yank to end of line (consistent with `C` and `D`) |
+| `0` | Go to first non-blank character (remapped from `^`) |
+| `jj` | Exit insert mode |
+| `J` / `K` (visual) | Move selected lines down / up |
+| `<` / `>` (visual) | Indent and stay in visual mode |
+| `p` (visual) | Paste without overwriting the register |
+| `<C-d>` / `<C-u>` | Scroll half-page, cursor centred |
+| `n` / `N` | Next/prev search result, cursor centred |
+| `/` | Search in very magic mode (`+`, `(`, `\|` work unescaped) |
+
+#### Command-line
+
+| Shortcut | Action |
+|---|---|
+| `:h <topic>` | Opens help in a vertical split |
+| `#!!` (insert) | Expands to `#!/usr/bin/env <filetype>` |
 
 #### FZF (full profile only)
 

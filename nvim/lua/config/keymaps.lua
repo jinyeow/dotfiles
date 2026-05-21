@@ -2,6 +2,10 @@ local map = vim.keymap.set
 
 map('n', '<Esc>', '<cmd>nohlsearch<CR>')
 
+-- Search: use very magic mode so +, (, | etc. work without escaping
+map('n', '/', '/\\v')
+map('v', '/', '/\\v')
+
 -- Window navigation
 map('n', '<C-h>', '<C-w>h')
 map('n', '<C-j>', '<C-w>j')
@@ -17,6 +21,11 @@ map('n', '<C-Right>', ':vertical resize +2<CR>')
 -- Buffer navigation
 map('n', '<S-l>', ':bnext<CR>')
 map('n', '<S-h>', ':bprevious<CR>')
+
+-- Editing
+map('n', 'Y',   'y$')   -- Y yanks to EOL, consistent with C and D
+map('n', '0',   '^')    -- 0 goes to first non-blank (^ is hard to reach)
+map('i', 'jj',  '<Esc>')
 
 -- Move selected lines
 map('v', 'J', ":m '>+1<CR>gv=gv")
@@ -38,6 +47,12 @@ map('n', 'N',     'Nzzzv')
 -- File explorer / buffer delete
 map('n', '<C-S-e>',   vim.cmd.Ex,         { desc = 'File explorer' })
 map('n', '<leader>d', '<cmd>bdelete<CR>', { desc = 'Delete buffer' })
+
+-- Command-line
+-- h expands to vert h only when typed as a standalone command
+vim.cmd([[cabbrev <expr> h getcmdtype() == ':' && getcmdpos() == 2 ? 'vert h' : 'h']])
+-- #!! in insert mode expands to #!/usr/bin/env <filetype>
+vim.cmd([[inoreabbrev <expr> #!! "#!/usr/bin/env" . (empty(&filetype) ? '' : ' '.&filetype)]])
 
 -- Plugin keymaps: skipped in minimal profile (plugins not loaded)
 if _G.user_config.profile ~= 'minimal' then
