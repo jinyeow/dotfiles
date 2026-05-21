@@ -5,11 +5,14 @@ opt.relativenumber = true
 
 opt.tabstop     = 4
 opt.shiftwidth  = 4
+opt.shiftround  = true  -- round indent to nearest multiple of shiftwidth
 opt.expandtab   = true
 opt.autoindent  = true
 opt.smartindent = true
+opt.joinspaces  = false -- J always inserts one space, not two after punctuation
 
-opt.wrap = false
+opt.wrap        = false
+opt.breakindent = true  -- visually indent wrapped lines to match the start of the line
 
 opt.ignorecase = true
 opt.smartcase  = true
@@ -39,6 +42,10 @@ opt.backspace   = 'indent,eol,start'
 
 opt.lazyredraw = true
 opt.synmaxcol  = 240
+opt.wildmode   = 'list:longest,full'  -- Tab: fill to longest common prefix + list, then cycle
+
+opt.list      = true
+opt.listchars = { tab = '» ', trail = '·', nbsp = '·', extends = '›', precedes = '‹' }
 
 -- Fallback file exclusions for native :find / command-mode tab completion.
 -- FZF ignores this (uses fd/rg), so this only matters on machines without FZF.

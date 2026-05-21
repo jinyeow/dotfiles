@@ -36,6 +36,12 @@ autocmd({ 'FocusGained', 'BufEnter' }, {
   end,
 })
 
+-- Disable automatic comment leader continuation on Enter
+autocmd('FileType', {
+  pattern  = '*',
+  callback = function() vim.opt_local.formatoptions:remove({ 'r', 'o', 'c' }) end,
+})
+
 -- Markdown-specific settings
 autocmd('FileType', {
   pattern  = 'markdown',

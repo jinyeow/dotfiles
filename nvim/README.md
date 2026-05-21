@@ -178,9 +178,8 @@ Servers with empty paths are silently skipped.
 
 | Key | Action |
 |---|---|
-| `<leader>e` | File explorer (netrw) |
-| `<leader>w` | Save file |
-| `<leader>q` | Quit |
+| `<C-S-e>` | File explorer (netrw) |
+| `<leader>d` | Delete buffer |
 | `<Esc>` | Clear search highlight |
 | `<C-h/j/k/l>` | Window navigation |
 | `<S-h>` / `<S-l>` | Previous/next buffer |

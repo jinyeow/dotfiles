@@ -35,10 +35,9 @@ map('n', '<C-u>', '<C-u>zz')
 map('n', 'n',     'nzzzv')
 map('n', 'N',     'Nzzzv')
 
--- File explorer / save / quit
-map('n', '<leader>e', vim.cmd.Ex,   { desc = 'File explorer' })
-map('n', '<leader>w', '<cmd>w<CR>', { desc = 'Save file' })
-map('n', '<leader>q', '<cmd>q<CR>', { desc = 'Quit' })
+-- File explorer / buffer delete
+map('n', '<C-S-e>',   vim.cmd.Ex,         { desc = 'File explorer' })
+map('n', '<leader>d', '<cmd>bdelete<CR>', { desc = 'Delete buffer' })
 
 -- Plugin keymaps: skipped in minimal profile (plugins not loaded)
 if _G.user_config.profile ~= 'minimal' then
