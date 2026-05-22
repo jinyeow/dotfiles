@@ -191,19 +191,10 @@ function Install-PowerShell {
     Write-Host ''
     Write-Info '=== PowerShell ==='
 
-    $hostname      = $env:COMPUTERNAME
-    $profileSource = Join-Path $Dotfiles "powershell\Microsoft.PowerShell_profile.$hostname.ps1"
-
-    if (-not (Test-Path $profileSource)) {
-        Write-Warn "No machine-specific profile found for '$hostname'."
-        Write-Warn "Expected: $profileSource"
-        Write-Warn "Create that file in the repo and re-run to install."
-        return
-    }
-
+    $profileSource = Join-Path $Dotfiles 'powershell\Microsoft.PowerShell_profile.ps1'
     $docs = [Environment]::GetFolderPath('MyDocuments')
 
-    # Stub the profile into all three PS locations
+    # Stub into PS7, PS5, and VSCode locations — all source the same repo file
     $profileTargets = @(
         Join-Path $docs 'PowerShell\Microsoft.PowerShell_profile.ps1',        # PS7
         Join-Path $docs 'WindowsPowerShell\Microsoft.PowerShell_profile.ps1', # PS5

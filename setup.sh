@@ -130,18 +130,8 @@ install_powershell() {
         return
     fi
 
-    local hostname="${HOSTNAME:-$(hostname -s)}"
-    local source="$DOTFILES/powershell/Microsoft.PowerShell_profile.$hostname.ps1"
-
-    if [[ ! -f "$source" ]]; then
-        warn "No machine-specific profile found for '$hostname'."
-        warn "Expected: $source"
-        warn "Create that file in the repo and re-run to install."
-        return
-    fi
-
     local ps_config="${XDG_CONFIG_HOME:-$HOME/.config}/powershell"
-    make_symlink "$source" "$ps_config/Microsoft.PowerShell_profile.ps1"
+    make_symlink "$DOTFILES/powershell/Microsoft.PowerShell_profile.ps1" "$ps_config/Microsoft.PowerShell_profile.ps1"
 
     # Link the Profile/ subdirectory if it exists (contains Set-Prompt.ps1 etc.)
     local profile_dir="$DOTFILES/powershell/Profile"

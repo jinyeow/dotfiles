@@ -18,12 +18,11 @@ PowerShell 7 profile and prompt for Windows (and Linux where applicable).
 
 | File | Notes |
 |---|---|
-| `Microsoft.PowerShell_profile.JYJP-PC.ps1` | Home machine profile |
-| `Microsoft.PowerShell_profile.WORK-PC.ps1` | Work machine profile |
+| `Microsoft.PowerShell_profile.ps1` | Shared profile — used on all machines |
 | `Profile/Set-Prompt.ps1` | Prompt definition (git + Azure context) |
 
 The installer generates a stub at `~/Documents/PowerShell/Microsoft.PowerShell_profile.ps1`
-that dot-sources the machine-specific file — changes to the repo are live immediately.
+that dot-sources the repo file — changes are live immediately without re-running setup.
 
 ## Profile architecture
 
@@ -64,11 +63,12 @@ Azure context refresh on a 60-second timer, driven from `Set-Prompt.ps1`.
 - Truncated path for long directories
 - Windows Terminal OSC 9;9 CWD tracking
 
-## Per-machine convention
+## Per-machine differences
 
-Machine-specific files use `.<HOSTNAME>` before the extension. To add a new
-machine, create `Microsoft.PowerShell_profile.<HOSTNAME>.ps1` and re-run the
-installer.
+There is a single shared profile — no per-machine variants. Machine-specific
+behaviour (work git identity, Azure subscription) is handled at other layers:
+- Git identity via `[includeIf]` in `git/gitconfig`
+- Az context loaded async in `Profile/Set-Prompt.ps1`
 
 ## Install
 

@@ -11,12 +11,9 @@ Personal dotfiles spanning Windows (PowerShell 7) and Linux/WSL (bash, Neovim, t
 ## Per-machine convention
 
 Machine-specific variants use the suffix `.<HOSTNAME>` before the extension and live alongside the base file:
-- `powershell/Microsoft.PowerShell_profile.JYJP-PC.ps1` (home)
-- `powershell/Microsoft.PowerShell_profile.WORK-PC.ps1` (work)
 - `nvim/` — no per-machine variant yet; use `.<HOSTNAME>` suffix on `init.lua` when needed
-- `git/templates/hooks/prepare-commit-msg` (bash, JIRA-style `PROJ-123`) vs `prepare-commit-msg.WORK-PC` vs `prepare-commit-msg.ado.ps1` (Azure DevOps `#1234`)
 
-Git identity is handled per-repo via `[includeIf]` rather than per-machine file variants — see the Git configuration section.
+The PowerShell profile (`powershell/Microsoft.PowerShell_profile.ps1`) is a single shared file — no per-machine variant. Git identity is handled per-repo via `[includeIf]` — see the Git configuration section.
 
 ## Installation entry points
 
