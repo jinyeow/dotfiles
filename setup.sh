@@ -5,7 +5,7 @@
 #   ./setup.sh -m neovim,vim
 #   ./setup.sh -m all --dry-run
 #
-# Modules: neovim, vim, powershell, all
+# Modules: neovim, vim, powershell, git, all
 
 set -euo pipefail
 
@@ -17,7 +17,7 @@ DRY_RUN=0
 
 usage() {
     echo "Usage: $0 -m <module[,module,...]> [--dry-run]"
-    echo "  Modules: neovim, vim, powershell, all"
+    echo "  Modules: neovim, vim, powershell, git, all"
     echo "  Example: $0 -m neovim,vim"
     exit 1
 }
@@ -40,7 +40,7 @@ done
 # Expand 'all'
 for m in "${MODULES[@]}"; do
     if [[ "$m" == "all" ]]; then
-        MODULES=(neovim vim powershell)
+        MODULES=(neovim vim powershell git)
         break
     fi
 done
@@ -96,6 +96,16 @@ make_symlink() {
 
 # ── Modules ───────────────────────────────────────────────────────────────────
 
+install_git() {
+    echo ''
+    info '=== Git ==='
+    make_symlink "$DOTFILES/gitconfig"      "$HOME/.gitconfig"
+    make_symlink "$DOTFILES/gitconfig-work" "$HOME/.gitconfig-work"
+    make_symlink "$DOTFILES/gitignore"      "$HOME/.gitignore"
+    make_symlink "$DOTFILES/gitmessage"     "$HOME/.gitmessage"
+    make_symlink "$DOTFILES/git_templates"  "$HOME/.git_templates"
+}
+
 install_neovim() {
     echo ''
     info '=== Neovim ==='
@@ -149,6 +159,7 @@ for module in "${MODULES[@]}"; do
         neovim)     install_neovim     ;;
         vim)        install_vim        ;;
         powershell) install_powershell ;;
+        git)        install_git        ;;
         *)          warn "Unknown module '$module' — skipping." ;;
     esac
 done

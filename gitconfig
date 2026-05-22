@@ -166,3 +166,9 @@
 [user]
     name = Justin Puah
     email = justin@puah.dev
+
+# Work identity — overrides [user] and tool prefs for repos with a work remote URL.
+# Requires Git 2.36+. For local-only work repos without a remote yet, run:
+#   git config user.email justin.puah@hollard.com.au
+[includeIf "hasconfig:remote.*.url:*hollard*"]
+    path = ~/.gitconfig-work

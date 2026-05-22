@@ -4,27 +4,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository scope
 
-Personal dotfiles spanning Windows (PowerShell 7) and Linux/WSL (bash, Neovim, tmux, i3/bspwm). Active development is on the **Windows side**: the PowerShell profile under `Documents/PowerShell/`, the prompt in `Documents/PowerShell/Profile/Set-Prompt.ps1`, the Neovim Lua config under `config/nvim/`, and the `gitconfig` + `git_templates/hooks/`. The Linux setup (`bootstrap.sh`, `Makefile`, `vimrc`, `bash/`, `pwsh_profile.ps1`, the Arch package lists in the `install:` target, `config/bspwm`, `config/sxhkd`, etc.) is a legacy snapshot — touch only when explicitly asked.
+Personal dotfiles spanning Windows (PowerShell 7) and Linux/WSL (bash, Neovim, tmux, i3/bspwm). Active development is on the **Windows side**: the PowerShell profile under `powershell/`, the prompt in `powershell/Profile/Set-Prompt.ps1`, the Neovim Lua config under `nvim/`, and the git config under `git/`. The Linux setup (`bootstrap.sh`, `Makefile`, `bash/`, `pwsh_profile.ps1`, the Arch package lists in the `install:` target, `config/bspwm`, `config/sxhkd`, etc.) is a legacy snapshot — touch only when explicitly asked.
 
-`pwsh_profile.ps1` at the repo root is the **old** profile and is superseded by `Documents/PowerShell/Microsoft.PowerShell_profile.*.ps1`. Edit the per-machine file under `Documents/PowerShell/`, not the root one.
+`pwsh_profile.ps1` at the repo root is the **old** profile and is superseded by `powershell/Microsoft.PowerShell_profile.*.ps1`. Edit the per-machine file under `powershell/`, not the root one.
 
 ## Per-machine convention
 
 Machine-specific variants use the suffix `.<HOSTNAME>` before the extension and live alongside the base file:
-- `Documents/PowerShell/Microsoft.PowerShell_profile.JYJP-PC.ps1` (home)
-- `Documents/PowerShell/Microsoft.PowerShell_profile.WORK-PC.ps1` (work)
-- `gitconfig` vs `gitconfig.WORK-PC`
-- `config/nvim/` — no per-machine variant yet; use `.<HOSTNAME>` suffix on `init.lua` when needed
-- `git_templates/hooks/prepare-commit-msg` (bash, JIRA-style `PROJ-123`) vs `prepare-commit-msg.WORK-PC` vs `prepare-commit-msg.ado.ps1` (Azure DevOps `#1234`)
+- `powershell/Microsoft.PowerShell_profile.JYJP-PC.ps1` (home)
+- `powershell/Microsoft.PowerShell_profile.WORK-PC.ps1` (work)
+- `nvim/` — no per-machine variant yet; use `.<HOSTNAME>` suffix on `init.lua` when needed
+- `git/templates/hooks/prepare-commit-msg` (bash, JIRA-style `PROJ-123`) vs `prepare-commit-msg.WORK-PC` vs `prepare-commit-msg.ado.ps1` (Azure DevOps `#1234`)
 
-When changing behaviour shared across machines, update the base file *and* mirror the change into the `.WORK-PC` variant unless the difference is intentional.
+Git identity is handled per-repo via `[includeIf]` rather than per-machine file variants — see the Git configuration section.
 
 ## Installation entry points
 
 | Script | Target | Notes |
 |---|---|---|
-| `setup.ps1` | Windows | Module-based installer. `-Module neovim,vim,powershell` or `-Module all`. Supports `-DryRun`. |
-| `setup.sh` | Linux / WSL | Module-based installer. `-m neovim,vim,powershell` or `-m all`. Supports `--dry-run`. |
+| `setup.ps1` | Windows | Module-based installer. `-Module neovim,vim,powershell,git` or `-Module all`. Supports `-DryRun`. |
+| `setup.sh` | Linux / WSL | Module-based installer. `-m neovim,vim,powershell,git` or `-m all`. Supports `--dry-run`. |
 | `install.ps1` | Windows (legacy) | Old PS profile hardlinker — superseded by `setup.ps1 -Module powershell`. |
 | `install.sh` | VSCode devcontainers (legacy) | Minimal `cp` installer — superseded by `setup.sh`. |
 | `dotfiles-setup.sh` | Linux (legacy) | Module symlinker — superseded by `setup.sh`. |
@@ -51,12 +50,15 @@ When adding to the profile, classify by cost first — anything that loads .NET 
 
 ## Git configuration
 
+Files live under `git/`: `gitconfig` (base), `gitconfig-work` (work overrides), `gitignore`, `gitmessage`, `templates/hooks/`.
+
 - `core.hooksPath = ~/.git_templates/hooks` — global hook directory, so `prepare-commit-msg` runs on every repo. Branches like `feature/PROJ-123-foo` get `[PROJ-123]-` prepended to commit messages; the skip list (`master`, `develop`, `staging`, deploy/*) is in the hook.
 - `init.templatedir = ~/.git_templates` — new repos inherit the hooks too.
 - `init.defaultBranch = main`, `pull.ff = only`, `push.autoSetupRemote = true`, `rebase.autoStash = true`, `rebase.updateRefs = true` (stacked branches), `rerere.enabled = true`.
 - Pager and diff filter are **delta** (`core.pager = delta`, `interactive.diffFilter = delta --color-only`).
 - `url."git@github.com:".insteadOf` rewrites both `https://github.com/` and the `gh:` shorthand to SSH.
-- `[user]` is set in the base `gitconfig` (`Justin Puah <justin@puah.dev>`); the work variant lives in `gitconfig.WORK-PC`.
+- **Identity**: base `gitconfig` sets personal `[user]` (`justin@puah.dev`). Work identity is applied per-repo via `[includeIf "hasconfig:remote.*.url:*hollard*"]` which includes `gitconfig-work` (sets `justin.puah@hollard.com.au` + `diff.tool = delta`). Requires Git 2.36+. For local-only work repos without a remote, run `git config user.email justin.puah@hollard.com.au` manually.
+- **Installer**: `setup.ps1/setup.sh -Module git` installs `~/.gitconfig` and `~/.gitconfig-work` as git `[include]` stubs pointing to the repo files (cross-volume safe, always live), then junctions `~/.git_templates` → `git/templates/`.
 
 ## Conventions
 
@@ -64,13 +66,13 @@ When adding to the profile, classify by cost first — anything that loads .NET 
 - **Commit style**: imperative, sometimes `feat:` / `fix:` prefixed (`feat: Refactor Set-Prompt.ps1 for async Azure and Git support`). Stay consistent with the surrounding files' recent history.
 - **PowerShell**: target pwsh 7 (`#Requires -Version 7`), Vi edit mode, custom Vi cursor handler (`OnViModeChange` toggles `` `e[1 q `` ↔ `` `e[5 q ``), `Ctrl+Oem4` (left bracket) for `ViCommandMode` — see [PSReadLine #906](https://github.com/PowerShell/PSReadLine/issues/906#issuecomment-916847040).
 
-## Neovim (`config/nvim/`)
+## Neovim (`nvim/`)
 
 Modular Lua config targeting Neovim 0.11+. Uses Neovim's built-in package system (`pack/*/start/`) with a lightweight auto-install wrapper — no external plugin manager. LSP is configured via the native `vim.lsp.config` / `vim.lsp.enable` API (not the lspconfig Lua framework).
 
 Load order: `performance` → `user` → `plugins` → `options` → `keymaps` → `autocmds` → `treesitter` → `lsp` → `gitsigns` → `ui`
 
-The `vimrc` at the repo root and the `vim/` directory are the older Vimscript setup — kept as the Linux fallback, not the active Neovim config.
+The `vim/` directory (Vimscript setup) is the older Vim config — kept as the Linux fallback, not the active Neovim config. `vim/vimrc` is the vimrc; Vim finds it automatically at `~/.vim/vimrc` (Linux) or `~/vimfiles/vimrc` (Windows).
 
 ### Key decisions (do not reverse without asking)
 
@@ -86,4 +88,4 @@ The `vimrc` at the repo root and the `vim/` directory are the older Vimscript se
 
 ### Install
 
-Installed via `setup.ps1` (Windows) or `setup.sh` (Linux) at the repo root — see the Installation entry points section. The per-tool install scripts inside `config/nvim/` (`install.sh`, `install.ps1`, `install.py`) are an older standalone installer kept for backward compatibility.
+Installed via `setup.ps1` (Windows) or `setup.sh` (Linux) at the repo root — see the Installation entry points section. The per-tool install scripts inside `nvim/` (`install.sh`, `install.ps1`, `install.py`) are an older standalone installer kept for backward compatibility.

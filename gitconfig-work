@@ -1,0 +1,8 @@
+# Work-specific git overrides — included conditionally from gitconfig via [includeIf].
+# Do not use this file as a standalone ~/.gitconfig.
+
+[user]
+    email = justin.puah@hollard.com.au
+
+[diff]
+    tool = delta
