@@ -87,6 +87,10 @@ if (Get-Command -Name az -ErrorAction Ignore) {
 }
 
 # --- Aliases ----------------------------------------------------------------
+if ($PSVersionTable.PSVersion.Major -eq 5) {
+    Remove-Item alias:wget -ErrorAction SilentlyContinue
+    Remove-Item alias:curl -ErrorAction SilentlyContinue
+}
 Set-Alias c clear -Force
 Set-Alias -Name g -Value git
 Set-Alias gcif Get-ChildItem -Force
@@ -97,6 +101,8 @@ function which ($command) {
     Get-Command -Name $command -ErrorAction SilentlyContinue |
         Select-Object -ExpandProperty Path -ErrorAction SilentlyContinue
 }
+function Start-AdminSession { Start-Process wt -Verb RunAs }
+Set-Alias -Name su -Value Start-AdminSession
 
 $_chocoProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
 if ($_chocoProfile -and (Test-Path $_chocoProfile)) {
