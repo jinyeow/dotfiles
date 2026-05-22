@@ -4,7 +4,6 @@
     amend = commit --amend
     branches = branch -a
     c = commit
-    cached = diff --cached
     co = checkout
     conflicts = diff --name-only --diff-filter=U
     ctags = !.git/hooks/ctags
@@ -18,7 +17,6 @@
     ignore = '!gi() { curl -L -s https://www.gitignore.io/api/$@ ;}; gi'
     last = log -1 HEAD --format=format:"%Cred%H"
     lg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative
-    listconflicts = diff --name-only --diff-filter=U
     remotes = remote -v
     s = status --short
     st = status
@@ -28,7 +26,6 @@
     tags = tag
     uncommit = reset --mixed HEAD~
     unstage = reset -q HEAD --
-    unmerged = diff --name-only --diff-filter=U
     wta = worktree add
     wtl = worktree list
     wtr = worktree remove
@@ -40,11 +37,6 @@
     sort = -committerdate
 
 [color]
-    branch = auto
-    diff = auto
-    grep = auto
-    interactive = auto
-    status = auto
     ui = auto
 
 [commit]
@@ -54,7 +46,6 @@
 [core]
     attributesfile = ~/.gitattributes
     autocrlf = false
-    commitGraph = true
     editor = nvim
     excludesfile = ~/.gitignore
     fsmonitor = true
@@ -62,37 +53,36 @@
     ignoreCase = true
     longpaths = true
     pager = delta
-    # Speed up commands involving untracked files such as `git status`.
     # https://git-scm.com/docs/git-update-index#_untracked_cache
     untrackedCache = true
-    # Treat spaces before tabs and all kinds of trailing whitespace as an error
-    # [default] trailing-space: looks for spaces at the end of a line
-    # [default] space-before-tab: looks for spaces before tabs at the beginning of a line
     whitespace = blank-at-eol,space-before-tab,-indent-with-non-tab,tab-in-indent,trailing-space
 
 # https://dandavison.github.io/delta/configuration.html
 [delta]
     line-numbers = true
-    navigate = true  # use n and N to move between diff sections
+    navigate = true
     side-by-side = true
+    syntax-highlighting = true
 
 [diff]
     # https://luppeng.wordpress.com/2020/10/10/when-to-use-each-of-the-git-diff-algorithms/
     algorithm = histogram
-    # uses different colours to highlight lines in diffs that have been “moved”
     colorMoved = default
-    # with diff.colorMoved set, also ignores indentation changes
     colorMovedWS = allow-indentation-change
-    # include more context in diffs
     context = 10
-	guitool = vscode
+    guitool = vscode
     submodule = log
-    # tool = nvim
     tool = nvimdiff
 
+[difftool]
+    prompt = false
+
+[difftool "delta"]
+    cmd = delta "$LOCAL" "$REMOTE"
+
 [difftool "vscode"]
-	path = C:/Program Files/Microsoft VS Code/Code.exe
-	cmd = \"C:/Program Files/Microsoft VS Code/Code.exe\" --new-window --wait --diff \"$LOCAL\" \"$REMOTE\"
+    path = C:/Program Files/Microsoft VS Code/Code.exe
+    cmd = \"C:/Program Files/Microsoft VS Code/Code.exe\" --new-window --wait --diff \"$LOCAL\" \"$REMOTE\"
 
 [fetch]
     # automatically delete remote tracking branches that have been deleted
@@ -105,7 +95,7 @@
     format = ssh
 
 [help]
-    # Automatically correct and execute mistyped commands
+    # automatically correct and execute mistyped commands after 0.1s
     autocorrect = 1
 
 [init]
@@ -124,16 +114,17 @@
 
 [merge]
     # https://www.ductile.systems/zdiff3/
-    conflictstyle = zdiff3
+    conflictStyle = zdiff3
     guitool = vscode
-    # Include summaries of merged commits in newly created merge commit messages
     log = true
-    # tool = nvim
     tool = nvimdiff
 
+[mergetool]
+    prompt = false
+
 [mergetool "vscode"]
-	path = C:/Program Files/Microsoft VS Code/Code.exe
-	cmd = \"C:/Program Files/Microsoft VS Code/Code.exe\" --new-window --wait --merge \"$REMOTE\" \"$LOCAL\" \"$BASE\" \"$MERGED\"
+    path = C:/Program Files/Microsoft VS Code/Code.exe
+    cmd = \"C:/Program Files/Microsoft VS Code/Code.exe\" --new-window --wait --merge \"$REMOTE\" \"$LOCAL\" \"$BASE\" \"$MERGED\"
 
 [pull]
     ff = only
@@ -142,17 +133,15 @@
 [push]
     autoSetupRemote = true
     default = simple
-    # push new tags along with commits being pushed
     followtags = true
 
 [rebase]
     autoStash = true
-	autosquash = true
-    # don’t allow deleting commits during a rebase
+    autosquash = true
+    # don't allow deleting commits during a rebase
     missingCommitsCheck = error
-    # makes it much easier to rebase multiple stacked branches at a time.
-    # - https://andrewlock.net/working-with-stacked-branches-in-git-is-easier-with-update-refs/
-	updateRefs = true
+    # https://andrewlock.net/working-with-stacked-branches-in-git-is-easier-with-update-refs/
+    updateRefs = true
     stat = true
 
 [rerere]
@@ -166,19 +155,14 @@
 
 [tag]
     sort = taggerdate
-    # Versionsort
-    # natural, numeric sorting (e.g., 1.0 before 1.10)
-    # sort = version:refname
-    # show the newest tags first (descending order), you can add a hyphen
-    # sort = -version:refname
+
+[tig]
+    diff-options = --show-signature
 
 [url "git@github.com:"]
-	insteadOf = "https://github.com/"
+    insteadOf = "https://github.com/"
     insteadOf = "gh:"
 
 [user]
-	name = Justin Puah
-	email = justin@puah.dev
-
-[tig]
-  diff-options = --show-signature
+    name = Justin Puah
+    email = justin@puah.dev
