@@ -3,7 +3,7 @@ set -euo pipefail
 
 NVIM_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/nvim"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-NVIM_SOURCE_DIR="$SCRIPT_DIR/nvim"
+NVIM_SOURCE_DIR="$SCRIPT_DIR"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

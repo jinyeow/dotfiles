@@ -9,7 +9,7 @@
     before being replaced.
 
 .PARAMETER Module
-    One or more modules to install: neovim, vim, powershell, git, all.
+    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, fzf, curl, all.
 
 .PARAMETER DryRun
     Preview what would happen without making any changes.
@@ -32,7 +32,9 @@ $ErrorActionPreference = 'Stop'
 $Dotfiles = $PSScriptRoot
 
 # Expand 'all'
-if ($Module -contains 'all') { $Module = @('neovim', 'vim', 'powershell', 'git') }
+if ($Module -contains 'all') {
+    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'fzf', 'curl')
+}
 $Module = $Module | Select-Object -Unique
 
 # ── Output helpers ────────────────────────────────────────────────────────────
@@ -143,52 +145,46 @@ function Install-Git {
     Write-Info '=== Git ==='
 
     # ~/.gitconfig — stub that [include]s the repo file; cross-volume, always live.
-    $gitconfigSrc  = Join-Path $Dotfiles 'gitconfig'
-    $gitconfigDest = Join-Path $env:USERPROFILE '.gitconfig'
-    New-GitIncludeStub -StubPath $gitconfigDest -RealSource $gitconfigSrc
+    New-GitIncludeStub `
+        -StubPath  (Join-Path $env:USERPROFILE '.gitconfig') `
+        -RealSource (Join-Path $Dotfiles 'git\gitconfig')
 
     # ~/.gitconfig-work — referenced by [includeIf] inside gitconfig.
-    $gitconfigWorkSrc  = Join-Path $Dotfiles 'gitconfig-work'
-    $gitconfigWorkDest = Join-Path $env:USERPROFILE '.gitconfig-work'
-    New-GitIncludeStub -StubPath $gitconfigWorkDest -RealSource $gitconfigWorkSrc
+    New-GitIncludeStub `
+        -StubPath  (Join-Path $env:USERPROFILE '.gitconfig-work') `
+        -RealSource (Join-Path $Dotfiles 'git\gitconfig-work')
 
     # ~/.gitignore — global ignore file.
-    $gitignoreSrc  = Join-Path $Dotfiles 'gitignore'
-    $gitignoreDest = Join-Path $env:USERPROFILE '.gitignore'
-    New-GitIncludeStub -StubPath $gitignoreDest -RealSource $gitignoreSrc
+    New-GitIncludeStub `
+        -StubPath  (Join-Path $env:USERPROFILE '.gitignore') `
+        -RealSource (Join-Path $Dotfiles 'git\gitignore')
 
     # ~/.gitmessage — commit message template.
-    $gitmessageSrc  = Join-Path $Dotfiles 'gitmessage'
-    $gitmessageDest = Join-Path $env:USERPROFILE '.gitmessage'
-    Copy-Dotfile -Dest $gitmessageDest -Source $gitmessageSrc
+    Copy-Dotfile `
+        -Dest   (Join-Path $env:USERPROFILE '.gitmessage') `
+        -Source (Join-Path $Dotfiles 'git\gitmessage')
 
     # ~/.git_templates — hooks directory (init.templatedir + core.hooksPath).
-    $templatesSrc  = Join-Path $Dotfiles 'git_templates'
-    $templatesDest = Join-Path $env:USERPROFILE '.git_templates'
-    New-Junction -Link $templatesDest -Target $templatesSrc
+    New-Junction `
+        -Link   (Join-Path $env:USERPROFILE '.git_templates') `
+        -Target (Join-Path $Dotfiles 'git\templates')
 }
 
 function Install-Neovim {
     Write-Host ''
     Write-Info '=== Neovim ==='
-    $source = Join-Path $Dotfiles 'config\nvim'
-    $target = Join-Path $env:LOCALAPPDATA 'nvim'
-    New-Junction -Link $target -Target $source
+    New-Junction `
+        -Link   (Join-Path $env:LOCALAPPDATA 'nvim') `
+        -Target (Join-Path $Dotfiles 'nvim')
 }
 
 function Install-Vim {
     Write-Host ''
     Write-Info '=== Vim ==='
-
-    # _vimrc — copy (file, potentially cross-volume)
-    $vimrcSrc  = Join-Path $Dotfiles 'vimrc'
-    $vimrcDest = Join-Path $env:USERPROFILE '_vimrc'
-    Copy-Dotfile -Dest $vimrcDest -Source $vimrcSrc
-
-    # vimfiles — junction (directory, cross-volume works)
-    $vimDirSrc  = Join-Path $Dotfiles 'vim'
-    $vimDirDest = Join-Path $env:USERPROFILE 'vimfiles'
-    New-Junction -Link $vimDirDest -Target $vimDirSrc
+    # vimrc lives inside vim/ so Vim finds it at ~/vimfiles/vimrc automatically.
+    New-Junction `
+        -Link   (Join-Path $env:USERPROFILE 'vimfiles') `
+        -Target (Join-Path $Dotfiles 'vim')
 }
 
 function Install-PowerShell {
@@ -196,7 +192,7 @@ function Install-PowerShell {
     Write-Info '=== PowerShell ==='
 
     $hostname      = $env:COMPUTERNAME
-    $profileSource = Join-Path $Dotfiles "Documents\PowerShell\Microsoft.PowerShell_profile.$hostname.ps1"
+    $profileSource = Join-Path $Dotfiles "powershell\Microsoft.PowerShell_profile.$hostname.ps1"
 
     if (-not (Test-Path $profileSource)) {
         Write-Warn "No machine-specific profile found for '$hostname'."
@@ -218,11 +214,50 @@ function Install-PowerShell {
     }
 
     # Junction the Profile\ subdirectory (contains Set-Prompt.ps1)
-    $profileDirSrc  = Join-Path $Dotfiles 'Documents\PowerShell\Profile'
+    $profileDirSrc  = Join-Path $Dotfiles 'powershell\Profile'
     $profileDirDest = Join-Path $docs 'PowerShell\Profile'
     if (Test-Path $profileDirSrc -PathType Container) {
         New-Junction -Link $profileDirDest -Target $profileDirSrc
     }
+}
+
+function Install-Bash {
+    Write-Host ''
+    Write-Info '=== Bash ==='
+    Write-Warn 'Bash module is Linux/WSL only — skipping on Windows.'
+}
+
+function Install-Tig {
+    Write-Host ''
+    Write-Info '=== Tig ==='
+    Copy-Dotfile `
+        -Dest   (Join-Path $env:USERPROFILE '.tigrc') `
+        -Source (Join-Path $Dotfiles 'tig\tigrc')
+    Copy-Dotfile `
+        -Dest   (Join-Path $env:USERPROFILE '.tigrc.vim') `
+        -Source (Join-Path $Dotfiles 'tig\tigrc.vim')
+}
+
+function Install-Tmux {
+    Write-Host ''
+    Write-Info '=== Tmux ==='
+    Write-Warn 'Tmux module is Linux/WSL only — skipping on Windows.'
+}
+
+function Install-Fzf {
+    Write-Host ''
+    Write-Info '=== FZF ==='
+    Copy-Dotfile `
+        -Dest   (Join-Path $env:USERPROFILE '.fzfrc') `
+        -Source (Join-Path $Dotfiles 'fzf\fzfrc')
+}
+
+function Install-Curl {
+    Write-Host ''
+    Write-Info '=== Curl ==='
+    Copy-Dotfile `
+        -Dest   (Join-Path $env:USERPROFILE '.curlrc') `
+        -Source (Join-Path $Dotfiles 'curl\curlrc')
 }
 
 # ── Main ─────────────────────────────────────────────────────────────────────
@@ -235,6 +270,11 @@ foreach ($m in $Module) {
         'vim'        { Install-Vim        }
         'powershell' { Install-PowerShell }
         'git'        { Install-Git        }
+        'bash'       { Install-Bash       }
+        'tig'        { Install-Tig        }
+        'tmux'       { Install-Tmux       }
+        'fzf'        { Install-Fzf        }
+        'curl'       { Install-Curl       }
         default      { Write-Warn "Unknown module '$m' — skipping." }
     }
 }

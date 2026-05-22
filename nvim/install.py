@@ -62,7 +62,7 @@ def install(source_dir: Path | None = None) -> None:
                     Defaults to the directory containing this script.
     """
     script_dir  = source_dir or Path(__file__).parent.resolve()
-    nvim_source = script_dir / "nvim"
+    nvim_source = script_dir
     nvim_config = get_nvim_config_dir()
 
     info("Checking dependencies...")

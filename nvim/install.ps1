@@ -4,7 +4,7 @@ $ErrorActionPreference = 'Stop'
 
 $NvimConfigDir  = Join-Path $env:LOCALAPPDATA 'nvim'
 $ScriptDir      = $PSScriptRoot
-$NvimSourceDir  = Join-Path $ScriptDir 'nvim'
+$NvimSourceDir  = $ScriptDir
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

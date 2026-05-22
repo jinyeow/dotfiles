@@ -5,7 +5,7 @@
 #   ./setup.sh -m neovim,vim
 #   ./setup.sh -m all --dry-run
 #
-# Modules: neovim, vim, powershell, git, all
+# Modules: neovim, vim, powershell, git, bash, tig, tmux, fzf, curl, all
 
 set -euo pipefail
 
@@ -17,7 +17,7 @@ DRY_RUN=0
 
 usage() {
     echo "Usage: $0 -m <module[,module,...]> [--dry-run]"
-    echo "  Modules: neovim, vim, powershell, git, all"
+    echo "  Modules: neovim, vim, powershell, git, bash, tig, tmux, fzf, curl, all"
     echo "  Example: $0 -m neovim,vim"
     exit 1
 }
@@ -40,7 +40,7 @@ done
 # Expand 'all'
 for m in "${MODULES[@]}"; do
     if [[ "$m" == "all" ]]; then
-        MODULES=(neovim vim powershell git)
+        MODULES=(neovim vim powershell git bash tig tmux fzf curl)
         break
     fi
 done
@@ -99,25 +99,25 @@ make_symlink() {
 install_git() {
     echo ''
     info '=== Git ==='
-    make_symlink "$DOTFILES/gitconfig"      "$HOME/.gitconfig"
-    make_symlink "$DOTFILES/gitconfig-work" "$HOME/.gitconfig-work"
-    make_symlink "$DOTFILES/gitignore"      "$HOME/.gitignore"
-    make_symlink "$DOTFILES/gitmessage"     "$HOME/.gitmessage"
-    make_symlink "$DOTFILES/git_templates"  "$HOME/.git_templates"
+    make_symlink "$DOTFILES/git/gitconfig"      "$HOME/.gitconfig"
+    make_symlink "$DOTFILES/git/gitconfig-work" "$HOME/.gitconfig-work"
+    make_symlink "$DOTFILES/git/gitignore"      "$HOME/.gitignore"
+    make_symlink "$DOTFILES/git/gitmessage"     "$HOME/.gitmessage"
+    make_symlink "$DOTFILES/git/templates"      "$HOME/.git_templates"
 }
 
 install_neovim() {
     echo ''
     info '=== Neovim ==='
     local xdg_config="${XDG_CONFIG_HOME:-$HOME/.config}"
-    make_symlink "$DOTFILES/config/nvim" "$xdg_config/nvim"
+    make_symlink "$DOTFILES/nvim" "$xdg_config/nvim"
 }
 
 install_vim() {
     echo ''
     info '=== Vim ==='
-    make_symlink "$DOTFILES/vimrc" "$HOME/.vimrc"
-    make_symlink "$DOTFILES/vim"   "$HOME/.vim"
+    # vimrc lives inside vim/ so Vim finds it at ~/.vim/vimrc automatically.
+    make_symlink "$DOTFILES/vim" "$HOME/.vim"
 }
 
 install_powershell() {
@@ -131,7 +131,7 @@ install_powershell() {
     fi
 
     local hostname="${HOSTNAME:-$(hostname -s)}"
-    local source="$DOTFILES/Documents/PowerShell/Microsoft.PowerShell_profile.$hostname.ps1"
+    local source="$DOTFILES/powershell/Microsoft.PowerShell_profile.$hostname.ps1"
 
     if [[ ! -f "$source" ]]; then
         warn "No machine-specific profile found for '$hostname'."
@@ -144,10 +144,52 @@ install_powershell() {
     make_symlink "$source" "$ps_config/Microsoft.PowerShell_profile.ps1"
 
     # Link the Profile/ subdirectory if it exists (contains Set-Prompt.ps1 etc.)
-    local profile_dir="$DOTFILES/Documents/PowerShell/Profile"
+    local profile_dir="$DOTFILES/powershell/Profile"
     if [[ -d "$profile_dir" ]]; then
         make_symlink "$profile_dir" "$ps_config/Profile"
     fi
+}
+
+install_bash() {
+    echo ''
+    info '=== Bash ==='
+    make_symlink "$DOTFILES/bash/bashrc"   "$HOME/.bashrc"
+    make_symlink "$DOTFILES/bash/profile"  "$HOME/.profile"
+    make_symlink "$DOTFILES/bash/inputrc"  "$HOME/.inputrc"
+
+    # bash_aliases and bash_profile are sourced from bashrc/profile — no separate link needed
+    # unless your bashrc sources them by name from $HOME.
+    if [[ -f "$DOTFILES/bash/bash_aliases" ]]; then
+        make_symlink "$DOTFILES/bash/bash_aliases" "$HOME/.bash_aliases"
+    fi
+    if [[ -f "$DOTFILES/bash/bash_profile" ]]; then
+        make_symlink "$DOTFILES/bash/bash_profile" "$HOME/.bash_profile"
+    fi
+}
+
+install_tig() {
+    echo ''
+    info '=== Tig ==='
+    make_symlink "$DOTFILES/tig/tigrc"     "$HOME/.tigrc"
+    make_symlink "$DOTFILES/tig/tigrc.vim" "$HOME/.tigrc.vim"
+}
+
+install_tmux() {
+    echo ''
+    info '=== Tmux ==='
+    make_symlink "$DOTFILES/tmux/tmux.conf" "$HOME/.tmux.conf"
+}
+
+install_fzf() {
+    echo ''
+    info '=== FZF ==='
+    make_symlink "$DOTFILES/fzf/fzfrc" "$HOME/.fzfrc"
+}
+
+install_curl() {
+    echo ''
+    info '=== Curl ==='
+    make_symlink "$DOTFILES/curl/curlrc" "$HOME/.curlrc"
 }
 
 # ── Main ─────────────────────────────────────────────────────────────────────
@@ -160,6 +202,11 @@ for module in "${MODULES[@]}"; do
         vim)        install_vim        ;;
         powershell) install_powershell ;;
         git)        install_git        ;;
+        bash)       install_bash       ;;
+        tig)        install_tig        ;;
+        tmux)       install_tmux       ;;
+        fzf)        install_fzf        ;;
+        curl)       install_curl       ;;
         *)          warn "Unknown module '$module' — skipping." ;;
     esac
 done

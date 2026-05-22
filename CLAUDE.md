@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository scope
 
-Personal dotfiles spanning Windows (PowerShell 7) and Linux/WSL (bash, Neovim, tmux, i3/bspwm). Active development is on the **Windows side**: the PowerShell profile under `powershell/`, the prompt in `powershell/Profile/Set-Prompt.ps1`, the Neovim Lua config under `nvim/`, and the git config under `git/`. The Linux setup (`bootstrap.sh`, `Makefile`, `bash/`, `pwsh_profile.ps1`, the Arch package lists in the `install:` target, `config/bspwm`, `config/sxhkd`, etc.) is a legacy snapshot — touch only when explicitly asked.
+Personal dotfiles spanning Windows (PowerShell 7) and Linux/WSL (bash, Neovim, tmux, i3/bspwm). Active development is on the **Windows side**: the PowerShell profile under `powershell/`, the prompt in `powershell/Profile/Set-Prompt.ps1`, the Neovim Lua config under `nvim/`, and the git config under `git/`. Configs are organized into per-tool directories: `git/`, `nvim/`, `vim/`, `bash/`, `powershell/`, `tig/`, `tmux/`, `fzf/`, `curl/`. The Linux setup (`bootstrap.sh`, `Makefile`, `pwsh_profile.ps1`, the Arch package lists in the `install:` target, `config/bspwm`, `config/sxhkd`, etc.) is a legacy snapshot — touch only when explicitly asked.
 
 `pwsh_profile.ps1` at the repo root is the **old** profile and is superseded by `powershell/Microsoft.PowerShell_profile.*.ps1`. Edit the per-machine file under `powershell/`, not the root one.
 
@@ -22,8 +22,8 @@ Git identity is handled per-repo via `[includeIf]` rather than per-machine file 
 
 | Script | Target | Notes |
 |---|---|---|
-| `setup.ps1` | Windows | Module-based installer. `-Module neovim,vim,powershell,git` or `-Module all`. Supports `-DryRun`. |
-| `setup.sh` | Linux / WSL | Module-based installer. `-m neovim,vim,powershell,git` or `-m all`. Supports `--dry-run`. |
+| `setup.ps1` | Windows | Module-based installer. `-Module git,neovim,vim,powershell,tig,fzf,curl` or `-Module all`. Supports `-DryRun`. |
+| `setup.sh` | Linux / WSL | Module-based installer. `-m git,neovim,vim,powershell,bash,tig,tmux,fzf,curl` or `-m all`. Supports `--dry-run`. |
 | `install.ps1` | Windows (legacy) | Old PS profile hardlinker — superseded by `setup.ps1 -Module powershell`. |
 | `install.sh` | VSCode devcontainers (legacy) | Minimal `cp` installer — superseded by `setup.sh`. |
 | `dotfiles-setup.sh` | Linux (legacy) | Module symlinker — superseded by `setup.sh`. |
