@@ -9,7 +9,7 @@
     before being replaced.
 
 .PARAMETER Module
-    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, fzf, curl, all.
+    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, curl, all.
 
 .PARAMETER DryRun
     Preview what would happen without making any changes.
@@ -33,7 +33,7 @@ $Dotfiles = $PSScriptRoot
 
 # Expand 'all'
 if ($Module -contains 'all') {
-    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'fzf', 'curl')
+    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'curl')
 }
 $Module = $Module | Select-Object -Unique
 
@@ -244,14 +244,6 @@ function Install-Tmux {
     Write-Warn 'Tmux module is Linux/WSL only — skipping on Windows.'
 }
 
-function Install-Fzf {
-    Write-Host ''
-    Write-Info '=== FZF ==='
-    Copy-Dotfile `
-        -Dest   (Join-Path $env:USERPROFILE '.fzfrc') `
-        -Source (Join-Path $Dotfiles 'fzf\fzfrc')
-}
-
 function Install-Curl {
     Write-Host ''
     Write-Info '=== Curl ==='
@@ -273,7 +265,6 @@ foreach ($m in $Module) {
         'bash'       { Install-Bash       }
         'tig'        { Install-Tig        }
         'tmux'       { Install-Tmux       }
-        'fzf'        { Install-Fzf        }
         'curl'       { Install-Curl       }
         default      { Write-Warn "Unknown module '$m' — skipping." }
     }

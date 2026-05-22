@@ -1,45 +1,42 @@
-# Dotfiles
+# nvim
 
-Personal dotfiles. Currently includes a Neovim configuration with install scripts for Linux and Windows.
+Modular Neovim configuration targeting Neovim 0.11+ using the built-in package
+manager and native LSP API (`vim.lsp.config` / `vim.lsp.enable`).
+
+## Prerequisites
+
+| Tool | Purpose | Install |
+|---|---|---|
+| Neovim 0.11+ | Editor | `winget install Neovim.Neovim` / system package manager |
+| Git | Plugin auto-install | — |
+| [ripgrep](https://github.com/BurntSushi/ripgrep) | FZF live grep | `winget install BurntSushi.ripgrep.MSVC` |
+| A [Nerd Font](https://www.nerdfonts.com/) | Diagnostic and gitsigns icons | — |
 
 ## Structure
 
 ```
-dotfiles/
-├── setup.ps1              # Windows installer (use this — see Install section)
-├── setup.sh               # Linux installer  (use this — see Install section)
-└── config/nvim/           # Neovim config source files
-    ├── init.lua
-    ├── install.sh         # standalone Linux installer (alternative to setup.sh)
-    ├── install.ps1        # standalone Windows installer (alternative to setup.ps1)
-    ├── install.py         # standalone cross-platform installer (Python 3.10+)
-    └── lua/config/
-        ├── performance.lua
-        ├── user.lua
-        ├── plugins.lua
-        ├── options.lua
-        ├── keymaps.lua
-        ├── autocmds.lua
-        ├── treesitter.lua
-        ├── lsp.lua
-        ├── gitsigns.lua
-        └── ui.lua
+nvim/
+├── init.lua
+├── install.sh         # standalone Linux installer (legacy)
+├── install.ps1        # standalone Windows installer (legacy)
+├── install.py         # standalone cross-platform installer (legacy)
+└── lua/config/
+    ├── performance.lua
+    ├── user.lua
+    ├── plugins.lua
+    ├── options.lua
+    ├── keymaps.lua
+    ├── autocmds.lua
+    ├── treesitter.lua
+    ├── lsp.lua
+    ├── gitsigns.lua
+    └── ui.lua
 ```
 
-## Neovim
+Load order: `performance` → `user` → `plugins` → `options` → `keymaps` →
+`autocmds` → `treesitter` → `lsp` → `gitsigns` → `ui`
 
-A modular Neovim configuration targeting Neovim 0.11+ using the built-in package manager and native LSP API (`vim.lsp.config` / `vim.lsp.enable`).
-
-### Requirements
-
-- Neovim >= 0.11
-- Git
-- ripgrep (`rg`) — for FZF live grep
-- A [Nerd Font](https://www.nerdfonts.com/) — for diagnostic and gitsigns icons
-
-### Install via the dotfiles installer (recommended)
-
-From the dotfiles repo root:
+## Install
 
 ```powershell
 # Windows
@@ -49,98 +46,67 @@ From the dotfiles repo root:
 ./setup.sh -m neovim
 ```
 
-### Install standalone (this directory only)
+The standalone scripts (`install.sh`, `install.ps1`, `install.py`) in this
+directory are kept for backward compatibility.
 
-```bash
-# Linux
-chmod +x install.sh && ./install.sh
+### Backup behaviour
 
-# Windows (PowerShell 7+)
-./install.ps1
-
-# Cross-platform (Python 3.10+)
-python3 install.py
-```
-
-> If you get a PowerShell execution policy error:
-> ```powershell
-> Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
-> ```
-
-### Backup Behaviour
-
-All installers back up any existing Neovim config before installing, using a timestamped directory:
-
+All installers back up any existing config before installing:
 ```
 ~/.config/nvim.bak.20250521_143000        # Linux
 %LOCALAPPDATA%\nvim.bak.20250521_143000   # Windows
 ```
 
-### First Launch
+## First launch
 
-On first launch Neovim will automatically clone all plugins. Treesitter parsers are then downloaded in the background. Expect a slower first startup.
+Neovim clones all plugins automatically on first launch. Treesitter parsers
+download in the background. Expect a slower first startup.
 
-### Profiles
+## Profiles
 
-Two profiles control what loads on startup. Switch per-session via the `NVIM_PROFILE` environment variable — no file editing needed.
-
-| Profile | What loads |
-|---|---|
-| `full` (default) | Everything — plugins, LSP, treesitter, catppuccin |
-| `minimal` | Options, keymaps, and autocmds only — no plugins, built-in colorscheme |
-
-```powershell
-# PowerShell — one session
-$env:NVIM_PROFILE = 'minimal'; nvim
-
-# PowerShell — permanent on this machine (add to $PROFILE)
-$env:NVIM_PROFILE = 'minimal'
-```
-
-```bash
-# Linux / macOS — one session
-NVIM_PROFILE=minimal nvim
-```
-
-Minimal mode is useful on machines where you can't install plugins, or for a quick edit where full startup cost isn't worth it.
-
-### Colorscheme
-
-The theme is chosen automatically based on the OS dark/light mode setting:
-
-| OS | Detection method |
-|---|---|
-| Windows | `reg query` → `AppsUseLightTheme` |
-| macOS | `defaults read -g AppleInterfaceStyle` |
-| Linux (GNOME) | `gsettings get … color-scheme` |
-| Linux (KDE) | `kreadconfig5 --key ColorScheme` |
-
-If OS detection fails or is not supported, the theme falls back to a configurable sunrise/sunset window (`sunrise_hour` / `sunset_hour` in `user.lua`).
-
-| Theme | Dark | Light |
+| Profile | What loads | How to set |
 |---|---|---|
-| Full profile | catppuccin-mocha | catppuccin-latte |
-| Minimal profile | habamax (built-in) | lunaperche (built-in) |
+| `full` (default) | Plugins, LSP, treesitter, catppuccin | `$env:NVIM_PROFILE = 'full'` |
+| `minimal` | Options, keymaps, autocmds only | `NVIM_PROFILE=minimal nvim` |
 
-### User Config
+Minimal mode is useful on machines where you can't install plugins, or for
+quick edits where full startup cost isn't worth it.
 
-Before first launch, fill in any paths in `nvim/lua/config/user.lua`:
+## User config
+
+Edit `lua/config/user.lua` before first launch to set machine-specific paths:
 
 ```lua
 _G.user_config = {
-  profile          = vim.env.NVIM_PROFILE or 'full', -- or set NVIM_PROFILE in shell
-
+  profile          = vim.env.NVIM_PROFILE or 'full',
   bicep_lsp_path   = '', -- path to Bicep.LangServer.dll
   pwsh_bundle_path = '', -- path to PowerShellEditorServices bundle
-
-  sunrise_hour = 6,  -- fallback dark-mode window: dark from sunset_hour
-  sunset_hour  = 18, -- until sunrise_hour the next morning
+  sunrise_hour     = 6,
+  sunset_hour      = 18,
 }
 ```
 
-Servers with empty paths are silently skipped.
+LSP servers with empty paths are silently skipped.
 
-### Plugins
+## Colorscheme
+
+Theme is chosen automatically from the OS dark/light mode setting:
+
+| OS | Detection |
+|---|---|
+| Windows | Registry `AppsUseLightTheme` |
+| macOS | `defaults read -g AppleInterfaceStyle` |
+| GNOME | `gsettings get … color-scheme` |
+| KDE | `kreadconfig5 --key ColorScheme` |
+
+Falls back to sunrise/sunset window if detection fails.
+
+| Profile | Dark | Light |
+|---|---|---|
+| full | catppuccin-mocha | catppuccin-latte |
+| minimal | habamax (built-in) | lunaperche (built-in) |
+
+## Plugins
 
 | Plugin | Purpose |
 |---|---|
@@ -150,14 +116,14 @@ Servers with empty paths are silently skipped.
 | vim-fugitive | Git command wrapper |
 | vim-commentary | Commenting (`gcc`) |
 | vim-repeat | Better `.` repeat |
-| catppuccin | Colour scheme (mocha dark / latte light — follows OS setting) |
+| catppuccin | Colour scheme |
 | mini.surround | Surround text objects |
 | nvim-lspconfig | LSP server definitions |
 | schemastore.nvim | JSON/YAML schema catalogue |
 | gitsigns.nvim | In-buffer git signs and hunk actions |
 | render-markdown.nvim | In-buffer markdown rendering |
 
-### LSP Servers
+## LSP servers
 
 | Server | Language |
 |---|---|
@@ -165,53 +131,48 @@ Servers with empty paths are silently skipped.
 | yamlls | YAML |
 | azure_pipelines_ls | Azure Pipelines YAML |
 | marksman | Markdown |
-| bicep | Bicep (requires path in user.lua) |
-| powershell_es | PowerShell (requires path in user.lua) |
+| bicep | Bicep (requires `bicep_lsp_path` in user.lua) |
+| powershell_es | PowerShell (requires `pwsh_bundle_path` in user.lua) |
 
-### Filetype Detection
+## Filetype detection
 
 | Pattern | Filetype |
 |---|---|
 | `*.bicep` | `bicep` |
 | `*.azure-pipelines.yml` / `*.yaml` | `azure-pipelines` |
 
-### Key Keymaps
+## Key mappings
 
-`<leader>` is `Space`.
+`<leader>` = `Space`, `<localleader>` = `\`
 
-#### General
+### General
 
 | Key | Action |
 |---|---|
 | `<C-S-e>` | File explorer (netrw) |
 | `<Esc>` | Clear search highlight |
 | `<C-h/j/k/l>` | Window navigation |
-| `<S-h>` / `<S-l>` | Previous/next buffer |
+| `<S-h>` / `<S-l>` | Previous / next buffer |
 | `<C-Up/Down>` | Resize window height |
 | `<C-Left/Right>` | Resize window width |
 
-#### Editing
+### Editing
 
 | Key | Action |
 |---|---|
-| `Y` | Yank to end of line (consistent with `C` and `D`) |
-| `0` | Go to first non-blank character (remapped from `^`) |
+| `Y` | Yank to end of line |
+| `0` | First non-blank character |
 | `jj` | Exit insert mode |
-| `J` / `K` (visual) | Move selected lines down / up |
+| `J` / `K` (visual) | Move lines down / up |
 | `<` / `>` (visual) | Indent and stay in visual mode |
-| `p` (visual) | Paste without overwriting the register |
+| `p` (visual) | Paste without clobbering register |
 | `<C-d>` / `<C-u>` | Scroll half-page, cursor centred |
-| `n` / `N` | Next/prev search result, cursor centred |
-| `/` | Search in very magic mode (`+`, `(`, `\|` work unescaped) |
+| `n` / `N` | Next/prev search result, centred |
+| `/` | Search in very magic mode |
+| `#!!` (insert abbrev) | Expand to `#!/usr/bin/env <filetype>` |
+| `:h <topic>` | Help in vertical split |
 
-#### Command-line
-
-| Shortcut | Action |
-|---|---|
-| `:h <topic>` | Opens help in a vertical split |
-| `#!!` (insert) | Expands to `#!/usr/bin/env <filetype>` |
-
-#### FZF (full profile only)
+### FZF (full profile only)
 
 | Key | Action |
 |---|---|
@@ -221,7 +182,7 @@ Servers with empty paths are silently skipped.
 | `<leader>fc` | Find commands |
 | `<leader>fl` | Find lines |
 
-#### LSP (active when LSP is attached)
+### LSP (when attached)
 
 | Key | Action |
 |---|---|
@@ -232,10 +193,10 @@ Servers with empty paths are silently skipped.
 | `K` | Hover docs |
 | `<leader>rn` | Rename symbol |
 | `<leader>ca` | Code action |
-| `<leader>d` | Show diagnostics float |
-| `[d` / `]d` | Previous/next diagnostic |
+| `<leader>d` | Diagnostics float |
+| `[d` / `]d` | Previous / next diagnostic |
 
-#### Git — Fugitive (full profile only)
+### Fugitive (full profile only)
 
 | Key | Action |
 |---|---|
@@ -246,40 +207,28 @@ Servers with empty paths are silently skipped.
 | `<leader>gd` | Git diff |
 | `<leader>gb` | Git blame |
 
-#### Git — Gitsigns (full profile only)
+### Gitsigns (full profile only)
 
 | Key | Action |
 |---|---|
-| `]h` / `[h` | Next/prev hunk |
+| `]h` / `[h` | Next / prev hunk |
 | `<leader>hs` | Stage hunk |
 | `<leader>hr` | Reset hunk |
 | `<leader>hS` | Stage buffer |
 | `<leader>hR` | Reset buffer |
 | `<leader>hu` | Undo stage hunk |
 | `<leader>hp` | Preview hunk |
-| `<leader>hi` | Preview hunk inline |
-| `<leader>hb` | Blame line (full) |
+| `<leader>hb` | Blame line |
 | `<leader>tb` | Toggle inline blame |
 | `<leader>hd` | Diff this |
-| `<leader>hD` | Diff against last commit |
 | `ih` | Hunk text object |
 
-#### Mini.surround
+### mini.surround
 
 | Key | Action |
 |---|---|
 | `sa` | Add surrounding |
 | `sd` | Delete surrounding |
 | `sr` | Replace surrounding |
-| `sf` / `sF` | Find surrounding right/left |
+| `sf` / `sF` | Find surrounding right / left |
 | `sh` | Highlight surrounding |
-
----
-
-## Conventions for Adding Tools
-
-This repo is designed to grow into a full dotfiles solution. Each tool should:
-
-- Live in its own subdirectory (e.g. `nvim/`, `git/`, `pwsh/`)
-- Be installed by the root scripts or have its own install script called from them
-- Be documented in this README under its own section

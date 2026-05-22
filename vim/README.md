@@ -1,142 +1,45 @@
-## VIM
+# vim
 
-This is the directory that contains all config related to my Neovim/Vim setup.
+Legacy Vimscript config — kept as a fallback for machines where Neovim isn't
+available. The active config is in `nvim/`.
 
-The following is a list of the contents of this directory:
+## Prerequisites
 
-- `common/` directory holds the `autoload/` and `plugged/` directories which are
-  common for both Neovim and Vim.
+| Tool | Purpose | Install |
+|---|---|---|
+| Vim 8+ | Editor | `winget install vim.vim` / system package manager |
 
-- `config.vim` is the aggregrate file that is symlinked to vimrc/init.vim.
+## Files
 
-- `custom/` directory holds any custom files. e.g. colorschemes
+| File | Installed as | Notes |
+|---|---|---|
+| `vimrc` | `~/vimfiles/vimrc` (Win) / `~/.vim/vimrc` (Linux) | Main config — Vim finds it automatically inside the vimfiles dir |
 
-- `projections/` contains templates for Projectionist. My zsh function
-  `generate projection FILETYPE` uses these templates to create the necessary
-  .projections file in my projects.
+The rest of `vim/` is the vimfiles directory itself (installed as `~/vimfiles`
+or `~/.vim`). Notable subdirectories:
 
-- `sources/` directory contains all the defined config files. These include but are
-  not limited to functions, plugins, and various configuration settings.
+| Directory | Purpose |
+|---|---|
+| `common/after/ftplugin/` | Filetype-specific settings (indent, formatoptions, etc.) |
+| `common/after/` | Settings applied after plugins load |
+| `b16.vim` | Base16 colour scheme helper |
 
-" => CHEATSHEET OF MAPPINGS: {{{
-" <Leader>n, p, d -> buffer next/previous/delete
-" <Leader>fml -> vim-follow-my-leader
-" <Leader>tc -> Colorizer
-" <Space><Space> -> Search and Replace word under cursor FORWARD ONLY
-" <Space>% -> Search and Replace word under cursor ALL
-" ,ws -> :call DeleteTrailingWS()<CR>:w<CR>
-" :SC -> Open a scratch buffer
-" :IX -> Share snippet thru ix.io
-" :Ags
-" :Grep
-"
-" vim-signature --------------------------------------------------------------
-" m, -> place the next available mark
-" m. -> If no mark on line, place the next available mark. Else delete mark.
-" m- -> Delete all marks from the current line
-" m<Space> -> Delete all marks from the current buffer.
-" ]`,[` -> Jump to next/prev mark
-" ]',[' -> Jump to start of next/prev line containing a mark
-" `],`[,'],'[ -> Same as above but jump alphabetically
-" m/ -> Open location list and display marks from current buffer.
-"
-" buffer navigation ----------------------------------------------------------
-" gb -> :ls<CR>:buffer<Space>
-" gB -> :ls<CR>:sbuffer<Space>
-" ,b -> :buffer _
-" ,B -> :sbuffer _
-"
-" file navigation ------------------------------------------------------------
-" ,f/,F -> :find _
-" ,s/,S -> :sfind _
-" ,v/,V -> :vert sfind _
-" ,t/,T -> :tabfind _
-"
-" symbol navigation ----------------------------------------------------------
-" ,j -> :tjump /
-" ,p -> :ptjump /
-" ,i -> :ilist /
-" [I/]I
-" ,d -> :dlist /
-" [D/]D
-"
-" fzf.vim --------------------------------------------------------------------
-" <Leader>fr -> FzfRg
-" <Leader>fa -> FzfAg
-" <Leader>ff -> FzfFiles
-" <Leader>fF -> FzfFiles ~
-" <Leader>fb -> FzfBuffers
-" <Leader>fw -> FzfWindows
-" <Leader>fg -> FzfGitFiles
-" <Leader>fc -> FzfCommits
-" <Leader>ft -> FzfTags
-" <Leader>fT -> FzfBTags
-" <Leader>fl -> FzfLines
-" <Leader>fL -> FzfBLines
-" <Leader>fM -> FzfMarks
-" <Leader>fh -> FzfHistory
-" :Fzf{Controllers,Models,Views,Migrations,Specs,
-"
-" vim-grepper ----------------------------------------------------------------
-" ,gg -> :Grepper{Rg,Ag,Grep}<Space>
-" ,ga -> like ,gg but for the word under the cursor
-" gs<operator> -> vim-grepper operator e.g. gsw, gsi", etc.
-"
-" vim-qf ---------------------------------------------------------------------
-" <Leader>qf -> <Plug>qf_qf_toggle
-" <Leader>qq -> <Plug>qf_qf_stay_toggle
-"
-" vim-vimwiki ----------------------------------------------------------------
-" <Leader>ww -> <Plug>VimwikiIndex
-" <Leader>wt -> <Plug>VimwikiTabIndex
-" <Leader>ws -> <Plug>VimwikiUISelect
-" <Leader>wi -> <Plug>VimwikiDiaryIndex
-" <Leader>w<Space>i -> <Plug>VimwikiDiaryGenerateLinks
-" <Leader>w<Space>w -> <Plug>VimwikiMakeDiaryNote
-" <Leader>w<Space>t -> <Plug>VimwikiTabMakeDiaryNote
-" <Leader>w<Space>y -> <Plug>VimwikiMakeYesterdayDiaryNote
-"
+## Key settings (vimrc)
 
-" => Other 'MODES':
-" c.vim -> \[additional characters] (see c-support-mappings.txt)
-" vimtex -> \l[additional characters]
-" -> \lv
-" -> \li
-" -> \lg
-" -> \lc
-"
-" => 'emmet' KEYBINDINGS:
-" <C-y>, -> activate HTML snippet
+- 2-space tabs, `expandtab`, `smarttab`
+- `relativenumber` + `number`
+- `wildmode=list:full` with wildignore for build artefacts
+- `tags` search from file directory up to `$HOME`
+- `matchit.vim` enabled (extends `%` to match `def/end`, HTML tags, etc.)
+- `laststatus=2` — statusline always visible
+- `undofile` — persistent undo across sessions
 
-" }}}
-" => fzf-vim-commands {{{
-"  -----------------+----------------------------------------------------------
-"  Command          | List                                                                ~
-"  -----------------+----------------------------------------------------------
-" `Files [PATH]`    | Files (similar to  `:FZF` )
-" `GitFiles`        | Git files
-" `Buffers`         | Open buffers
-" `Colors`          | Color schemes
-" `Ag [PATTERN]`    | {ag}{5} search result (ALT-A to select all, ALT-D to deselect all)
-" `Lines`           | Lines in loaded buffers
-" `BLines`          | Lines in the current buffer
-" `Tags`            | Tags in the project ( `ctags -R` )
-" `BTags`           | Tags in the current buffer
-" `Marks`           | Marks
-" `Windows`         | Windows
-" `Locate PATTERN`  |  `locate`  command output
-" `History`         |  `v:oldfiles`  and open buffers
-" `History:`        | Command history
-" `History/`        | Search history
-" `Snippets`        | Snippets ({UltiSnips}{6})
-" `Commits`         | Git commits (requires {fugitive.vim}{7})
-" `BCommits`        | Git commits for the current buffer
-" `Commands`        | Commands
-" `Maps`            | Normal mode mappings
-" `Helptags`        | Help tags [1]
-"-----------------+------------------------------------------------------------
-"
-" }}}
+## Install
 
-" NOTE: g-/g+ more thorough undo/redo
-" NOTE: \mt triggers monkey terminal toggle
+```sh
+./setup.ps1 -Module vim   # Windows — junctions ~/vimfiles → vim/
+./setup.sh  -m vim        # Linux   — symlinks ~/.vim     → vim/
+```
+
+Vim finds `vimrc` at `~/vimfiles/vimrc` (Windows) or `~/.vim/vimrc` (Linux)
+automatically — no separate vimrc link needed.
