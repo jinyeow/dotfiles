@@ -113,6 +113,58 @@ if ($_chocoProfile -and (Test-Path $_chocoProfile)) {
 }
 Remove-Variable _chocoProfile
 
+if ($global:ProfileModules['PSFzf']) {
+    function switch_git_branch {
+        $branches = (git branch -vv | Select-String ': gone]' -NotMatch | ForEach-Object {
+            ($_.ToString().Substring(2) -split '\s+')[0]
+        })
+        $branch = "$($branches |
+            Sort-Object { $_.Substring($_.LastIndexOf(',') + 1) } |
+            fzf --prompt 'branch> ')"
+        if (-not [String]::IsNullOrEmpty($branch)) {
+            Set-Location "$(git rev-parse --show-toplevel)"
+            git switch $branch
+            [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt()
+        }
+    }
+
+    function cd_git_worktree {
+        $worktreeStrings = @()
+        git worktree list --porcelain | ForEach-Object -Begin {
+            $currentWorktreeObject = @{}
+        } -Process {
+            switch -Regex ($_) {
+                '^worktree (.+)$' {
+                    $currentWorktreeObject | Add-Member -MemberType NoteProperty -Name Path -Value $matches[1]
+                }
+                '^HEAD (.+)$' {
+                    $currentWorktreeObject | Add-Member -MemberType NoteProperty -Name Commit -Value $matches[1]
+                }
+                '^branch (.+)$' {
+                    $currentWorktreeObject | Add-Member -MemberType NoteProperty -Name Branch -Value $matches[1]
+                }
+                '^$' {
+                    if (-not $currentWorktreeObject) { continue }
+                    $worktreeString = "$($currentWorktreeObject.Path)," +
+                        "$($currentWorktreeObject.Commit)," +
+                        "$($currentWorktreeObject.Branch -replace '^refs/heads/', '')"
+                    if (-not [String]::IsNullOrEmpty($worktreeString)) {
+                        $worktreeStrings += $worktreeString
+                        $currentWorktreeObject = @{}
+                    }
+                }
+            }
+        }
+        $worktreeDirectory = "$($worktreeStrings |
+            Sort-Object { $_.Substring($_.LastIndexOf(',') + 1) } |
+            fzf --prompt 'worktree> ' --with-nth=-1 --delimiter=',' --accept-nth=1)"
+        if (-not [String]::IsNullOrEmpty($worktreeDirectory)) {
+            Set-Location "$worktreeDirectory"
+            [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt()
+        }
+    }
+}
+
 # --- Environment variables --------------------------------------------------
 $env:XDG_CONFIG_HOME = "$HOME/.config"
 
@@ -145,6 +197,8 @@ function Initialize-DeferredProfile {
 
         Set-PSReadLineKeyHandler -Key Tab -ScriptBlock { Invoke-FzfTabCompletion }
         Set-PSReadLineKeyHandler -Chord 'alt+f' -ScriptBlock { Invoke-PsFzfRipgrep -SearchString '.' }
+        Set-PSReadLineKeyHandler -Chord 'alt+b' -ScriptBlock { switch_git_branch }
+        Set-PSReadLineKeyHandler -Chord 'alt+g' -ScriptBlock { cd_git_worktree }
 
         Set-PsFzfOption `
             -AltCCommand ([ScriptBlock] { param($Location) Write-Host $Location }) `
