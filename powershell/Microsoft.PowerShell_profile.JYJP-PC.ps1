@@ -98,6 +98,15 @@ function which ($command) {
         Select-Object -ExpandProperty Path -ErrorAction SilentlyContinue
 }
 
+$_chocoProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+if ($_chocoProfile -and (Test-Path $_chocoProfile)) {
+    function chocoRefresh {
+        Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+        RefreshEnv
+    }
+}
+Remove-Variable _chocoProfile
+
 # --- Environment variables --------------------------------------------------
 $env:XDG_CONFIG_HOME = "$HOME/.config"
 

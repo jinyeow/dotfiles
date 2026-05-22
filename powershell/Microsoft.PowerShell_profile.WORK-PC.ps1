@@ -135,6 +135,15 @@ function which ($command) {
         Select-Object -ExpandProperty Path -ErrorAction SilentlyContinue
 }
 
+$_chocoProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+if ($_chocoProfile -and (Test-Path $_chocoProfile)) {
+    function chocoRefresh {
+        Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+        RefreshEnv
+    }
+}
+Remove-Variable _chocoProfile
+
 # === zoxide ===
 # https://github.com/ajeetdsouza/zoxide
 # As per documentation, set at the end of the PROFILE
