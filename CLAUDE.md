@@ -24,10 +24,6 @@ Git identity is handled per-repo via `[includeIf]` rather than per-machine file 
 |---|---|---|
 | `setup.ps1` | Windows | Module-based installer. `-Module git,neovim,vim,powershell,tig,fzf,curl` or `-Module all`. Supports `-DryRun`. |
 | `setup.sh` | Linux / WSL | Module-based installer. `-m git,neovim,vim,powershell,bash,tig,tmux,fzf,curl` or `-m all`. Supports `--dry-run`. |
-| `install.ps1` | Windows (legacy) | Old PS profile hardlinker — superseded by `setup.ps1 -Module powershell`. |
-| `install.sh` | VSCode devcontainers (legacy) | Minimal `cp` installer — superseded by `setup.sh`. |
-| `dotfiles-setup.sh` | Linux (legacy) | Module symlinker — superseded by `setup.sh`. |
-| `bootstrap.sh`, `Makefile` | Arch Linux (legacy) | Heavy package install + symlinks; do not run on Windows. |
 
 ## PowerShell profile architecture
 
