@@ -4,7 +4,10 @@
       "WebSearch",
       "WebFetch(domain:neovim.io)",
       "Bash(gh api *)",
-      "Bash(Sort-Object Name)"
+      "Bash(fzf --version)",
+      "Bash(git add *)",
+      "PowerShell($env:TEMP)",
+      "PowerShell(Get-ChildItem *)"
     ]
   }
 }
