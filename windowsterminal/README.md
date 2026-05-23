@@ -8,6 +8,25 @@ Windows Terminal settings.
 |---|---|
 | `settings.json` | `%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json` |
 
+## What's configured
+
+- **Theme**: Catppuccin Mocha (dark) / Catppuccin Latte (light), following the OS
+  dark/light setting — consistent with fzf, nvim, and lazygit
+- **Font**: Fira Code 13pt (must be installed separately)
+- **Keybindings**: vi-style pane focus (`alt+h/j/k/l`), `ctrl+c` copy,
+  `ctrl+shift+v` paste, `ctrl+shift+f` find
+- **Window restore**: `firstWindowPreference: persistedWindowLayout` — WT restores
+  the previous session's tab/pane layout on launch; falls back to the default
+  profile on a fresh install with no saved layout
+- **Profiles**: PowerShell 7 (default), Windows PowerShell, Command Prompt,
+  Azure Cloud Shell, Debian WSL (machine-specific — ignored if not installed)
+
+## Prerequisites
+
+| Tool | Install |
+|---|---|
+| [Fira Code](https://github.com/tonsky/FiraCode) | `winget install tonsky.FiraCode` |
+
 ## Notes
 
 Installed via `Copy-Dotfile` (not a junction) because Windows Terminal writes
