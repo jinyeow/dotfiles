@@ -1,1 +1,10 @@
 source ~/.tigrc.vim
+
+# Display
+set line-graphics = utf-8
+set vertical-split = auto
+
+# Behaviour
+set refresh-mode = auto
+set show-changes = true
+set ignore-case = smart-case

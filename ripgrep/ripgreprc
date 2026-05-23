@@ -19,6 +19,12 @@
 # Don't print lines longer than this limit.
 --max-columns=10000
 
+# Show a preview of lines that exceed --max-columns instead of omitting them.
+--max-columns-preview
+
+# Show column number of first match.
+--column
+
 # Searches case insensitively.
 --smart-case
 
