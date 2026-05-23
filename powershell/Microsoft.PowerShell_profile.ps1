@@ -168,6 +168,28 @@ if ($global:ProfileModules['PSFzf']) {
 # --- Environment variables --------------------------------------------------
 $env:XDG_CONFIG_HOME = "$HOME/.config"
 
+# Tool config files — paths relative to this repo so they survive repo moves
+$_dotfiles = Split-Path $PSScriptRoot
+$env:RIPGREP_CONFIG_PATH  = Join-Path $_dotfiles 'ripgrep\ripgreprc'
+$env:FZF_DEFAULT_OPTS_FILE = Join-Path $_dotfiles 'fzf\fzfrc'
+Remove-Variable _dotfiles
+
+# fzf color theme — catppuccin mocha (dark) / latte (light), mirrors nvim
+# AppsUseLightTheme: 0x0 = dark, 0x1 = light
+$_regOut = reg query 'HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' /v AppsUseLightTheme 2>$null
+$env:FZF_DEFAULT_OPTS = if ($_regOut -match '0x0') {
+    '--color=bg+:#313244,bg:#1E1E2E,spinner:#F5E0DC,hl:#F38BA8 ' +
+    '--color=fg:#CDD6F4,header:#F38BA8,info:#CBA6F7,pointer:#F5E0DC ' +
+    '--color=marker:#B4BEFE,fg+:#CDD6F4,prompt:#CBA6F7,hl+:#F38BA8 ' +
+    '--color=selected-bg:#45475A --color=border:#6C7086,label:#CDD6F4'
+} else {
+    '--color=bg+:#CCD0DA,bg:#EFF1F5,spinner:#DC8A78,hl:#D20F39 ' +
+    '--color=fg:#4C4F69,header:#D20F39,info:#8839EF,pointer:#DC8A78 ' +
+    '--color=marker:#7287FD,fg+:#4C4F69,prompt:#8839EF,hl+:#D20F39 ' +
+    '--color=selected-bg:#BCC0CC --color=border:#9CA0B0,label:#4C4F69'
+}
+Remove-Variable _regOut
+
 # --- Deferred loading (Phase 2) --------------------------------------------
 # Heavy modules loaded via PowerShell.OnIdle — the prompt appears immediately,
 # and these load silently in the background while waiting for user input.

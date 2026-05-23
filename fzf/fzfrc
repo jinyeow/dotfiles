@@ -1,0 +1,13 @@
+# Layout
+--layout=reverse
+--border=rounded
+--info=inline-right
+--scroll-off=3
+
+# Display
+--highlight-line
+--wrap
+
+# Bindings
+--bind=ctrl-a:select-all
+--bind=?:toggle-preview

@@ -36,8 +36,10 @@ Config for [ripgrep](https://github.com/BurntSushi/ripgrep) (`rg`).
 
 ## Install
 
-> Not yet wired into the setup scripts. Install manually:
-> ```sh
-> ln -sf "$(pwd)/ripgrep/ripgreprc" ~/.ripgreprc        # Linux
-> copy ripgrep\ripgreprc $env:USERPROFILE\.ripgreprc    # Windows
-> ```
+`$env:RIPGREP_CONFIG_PATH` is set in `powershell/Microsoft.PowerShell_profile.ps1`
+pointing directly at the repo file — no copy needed on Windows.
+
+Linux: set manually or via `~/.bashrc`:
+```sh
+export RIPGREP_CONFIG_PATH="$HOME/dotfiles/ripgrep/ripgreprc"
+```
