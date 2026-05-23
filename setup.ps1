@@ -196,9 +196,9 @@ function Install-PowerShell {
 
     # Stub into PS7, PS5, and VSCode locations — all source the same repo file
     $profileTargets = @(
-        Join-Path $docs 'PowerShell\Microsoft.PowerShell_profile.ps1',        # PS7
-        Join-Path $docs 'WindowsPowerShell\Microsoft.PowerShell_profile.ps1', # PS5
-        Join-Path $docs 'WindowsPowerShell\Microsoft.VSCode_profile.ps1'      # VSCode
+        (Join-Path $docs 'PowerShell\Microsoft.PowerShell_profile.ps1'),        # PS7
+        (Join-Path $docs 'WindowsPowerShell\Microsoft.PowerShell_profile.ps1'), # PS5
+        (Join-Path $docs 'WindowsPowerShell\Microsoft.VSCode_profile.ps1')      # VSCode
     )
     foreach ($target in $profileTargets) {
         New-SourceStub -StubPath $target -RealSource $profileSource

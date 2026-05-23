@@ -3,7 +3,8 @@
     "allow": [
       "WebSearch",
       "WebFetch(domain:neovim.io)",
-      "Bash(gh api *)"
+      "Bash(gh api *)",
+      "Bash(Sort-Object Name)"
     ]
   }
 }
