@@ -17,6 +17,7 @@ Personal dotfiles for Windows (primary) and Linux/WSL.
 | `ripgrep/` | ripgrep config | Windows + Linux |
 | `lazygit/` | lazygit config + Catppuccin themes | Windows + Linux |
 | `claude/` | Claude Code settings, statusline, global skills | Windows + Linux |
+| `windowsterminal/` | Windows Terminal settings | Windows |
 | `tmux/` | tmux config | Linux / WSL |
 | `nix/` | Nix/Home Manager (legacy snapshot) | Linux |
 
@@ -34,7 +35,7 @@ cd $HOME/dotfiles
 .\setup.ps1 -Module all -DryRun  # preview without changes
 ```
 
-Available modules: `git`, `neovim`, `vim`, `powershell`, `tig`, `curl`, `lazygit`
+Available modules: `git`, `neovim`, `vim`, `powershell`, `tig`, `curl`, `lazygit`, `windowsterminal`
 
 ### Linux / WSL
 

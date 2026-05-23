@@ -33,7 +33,7 @@ $Dotfiles = $PSScriptRoot
 
 # Expand 'all'
 if ($Module -contains 'all') {
-    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'curl', 'claude', 'lazygit')
+    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'curl', 'claude', 'lazygit', 'windowsterminal')
 }
 $Module = $Module | Select-Object -Unique
 
@@ -243,6 +243,19 @@ function Install-Curl {
         -Source (Join-Path $Dotfiles 'curl\curlrc')
 }
 
+function Install-WindowsTerminal {
+    Write-Host ''
+    Write-Info '=== Windows Terminal ==='
+    $wtState = Join-Path $env:LOCALAPPDATA 'Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState'
+    if (-not (Test-Path $wtState)) {
+        Write-Warn 'Windows Terminal not found — skipping.'
+        return
+    }
+    Copy-Dotfile `
+        -Dest   (Join-Path $wtState 'settings.json') `
+        -Source (Join-Path $Dotfiles 'windowsterminal\settings.json')
+}
+
 function Install-Lazygit {
     Write-Host ''
     Write-Info '=== Lazygit ==='
@@ -299,8 +312,9 @@ foreach ($m in $Module) {
         'tmux'       { Install-Tmux       }
         'curl'       { Install-Curl       }
         'claude'     { Install-Claude     }
-        'lazygit'    { Install-Lazygit    }
-        default      { Write-Warn "Unknown module '$m' — skipping." }
+        'lazygit'        { Install-Lazygit        }
+        'windowsterminal' { Install-WindowsTerminal }
+        default          { Write-Warn "Unknown module '$m' — skipping." }
     }
 }
 

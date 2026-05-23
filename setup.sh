@@ -40,7 +40,7 @@ done
 # Expand 'all'
 for m in "${MODULES[@]}"; do
     if [[ "$m" == "all" ]]; then
-        MODULES=(neovim vim powershell git bash tig tmux curl claude lazygit)
+        MODULES=(neovim vim powershell git bash tig tmux curl claude lazygit windowsterminal)
         break
     fi
 done
@@ -222,8 +222,9 @@ for module in "${MODULES[@]}"; do
         tmux)       install_tmux       ;;
         curl)       install_curl       ;;
         claude)     install_claude     ;;
-        lazygit)    install_lazygit    ;;
-        *)          warn "Unknown module '$module' — skipping." ;;
+        lazygit)         install_lazygit    ;;
+        windowsterminal) warn 'Windows Terminal is Windows-only — skipping.' ;;
+        *)               warn "Unknown module '$module' — skipping." ;;
     esac
 done
 
