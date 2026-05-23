@@ -33,7 +33,7 @@ $Dotfiles = $PSScriptRoot
 
 # Expand 'all'
 if ($Module -contains 'all') {
-    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'curl')
+    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'curl', 'claude')
 }
 $Module = $Module | Select-Object -Unique
 
@@ -243,6 +243,18 @@ function Install-Curl {
         -Source (Join-Path $Dotfiles 'curl\curlrc')
 }
 
+function Install-Claude {
+    Write-Host ''
+    Write-Info '=== Claude Code ==='
+    $claudeDir = Join-Path $env:USERPROFILE '.claude'
+    Copy-Dotfile `
+        -Dest   (Join-Path $claudeDir 'settings.json') `
+        -Source (Join-Path $Dotfiles 'claude\settings.json')
+    Copy-Dotfile `
+        -Dest   (Join-Path $claudeDir 'statusline-command.sh') `
+        -Source (Join-Path $Dotfiles 'claude\statusline-command.sh')
+}
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 if ($DryRun) { Write-Warn 'DRY RUN — no changes will be made.' }
@@ -257,6 +269,7 @@ foreach ($m in $Module) {
         'tig'        { Install-Tig        }
         'tmux'       { Install-Tmux       }
         'curl'       { Install-Curl       }
+        'claude'     { Install-Claude     }
         default      { Write-Warn "Unknown module '$m' — skipping." }
     }
 }

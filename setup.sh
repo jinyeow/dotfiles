@@ -5,7 +5,7 @@
 #   ./setup.sh -m neovim,vim
 #   ./setup.sh -m all --dry-run
 #
-# Modules: neovim, vim, powershell, git, bash, tig, tmux, curl, all
+# Modules: neovim, vim, powershell, git, bash, tig, tmux, curl, claude, all
 
 set -euo pipefail
 
@@ -17,7 +17,7 @@ DRY_RUN=0
 
 usage() {
     echo "Usage: $0 -m <module[,module,...]> [--dry-run]"
-    echo "  Modules: neovim, vim, powershell, git, bash, tig, tmux, curl, all"
+    echo "  Modules: neovim, vim, powershell, git, bash, tig, tmux, curl, claude, all"
     echo "  Example: $0 -m neovim,vim"
     exit 1
 }
@@ -40,7 +40,7 @@ done
 # Expand 'all'
 for m in "${MODULES[@]}"; do
     if [[ "$m" == "all" ]]; then
-        MODULES=(neovim vim powershell git bash tig tmux curl)
+        MODULES=(neovim vim powershell git bash tig tmux curl claude)
         break
     fi
 done
@@ -175,6 +175,13 @@ install_curl() {
     make_symlink "$DOTFILES/curl/curlrc" "$HOME/.curlrc"
 }
 
+install_claude() {
+    echo ''
+    info '=== Claude Code ==='
+    make_symlink "$DOTFILES/claude/settings.json"          "$HOME/.claude/settings.json"
+    make_symlink "$DOTFILES/claude/statusline-command.sh"  "$HOME/.claude/statusline-command.sh"
+}
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 [[ $DRY_RUN -eq 1 ]] && warn 'DRY RUN — no changes will be made.'
@@ -189,6 +196,7 @@ for module in "${MODULES[@]}"; do
         tig)        install_tig        ;;
         tmux)       install_tmux       ;;
         curl)       install_curl       ;;
+        claude)     install_claude     ;;
         *)          warn "Unknown module '$module' — skipping." ;;
     esac
 done
