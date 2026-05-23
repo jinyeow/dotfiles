@@ -266,6 +266,22 @@ function Install-Claude {
     Copy-Dotfile `
         -Dest   (Join-Path $claudeDir 'statusline-command.sh') `
         -Source (Join-Path $Dotfiles 'claude\statusline-command.sh')
+
+    # Skills — junction each subdirectory into ~/.claude/skills/
+    $skillsSrc = Join-Path $Dotfiles 'claude\skills'
+    $skillsDst = Join-Path $claudeDir 'skills'
+    if (-not (Test-Path $skillsDst)) {
+        if (-not $DryRun) { New-Item -ItemType Directory -Path $skillsDst -Force | Out-Null }
+        Write-Info "Created:    $skillsDst"
+    }
+    $skills = Get-ChildItem -Path $skillsSrc -Directory -ErrorAction SilentlyContinue
+    if ($skills) {
+        foreach ($skill in $skills) {
+            New-Junction -Link (Join-Path $skillsDst $skill.Name) -Target $skill.FullName
+        }
+    } else {
+        Write-Info 'No skills to install (claude/skills/ is empty).'
+    }
 }
 
 # ── Main ─────────────────────────────────────────────────────────────────────

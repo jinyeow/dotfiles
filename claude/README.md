@@ -4,10 +4,11 @@ Config for [Claude Code](https://claude.ai/code).
 
 ## Files
 
-| File | Installed to | Notes |
+| File / Directory | Installed to | Notes |
 |---|---|---|
 | `settings.json` | `~/.claude/settings.json` | Model, theme, effort level, statusline |
 | `statusline-command.sh` | `~/.claude/statusline-command.sh` | Token usage statusline script |
+| `skills/<name>/` | `~/.claude/skills/<name>/` | Global custom skills (junctions/symlinks) |
 
 ## Settings
 
@@ -21,7 +22,28 @@ Config for [Claude Code](https://claude.ai/code).
 ## Statusline
 
 `statusline-command.sh` reads the JSON context piped by Claude Code and outputs
-token usage in the footer, e.g. `12.4k / 200k tokens (6%)`. Requires `jq`.
+a statusline of the form `Sonnet 4.6 | 12.4k / 1M tokens (1%)`. Requires `jq`.
+
+The percentage is computed from `used / model_max` (not the JSON's
+`used_percentage`, which reflects Claude Code's internal compaction threshold
+rather than the model's actual context limit).
+
+## Skills
+
+`claude/skills/` holds global custom skills. Each subdirectory is a skill:
+
+```
+claude/skills/
+  my-skill/
+    SKILL.md    ← skill definition
+```
+
+The installer junctions (Windows) or symlinks (Linux) each skill directory into
+`~/.claude/skills/`, making it available in every project. To add a skill,
+create its subdirectory here and re-run `setup.ps1 -Module claude`.
+
+Built-in Claude Code skills (`handoff`, `code-review`, etc.) are provided by
+the harness and do not need to be installed.
 
 ## Install
 

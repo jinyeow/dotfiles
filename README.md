@@ -16,6 +16,7 @@ Personal dotfiles for Windows (primary) and Linux/WSL.
 | `curl/` | Global curl defaults | Windows + Linux |
 | `ripgrep/` | ripgrep config | Windows + Linux |
 | `lazygit/` | lazygit config + Catppuccin themes | Windows + Linux |
+| `claude/` | Claude Code settings, statusline, global skills | Windows + Linux |
 | `tmux/` | tmux config | Linux / WSL |
 | `nix/` | Nix/Home Manager (legacy snapshot) | Linux |
 

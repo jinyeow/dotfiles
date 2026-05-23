@@ -189,6 +189,22 @@ install_claude() {
     info '=== Claude Code ==='
     make_symlink "$DOTFILES/claude/settings.json"          "$HOME/.claude/settings.json"
     make_symlink "$DOTFILES/claude/statusline-command.sh"  "$HOME/.claude/statusline-command.sh"
+
+    # Skills — symlink each subdirectory into ~/.claude/skills/
+    local skills_src="$DOTFILES/claude/skills"
+    local skills_dst="$HOME/.claude/skills"
+    mkdir -p "$skills_dst"
+    local skill_dirs=()
+    while IFS= read -r -d '' d; do
+        skill_dirs+=("$d")
+    done < <(find "$skills_src" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+    if [ "${#skill_dirs[@]}" -gt 0 ]; then
+        for skill_dir in "${skill_dirs[@]}"; do
+            make_symlink "$skill_dir" "$skills_dst/$(basename "$skill_dir")"
+        done
+    else
+        info 'No skills to install (claude/skills/ is empty).'
+    fi
 }
 
 # ── Main ─────────────────────────────────────────────────────────────────────
