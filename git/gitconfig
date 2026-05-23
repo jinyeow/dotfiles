@@ -39,6 +39,9 @@
 [color]
     ui = auto
 
+[column]
+    ui = auto
+
 [commit]
     template = ~/.gitmessage
     verbose = true
@@ -89,6 +92,7 @@
     prune = true
     prunetags = true
     writeCommitGraph = true
+    fsckObjects = true
 
 [gpg]
     # allow you to sign commits with SSH keys
@@ -112,6 +116,9 @@
     date = iso
     decorate = full
 
+[maintenance]
+    strategy = incremental
+
 [merge]
     # https://www.ductile.systems/zdiff3/
     conflictStyle = zdiff3
@@ -134,12 +141,14 @@
     autoSetupRemote = true
     default = simple
     followtags = true
+    useForceIfIncludes = true
 
 [rebase]
     autoStash = true
     autosquash = true
     # don't allow deleting commits during a rebase
     missingCommitsCheck = error
+    rescheduleFailedExec = true
     # https://andrewlock.net/working-with-stacked-branches-in-git-is-easier-with-update-refs/
     updateRefs = true
     stat = true
@@ -155,6 +164,9 @@
 
 [tag]
     sort = taggerdate
+
+[transfer]
+    fsckObjects = true
 
 [tig]
     diff-options = --show-signature
