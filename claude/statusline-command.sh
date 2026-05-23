@@ -3,7 +3,6 @@ input=$(cat)
 
 used=$(echo "$input" | jq -r '.context_window.total_input_tokens // empty')
 total=$(echo "$input" | jq -r '.context_window.context_window_size // empty')
-used_pct=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
 model_id=$(echo "$input" | jq -r '.model.id // empty')
 model_name=$(echo "$input" | jq -r '.model.display_name // empty')
 rate_5h=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty')
@@ -34,12 +33,8 @@ parts=()
 if [ -n "$used" ] && [ -n "$total" ]; then
   used_fmt=$(fmt_tokens "$used")
   total_fmt=$(fmt_tokens "$total")
-  if [ -n "$used_pct" ]; then
-    pct=$(printf "%.0f" "$used_pct")
-    parts+=("${used_fmt} / ${total_fmt} tokens (${pct}%)")
-  else
-    parts+=("${used_fmt} / ${total_fmt} tokens")
-  fi
+  pct=$(awk "BEGIN { printf \"%.0f\", $used / $total * 100 }")
+  parts+=("${used_fmt} / ${total_fmt} tokens (${pct}%)")
 fi
 
 # Only show rate limit when pressure is meaningful (>= 50%)
