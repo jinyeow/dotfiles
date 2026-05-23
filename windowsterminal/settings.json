@@ -78,7 +78,7 @@
         "defaults": 
         {
             "colorScheme": {
-                "dark": "Catppuccin Macchiato",
+                "dark": "Catppuccin Mocha",
                 "light": "Catppuccin Latte"
             },
             "font": {
