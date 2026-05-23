@@ -173,6 +173,9 @@ $_dotfiles = Split-Path $PSScriptRoot
 $env:RIPGREP_CONFIG_PATH  = Join-Path $_dotfiles 'ripgrep\ripgreprc'
 $env:FZF_DEFAULT_OPTS_FILE = Join-Path $_dotfiles 'fzf\fzfrc'
 
+# Zoxide — store resolved paths so junctions don't produce duplicate entries
+$env:_ZO_RESOLVE_SYMLINKS = '1'
+
 # Theme detection — catppuccin mocha (dark) / latte (light), shared by fzf + lazygit
 # AppsUseLightTheme: 0x0 = dark, 0x1 = light
 $_regOut = reg query 'HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' /v AppsUseLightTheme 2>$null

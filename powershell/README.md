@@ -35,6 +35,8 @@ Sets `RIPGREP_CONFIG_PATH` and `FZF_DEFAULT_OPTS_FILE` pointing at repo files
 (no copy needed). Reads `AppsUseLightTheme` from the registry once into
 `$_isDark`, then sets `FZF_DEFAULT_OPTS` and `LG_CONFIG_FILE` (lazygit base +
 theme) to catppuccin mocha or latte — mirrors nvim's theme detection.
+Sets `_ZO_RESOLVE_SYMLINKS=1` so zoxide stores resolved paths; prevents
+duplicate database entries when navigating through junctions.
 
 **Phase 2 — deferred (fires on first idle):**
 PSFzf, WinGet CommandNotFound, Chocolatey, zoxide, upgrade to
