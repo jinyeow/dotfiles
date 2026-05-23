@@ -172,12 +172,13 @@ $env:XDG_CONFIG_HOME = "$HOME/.config"
 $_dotfiles = Split-Path $PSScriptRoot
 $env:RIPGREP_CONFIG_PATH  = Join-Path $_dotfiles 'ripgrep\ripgreprc'
 $env:FZF_DEFAULT_OPTS_FILE = Join-Path $_dotfiles 'fzf\fzfrc'
-Remove-Variable _dotfiles
 
-# fzf color theme — catppuccin mocha (dark) / latte (light), mirrors nvim
+# Theme detection — catppuccin mocha (dark) / latte (light), shared by fzf + lazygit
 # AppsUseLightTheme: 0x0 = dark, 0x1 = light
 $_regOut = reg query 'HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' /v AppsUseLightTheme 2>$null
-$env:FZF_DEFAULT_OPTS = if ($_regOut -match '0x0') {
+$_isDark = $_regOut -match '0x0'
+
+$env:FZF_DEFAULT_OPTS = if ($_isDark) {
     '--color=bg+:#313244,bg:#1E1E2E,spinner:#F5E0DC,hl:#F38BA8 ' +
     '--color=fg:#CDD6F4,header:#F38BA8,info:#CBA6F7,pointer:#F5E0DC ' +
     '--color=marker:#B4BEFE,fg+:#CDD6F4,prompt:#CBA6F7,hl+:#F38BA8 ' +
@@ -188,7 +189,15 @@ $env:FZF_DEFAULT_OPTS = if ($_regOut -match '0x0') {
     '--color=marker:#7287FD,fg+:#4C4F69,prompt:#8839EF,hl+:#D20F39 ' +
     '--color=selected-bg:#BCC0CC --color=border:#9CA0B0,label:#4C4F69'
 }
-Remove-Variable _regOut
+
+# lazygit config — base merged with theme via LG_CONFIG_FILE
+$env:LG_CONFIG_FILE = (Join-Path $_dotfiles 'lazygit\config.yml') + ',' + $(if ($_isDark) {
+    Join-Path $_dotfiles 'lazygit\theme-mocha.yml'
+} else {
+    Join-Path $_dotfiles 'lazygit\theme-latte.yml'
+})
+
+Remove-Variable _dotfiles, _regOut, _isDark
 
 # --- Deferred loading (Phase 2) --------------------------------------------
 # Heavy modules loaded via PowerShell.OnIdle — the prompt appears immediately,
