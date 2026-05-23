@@ -31,6 +31,9 @@ The profile is structured in three phases to keep startup fast:
 **Phase 1 — blocking (runs before first prompt):**
 Single `PSModulePath` scan into `$global:ProfileModules` cache, PSReadLine
 with `PredictionSource History`, all key bindings, prompt definition.
+Sets `RIPGREP_CONFIG_PATH` and `FZF_DEFAULT_OPTS_FILE` pointing at repo files
+(no copy needed). Sets `FZF_DEFAULT_OPTS` to catppuccin mocha or latte based
+on the `AppsUseLightTheme` registry key — mirrors nvim's theme detection.
 
 **Phase 2 — deferred (fires on first idle):**
 PSFzf, WinGet CommandNotFound, Chocolatey, zoxide, upgrade to
@@ -44,9 +47,12 @@ Azure context refresh on a 60-second timer, driven from `Set-Prompt.ps1`.
 
 | Chord | Action |
 |---|---|
-| `Ctrl+r` | Reverse history search |
+| `Ctrl+r` | Reverse history search (fzf) |
 | `Ctrl+t` | FZF file picker |
-| `Ctrl+f` / `ForwardChar` | Forward char (also FZF provider chord) |
+| `Alt+f` | FZF ripgrep search |
+| `Alt+b` | FZF git branch switcher |
+| `Alt+g` | FZF git worktree switcher |
+| `Ctrl+f` | Forward char |
 | `Ctrl+b` | Backward char |
 | `Ctrl+p` / `Ctrl+n` | Previous / next history |
 | `Ctrl+a` / `Ctrl+e` | Beginning / end of line |

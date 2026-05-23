@@ -14,7 +14,14 @@ Global config for [curl](https://curl.se) — applied to every curl invocation.
 |---|---|
 | `-L` | Follow redirects |
 | `referer = ";auto"` | Automatically set the previous URL as referer on redirect |
-| `connect-timeout = 30` | Abort if the connection phase takes more than 30 seconds (does not cap transfer time) |
+| `connect-timeout = 30` | Abort if the connection phase takes more than 30 seconds |
+| `max-time = 300` | Abort if the entire request takes more than 5 minutes |
+| `compressed` | Request compressed response and auto-decompress |
+| `http2` | Use HTTP/2 where supported (falls back to HTTP/1.1) |
+| `progress-bar` | Simple `#` progress bar instead of verbose transfer stats |
+| `retry = 3` | Retry up to 3 times on transient errors (408, 429, 5xx) |
+| `retry-delay = 2` | Wait 2 seconds between retries |
+| `retry-max-time = 60` | Give up retrying after 60 seconds total |
 
 ## What was removed
 

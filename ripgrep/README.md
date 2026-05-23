@@ -32,6 +32,8 @@ Config for [ripgrep](https://github.com/BurntSushi/ripgrep) (`rg`).
 | `--smart-case` | Case-insensitive unless pattern contains uppercase |
 | `--sort=path` | Results sorted by file path |
 | `--max-columns=10000` | Truncates very long lines rather than omitting them |
+| `--max-columns-preview` | Shows a truncated preview of lines that exceed `--max-columns` |
+| `--column` | Show column number of the first match on each line |
 | `--colors=...` | Custom colour scheme for paths, line numbers, and matches |
 
 ## Install

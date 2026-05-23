@@ -27,8 +27,13 @@ Git configuration, global ignore rules, commit template, and hook templates.
 - **zdiff3 conflict style** — shows common ancestor in conflict markers
 - **`pull.ff = only`** — never creates merge commits on pull
 - **`rebase.updateRefs = true`** — automatic stacked branch ref updates
+- **`rebase.rescheduleFailedExec = true`** — retry failed `exec` steps in interactive rebase
 - **`rerere.enabled = true`** — remembers and replays conflict resolutions
 - **`push.autoSetupRemote = true`** — no manual upstream needed on first push
+- **`push.useForceIfIncludes = true`** — safety check: force push only if remote hasn't diverged unexpectedly
+- **`fetch.fsckObjects` + `transfer.fsckObjects`** — integrity check on every fetch/clone
+- **`column.ui = auto`** — columnize `git branch`, `git tag`, and similar list output
+- **`maintenance.strategy = incremental`** — background repo maintenance; activate per-repo with `git maintenance register`
 - **GitHub SSH rewrite** — both `https://github.com/` and `gh:` resolve to SSH
 
 ## Work identity (`[includeIf]`)
