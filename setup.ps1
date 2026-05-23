@@ -33,7 +33,7 @@ $Dotfiles = $PSScriptRoot
 
 # Expand 'all'
 if ($Module -contains 'all') {
-    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'curl', 'claude')
+    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'curl', 'claude', 'lazygit')
 }
 $Module = $Module | Select-Object -Unique
 
@@ -243,6 +243,19 @@ function Install-Curl {
         -Source (Join-Path $Dotfiles 'curl\curlrc')
 }
 
+function Install-Lazygit {
+    Write-Host ''
+    Write-Info '=== Lazygit ==='
+    Write-Info 'Config is loaded via $env:LG_CONFIG_FILE set in the PowerShell profile — no files to copy.'
+    Write-Info "Base:  $(Join-Path $Dotfiles 'lazygit\config.yml')"
+    Write-Info "Theme: lazygit\theme-mocha.yml or theme-latte.yml (selected at profile load from OS theme)"
+    if (-not (Get-Command -Name lazygit -ErrorAction Ignore)) {
+        Write-Warn 'lazygit not found. Install with: winget install JesseDuffield.lazygit'
+    } else {
+        Write-Ok 'lazygit is installed.'
+    }
+}
+
 function Install-Claude {
     Write-Host ''
     Write-Info '=== Claude Code ==='
@@ -270,6 +283,7 @@ foreach ($m in $Module) {
         'tmux'       { Install-Tmux       }
         'curl'       { Install-Curl       }
         'claude'     { Install-Claude     }
+        'lazygit'    { Install-Lazygit    }
         default      { Write-Warn "Unknown module '$m' — skipping." }
     }
 }

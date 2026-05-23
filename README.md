@@ -15,6 +15,7 @@ Personal dotfiles for Windows (primary) and Linux/WSL.
 | `fzf/` | fzf default options + catppuccin theme | Windows + Linux |
 | `curl/` | Global curl defaults | Windows + Linux |
 | `ripgrep/` | ripgrep config | Windows + Linux |
+| `lazygit/` | lazygit config + Catppuccin themes | Windows + Linux |
 | `tmux/` | tmux config | Linux / WSL |
 | `nix/` | Nix/Home Manager (legacy snapshot) | Linux |
 
@@ -32,7 +33,7 @@ cd $HOME/dotfiles
 .\setup.ps1 -Module all -DryRun  # preview without changes
 ```
 
-Available modules: `git`, `neovim`, `vim`, `powershell`, `tig`, `curl`
+Available modules: `git`, `neovim`, `vim`, `powershell`, `tig`, `curl`, `lazygit`
 
 ### Linux / WSL
 
@@ -44,7 +45,7 @@ cd ~/dotfiles
 ./setup.sh -m all --dry-run    # preview without changes
 ```
 
-Available modules: `git`, `neovim`, `vim`, `powershell`, `bash`, `tig`, `tmux`, `fzf`, `curl`
+Available modules: `git`, `neovim`, `vim`, `powershell`, `bash`, `tig`, `tmux`, `fzf`, `curl`, `lazygit`
 
 ## Requirements
 
@@ -54,6 +55,7 @@ Available modules: `git`, `neovim`, `vim`, `powershell`, `bash`, `tig`, `tmux`, 
 | [fzf](https://github.com/junegunn/fzf) | Fuzzy finder | `winget install junegunn.fzf` |
 | [ripgrep](https://github.com/BurntSushi/ripgrep) | Fast grep | `winget install BurntSushi.ripgrep.MSVC` |
 | [zoxide](https://github.com/ajeetdsouza/zoxide) | Smart `cd` | `winget install ajeetdsouza.zoxide` |
+| [lazygit](https://github.com/jesseduffield/lazygit) | Terminal git UI | `winget install JesseDuffield.lazygit` |
 | [tig](https://jonas.github.io/tig/) | Terminal git browser | `winget install Jonas.Tig` |
 | [Neovim](https://neovim.io) 0.11+ | Editor | `winget install Neovim.Neovim` |
 

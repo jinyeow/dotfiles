@@ -32,8 +32,9 @@ The profile is structured in three phases to keep startup fast:
 Single `PSModulePath` scan into `$global:ProfileModules` cache, PSReadLine
 with `PredictionSource History`, all key bindings, prompt definition.
 Sets `RIPGREP_CONFIG_PATH` and `FZF_DEFAULT_OPTS_FILE` pointing at repo files
-(no copy needed). Sets `FZF_DEFAULT_OPTS` to catppuccin mocha or latte based
-on the `AppsUseLightTheme` registry key — mirrors nvim's theme detection.
+(no copy needed). Reads `AppsUseLightTheme` from the registry once into
+`$_isDark`, then sets `FZF_DEFAULT_OPTS` and `LG_CONFIG_FILE` (lazygit base +
+theme) to catppuccin mocha or latte — mirrors nvim's theme detection.
 
 **Phase 2 — deferred (fires on first idle):**
 PSFzf, WinGet CommandNotFound, Chocolatey, zoxide, upgrade to

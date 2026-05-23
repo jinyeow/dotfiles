@@ -40,7 +40,7 @@ done
 # Expand 'all'
 for m in "${MODULES[@]}"; do
     if [[ "$m" == "all" ]]; then
-        MODULES=(neovim vim powershell git bash tig tmux curl claude)
+        MODULES=(neovim vim powershell git bash tig tmux curl claude lazygit)
         break
     fi
 done
@@ -175,6 +175,15 @@ install_curl() {
     make_symlink "$DOTFILES/curl/curlrc" "$HOME/.curlrc"
 }
 
+install_lazygit() {
+    echo ''
+    info '=== Lazygit ==='
+    local xdg_config="${XDG_CONFIG_HOME:-$HOME/.config}"
+    # Symlink base config only; theme switching requires OS detection not available in bash.
+    # On Windows the PowerShell profile sets LG_CONFIG_FILE with the appropriate theme.
+    make_symlink "$DOTFILES/lazygit/config.yml" "$xdg_config/lazygit/config.yml"
+}
+
 install_claude() {
     echo ''
     info '=== Claude Code ==='
@@ -197,6 +206,7 @@ for module in "${MODULES[@]}"; do
         tmux)       install_tmux       ;;
         curl)       install_curl       ;;
         claude)     install_claude     ;;
+        lazygit)    install_lazygit    ;;
         *)          warn "Unknown module '$module' — skipping." ;;
     esac
 done
