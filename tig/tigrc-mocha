@@ -24,17 +24,16 @@ color diff-header      183 235 bold
 color diff-index       244 235
 color diff-oldmode     217 235
 color diff-newmode     151 235
-color diff-copy-from   116 235
-color diff-copy-to     116 235
-color diff-deleted     211 235
-color diff-added       151 235
-color diff-addsub      189 237 bold
+color "copy from "     116 235
+color "copy to "       116 235
+color "-"              211 235
+color "+"              151 235
 color diff-chunk       223 235
 color "diff ---"       211 235 bold
 color "diff +++"       151 235 bold
 color "@@"             223 235 bold
 
-# --- Branch graph palette ----------------------------------------------------
+# --- Branch graph palette (0–13) ---------------------------------------------
 color palette-0        211 235
 color palette-1        216 235
 color palette-2        151 235
@@ -49,4 +48,3 @@ color palette-10       151 235 bold
 color palette-11       223 235 bold
 color palette-12       111 235 bold
 color palette-13       183 235 bold
-color palette-14       116 235 bold
