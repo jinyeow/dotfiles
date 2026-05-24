@@ -6,12 +6,29 @@ map('n', '<Esc>', '<cmd>nohlsearch<CR>')
 map('n', '/', '/\\v')
 map('v', '/', '/\\v')
 
--- Window / pane navigation
--- Inside Zellij: vim-zellij-navigator (.wasm plugin) detects this pane is nvim
--- and forwards Ctrl+hjkl here. ZellijNavigate* moves between nvim windows
--- first; at the edge it calls "zellij action move-focus" to jump to the
--- adjacent pane. Outside Zellij: plain <C-w> movement.
+-- Window / pane navigation — three modes: zellij, tmux, standalone.
+-- The multiplexer-side configs already detect nvim and forward Ctrl+hjkl here:
+--   zellij: vim-zellij-navigator.wasm (see zellij/config.kdl)
+--   tmux:   is_vim + if-shell bindings (see tmux/tmux.conf)
+-- We move the nvim window first; at the window edge we call back to the
+-- multiplexer to cross into the adjacent pane.
+local function navigate(dir)
+  local cur = vim.fn.winnr()
+  vim.cmd('wincmd ' .. dir)
+  if vim.fn.winnr() == cur then
+    if vim.env.ZELLIJ then
+      local zdirs = { h = 'left', j = 'down', k = 'up', l = 'right' }
+      vim.fn.system('zellij action move-focus ' .. zdirs[dir])
+    elseif vim.env.TMUX then
+      local tdirs = { h = 'L', j = 'D', k = 'U', l = 'R' }
+      vim.fn.system('tmux select-pane -' .. tdirs[dir])
+    end
+  end
+end
+
 if vim.env.ZELLIJ and vim.fn.executable('zellij') == 1 then
+  -- Prefer zellij-nav.nvim: it handles the left/right-wraps-to-tab behaviour.
+  -- Falls back to the raw CLI navigate() above if the plugin isn't yet cloned.
   local ok, _ = pcall(require, 'zellij-nav')
   if ok then
     map('n', '<C-h>', '<cmd>ZellijNavigateLeftTab<cr>',  { silent = true })
@@ -19,11 +36,16 @@ if vim.env.ZELLIJ and vim.fn.executable('zellij') == 1 then
     map('n', '<C-k>', '<cmd>ZellijNavigateUp<cr>',       { silent = true })
     map('n', '<C-l>', '<cmd>ZellijNavigateRightTab<cr>', { silent = true })
   else
-    map('n', '<C-h>', '<C-w>h')
-    map('n', '<C-j>', '<C-w>j')
-    map('n', '<C-k>', '<C-w>k')
-    map('n', '<C-l>', '<C-w>l')
+    map('n', '<C-h>', function() navigate('h') end, { silent = true })
+    map('n', '<C-j>', function() navigate('j') end, { silent = true })
+    map('n', '<C-k>', function() navigate('k') end, { silent = true })
+    map('n', '<C-l>', function() navigate('l') end, { silent = true })
   end
+elseif vim.env.TMUX then
+  map('n', '<C-h>', function() navigate('h') end, { silent = true })
+  map('n', '<C-j>', function() navigate('j') end, { silent = true })
+  map('n', '<C-k>', function() navigate('k') end, { silent = true })
+  map('n', '<C-l>', function() navigate('l') end, { silent = true })
 else
   map('n', '<C-h>', '<C-w>h')
   map('n', '<C-j>', '<C-w>j')
