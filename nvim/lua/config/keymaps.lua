@@ -6,11 +6,21 @@ map('n', '<Esc>', '<cmd>nohlsearch<CR>')
 map('n', '/', '/\\v')
 map('v', '/', '/\\v')
 
--- Window navigation
-map('n', '<C-h>', '<C-w>h')
-map('n', '<C-j>', '<C-w>j')
-map('n', '<C-k>', '<C-w>k')
-map('n', '<C-l>', '<C-w>l')
+-- Window / pane navigation
+-- Inside Zellij: Ctrl+hjkl moves between nvim windows, and at the edge jumps
+-- to the adjacent Zellij pane (or tab for left/right) via the CLI.
+-- Outside Zellij: fall back to standard <C-w> movement.
+if vim.env.ZELLIJ and _G.user_config.profile ~= 'minimal' then
+  map('n', '<C-h>', '<cmd>ZellijNavigateLeftTab<cr>',  { silent = true })
+  map('n', '<C-j>', '<cmd>ZellijNavigateDown<cr>',     { silent = true })
+  map('n', '<C-k>', '<cmd>ZellijNavigateUp<cr>',       { silent = true })
+  map('n', '<C-l>', '<cmd>ZellijNavigateRightTab<cr>', { silent = true })
+else
+  map('n', '<C-h>', '<C-w>h')
+  map('n', '<C-j>', '<C-w>j')
+  map('n', '<C-k>', '<C-w>k')
+  map('n', '<C-l>', '<C-w>l')
+end
 
 -- Resize windows
 map('n', '<C-Up>',    ':resize +2<CR>')

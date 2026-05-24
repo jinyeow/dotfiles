@@ -30,6 +30,7 @@ local plugins = {
   { 'https://github.com/b0o/schemastore.nvim.git',                        'schemastore.nvim'            },
   { 'https://github.com/lewis6991/gitsigns.nvim.git',                     'gitsigns.nvim'               },
   { 'https://github.com/MeanderingProgrammer/render-markdown.nvim.git',   'render-markdown.nvim'        },
+  { 'https://github.com/swaits/zellij-nav.nvim.git',                      'zellij-nav.nvim'             },
 }
 
 local needs_ts_update = false
@@ -39,3 +40,6 @@ for _, plugin in ipairs(plugins) do
   end
 end
 if needs_ts_update then vim.cmd('TSUpdate') end
+
+-- Zellij navigator: register commands (no-op when not inside Zellij)
+require('zellij-nav').setup()
