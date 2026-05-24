@@ -38,8 +38,17 @@ keybinds clear-defaults=true {
 
     // ── Locked (pass-through) ────────────────────────────────────────────────
     // Every key goes to the pane. Only Ctrl+g escapes to command mode.
+    //
+    // Ctrl+hjkl: navigate panes from anywhere — shell, nvim, or any other pane.
+    // Zellij intercepts these before the pane sees them, so they always move
+    // pane focus. For nvim window navigation use <C-w>hjkl instead (Ctrl+w
+    // is not bound here and passes through to nvim normally).
     locked {
         bind "Ctrl g" { SwitchToMode "normal"; }
+        bind "Ctrl h" { MoveFocusOrTab "left"; }
+        bind "Ctrl j" { MoveFocus "down"; }
+        bind "Ctrl k" { MoveFocus "up"; }
+        bind "Ctrl l" { MoveFocusOrTab "right"; }
     }
 
     // ── Normal (command mode) ────────────────────────────────────────────────
