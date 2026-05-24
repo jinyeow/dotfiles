@@ -1,0 +1,52 @@
+# Catppuccin Mocha theme for tig
+# Requires ~/.tigrc to be installed (setup.ps1 -Module tig)
+source ~/.tigrc
+
+# xterm-256 palette references:
+#   235=Base  237=Surface0  238=Surface1  244=Overlay1  153=Subtext1  189=Text
+#   183=Mauve 111=Blue      211=Red       151=Green     223=Yellow    216=Peach
+#   116=Teal  117=Sky       217=Maroon
+
+# --- UI chrome ---------------------------------------------------------------
+color default          189 235
+color cursor           235 183 bold
+color title-focus      189 237 bold
+color title-blur       244 235
+color header           153 235 bold
+color date             116 235
+color author           111 235
+color id               183 235
+color graph-commit     183 235 bold
+color status           189 235
+
+# --- Diff --------------------------------------------------------------------
+color diff-header      183 235 bold
+color diff-index       244 235
+color diff-oldmode     217 235
+color diff-newmode     151 235
+color diff-copy-from   116 235
+color diff-copy-to     116 235
+color diff-deleted     211 235
+color diff-added       151 235
+color diff-addsub      189 237 bold
+color diff-chunk       223 235
+color "diff ---"       211 235 bold
+color "diff +++"       151 235 bold
+color "@@"             223 235 bold
+
+# --- Branch graph palette ----------------------------------------------------
+color palette-0        211 235
+color palette-1        216 235
+color palette-2        151 235
+color palette-3        223 235
+color palette-4        111 235
+color palette-5        183 235
+color palette-6        116 235
+color palette-7        217 235
+color palette-8        211 235 bold
+color palette-9        216 235 bold
+color palette-10       151 235 bold
+color palette-11       223 235 bold
+color palette-12       111 235 bold
+color palette-13       183 235 bold
+color palette-14       116 235 bold

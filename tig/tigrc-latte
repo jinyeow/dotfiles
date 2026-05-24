@@ -1,0 +1,52 @@
+# Catppuccin Latte theme for tig
+# Requires ~/.tigrc to be installed (setup.ps1 -Module tig)
+source ~/.tigrc
+
+# xterm-256 palette references:
+#   255=Base  252=Surface0  250=Surface1  245=Overlay1   60=Text/Subtext1
+#    99=Mauve  27=Blue      161=Red        34=Green      172=Yellow  202=Peach
+#    30=Teal   39=Sky       167=Maroon    105=Lavender
+
+# --- UI chrome ---------------------------------------------------------------
+color default           60 255
+color cursor           255  99 bold
+color title-focus       60 252 bold
+color title-blur       245 255
+color header           245 255 bold
+color date              30 255
+color author            27 255
+color id                99 255
+color graph-commit      99 255 bold
+color status            60 255
+
+# --- Diff --------------------------------------------------------------------
+color diff-header       99 255 bold
+color diff-index       245 255
+color diff-oldmode     167 255
+color diff-newmode      34 255
+color diff-copy-from    30 255
+color diff-copy-to      30 255
+color diff-deleted     161 255
+color diff-added        34 255
+color diff-addsub       60 252 bold
+color diff-chunk       172 255
+color "diff ---"       161 255 bold
+color "diff +++"        34 255 bold
+color "@@"             172 255 bold
+
+# --- Branch graph palette ----------------------------------------------------
+color palette-0        161 255
+color palette-1        202 255
+color palette-2         34 255
+color palette-3        172 255
+color palette-4         27 255
+color palette-5         99 255
+color palette-6         30 255
+color palette-7        167 255
+color palette-8        161 255 bold
+color palette-9        202 255 bold
+color palette-10        34 255 bold
+color palette-11       172 255 bold
+color palette-12        27 255 bold
+color palette-13        99 255 bold
+color palette-14        30 255 bold
