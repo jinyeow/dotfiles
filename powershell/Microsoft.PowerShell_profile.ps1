@@ -61,6 +61,7 @@ Set-PSReadLineKeyHandler -Chord Ctrl+a -Function BeginningOfLine
 Set-PSReadLineKeyHandler -Chord Ctrl+e -Function EndOfLine
 Set-PSReadLineKeyHandler -Chord Ctrl+w -Function BackwardDeleteWord
 Set-PSReadLineKeyHandler -Chord Ctrl+u -Function BackwardDeleteLine
+Set-PSReadLineKeyHandler -Chord 'Ctrl+?' -ScriptBlock { Show-Hotkeys | Out-Null; [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt() }
 
 # --- Prompt -----------------------------------------------------------------
 . "$(Split-Path -Path $PROFILE)/Profile/Set-Prompt.ps1"
@@ -174,8 +175,33 @@ function Show-Hotkeys {
         '[nvim]   <leader>fb      find open buffers'
         '[nvim]   <leader>fc      find commands'
         '[nvim]   <leader>fl      find lines in loaded buffers'
+        '[git]    git a            stage files (add)'
+        '[git]    git c            commit'
+        '[git]    git co           checkout'
+        '[git]    git f            fetch --all --prune'
+        '[git]    git s            status --short'
+        '[git]    git st           status'
+        '[git]    git amend        commit --amend'
+        '[git]    git uncommit     undo last commit (reset --mixed HEAD~)'
+        '[git]    git unstage      unstage files'
+        '[git]    git discard      discard working tree changes'
+        '[git]    git staged       diff --staged'
+        '[git]    git conflicts    list unmerged files'
+        '[git]    git filediff     diff --name-status'
+        '[git]    git lg           pretty log graph'
+        '[git]    git graph        log graph (50 commits, all refs)'
+        '[git]    git last         SHA of last commit'
+        '[git]    git branches     branch -a'
+        '[git]    git remotes      remote -v'
+        '[git]    git stashes      stash list'
+        '[git]    git wta          worktree add'
+        '[git]    git wtl          worktree list'
+        '[git]    git wtr          worktree remove'
+        '[git]    git aliases      list all git aliases'
     )
-    if (Get-Command fzf -ErrorAction Ignore) {
+    if (Get-Command Invoke-Fzf -ErrorAction Ignore) {
+        $entries | Invoke-Fzf -Prompt 'keys> ' -Height 15
+    } elseif (Get-Command fzf -ErrorAction Ignore) {
         $entries | fzf --prompt 'keys> ' --height=15 --no-preview
     } else {
         $entries | Out-Host

@@ -41,6 +41,7 @@ by the PowerShell profile based on the OS dark/light setting — mirrors nvim.
 | `Ctrl+t` | Fuzzy file picker (insert path at cursor) |
 | `Tab` | Fuzzy tab completion |
 | `Alt+c` | Fuzzy directory picker — cd into selection |
+| `Ctrl+?` | Show fuzzy-searchable hotkey cheatsheet (`keys`) |
 | `Alt+f` | Fuzzy ripgrep search across files |
 | `Alt+b` | Fuzzy git branch switcher (`switch_git_branch`) |
 | `Alt+g` | Fuzzy git worktree navigator (`cd_git_worktree`) |
