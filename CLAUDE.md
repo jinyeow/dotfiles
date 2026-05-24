@@ -61,7 +61,7 @@ Files live under `git/`: `gitconfig` (base), `gitconfig-work` (work overrides), 
 
 ## Neovim (`nvim/`)
 
-Modular Lua config targeting Neovim 0.11+. Uses Neovim's built-in package system (`pack/*/start/`) with a lightweight auto-install wrapper — no external plugin manager. LSP is configured via the native `vim.lsp.config` / `vim.lsp.enable` API (not the lspconfig Lua framework).
+Modular Lua config targeting Neovim 0.12+. Uses `vim.pack` (Neovim 0.12 built-in package manager) — no external plugin manager. LSP is configured via the native `vim.lsp.config` / `vim.lsp.enable` API (not the lspconfig Lua framework).
 
 Load order: `performance` → `user` → `plugins` → `options` → `keymaps` → `autocmds` → `treesitter` → `lsp` → `gitsigns` → `ui`
 
@@ -69,7 +69,7 @@ The `vim/` directory (Vimscript setup) is the older Vim config — kept as the L
 
 ### Key decisions (do not reverse without asking)
 
-- **Plugin manager**: built-in `pack/*/start/` only. Plugins cloned via `git clone --depth=1` on first launch by `ensure_plugin()` in `plugins.lua`.
+- **Plugin manager**: `vim.pack` (Neovim 0.12 built-in). `vim.pack.add(specs, { load = true, confirm = false })` in `plugins.lua` — installs in parallel on first launch, writes a lock file to `nvim/nvim-pack-lock.json`. Plugins stored in `nvim-data/site/pack/core/opt/`. Do not revert to `ensure_plugin()` or a third-party manager.
 - **LSP API**: `vim.lsp.config` / `vim.lsp.enable` only. Do not use `require('lspconfig').xxx.setup{}`.
 - **`_G.user_config`**: defined in `user.lua`, read by `lsp.lua` and `ui.lua`. Controls `profile` (`full`/`minimal`), LSP tool paths, and sunrise/sunset fallback hours for theme detection.
 - **Profile system**: `NVIM_PROFILE=minimal` disables all plugins and uses a built-in colorscheme. Each module guards itself with an early return so the env var is the only thing to set.
