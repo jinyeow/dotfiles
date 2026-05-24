@@ -33,7 +33,7 @@ $Dotfiles = $PSScriptRoot
 
 # Expand 'all'
 if ($Module -contains 'all') {
-    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'curl', 'claude', 'lazygit', 'windowsterminal', 'bat', 'vscode')
+    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'curl', 'claude', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget')
 }
 $Module = $Module | Select-Object -Unique
 
@@ -269,6 +269,15 @@ function Install-Lazygit {
     }
 }
 
+function Install-Winget {
+    Write-Host ''
+    Write-Info '=== winget packages ==='
+    Write-Info 'Run the bootstrap script to install curated packages on a new machine:'
+    Write-Info "  $(Join-Path $Dotfiles 'winget\packages.ps1') [-DryRun]"
+    Write-Info 'Or use winget import:'
+    Write-Info "  winget import -i $(Join-Path $Dotfiles 'winget\packages.json') --ignore-unavailable"
+}
+
 function Install-VSCode {
     Write-Host ''
     Write-Info '=== VSCode ==='
@@ -342,6 +351,7 @@ foreach ($m in $Module) {
         'tig'        { Install-Tig        }
         'tmux'       { Install-Tmux       }
         'curl'       { Install-Curl       }
+        'winget'     { Install-Winget     }
         'vscode'     { Install-VSCode     }
         'bat'        { Install-Bat        }
         'claude'     { Install-Claude     }
