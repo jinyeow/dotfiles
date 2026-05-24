@@ -283,7 +283,8 @@ $env:FZF_DEFAULT_OPTS = if ($_isDark) {
     '--color=selected-bg:#BCC0CC --color=border:#9CA0B0,label:#4C4F69'
 }
 
-# bat preview theme — must match fzf theme so alt+f preview pane doesn't clash
+# bat config and preview theme — must match fzf theme so alt+f preview pane doesn't clash
+$env:BAT_CONFIG_PATH = Join-Path $_dotfiles 'bat\config'
 $env:BAT_THEME = if ($_isDark) { 'Catppuccin Mocha' } else { 'Catppuccin Latte' }
 
 # lazygit config — base merged with theme via LG_CONFIG_FILE

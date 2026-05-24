@@ -1,0 +1,5 @@
+# Show line numbers, git-change indicators, and filename header.
+--style=numbers,changes,header
+
+# Render italic ANSI sequences (Windows Terminal supports this).
+--italic-text=always

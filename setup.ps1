@@ -33,7 +33,7 @@ $Dotfiles = $PSScriptRoot
 
 # Expand 'all'
 if ($Module -contains 'all') {
-    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'curl', 'claude', 'lazygit', 'windowsterminal')
+    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'curl', 'claude', 'lazygit', 'windowsterminal', 'bat')
 }
 $Module = $Module | Select-Object -Unique
 
@@ -269,6 +269,18 @@ function Install-Lazygit {
     }
 }
 
+function Install-Bat {
+    Write-Host ''
+    Write-Info '=== bat ==='
+    Write-Info 'Config is loaded via $env:BAT_CONFIG_PATH set in the PowerShell profile — no files to copy.'
+    Write-Info "Config: $(Join-Path $Dotfiles 'bat\config')"
+    if (-not (Get-Command -Name bat -ErrorAction Ignore)) {
+        Write-Warn 'bat not found. Install with: winget install sharkdp.bat'
+    } else {
+        Write-Ok 'bat is installed.'
+    }
+}
+
 function Install-Claude {
     Write-Host ''
     Write-Info '=== Claude Code ==='
@@ -311,6 +323,7 @@ foreach ($m in $Module) {
         'tig'        { Install-Tig        }
         'tmux'       { Install-Tmux       }
         'curl'       { Install-Curl       }
+        'bat'        { Install-Bat        }
         'claude'     { Install-Claude     }
         'lazygit'        { Install-Lazygit        }
         'windowsterminal' { Install-WindowsTerminal }
