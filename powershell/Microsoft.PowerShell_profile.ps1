@@ -115,53 +115,38 @@ Remove-Variable _chocoProfile
 
 if ($global:ProfileModules['PSFzf']) {
     function switch_git_branch {
-        $branches = (git branch -vv | Select-String ': gone]' -NotMatch | ForEach-Object {
+        $branches = git branch -vv | Select-String ': gone]' -NotMatch | ForEach-Object {
             ($_.ToString().Substring(2) -split '\s+')[0]
-        })
-        $branch = "$($branches |
-            Sort-Object { $_.Substring($_.LastIndexOf(',') + 1) } |
-            fzf --prompt 'branch> ' --height=~10)"
+        }
+        $branch = $branches | Sort-Object | Invoke-Fzf -Prompt 'branch> ' -Height 10
         if (-not [String]::IsNullOrEmpty($branch)) {
             Set-Location "$(git rev-parse --show-toplevel)"
             git switch $branch
-            [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt()
         }
+        [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt()
     }
 
     function cd_git_worktree {
-        $worktreeStrings = @()
+        $worktrees = @{}
         git worktree list --porcelain | ForEach-Object -Begin {
-            $currentWorktreeObject = @{}
+            $curr = @{}
         } -Process {
             switch -Regex ($_) {
-                '^worktree (.+)$' {
-                    $currentWorktreeObject | Add-Member -MemberType NoteProperty -Name Path -Value $matches[1]
-                }
-                '^HEAD (.+)$' {
-                    $currentWorktreeObject | Add-Member -MemberType NoteProperty -Name Commit -Value $matches[1]
-                }
-                '^branch (.+)$' {
-                    $currentWorktreeObject | Add-Member -MemberType NoteProperty -Name Branch -Value $matches[1]
-                }
+                '^worktree (.+)$' { $curr['Path']   = $matches[1] }
+                '^branch (.+)$'   { $curr['Branch'] = $matches[1] -replace '^refs/heads/', '' }
                 '^$' {
-                    if (-not $currentWorktreeObject) { continue }
-                    $worktreeString = "$($currentWorktreeObject.Path)," +
-                        "$($currentWorktreeObject.Commit)," +
-                        "$($currentWorktreeObject.Branch -replace '^refs/heads/', '')"
-                    if (-not [String]::IsNullOrEmpty($worktreeString)) {
-                        $worktreeStrings += $worktreeString
-                        $currentWorktreeObject = @{}
+                    if ($curr['Path'] -and $curr['Branch']) {
+                        $worktrees[$curr['Branch']] = $curr['Path']
+                        $curr = @{}
                     }
                 }
             }
         }
-        $worktreeDirectory = "$($worktreeStrings |
-            Sort-Object { $_.Substring($_.LastIndexOf(',') + 1) } |
-            fzf --prompt 'worktree> ' --height=~10 --with-nth=-1 --delimiter=',' --accept-nth=1)"
-        if (-not [String]::IsNullOrEmpty($worktreeDirectory)) {
-            Set-Location "$worktreeDirectory"
-            [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt()
+        $selected = $worktrees.Keys | Sort-Object | Invoke-Fzf -Prompt 'worktree> ' -Height 10
+        if (-not [String]::IsNullOrEmpty($selected)) {
+            Set-Location $worktrees[$selected]
         }
+        [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt()
     }
 }
 
