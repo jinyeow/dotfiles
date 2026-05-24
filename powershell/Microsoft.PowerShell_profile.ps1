@@ -223,7 +223,7 @@ function Initialize-DeferredProfile {
         Set-PSReadLineKeyHandler -Chord 'alt+g' -ScriptBlock { cd_git_worktree }
 
         Set-PsFzfOption `
-            -AltCCommand ([ScriptBlock] { param($Location) Write-Host $Location }) `
+            -AltCCommand ([ScriptBlock] { param($Location) Set-Location $Location; [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt() }) `
             -EnableAliasFuzzyEdit `
             -EnableAliasFuzzyGitStatus `
             -EnableAliasFuzzyHistory `

@@ -40,11 +40,21 @@ by the PowerShell profile based on the OS dark/light setting — mirrors nvim.
 | `Ctrl+r` | Fuzzy reverse history search |
 | `Ctrl+t` | Fuzzy file picker (insert path at cursor) |
 | `Tab` | Fuzzy tab completion |
+| `Alt+c` | Fuzzy directory picker — cd into selection |
 | `Alt+f` | Fuzzy ripgrep search across files |
 | `Alt+b` | Fuzzy git branch switcher (`switch_git_branch`) |
 | `Alt+g` | Fuzzy git worktree navigator (`cd_git_worktree`) |
 
-PSFzf also enables these aliases: `fkill` (fuzzy kill process), `fe` (fuzzy edit), `fgs` (fuzzy git status), `fh` (fuzzy history), `fcd` (fuzzy set location).
+PSFzf aliases:
+
+| Alias | Action |
+|---|---|
+| `frg` | Interactive ripgrep search — refine the query live, results in fzf |
+| `fe` | Fuzzy-pick a file and open it in `$env:EDITOR` |
+| `fgs` | Fuzzy browser over `git status` output |
+| `fh` | Fuzzy command history — paste selected command onto the line |
+| `fkill` | Fuzzy process picker — kill selected process |
+| `fcd` | Fuzzy directory picker — cd into selection (same as `Alt+c`) |
 
 ### Bash / WSL
 
