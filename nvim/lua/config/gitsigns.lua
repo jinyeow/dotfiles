@@ -1,6 +1,9 @@
 if _G.user_config.profile == 'minimal' then return end
 
-require('gitsigns').setup({
+local ok, gitsigns = pcall(require, 'gitsigns')
+if not ok then return end
+
+gitsigns.setup({
   signs = {
     add          = { text = '▎' },
     change       = { text = '▎' },
@@ -12,7 +15,7 @@ require('gitsigns').setup({
   current_line_blame  = false,
   attach_to_untracked = true,
   on_attach = function(bufnr)
-    local gs  = require('gitsigns')
+    local gs  = gitsigns
     local map = function(mode, keys, func, desc)
       vim.keymap.set(mode, keys, func, { buffer = bufnr, desc = desc })
     end

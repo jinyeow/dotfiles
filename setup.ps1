@@ -173,8 +173,10 @@ function Install-Git {
 function Install-Neovim {
     Write-Host ''
     Write-Info '=== Neovim ==='
+    # Honour XDG_CONFIG_HOME if set (the PowerShell profile exports it as ~/.config).
+    $configBase = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { $env:LOCALAPPDATA }
     New-Junction `
-        -Link   (Join-Path $env:LOCALAPPDATA 'nvim') `
+        -Link   (Join-Path $configBase 'nvim') `
         -Target (Join-Path $Dotfiles 'nvim')
 }
 

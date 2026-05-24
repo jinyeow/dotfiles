@@ -1,5 +1,7 @@
 if _G.user_config.profile == 'minimal' then return end
 
+local ss_ok, schemastore = pcall(require, 'schemastore')
+
 -- Shared LSP keymaps, attached per buffer on LspAttach
 -- Note: K, [d, ]d, grn, grr, gri, gra are Neovim 0.11 built-in defaults — not remapped here.
 vim.api.nvim_create_autocmd('LspAttach', {
@@ -43,7 +45,7 @@ vim.diagnostic.config({
 vim.lsp.config('jsonls', {
   settings = {
     json = {
-      schemas  = require('schemastore').json.schemas(),
+      schemas  = ss_ok and schemastore.json.schemas() or {},
       validate = { enable = true },
     },
   },
@@ -55,9 +57,9 @@ vim.lsp.config('yamlls', {
   settings = {
     yaml = {
       schemaStore = { enable = false, url = '' },
-      schemas     = require('schemastore').yaml.schemas({
+      schemas     = ss_ok and schemastore.yaml.schemas({
         select = { 'Azure Pipelines', 'docker-compose.yml' },
-      }),
+      }) or {},
       validate   = true,
       completion = true,
       hover      = true,

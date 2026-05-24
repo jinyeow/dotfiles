@@ -49,39 +49,50 @@ if _G.user_config.profile == 'minimal' then
 end
 
 -- Catppuccin: mocha (dark) / latte (light)
-require('catppuccin').setup({
-  flavour = theme == 'dark' and 'mocha' or 'latte',
-  transparent_background = false,
-  integrations = {
-    treesitter = true,
-    gitsigns   = true,
-    native_lsp = { enabled = true },
-  },
-})
-vim.cmd.colorscheme('catppuccin')
+local cat_ok, catppuccin = pcall(require, 'catppuccin')
+if cat_ok then
+  catppuccin.setup({
+    flavour = theme == 'dark' and 'mocha' or 'latte',
+    transparent_background = false,
+    integrations = {
+      treesitter = true,
+      gitsigns   = true,
+      native_lsp = { enabled = true },
+    },
+  })
+  vim.cmd.colorscheme('catppuccin')
+else
+  vim.cmd.colorscheme(theme == 'dark' and 'habamax' or 'lunaperche')
+end
 
 -- Render-markdown
-require('render-markdown').setup({
-  file_types   = { 'markdown' },
-  render_modes = { 'n', 'v' },
-  heading      = { enabled = true },
-  code         = { enabled = true },
-  bullet       = { enabled = true },
-  quote        = { enabled = true },
-})
+local rm_ok, render_md = pcall(require, 'render-markdown')
+if rm_ok then
+  render_md.setup({
+    file_types   = { 'markdown' },
+    render_modes = { 'n', 'v' },
+    heading      = { enabled = true },
+    code         = { enabled = true },
+    bullet       = { enabled = true },
+    quote        = { enabled = true },
+  })
+end
 
 -- FZF
 vim.g.fzf_layout = { window = { width = 0.9, height = 0.8 } }
 
 -- Mini.surround
-require('mini.surround').setup({
-  mappings = {
-    add            = 'sa',
-    delete         = 'sd',
-    find           = 'sf',
-    find_left      = 'sF',
-    highlight      = 'sh',
-    replace        = 'sr',
-    update_n_lines = 'sn',
-  },
-})
+local mini_ok, mini_surround = pcall(require, 'mini.surround')
+if mini_ok then
+  mini_surround.setup({
+    mappings = {
+      add            = 'sa',
+      delete         = 'sd',
+      find           = 'sf',
+      find_left      = 'sF',
+      highlight      = 'sh',
+      replace        = 'sr',
+      update_n_lines = 'sn',
+    },
+  })
+end
