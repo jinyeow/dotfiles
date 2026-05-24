@@ -33,7 +33,7 @@ $Dotfiles = $PSScriptRoot
 
 # Expand 'all'
 if ($Module -contains 'all') {
-    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'curl', 'claude', 'lazygit', 'windowsterminal', 'bat')
+    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'curl', 'claude', 'lazygit', 'windowsterminal', 'bat', 'vscode')
 }
 $Module = $Module | Select-Object -Unique
 
@@ -269,6 +269,25 @@ function Install-Lazygit {
     }
 }
 
+function Install-VSCode {
+    Write-Host ''
+    Write-Info '=== VSCode ==='
+    Write-Info 'Settings are managed by VSCode Settings Sync — no files to copy.'
+    Write-Info "Reference snapshot: $(Join-Path $Dotfiles 'vscode\settings.json')"
+    Write-Info 'Machine-specific settings (not synced) must be configured locally:'
+    Write-Info '  vscode-neovim.neovimExecutablePaths.win32'
+    Write-Info '  powershell.powerShellAdditionalExePaths'
+    Write-Info '  dotnetAcquisitionExtension.existingDotnetPath'
+    Write-Info '  dev.containers.dockerPath'
+    Write-Info '  mssql.connections / mssql.connectionGroups'
+    Write-Info '  github-actions.use-enterprise'
+    if (-not (Get-Command -Name code -ErrorAction Ignore)) {
+        Write-Warn 'VSCode not found in PATH. Install from https://code.visualstudio.com/'
+    } else {
+        Write-Ok 'VSCode is installed.'
+    }
+}
+
 function Install-Bat {
     Write-Host ''
     Write-Info '=== bat ==='
@@ -323,6 +342,7 @@ foreach ($m in $Module) {
         'tig'        { Install-Tig        }
         'tmux'       { Install-Tmux       }
         'curl'       { Install-Curl       }
+        'vscode'     { Install-VSCode     }
         'bat'        { Install-Bat        }
         'claude'     { Install-Claude     }
         'lazygit'        { Install-Lazygit        }

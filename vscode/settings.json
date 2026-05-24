@@ -1,0 +1,240 @@
+{
+    "redhat.telemetry.enabled": false,
+    "editor.lineNumbers": "relative",
+    "editor.occurrencesHighlight": "singleFile",
+    "search.showLineNumbers": true,
+    "files.eol": "\n",
+    "powershell.codeFormatting.useConstantStrings": true,
+    "powershell.codeFormatting.useCorrectCasing": true,
+    "powershell.codeFormatting.trimWhitespaceAroundPipe": true,
+    "powershell.integratedConsole.showOnStartup": false,
+    "explorer.confirmDragAndDrop": false,
+    "explorer.confirmDelete": false,
+    "files.associations": {
+        "**/*.azure-pipelines.yml": "azure-pipelines",
+        ".env*": "dotenv"
+    },
+    "window.autoDetectColorScheme": true,
+    "workbench.preferredDarkColorTheme": "Catppuccin Macchiato",
+    "workbench.preferredLightColorTheme": "Catppuccin Latte",
+    "window.commandCenter": true,
+    "powershell.powerShellDefaultVersion": "pwsh",
+    "editor.formatOnPaste": false,
+    "editor.formatOnSave": false,
+    "powershell.codeFormatting.pipelineIndentationStyle": "IncreaseIndentationForFirstPipeline",
+    "powershell.codeFormatting.whitespaceBetweenParameters": true,
+    "powershell.powerShellAdditionalExePaths": {
+        "pwsh": "C:\\Program Files\\PowerShell\\7\\pwsh.exe"
+    },
+    "powershell.codeFormatting.preset": "Stroustrup",
+    "vim.hlsearch": true,
+    "vim.useSystemClipboard": true,
+    "vim.visualstar": true,
+    "editor.renderWhitespace": "trailing",
+    "files.autoSave": "onFocusChange",
+    "vim.easymotion": true,
+    "vim.history": 10000,
+    "dotnet.enableTelemetry": false,
+    "vim.enableNeovim": true,
+    "vim.foldfix": true,
+    "vim.showMarksInGutter": true,
+    "vim.smartRelativeLine": true,
+    "vim.targets.enable": true,
+    "vim.normalModeKeyBindingsNonRecursive": [
+        {
+            "before": ["<C-p>"],
+            "commands": ["workbench.action.quickOpen"]
+        },
+        {
+            "before": ["<leader>", "t"],
+            "commands": ["workbench.action.toggleSidebarVisibility"]
+        },
+        {
+            "before": ["<leader>", "f"],
+            "commands": ["revealInExplorer"]
+        },
+        {
+            "before": ["<leader>", "r", "f"],
+            "commands": ["fileutils.renameFile"]
+        },
+        {
+            "before": ["g", "s"],
+            "commands": ["workbench.action.showAllSymbols"]
+        }
+    ],
+    "todo-tree.tree.showCountsInTree": true,
+    "azureFunctions.projectRuntime": "~4",
+    "[jsonc]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
+    "azureResourceGroups.groupBy": "resourceGroup",
+    "[json]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
+    "security.workspace.trust.untrustedFiles": "prompt",
+    "editor.fontFamily": "Fira Code",
+    "editor.fontSize": 15,
+    "editor.fontLigatures": true,
+    "editor.rulers": [120],
+    "git.autofetch": true,
+    "powershell.promptToUpdatePowerShell": false,
+    "git-autoconfig.configList": [
+        {
+            "user.email": "jinyeow@codedapper.com",
+            "user.name": "Justin Puah"
+        },
+        {
+            "user.email": "justin@puah.dev",
+            "user.name": "Justin Puah"
+        },
+        {
+            "user.email": "justin.puah@hollard.com.au",
+            "user.name": "Justin Puah"
+        }
+    ],
+    "editor.stickyScroll.enabled": true,
+    "powershell.codeFormatting.autoCorrectAliases": true,
+    "editor.detectIndentation": false,
+    "bicep.enableSurveys": false,
+    "dotnetAcquisitionExtension.enableTelemetry": false,
+    "dotnetAcquisitionExtension.existingDotnetPath": [
+        {
+            "extensionId": "ms-azuretools.vscode-bicep",
+            "path": "C:/Program Files/dotnet/dotnet.exe"
+        },
+        {
+            "extensionId": "ms-azuretools.vscode-bicep",
+            "path": "/usr/bin/dotnet"
+        },
+        {
+            "extensionId": "ms-dotnettools.csharp",
+            "path": "C:\\Program Files\\dotnet\\dotnet.exe"
+        }
+    ],
+    "terminal.integrated.copyOnSelection": true,
+    "terminal.integrated.cursorBlinking": true,
+    "terminal.integrated.fontSize": 16,
+    "[azure-pipelines]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2,
+        "editor.quickSuggestions": {
+            "other": true,
+            "comments": false,
+            "strings": true
+        },
+        "editor.autoIndent": "full",
+        "editor.defaultFormatter": "ms-azure-devops.azure-pipelines"
+    },
+    "vscode-neovim.neovimExecutablePaths.win32": "C:\\Program Files\\Neovim\\bin\\nvim.exe",
+    "extensions.experimental.affinity": {
+        "asvetliakov.vscode-neovim": 1
+    },
+    "git-graph.date.format": "Relative",
+    "git-graph.dialog.general.referenceInputSpaceSubstitution": "Hyphen",
+    "git-graph.enhancedAccessibility": true,
+    "github-actions.remote-name": "github",
+    "git.openRepositoryInParentFolders": "always",
+    "vim.cursorStylePerMode.insert": "line",
+    "vim.cursorStylePerMode.normal": "block",
+    "vim.highlightedyank.enable": true,
+    "editor.minimap.enabled": false,
+    "workbench.tree.indent": 15,
+    "workbench.tree.renderIndentGuides": "always",
+    "workbench.colorCustomizations": {
+        "tree.indentGuidesStroke": "#ef1505"
+    },
+    "workbench.iconTheme": "catppuccin-macchiato",
+    "[github-actions-workflow]": {
+        "editor.tabSize": 2,
+        "editor.defaultFormatter": "redhat.vscode-yaml"
+    },
+    "[yaml]": {
+        "editor.defaultFormatter": "redhat.vscode-yaml",
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2,
+        "editor.autoIndent": "keep",
+        "diffEditor.ignoreTrimWhitespace": false,
+        "editor.quickSuggestions": {
+            "other": true,
+            "comments": false,
+            "strings": true
+        }
+    },
+    "powershell.buttons.showPanelMovementButtons": true,
+    "powershell.codeFormatting.avoidSemicolonsAsLineTerminators": true,
+    "powershell.integratedConsole.startInBackground": true,
+    "extensions.autoUpdate": "onlyEnabledExtensions",
+    "vim.camelCaseMotion.enable": true,
+    "vim.gdefault": true,
+    "chat.commandCenter.enabled": false,
+    "azure-pipelines.1ESPipelineTemplatesSchemaFile": true,
+    "powershell.suppressAdditionalExeNotFoundWarning": true,
+    "editor.defaultFormatter": "EditorConfig.EditorConfig",
+    "editor.wordWrapColumn": 120,
+    "powershell.sideBar.CommandExplorerVisibility": false,
+    "powershell.codeFormatting.ignoreOneLineBlock": false,
+    "[dockercompose]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2,
+        "editor.autoIndent": "advanced",
+        "editor.quickSuggestions": {
+            "other": true,
+            "comments": false,
+            "strings": true
+        },
+        "editor.defaultFormatter": "redhat.vscode-yaml"
+    },
+    "workbench.editor.enablePreview": false,
+    "workbench.activityBar.location": "top",
+    "remote.defaultExtensionsIfInstalledLocally": [
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "GitHub.vscode-pull-request-github"
+    ],
+    "dev.containers.dockerPath": "podman",
+    "[javascript]": {
+        "editor.defaultFormatter": "vscode.typescript-language-features"
+    },
+    "workbench.panel.showLabels": false,
+    "settingsSync.ignoredSettings": [
+        "vscode-neovim.neovimExecutablePaths.win32",
+        "azdoPullRequests.orgUrl",
+        "azdoPullRequests.patToken",
+        "azdoPullRequests.projectName",
+        "mssql.connections",
+        "mssql.connectionGroups",
+        "powershell.powerShellAdditionalExePaths",
+        "dotnetAcquisitionExtension.existingDotnetPath",
+        "dev.containers.dockerPath",
+        "github-actions.use-enterprise"
+    ],
+    "azdoPullRequests.orgUrl": "https://dev.azure.com/codedapper/",
+    "window.menuBarVisibility": "compact",
+    "chat.instructionsFilesLocations": {
+        ".github/instructions": true
+    },
+    "errorLens.codeLensEnabled": false,
+    "errorLens.codeLensTemplate": "$source ($code) - $severity - $message",
+    "errorLens.enabledDiagnosticLevels": [
+        "error",
+        "warning"
+    ],
+    "indentRainbow.indicatorStyle": "light",
+    "powershell.pester.useLegacyCodeLens": false,
+    "powershell.pester.codeLens": false,
+    "errorLens.codeLensLength": {
+        "min": 0,
+        "max": 120
+    },
+    "errorLens.gutterIconsEnabled": true,
+    "errorLens.ignoreUntitled": true,
+    "errorLens.messageMaxChars": 120,
+    "errorLens.problemRangeDecorationEnabled": true,
+    "errorLens.statusBarColorsEnabled": true,
+    "gitTreeCompare.showCheckboxes": true,
+    "gitTreeCompare.resetCheckboxOnFileChange": true,
+    "gitlens.ai.model": "vscode",
+    "gitlens.ai.vscode.model": "copilot:gpt-4.1",
+    "gitlens.hovers.currentLine.over": "line",
+    "gitlens.launchpad.indicator.enabled": false
+}
