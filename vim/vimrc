@@ -457,25 +457,31 @@ silent function! FREEBSD()
 endfunction
 " }}}
 
-" GitBranch for StatusLine
-function! GitBranch() " {{{
-  try
-    if has('unix')
-      return system("git rev-parse --abbrev-ref HEAD 2>/dev/null | tr -d '\n'")
-    elseif has('win32')
-      return '' "system("git rev-parse --abrev-ref HEAD")
-    endif
-  catch
-    return ''
-  endtry
-endfunction
+" GitBranch for StatusLine -- reads .git/HEAD directly, no subprocess
+function! s:UpdateGitBranch() abort " {{{
+  let l:head = findfile('.git/HEAD', expand('%:p:h') . ';')
+  if empty(l:head)
+    let b:git_branch = ''
+    return
+  endif
+  let l:lines = readfile(l:head, '', 1)
+  if empty(l:lines)
+    let b:git_branch = ''
+    return
+  endif
+  " 'ref: refs/heads/main' -> 'main'; detached HEAD -> full SHA
+  let b:git_branch = substitute(l:lines[0], '^ref: refs/heads/', '', '')
+endfunction " }}}
+
+augroup statusline_git
+  autocmd!
+  autocmd BufEnter,WinEnter * call s:UpdateGitBranch()
+augroup END
 
 function! StatuslineGit()
-  let l:branchname = GitBranch()
-  return strlen(l:branchname) > 0 ? ' '.l:branchname.' ' : ''
-  " return strlen(l:branchname) > 0 ? '  '.l:branchname.' ' : ''
+  let l:branch = get(b:, 'git_branch', '')
+  return strlen(l:branch) > 0 ? ' '.l:branch.' ' : ''
 endfunction
-" }}}
 
 " Returns whether inside a Rails Project
 " NOTE: this may have been causing my startup problems

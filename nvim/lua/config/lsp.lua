@@ -1,21 +1,22 @@
 if _G.user_config.profile == 'minimal' then return end
 
 -- Shared LSP keymaps, attached per buffer on LspAttach
+-- Note: K, [d, ]d, grn, grr, gri, gra are Neovim 0.11 built-in defaults — not remapped here.
 vim.api.nvim_create_autocmd('LspAttach', {
   callback = function(ev)
     local map = function(keys, func, desc)
       vim.keymap.set('n', keys, func, { buffer = ev.buf, desc = desc })
     end
-    map('gd',         vim.lsp.buf.definition,     'Go to definition')
-    map('gD',         vim.lsp.buf.declaration,    'Go to declaration')
-    map('gr',         vim.lsp.buf.references,     'Go to references')
-    map('gi',         vim.lsp.buf.implementation, 'Go to implementation')
-    map('K',          vim.lsp.buf.hover,          'Hover documentation')
-    map('<leader>rn', vim.lsp.buf.rename,         'Rename symbol')
-    map('<leader>ca', vim.lsp.buf.code_action,    'Code action')
-    map('<leader>d',  vim.diagnostic.open_float,  'Show diagnostics')
-    map('[d',         vim.diagnostic.goto_prev,   'Previous diagnostic')
-    map(']d',         vim.diagnostic.goto_next,   'Next diagnostic')
+    map('gd',         vim.lsp.buf.definition,    'Go to definition')
+    map('gD',         vim.lsp.buf.declaration,   'Go to declaration')
+    map('gr',         vim.lsp.buf.references,    'Go to references')
+    map('gi',         vim.lsp.buf.implementation,'Go to implementation')
+    map('<leader>rn', vim.lsp.buf.rename,        'Rename symbol')
+    map('<leader>ca', vim.lsp.buf.code_action,   'Code action')
+    map('<leader>d',  vim.diagnostic.open_float, 'Show diagnostics')
+
+    -- Enable native LSP completion (manual trigger: <C-x><C-o>)
+    vim.lsp.completion.enable(true, ev.data.client_id, ev.buf, { autotrigger = false })
   end,
 })
 
@@ -28,7 +29,7 @@ vim.diagnostic.config({
       [vim.diagnostic.severity.INFO]  = '',
     },
   },
-  virtual_text     = true,
+  virtual_text     = { current_line = true },
   update_in_insert = false,
   underline        = true,
   severity_sort    = true,

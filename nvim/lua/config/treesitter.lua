@@ -8,7 +8,7 @@ require('nvim-treesitter.configs').setup({
     'markdown', 'markdown_inline',
     'yaml', 'powershell', 'bicep',
   },
-  auto_install = true,
+  auto_install = false,
   highlight = {
     enable                            = true,
     additional_vim_regex_highlighting = false,
