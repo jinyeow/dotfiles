@@ -120,7 +120,7 @@ if ($global:ProfileModules['PSFzf']) {
         })
         $branch = "$($branches |
             Sort-Object { $_.Substring($_.LastIndexOf(',') + 1) } |
-            fzf --prompt 'branch> ')"
+            fzf --prompt 'branch> ' --height=~10)"
         if (-not [String]::IsNullOrEmpty($branch)) {
             Set-Location "$(git rev-parse --show-toplevel)"
             git switch $branch
@@ -157,7 +157,7 @@ if ($global:ProfileModules['PSFzf']) {
         }
         $worktreeDirectory = "$($worktreeStrings |
             Sort-Object { $_.Substring($_.LastIndexOf(',') + 1) } |
-            fzf --prompt 'worktree> ' --with-nth=-1 --delimiter=',' --accept-nth=1)"
+            fzf --prompt 'worktree> ' --height=~10 --with-nth=-1 --delimiter=',' --accept-nth=1)"
         if (-not [String]::IsNullOrEmpty($worktreeDirectory)) {
             Set-Location "$worktreeDirectory"
             [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt()
@@ -192,6 +192,9 @@ $env:FZF_DEFAULT_OPTS = if ($_isDark) {
     '--color=marker:#7287FD,fg+:#4C4F69,prompt:#8839EF,hl+:#D20F39 ' +
     '--color=selected-bg:#BCC0CC --color=border:#9CA0B0,label:#4C4F69'
 }
+
+# bat preview theme — must match fzf theme so alt+f preview pane doesn't clash
+$env:BAT_THEME = if ($_isDark) { 'Catppuccin Mocha' } else { 'Catppuccin Latte' }
 
 # lazygit config — base merged with theme via LG_CONFIG_FILE
 $env:LG_CONFIG_FILE = (Join-Path $_dotfiles 'lazygit\config.yml') + ',' + $(if ($_isDark) {
