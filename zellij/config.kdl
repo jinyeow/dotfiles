@@ -1,0 +1,144 @@
+// Zellij config — ~/.config/zellij/config.kdl
+//
+// Design: "locked-first" — all key input passes through to the pane by default
+// (no accidental zellij commands while typing in nvim etc.).
+// Press Ctrl+g to enter command mode; most actions return to locked when done.
+// In scroll/resize modes, press Ctrl+g or Esc to return to locked.
+
+// --- Startup ----------------------------------------------------------------
+default_mode "locked"
+show_startup_tips false
+show_release_notes false
+
+// --- UI ---------------------------------------------------------------------
+pane_frames true
+rounded_corners true
+simplified_ui false          // keep arrow-font decorations in tab/status bars
+
+// --- Behaviour --------------------------------------------------------------
+mouse_mode true
+copy_on_select false         // don't auto-copy text on mouse-release
+scroll_buffer_size 10000
+session_serialization true   // resume sessions after detach / reboot
+pane_viewport_serialization true
+osc8_hyperlinks true         // clickable file:// and https:// links
+
+// --- Theme ------------------------------------------------------------------
+// Catppuccin is built into Zellij — no extra file needed.
+// theme_dark/theme_light are used when the terminal sends a CSI 2031
+// dark/light signal (Windows Terminal supports this).
+// Manual toggle: zellij action toggle-theme
+theme_dark  "catppuccin-mocha"
+theme_light "catppuccin-latte"
+
+// --- Keybindings ------------------------------------------------------------
+// clear-defaults=true gives a clean slate — only these bindings are active.
+// Modes not listed here (renametab, renamepane, etc.) use built-in defaults.
+keybinds clear-defaults=true {
+
+    // ── Locked (pass-through) ────────────────────────────────────────────────
+    // Every key goes to the pane. Only Ctrl+g escapes to command mode.
+    locked {
+        bind "Ctrl g" { SwitchToMode "normal"; }
+    }
+
+    // ── Normal (command mode) ────────────────────────────────────────────────
+    // Entered via Ctrl+g from locked. Esc or Ctrl+g returns to locked.
+    // Most single-action binds return to locked automatically.
+    normal {
+        bind "Ctrl g" { SwitchToMode "locked"; }
+        bind "Esc"    { SwitchToMode "locked"; }
+
+        // Pane focus — wraps to the adjacent tab at left/right edges
+        bind "h" { MoveFocusOrTab "left";  SwitchToMode "locked"; }
+        bind "l" { MoveFocusOrTab "right"; SwitchToMode "locked"; }
+        bind "j" { MoveFocus "down";       SwitchToMode "locked"; }
+        bind "k" { MoveFocus "up";         SwitchToMode "locked"; }
+
+        // Pane splits  (- = horizontal below, \ = vertical right)
+        bind "-"  { NewPane "down";  SwitchToMode "locked"; }
+        bind "\\" { NewPane "right"; SwitchToMode "locked"; }
+
+        // Pane actions
+        bind "x"     { CloseFocus;               SwitchToMode "locked"; }
+        bind "z"     { ToggleFocusFullscreen;     SwitchToMode "locked"; }
+        bind "f"     { ToggleFloatingPanes;        SwitchToMode "locked"; }
+        bind "Space" { TogglePaneEmbedOrFloating;  SwitchToMode "locked"; }
+
+        // Tabs
+        bind "n"         { NewTab;              SwitchToMode "locked"; }
+        bind "X"         { CloseTab;            SwitchToMode "locked"; }
+        bind "Tab"       { GoToNextTab;         SwitchToMode "locked"; }
+        bind "Shift Tab" { GoToPreviousTab;     SwitchToMode "locked"; }
+        bind "1" { GoToTab 1; SwitchToMode "locked"; }
+        bind "2" { GoToTab 2; SwitchToMode "locked"; }
+        bind "3" { GoToTab 3; SwitchToMode "locked"; }
+        bind "4" { GoToTab 4; SwitchToMode "locked"; }
+        bind "5" { GoToTab 5; SwitchToMode "locked"; }
+
+        // Sub-modes (stay in mode for repeated use)
+        bind "s" { SwitchToMode "scroll"; }
+        bind "r" { SwitchToMode "resize"; }
+
+        // Session
+        bind "d" { Detach; }
+        bind "w" {
+            LaunchOrFocusPlugin "session-manager" {
+                floating true
+                move_to_focused_tab true
+            }
+            SwitchToMode "locked"
+        }
+    }
+
+    // ── Scroll ───────────────────────────────────────────────────────────────
+    scroll {
+        bind "Ctrl g" { ScrollToBottom; SwitchToMode "locked"; }
+        bind "Esc"    { ScrollToBottom; SwitchToMode "locked"; }
+        bind "q"      { ScrollToBottom; SwitchToMode "locked"; }
+        bind "j"      { ScrollDown; }
+        bind "k"      { ScrollUp; }
+        bind "d"      { HalfPageScrollDown; }
+        bind "u"      { HalfPageScrollUp; }
+        bind "Ctrl f" { PageScrollDown; }
+        bind "Ctrl b" { PageScrollUp; }
+        bind "g"      { ScrollToTop; }
+        bind "G"      { ScrollToBottom; SwitchToMode "locked"; }
+        bind "/"      { SwitchToMode "entersearch"; SearchInput 0; }
+        bind "e"      { EditScrollback; SwitchToMode "locked"; }
+    }
+
+    // ── Enter search (type your query) ───────────────────────────────────────
+    entersearch {
+        bind "Enter"  { SwitchToMode "search"; }
+        bind "Ctrl c" { SearchInput 27; SwitchToMode "search"; }
+        bind "Esc"    { SearchInput 27; SwitchToMode "scroll"; }
+    }
+
+    // ── Search (navigate results) ─────────────────────────────────────────────
+    search {
+        bind "Ctrl g" { ScrollToBottom; SwitchToMode "locked"; }
+        bind "Esc"    { ScrollToBottom; SwitchToMode "locked"; }
+        bind "q"      { ScrollToBottom; SwitchToMode "locked"; }
+        bind "n"      { Search "down"; }
+        bind "N"      { Search "up"; }
+        bind "j"      { ScrollDown; }
+        bind "k"      { ScrollUp; }
+        bind "c"      { SearchToggleOption "CaseSensitivity"; }
+        bind "w"      { SearchToggleOption "Wrap"; }
+        bind "o"      { SearchToggleOption "WholeWord"; }
+        bind "/"      { SwitchToMode "entersearch"; SearchInput 0; }
+    }
+
+    // ── Resize ───────────────────────────────────────────────────────────────
+    resize {
+        bind "Ctrl g" { SwitchToMode "locked"; }
+        bind "Esc"    { SwitchToMode "locked"; }
+        bind "h" { Resize "Left"; }
+        bind "j" { Resize "Down"; }
+        bind "k" { Resize "Up"; }
+        bind "l" { Resize "Right"; }
+        bind "=" { Resize "Increase"; }
+        bind "-" { Resize "Decrease"; }
+    }
+}
