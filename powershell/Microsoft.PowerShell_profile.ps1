@@ -281,7 +281,7 @@ $env:LG_CONFIG_FILE = (Join-Path $_dotfiles 'lazygit\config.yml') + ',' + $(if (
 })
 
 # tig theme — TIGRC_USER overrides ~/.tigrc; theme files source ~/.tigrc for base settings
-$env:TIGRC_USER = Join-Path $_dotfiles (if ($_isDark) { 'tig\tigrc-mocha' } else { 'tig\tigrc-latte' })
+$env:TIGRC_USER = Join-Path $_dotfiles $(if ($_isDark) { 'tig\tigrc-mocha' } else { 'tig\tigrc-latte' })
 
 Remove-Variable _dotfiles, _regOut, _isDark
 
