@@ -18,6 +18,9 @@ Personal dotfiles for Windows (primary) and Linux/WSL.
 | `lazygit/` | lazygit config + Catppuccin themes | Windows + Linux |
 | `claude/` | Claude Code settings, statusline, global skills | Windows + Linux |
 | `windowsterminal/` | Windows Terminal settings | Windows |
+| `bat/` | bat syntax highlighter config | Windows + Linux |
+| `vscode/` | VSCode settings snapshot | Windows |
+| `winget/` | winget bootstrap script + package list | Windows |
 | `tmux/` | tmux config | Linux / WSL |
 | `nix/` | Nix/Home Manager (legacy snapshot) | Linux |
 
@@ -35,7 +38,7 @@ cd $HOME/dotfiles
 .\setup.ps1 -Module all -DryRun  # preview without changes
 ```
 
-Available modules: `git`, `neovim`, `vim`, `powershell`, `tig`, `curl`, `lazygit`, `windowsterminal`
+Available modules: `git`, `neovim`, `vim`, `powershell`, `tig`, `curl`, `lazygit`, `windowsterminal`, `bat`, `vscode`, `winget`
 
 ### Linux / WSL
 
@@ -51,11 +54,21 @@ Available modules: `git`, `neovim`, `vim`, `powershell`, `bash`, `tig`, `tmux`, 
 
 ## Requirements
 
+On a fresh machine, run the winget bootstrap first to install all tools at once:
+
+```powershell
+.\winget\packages.ps1 -DryRun  # preview
+.\winget\packages.ps1           # install
+```
+
+Or install individually:
+
 | Tool | Purpose | Install |
 |---|---|---|
 | [delta](https://github.com/dandavison/delta) | Git pager / diff viewer | `winget install dandavison.delta` |
 | [fzf](https://github.com/junegunn/fzf) | Fuzzy finder | `winget install junegunn.fzf` |
-| [ripgrep](https://github.com/BurntSushi/ripgrep) | Fast grep | `winget install BurntSushi.ripgrep.MSVC` |
+| [ripgrep](https://github.com/BurntSushi/ripgrep) | Fast grep | `winget install BurntSushi.ripgrep.GNU` |
+| [bat](https://github.com/sharkdp/bat) | Syntax-highlighted cat | `winget install sharkdp.bat` |
 | [zoxide](https://github.com/ajeetdsouza/zoxide) | Smart `cd` | `winget install ajeetdsouza.zoxide` |
 | [lazygit](https://github.com/jesseduffield/lazygit) | Terminal git UI | `winget install JesseDuffield.lazygit` |
 | [tig](https://jonas.github.io/tig/) | Terminal git browser | `winget install Jonas.Tig` |
