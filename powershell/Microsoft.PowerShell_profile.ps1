@@ -97,6 +97,10 @@ Set-Alias -Name g -Value git
 Set-Alias gcif Get-ChildItem -Force
 
 # --- Functions --------------------------------------------------------------
+function Get-IsDarkMode {
+    (reg query 'HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' /v AppsUseLightTheme 2>$null) -match '0x0'
+}
+
 function gst { git status }
 function which ($command) {
     Get-Command -Name $command -ErrorAction SilentlyContinue |
@@ -184,6 +188,14 @@ function Invoke-FzfRipgrep {
     [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt()
 }
 
+function Invoke-Tig {
+    # Re-check OS theme on each launch so tig picks up mid-session theme changes
+    $env:TIGRC_USER = Join-Path $env:DOTFILES $(if (Get-IsDarkMode) { 'tig\tigrc-mocha' } else { 'tig\tigrc-latte' })
+    $env:BAT_THEME  = if (Get-IsDarkMode) { 'Catppuccin Mocha' } else { 'Catppuccin Latte' }
+    & (Get-Command tig -CommandType Application -ErrorAction Stop) @args
+}
+Set-Alias -Name tig -Value Invoke-Tig -Force
+
 # --- Hotkey cheatsheet ------------------------------------------------------
 function Show-Hotkeys {
     $entries = @(
@@ -247,6 +259,7 @@ $env:XDG_CONFIG_HOME = "$HOME/.config"
 
 # Tool config files — paths relative to this repo so they survive repo moves
 $_dotfiles = Split-Path $PSScriptRoot
+$env:DOTFILES = $_dotfiles  # persist so wrapper functions can find theme files at runtime
 $env:RIPGREP_CONFIG_PATH  = Join-Path $_dotfiles 'ripgrep\ripgreprc'
 $env:FZF_DEFAULT_OPTS_FILE = Join-Path $_dotfiles 'fzf\fzfrc'
 
