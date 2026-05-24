@@ -39,16 +39,44 @@ keybinds clear-defaults=true {
     // ── Locked (pass-through) ────────────────────────────────────────────────
     // Every key goes to the pane. Only Ctrl+g escapes to command mode.
     //
-    // Ctrl+hjkl: navigate panes from anywhere — shell, nvim, or any other pane.
-    // Zellij intercepts these before the pane sees them, so they always move
-    // pane focus. For nvim window navigation use <C-w>hjkl instead (Ctrl+w
-    // is not bound here and passes through to nvim normally).
+    // Ctrl+hjkl: vim-zellij-navigator detects whether the focused pane is
+    // running nvim. If yes, it forwards the key to nvim so zellij-nav.nvim
+    // can move between nvim windows first; at the window edge zellij-nav.nvim
+    // calls "zellij action move-focus" to cross into the adjacent pane.
+    // If the pane is a shell (not nvim), it moves the zellij pane directly.
+    // This is identical in behaviour to vim-tmux-navigator + tmux.
+    // Note: the .wasm plugin is downloaded and cached by zellij on first use.
     locked {
         bind "Ctrl g" { SwitchToMode "normal"; }
-        bind "Ctrl h" { MoveFocusOrTab "left"; }
-        bind "Ctrl j" { MoveFocus "down"; }
-        bind "Ctrl k" { MoveFocus "up"; }
-        bind "Ctrl l" { MoveFocusOrTab "right"; }
+        bind "Ctrl h" {
+            MessagePlugin "https://github.com/hiasr/vim-zellij-navigator/releases/download/0.3.0/vim-zellij-navigator.wasm" {
+                name "move_focus_or_tab";
+                payload "left";
+                move_mod "ctrl";
+                use_arrow_keys "false";
+            };
+        }
+        bind "Ctrl j" {
+            MessagePlugin "https://github.com/hiasr/vim-zellij-navigator/releases/download/0.3.0/vim-zellij-navigator.wasm" {
+                name "move_focus";
+                payload "down";
+                move_mod "ctrl";
+            };
+        }
+        bind "Ctrl k" {
+            MessagePlugin "https://github.com/hiasr/vim-zellij-navigator/releases/download/0.3.0/vim-zellij-navigator.wasm" {
+                name "move_focus";
+                payload "up";
+                move_mod "ctrl";
+            };
+        }
+        bind "Ctrl l" {
+            MessagePlugin "https://github.com/hiasr/vim-zellij-navigator/releases/download/0.3.0/vim-zellij-navigator.wasm" {
+                name "move_focus_or_tab";
+                payload "right";
+                move_mod "ctrl";
+            };
+        }
     }
 
     // ── Normal (command mode) ────────────────────────────────────────────────

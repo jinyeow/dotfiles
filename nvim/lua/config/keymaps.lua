@@ -6,14 +6,30 @@ map('n', '<Esc>', '<cmd>nohlsearch<CR>')
 map('n', '/', '/\\v')
 map('v', '/', '/\\v')
 
--- Window navigation (nvim splits)
--- Ctrl+hjkl is bound in Zellij's locked mode for pane navigation, so Zellij
--- intercepts those keys before nvim sees them. Use <C-w>hjkl for nvim splits
--- whether inside Zellij or not — Ctrl+w passes through locked mode fine.
-map('n', '<C-h>', '<C-w>h')
-map('n', '<C-j>', '<C-w>j')
-map('n', '<C-k>', '<C-w>k')
-map('n', '<C-l>', '<C-w>l')
+-- Window / pane navigation
+-- Inside Zellij: vim-zellij-navigator (.wasm plugin) detects this pane is nvim
+-- and forwards Ctrl+hjkl here. ZellijNavigate* moves between nvim windows
+-- first; at the edge it calls "zellij action move-focus" to jump to the
+-- adjacent pane. Outside Zellij: plain <C-w> movement.
+if vim.env.ZELLIJ and vim.fn.executable('zellij') == 1 then
+  local ok, _ = pcall(require, 'zellij-nav')
+  if ok then
+    map('n', '<C-h>', '<cmd>ZellijNavigateLeftTab<cr>',  { silent = true })
+    map('n', '<C-j>', '<cmd>ZellijNavigateDown<cr>',     { silent = true })
+    map('n', '<C-k>', '<cmd>ZellijNavigateUp<cr>',       { silent = true })
+    map('n', '<C-l>', '<cmd>ZellijNavigateRightTab<cr>', { silent = true })
+  else
+    map('n', '<C-h>', '<C-w>h')
+    map('n', '<C-j>', '<C-w>j')
+    map('n', '<C-k>', '<C-w>k')
+    map('n', '<C-l>', '<C-w>l')
+  end
+else
+  map('n', '<C-h>', '<C-w>h')
+  map('n', '<C-j>', '<C-w>j')
+  map('n', '<C-k>', '<C-w>k')
+  map('n', '<C-l>', '<C-w>l')
+end
 
 -- Resize windows
 map('n', '<C-Up>',    ':resize +2<CR>')

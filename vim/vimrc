@@ -668,24 +668,30 @@ endfunction
 "   autocmd CmdlineLeave [/\?] call <SID>search_mode_stop()
 " augroup END
 
-" Window splitting / movement
-" function! WinMove(key)
-"     let t:curwin = winnr()
-"     exec "wincmd ".a:key
-"     if (t:curwin == winnr())
-"         if (match(a:key,'[jk]'))
-"             wincmd v
-"         else
-"             wincmd s
-"         endif
-"         exec "wincmd ".a:key
-"     endif
-" endfunction
-" " NOTE: <C-h> mapping does not work (at least not on Neovim).
-" noremap <silent> <C-h> :call WinMove('h')<CR>
-" noremap <silent> <C-j> :call WinMove('j')<CR>
-" noremap <silent> <C-k> :call WinMove('k')<CR>
-" noremap <silent> <C-l> :call WinMove('l')<CR>
+" Window / pane navigation
+" Inside Zellij: vim-zellij-navigator only detects nvim by process name, so
+" vim needs its own edge-detection. Try to move the vim window; if it doesn't
+" move (already at the edge) call 'zellij action move-focus' via the CLI.
+" Outside Zellij: plain <C-w> movement.
+if executable('zellij') && !empty($ZELLIJ)
+  function! s:ZellijNavigate(dir) abort
+    let l:before = winnr()
+    execute 'wincmd ' . a:dir
+    if winnr() == l:before
+      let l:dirs = {'h': 'left', 'j': 'down', 'k': 'up', 'l': 'right'}
+      call system('zellij action move-focus ' . l:dirs[a:dir])
+    endif
+  endfunction
+  nnoremap <silent> <C-h> :<C-u>call <SID>ZellijNavigate('h')<CR>
+  nnoremap <silent> <C-j> :<C-u>call <SID>ZellijNavigate('j')<CR>
+  nnoremap <silent> <C-k> :<C-u>call <SID>ZellijNavigate('k')<CR>
+  nnoremap <silent> <C-l> :<C-u>call <SID>ZellijNavigate('l')<CR>
+else
+  nnoremap <C-h> <C-w>h
+  nnoremap <C-j> <C-w>j
+  nnoremap <C-k> <C-w>k
+  nnoremap <C-l> <C-w>l
+endif
 
 " ------------------"
 " => COLOR SETTINGS "

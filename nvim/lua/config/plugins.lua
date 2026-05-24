@@ -32,6 +32,13 @@ local plugins = {
   { 'https://github.com/MeanderingProgrammer/render-markdown.nvim.git',   'render-markdown.nvim'        },
 }
 
+-- zellij-nav.nvim: only install when the zellij binary is present.
+-- Works with vim-zellij-navigator (zellij-side .wasm plugin) to give seamless
+-- nvim-window <-> zellij-pane navigation on Ctrl+hjkl.
+if vim.fn.executable('zellij') == 1 then
+  table.insert(plugins, { 'https://github.com/swaits/zellij-nav.nvim.git', 'zellij-nav.nvim' })
+end
+
 local needs_ts_update = false
 for _, plugin in ipairs(plugins) do
   if ensure_plugin(plugin[1], plugin[2]) then
@@ -39,3 +46,9 @@ for _, plugin in ipairs(plugins) do
   end
 end
 if needs_ts_update then vim.cmd('TSUpdate') end
+
+-- zellij-nav.nvim setup: pcall guards the first launch before the plugin is cloned
+if vim.fn.executable('zellij') == 1 then
+  local ok, nav = pcall(require, 'zellij-nav')
+  if ok then nav.setup() end
+end
