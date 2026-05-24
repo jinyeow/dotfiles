@@ -7,7 +7,8 @@
       "Bash(fzf --version)",
       "Bash(git add *)",
       "PowerShell($env:TEMP)",
-      "PowerShell(Get-ChildItem *)"
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(winget list *)"
     ]
   }
 }
