@@ -151,6 +151,39 @@ if ($global:ProfileModules['PSFzf']) {
     }
 }
 
+function Invoke-FzfRipgrep {
+    param([string]$Query = '')
+    $reload = 'reload:rg --column --color=always --smart-case {q} 2>nul || exit 0'
+    $selected = fzf --disabled --ansi --multi `
+        --bind "start:$reload" `
+        --bind "change:$reload" `
+        --bind 'alt-a:select-all,alt-d:deselect-all,ctrl-/:toggle-preview' `
+        --delimiter ':' `
+        --preview 'bat --style=full --color=always --highlight-line {2} {1}' `
+        --preview-window '~4,+{2}+4/3,<80(up)' `
+        --prompt 'rg> ' `
+        --query $Query
+    if (-not $selected) {
+        [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt()
+        return
+    }
+    $editor = if ($env:EDITOR) { $env:EDITOR } elseif (Get-Command nvim -ErrorAction Ignore) { 'nvim' } else { 'vim' }
+    $files = @($selected)
+    if ($files.Count -eq 1) {
+        $parts = $files[0] -split ':', 3
+        & $editor $parts[0] "+$($parts[1])"
+    } else {
+        $tmpFile = [System.IO.Path]::GetTempFileName()
+        try {
+            $files | Set-Content $tmpFile
+            & $editor '+cw' '-q' $tmpFile
+        } finally {
+            Remove-Item $tmpFile -ErrorAction Ignore
+        }
+    }
+    [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt()
+}
+
 # --- Hotkey cheatsheet ------------------------------------------------------
 function Show-Hotkeys {
     $entries = @(
@@ -160,10 +193,10 @@ function Show-Hotkeys {
         '[shell]  Ctrl+t          fuzzy file picker — insert path at cursor'
         '[shell]  Tab             fuzzy tab completion'
         '[shell]  Alt+c           fuzzy directory picker — cd into selection'
-        '[shell]  Alt+f           fuzzy ripgrep search across files'
+        '[shell]  Alt+f           live rg search — rg-filtered, bat preview, multi-select'
         '[shell]  Alt+b           fuzzy git branch switcher'
         '[shell]  Alt+g           fuzzy git worktree navigator'
-        '[alias]  frg             interactive ripgrep — refine query live'
+        '[alias]  rfv / frg       live rg search — rg-filtered, bat preview, multi-select quickfix'
         '[alias]  fe              fuzzy-pick a file and open in $EDITOR'
         '[alias]  fgs             fuzzy git status browser'
         '[alias]  fh              fuzzy command history — paste onto line'
@@ -274,10 +307,11 @@ function Initialize-DeferredProfile {
     if ($global:ProfileModules['PSFzf']) {
         Import-Module PSFzf
 
-        Set-Alias -Name frg -Value Invoke-PsFzfRipgrep -Scope Global
+        Set-Alias -Name rfv -Value Invoke-FzfRipgrep -Scope Global
+        Set-Alias -Name frg -Value Invoke-FzfRipgrep -Scope Global
 
         Set-PSReadLineKeyHandler -Key Tab -ScriptBlock { Invoke-FzfTabCompletion }
-        Set-PSReadLineKeyHandler -Chord 'alt+f' -ScriptBlock { Invoke-PsFzfRipgrep -SearchString '.' }
+        Set-PSReadLineKeyHandler -Chord 'alt+f' -ScriptBlock { Invoke-FzfRipgrep }
         Set-PSReadLineKeyHandler -Chord 'alt+b' -ScriptBlock { switch_git_branch }
         Set-PSReadLineKeyHandler -Chord 'alt+g' -ScriptBlock { cd_git_worktree }
 
