@@ -150,6 +150,39 @@ if ($global:ProfileModules['PSFzf']) {
     }
 }
 
+# --- Hotkey cheatsheet ------------------------------------------------------
+function Show-Hotkeys {
+    $entries = @(
+        '[fzf]    Ctrl+a          select all matches'
+        '[fzf]    ?               toggle preview pane'
+        '[shell]  Ctrl+r          fuzzy reverse history search'
+        '[shell]  Ctrl+t          fuzzy file picker — insert path at cursor'
+        '[shell]  Tab             fuzzy tab completion'
+        '[shell]  Alt+c           fuzzy directory picker — cd into selection'
+        '[shell]  Alt+f           fuzzy ripgrep search across files'
+        '[shell]  Alt+b           fuzzy git branch switcher'
+        '[shell]  Alt+g           fuzzy git worktree navigator'
+        '[alias]  frg             interactive ripgrep — refine query live'
+        '[alias]  fe              fuzzy-pick a file and open in $EDITOR'
+        '[alias]  fgs             fuzzy git status browser'
+        '[alias]  fh              fuzzy command history — paste onto line'
+        '[alias]  fkill           fuzzy process picker — kill selection'
+        '[alias]  fcd             fuzzy directory picker — cd into selection'
+        '[alias]  zi              zoxide interactive directory jump'
+        '[nvim]   <leader>ff      find files'
+        '[nvim]   <leader>fg      grep in files (ripgrep)'
+        '[nvim]   <leader>fb      find open buffers'
+        '[nvim]   <leader>fc      find commands'
+        '[nvim]   <leader>fl      find lines in loaded buffers'
+    )
+    if (Get-Command fzf -ErrorAction Ignore) {
+        $entries | fzf --prompt 'keys> ' --height=15 --no-preview
+    } else {
+        $entries | Out-Host
+    }
+}
+Set-Alias -Name keys -Value Show-Hotkeys
+
 # --- Environment variables --------------------------------------------------
 $env:XDG_CONFIG_HOME = "$HOME/.config"
 
