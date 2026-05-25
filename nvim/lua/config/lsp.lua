@@ -23,7 +23,7 @@ vim.api.nvim_create_autocmd('LspAttach', {
     if client and client.name == 'powershell_es' and not client._pwsh_indexed then
       client._pwsh_indexed = true
       vim.defer_fn(function()
-        client.request('workspace/symbol', { query = '' }, function() end)
+        client:request('workspace/symbol', { query = '' }, function() end)
       end, 3000)
     end
   end,
