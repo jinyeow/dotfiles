@@ -7,6 +7,7 @@
 
 // --- Startup ----------------------------------------------------------------
 default_mode "locked"
+default_shell "pwsh"
 show_startup_tips false
 show_release_notes false
 
