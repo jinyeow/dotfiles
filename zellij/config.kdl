@@ -1,9 +1,10 @@
-// Zellij config — ~/.config/zellij/config.kdl
+// Zellij config — %APPDATA%\Zellij\config\config.kdl  (Windows)
+//                  ~/.config/zellij/config.kdl          (Linux)
 //
 // Design: "locked-first" — all key input passes through to the pane by default
 // (no accidental zellij commands while typing in nvim etc.).
 // Press Ctrl+g to enter command mode; most actions return to locked when done.
-// In scroll/resize modes, press Ctrl+g or Esc to return to locked.
+// In scroll/resize/move modes, press Ctrl+g or Esc to return to locked.
 
 // --- Startup ----------------------------------------------------------------
 default_mode "locked"
@@ -19,36 +20,39 @@ simplified_ui false          // keep arrow-font decorations in tab/status bars
 // --- Behaviour --------------------------------------------------------------
 mouse_mode true
 copy_on_select false         // don't auto-copy text on mouse-release
+copy_clipboard "system"
 scroll_buffer_size 10000
+scrollback_editor "nvim"     // open scrollback in nvim (scroll mode → e)
 session_serialization true   // resume sessions after detach / reboot
 pane_viewport_serialization true
 osc8_hyperlinks true         // clickable file:// and https:// links
 
 // --- Theme ------------------------------------------------------------------
-// Catppuccin is built into Zellij — no extra file needed.
-// theme_dark/theme_light are used when the terminal sends a CSI 2031
-// dark/light signal (Windows Terminal supports this).
-// Manual toggle: zellij action toggle-theme
+// Theme files live in themes/ alongside this file (pulled in via the junction).
+// The new semantic format (text_unselected / ribbon_selected / etc.) is
+// required for Zellij 0.40+; old fg/bg palette blocks render incorrectly.
+// theme_dark/theme_light auto-switch on CSI 2031 signal from the terminal.
+// Windows Terminal does not emit CSI 2031 — use: zellij action toggle-theme
 theme_dark  "catppuccin-mocha"
 theme_light "catppuccin-latte"
 
 // --- Keybindings ------------------------------------------------------------
 // clear-defaults=true gives a clean slate — only these bindings are active.
-// Modes not listed here (renametab, renamepane, etc.) use built-in defaults.
 keybinds clear-defaults=true {
 
     // ── Locked (pass-through) ────────────────────────────────────────────────
     // Every key goes to the pane. Only Ctrl+g escapes to command mode.
+    // Alt+[/] cycle pane layouts without needing to enter command mode.
     //
     // Ctrl+hjkl: vim-zellij-navigator detects whether the focused pane is
     // running nvim. If yes, it forwards the key to nvim so zellij-nav.nvim
     // can move between nvim windows first; at the window edge zellij-nav.nvim
     // calls "zellij action move-focus" to cross into the adjacent pane.
     // If the pane is a shell (not nvim), it moves the zellij pane directly.
-    // This is identical in behaviour to vim-tmux-navigator + tmux.
-    // Note: the .wasm plugin is downloaded and cached by zellij on first use.
     locked {
         bind "Ctrl g" { SwitchToMode "normal"; }
+        bind "Alt ["  { PreviousSwapLayout; }
+        bind "Alt ]"  { NextSwapLayout; }
         bind "Ctrl h" {
             MessagePlugin "https://github.com/hiasr/vim-zellij-navigator/releases/download/0.3.0/vim-zellij-navigator.wasm" {
                 name "move_focus_or_tab";
@@ -98,25 +102,38 @@ keybinds clear-defaults=true {
         bind "\\" { NewPane "right"; SwitchToMode "locked"; }
 
         // Pane actions
-        bind "x"     { CloseFocus;               SwitchToMode "locked"; }
-        bind "z"     { ToggleFocusFullscreen;     SwitchToMode "locked"; }
-        bind "f"     { ToggleFloatingPanes;        SwitchToMode "locked"; }
-        bind "Space" { TogglePaneEmbedOrFloating;  SwitchToMode "locked"; }
+        bind "x"     { CloseFocus;              SwitchToMode "locked"; }
+        bind "z"     { ToggleFocusFullscreen;   SwitchToMode "locked"; }
+        bind "f"     { ToggleFloatingPanes;     SwitchToMode "locked"; }
+        bind "Space" { TogglePaneEmbedOrFloating; SwitchToMode "locked"; }
+        bind "p"     { TogglePanePinned;        SwitchToMode "locked"; }
+
+        // Break pane out of current tab
+        bind "b" { BreakPane;      SwitchToMode "locked"; }
+        bind "[" { BreakPaneLeft;  SwitchToMode "locked"; }
+        bind "]" { BreakPaneRight; SwitchToMode "locked"; }
+
+        // Rename focused pane (clears existing name, then type new name)
+        bind "c" { SwitchToMode "RenamePane"; PaneNameInput 0; }
 
         // Tabs
-        bind "n"         { NewTab;              SwitchToMode "locked"; }
-        bind "X"         { CloseTab;            SwitchToMode "locked"; }
-        bind "Tab"       { GoToNextTab;         SwitchToMode "locked"; }
-        bind "Shift Tab" { GoToPreviousTab;     SwitchToMode "locked"; }
+        bind "n"         { NewTab;          SwitchToMode "locked"; }
+        bind "X"         { CloseTab;        SwitchToMode "locked"; }
+        bind "Tab"       { GoToNextTab;     SwitchToMode "locked"; }
+        bind "Shift Tab" { GoToPreviousTab; SwitchToMode "locked"; }
+        bind "H"         { MoveTab "Left";  SwitchToMode "locked"; }
+        bind "L"         { MoveTab "Right"; SwitchToMode "locked"; }
+        bind "R"         { SwitchToMode "RenameTab"; TabNameInput 0; }
         bind "1" { GoToTab 1; SwitchToMode "locked"; }
         bind "2" { GoToTab 2; SwitchToMode "locked"; }
         bind "3" { GoToTab 3; SwitchToMode "locked"; }
         bind "4" { GoToTab 4; SwitchToMode "locked"; }
         bind "5" { GoToTab 5; SwitchToMode "locked"; }
 
-        // Sub-modes (stay in mode for repeated use)
+        // Sub-modes (stay in mode for repeated use; Ctrl+g or Esc to return)
         bind "s" { SwitchToMode "scroll"; }
         bind "r" { SwitchToMode "resize"; }
+        bind "m" { SwitchToMode "move"; }
 
         // Session
         bind "d" { Detach; }
@@ -127,6 +144,34 @@ keybinds clear-defaults=true {
             }
             SwitchToMode "locked"
         }
+    }
+
+    // ── Rename pane ──────────────────────────────────────────────────────────
+    // Type the new name, then Enter to confirm or Esc to cancel.
+    renamepane {
+        bind "Enter"  { SwitchToMode "locked"; }
+        bind "Ctrl c" { SwitchToMode "locked"; }
+        bind "Esc"    { UndoRenamePane; SwitchToMode "locked"; }
+    }
+
+    // ── Rename tab ───────────────────────────────────────────────────────────
+    renametab {
+        bind "Enter"  { SwitchToMode "locked"; }
+        bind "Ctrl c" { SwitchToMode "locked"; }
+        bind "Esc"    { UndoRenameTab; SwitchToMode "locked"; }
+    }
+
+    // ── Move ─────────────────────────────────────────────────────────────────
+    // Swap the focused pane's position with an adjacent pane.
+    move {
+        bind "Ctrl g" { SwitchToMode "locked"; }
+        bind "Esc"    { SwitchToMode "locked"; }
+        bind "h" "Left"  { MovePane "left"; }
+        bind "j" "Down"  { MovePane "down"; }
+        bind "k" "Up"    { MovePane "up"; }
+        bind "l" "Right" { MovePane "right"; }
+        bind "n"         { MovePane; }
+        bind "p"         { MovePaneBackwards; }
     }
 
     // ── Scroll ───────────────────────────────────────────────────────────────
@@ -142,8 +187,8 @@ keybinds clear-defaults=true {
         bind "Ctrl b" { PageScrollUp; }
         bind "g"      { ScrollToTop; }
         bind "G"      { ScrollToBottom; SwitchToMode "locked"; }
-        bind "/"      { SwitchToMode "entersearch"; SearchInput 0; }
         bind "e"      { EditScrollback; SwitchToMode "locked"; }
+        bind "/"      { SwitchToMode "entersearch"; SearchInput 0; }
     }
 
     // ── Enter search (type your query) ───────────────────────────────────────
