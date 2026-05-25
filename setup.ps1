@@ -240,9 +240,21 @@ function Install-Tmux {
 function Install-Zellij {
     Write-Host ''
     Write-Info '=== Zellij ==='
-    $configBase = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { Join-Path $env:USERPROFILE '.config' }
+    # Windows-native path: %APPDATA%\Zellij\config\ (https://zellij.dev/documentation/configuration.html)
+    # Honour XDG_CONFIG_HOME if set (some setups configure this globally).
+    $zellijConfig = if ($env:XDG_CONFIG_HOME) {
+        Join-Path $env:XDG_CONFIG_HOME 'zellij'
+    } else {
+        Join-Path $env:APPDATA 'Zellij\config'
+    }
+    # Ensure the parent directory exists before junctioning
+    $zellijParent = Split-Path $zellijConfig
+    if (-not (Test-Path $zellijParent) -and -not $DryRun) {
+        New-Item -ItemType Directory -Path $zellijParent -Force | Out-Null
+        Write-Info "Created:    $zellijParent"
+    }
     New-Junction `
-        -Link   (Join-Path $configBase 'zellij') `
+        -Link   $zellijConfig `
         -Target (Join-Path $Dotfiles 'zellij')
 }
 

@@ -12,7 +12,7 @@ Config for [Zellij](https://zellij.dev/) — a terminal workspace / multiplexer.
 
 | File | Installed as |
 |---|---|
-| `config.kdl` | `~/.config/zellij/config.kdl` |
+| `config.kdl` | Windows: `%APPDATA%\Zellij\config\config.kdl` · Linux: `~/.config/zellij/config.kdl` |
 
 ## Install
 
@@ -26,7 +26,7 @@ Config for [Zellij](https://zellij.dev/) — a terminal workspace / multiplexer.
 ./setup.sh -m zellij
 ```
 
-On Windows this creates a directory junction `~/.config/zellij -> dotfiles/zellij/` so changes are live. On Linux it symlinks `config.kdl` directly.
+On Windows this creates a directory junction `%APPDATA%\Zellij\config -> dotfiles/zellij/` so changes are live. On Linux it symlinks `config.kdl` directly.
 
 ## Design: locked-first
 
