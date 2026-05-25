@@ -85,8 +85,8 @@ map('n', '<C-u>', '<C-u>zz')
 map('n', 'n',     'nzzzv')
 map('n', 'N',     'Nzzzv')
 
--- File explorer (oil.nvim)
-map('n', '<C-S-e>', '<cmd>Oil<CR>', { desc = 'File explorer' })
+-- File explorer: open oil in current file's directory; '-' inside oil goes up
+map('n', '-', '<cmd>Oil<CR>', { desc = 'Open file explorer' })
 
 -- Command-line
 -- h expands to vert h only when typed as a standalone command
