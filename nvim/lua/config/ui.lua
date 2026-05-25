@@ -58,6 +58,7 @@ if cat_ok then
       treesitter = true,
       gitsigns   = true,
       native_lsp = { enabled = true },
+      aerial     = true,
     },
   })
   vim.cmd.colorscheme('catppuccin')
@@ -78,21 +79,30 @@ if rm_ok then
   })
 end
 
--- FZF
-vim.g.fzf_layout = { window = { width = 0.9, height = 0.8 } }
+-- fzf-lua: 'fzf-vim' profile recreates :Files/:Rg/:Buffers/:Commands/:Lines
+local fzf_ok, fzf_lua = pcall(require, 'fzf-lua')
+if fzf_ok then fzf_lua.setup({ 'fzf-vim' }) end
 
--- Mini.surround
-local mini_ok, mini_surround = pcall(require, 'mini.surround')
-if mini_ok then
-  mini_surround.setup({
-    mappings = {
-      add            = 'sa',
-      delete         = 'sd',
-      find           = 'sf',
-      find_left      = 'sF',
-      highlight      = 'sh',
-      replace        = 'sr',
-      update_n_lines = 'sn',
-    },
+-- nvim-surround: ys{motion}{char} add, ds{char} delete, cs{old}{new} change
+local surround_ok, surround = pcall(require, 'nvim-surround')
+if surround_ok then surround.setup() end
+
+-- oil.nvim: edit the filesystem like a buffer; replaces netrw
+local oil_ok, oil = pcall(require, 'oil')
+if oil_ok then
+  oil.setup({
+    default_file_explorer = true,
+    view_options = { show_hidden = true },
+  })
+end
+
+-- aerial.nvim: code outline sidebar + symbol navigation
+local aerial_ok, aerial = pcall(require, 'aerial')
+if aerial_ok then
+  aerial.setup({
+    on_attach = function(bufnr)
+      vim.keymap.set('n', '{', '<cmd>AerialPrev<CR>', { buffer = bufnr })
+      vim.keymap.set('n', '}', '<cmd>AerialNext<CR>', { buffer = bufnr })
+    end,
   })
 end

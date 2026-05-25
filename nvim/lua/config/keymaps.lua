@@ -85,8 +85,8 @@ map('n', '<C-u>', '<C-u>zz')
 map('n', 'n',     'nzzzv')
 map('n', 'N',     'Nzzzv')
 
--- File explorer
-map('n', '<C-S-e>', vim.cmd.Ex, { desc = 'File explorer' })
+-- File explorer (oil.nvim)
+map('n', '<C-S-e>', '<cmd>Oil<CR>', { desc = 'File explorer' })
 
 -- Command-line
 -- h expands to vert h only when typed as a standalone command
@@ -102,6 +102,9 @@ if _G.user_config.profile ~= 'minimal' then
   map('n', '<leader>fb', '<cmd>Buffers<CR>',  { desc = 'Find buffers' })
   map('n', '<leader>fc', '<cmd>Commands<CR>', { desc = 'Find commands' })
   map('n', '<leader>fl', '<cmd>Lines<CR>',    { desc = 'Find lines' })
+
+  -- Aerial
+  map('n', '<leader>a', '<cmd>AerialToggle<CR>', { desc = 'Toggle symbol outline' })
 
   -- Fugitive
   map('n', '<leader>gs', '<cmd>Git<CR>',        { desc = 'Git status' })
