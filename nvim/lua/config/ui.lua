@@ -104,5 +104,11 @@ if aerial_ok then
       vim.keymap.set('n', '{', '<cmd>AerialPrev<CR>', { buffer = bufnr })
       vim.keymap.set('n', '}', '<cmd>AerialNext<CR>', { buffer = bufnr })
     end,
+    post_parse_symbol = function(bufnr, item, _ctx)
+      if vim.bo[bufnr].filetype == 'ps1' then
+        item.name = item.name:gsub('^[Ff]unction%s+', '')
+      end
+      return item
+    end,
   })
 end

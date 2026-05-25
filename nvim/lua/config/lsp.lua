@@ -17,6 +17,15 @@ vim.api.nvim_create_autocmd('LspAttach', {
 
     -- Enable native LSP completion (manual trigger: <C-x><C-o>)
     vim.lsp.completion.enable(true, ev.data.client_id, ev.buf, { autotrigger = false })
+
+    -- Prime PowerShell workspace index once per client so cross-file gd works immediately
+    local client = vim.lsp.get_client_by_id(ev.data.client_id)
+    if client and client.name == 'powershell_es' and not client._pwsh_indexed then
+      client._pwsh_indexed = true
+      vim.defer_fn(function()
+        client.request('workspace/symbol', { query = '' }, function() end)
+      end, 3000)
+    end
   end,
 })
 
@@ -93,7 +102,7 @@ if _G.user_config.pwsh_bundle_path ~= '' then
   local _bundle = _G.user_config.pwsh_bundle_path
   local _temp   = vim.fn.stdpath('cache')
   local _script = _bundle .. '/PowerShellEditorServices/Start-EditorServices.ps1'
-  local _pwsh_cmd = ("& '%s' -BundledModulesPath '%s' -LogPath '%s/powershell_es.log' -SessionDetailsPath '%s/powershell_es.session.json' -FeatureFlags @() -AdditionalModules @() -HostName nvim -HostProfileId 0 -HostVersion 1.0.0 -Stdio -LogLevel Normal"):format(_script, _bundle, _temp, _temp)
+  local _pwsh_cmd = ("& '%s' -BundledModulesPath '%s' -LogPath '%s/powershell_es.log' -SessionDetailsPath '%s/powershell_es.session.json' -FeatureFlags @() -AdditionalModules @() -HostName nvim -HostProfileId 0 -HostVersion 1.0.0 -Stdio -LogLevel Information"):format(_script, _bundle, _temp, _temp)
 
   vim.lsp.config('powershell_es', {
     cmd        = { 'pwsh', '-NoLogo', '-NoProfile', '-Command', _pwsh_cmd },

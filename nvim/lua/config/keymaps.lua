@@ -95,11 +95,13 @@ vim.cmd([[inoreabbrev <expr> #!! "#!/usr/bin/env" . (empty(&filetype) ? '' : ' '
 -- Plugin keymaps: skipped in minimal profile (plugins not loaded)
 if _G.user_config.profile ~= 'minimal' then
   -- fzf-lua
-  map('n', '<leader>ff', '<cmd>FzfLua files<CR>',      { desc = 'Find files' })
-  map('n', '<leader>fg', '<cmd>FzfLua live_grep<CR>',  { desc = 'Find in files' })
-  map('n', '<leader>fb', '<cmd>FzfLua buffers<CR>',    { desc = 'Find buffers' })
-  map('n', '<leader>fc', '<cmd>FzfLua commands<CR>',   { desc = 'Find commands' })
-  map('n', '<leader>fl', '<cmd>FzfLua lines<CR>',      { desc = 'Find lines' })
+  map('n', '<leader>ff', '<cmd>FzfLua files<CR>',             { desc = 'Find files' })
+  map('n', '<leader>fg', '<cmd>FzfLua live_grep<CR>',         { desc = 'Find in files' })
+  map('n', '<leader>fb', '<cmd>FzfLua buffers<CR>',           { desc = 'Find buffers' })
+  map('n', '<leader>fc', '<cmd>FzfLua commands<CR>',          { desc = 'Find commands' })
+  map('n', '<leader>fl', '<cmd>FzfLua lines<CR>',             { desc = 'Find lines' })
+  map('n', '<leader>fs', '<cmd>FzfLua lsp_document_symbols<CR>',  { desc = 'Find symbols (file)' })
+  map('n', '<leader>fS', '<cmd>FzfLua lsp_workspace_symbols<CR>', { desc = 'Find symbols (workspace)' })
 
   -- Aerial
   map('n', '<leader>a', '<cmd>AerialToggle<CR>', { desc = 'Toggle symbol outline' })
