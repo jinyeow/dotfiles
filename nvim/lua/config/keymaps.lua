@@ -94,12 +94,12 @@ vim.cmd([[inoreabbrev <expr> #!! "#!/usr/bin/env" . (empty(&filetype) ? '' : ' '
 
 -- Plugin keymaps: skipped in minimal profile (plugins not loaded)
 if _G.user_config.profile ~= 'minimal' then
-  -- FZF
-  map('n', '<leader>ff', '<cmd>Files<CR>',    { desc = 'Find files' })
-  map('n', '<leader>fg', '<cmd>Rg<CR>',       { desc = 'Find in files' })
-  map('n', '<leader>fb', '<cmd>Buffers<CR>',  { desc = 'Find buffers' })
-  map('n', '<leader>fc', '<cmd>Commands<CR>', { desc = 'Find commands' })
-  map('n', '<leader>fl', '<cmd>Lines<CR>',    { desc = 'Find lines' })
+  -- fzf-lua
+  map('n', '<leader>ff', '<cmd>FzfLua files<CR>',      { desc = 'Find files' })
+  map('n', '<leader>fg', '<cmd>FzfLua live_grep<CR>',  { desc = 'Find in files' })
+  map('n', '<leader>fb', '<cmd>FzfLua buffers<CR>',    { desc = 'Find buffers' })
+  map('n', '<leader>fc', '<cmd>FzfLua commands<CR>',   { desc = 'Find commands' })
+  map('n', '<leader>fl', '<cmd>FzfLua lines<CR>',      { desc = 'Find lines' })
 
   -- Aerial
   map('n', '<leader>a', '<cmd>AerialToggle<CR>', { desc = 'Toggle symbol outline' })

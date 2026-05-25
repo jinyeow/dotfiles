@@ -70,8 +70,10 @@ vim.lsp.enable('yamlls')
 vim.lsp.config('azure_pipelines_ls', {})
 vim.lsp.enable('azure_pipelines_ls')
 
--- Markdown
-vim.lsp.enable('marksman')
+-- Markdown (only if installed)
+if vim.fn.executable('marksman') == 1 then
+  vim.lsp.enable('marksman')
+end
 
 -- Bicep (only if path is set)
 if _G.user_config.bicep_lsp_path ~= '' then
@@ -88,9 +90,37 @@ end
 
 -- PowerShell (only if bundle path is set)
 if _G.user_config.pwsh_bundle_path ~= '' then
+  local _bundle = _G.user_config.pwsh_bundle_path
+  local _temp   = vim.fn.stdpath('cache')
+  local _script = _bundle .. '/PowerShellEditorServices/Start-EditorServices.ps1'
+  local _pwsh_cmd = ("& '%s' -BundledModulesPath '%s' -LogPath '%s/powershell_es.log' -SessionDetailsPath '%s/powershell_es.session.json' -FeatureFlags @() -AdditionalModules @() -HostName nvim -HostProfileId 0 -HostVersion 1.0.0 -Stdio -LogLevel Normal"):format(_script, _bundle, _temp, _temp)
+
   vim.lsp.config('powershell_es', {
-    bundle_path = _G.user_config.pwsh_bundle_path,
-    shell       = 'pwsh',
+    cmd        = { 'pwsh', '-NoLogo', '-NoProfile', '-Command', _pwsh_cmd },
+    filetypes  = { 'ps1' },
+    root_dir   = function(bufnr, cb)
+      local fname = vim.api.nvim_buf_get_name(bufnr)
+      local dir   = vim.fn.fnamemodify(fname, ':h')
+      local check = dir
+      for _ = 1, 10 do
+        local handle = vim.uv.fs_scandir(check)
+        if handle then
+          while true do
+            local name, ftype = vim.uv.fs_scandir_next(handle)
+            if not name then break end
+            if (ftype == 'file' or ftype == 'link')
+              and (name:match('%.psd1$') or name:match('%.psm1$')) then
+              cb(check)
+              return
+            end
+          end
+        end
+        local parent = vim.fn.fnamemodify(check, ':h')
+        if parent == check then break end
+        check = parent
+      end
+      cb(vim.fs.root(bufnr, { '.git' }) or dir)
+    end,
   })
   vim.lsp.enable('powershell_es')
 end
