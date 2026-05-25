@@ -241,14 +241,9 @@ function Install-Zellij {
     Write-Host ''
     Write-Info '=== Zellij ==='
     # Windows-native path: %APPDATA%\Zellij\config\ (https://zellij.dev/documentation/configuration.html)
-    # Honour XDG_CONFIG_HOME if set (some setups configure this globally).
-    $zellijConfig = if ($env:XDG_CONFIG_HOME) {
-        Join-Path $env:XDG_CONFIG_HOME 'zellij'
-    } else {
-        Join-Path $env:APPDATA 'Zellij\config'
-    }
-    # Ensure the parent directory exists before junctioning
-    $zellijParent = Split-Path $zellijConfig
+    # Zellij does not document XDG support on Windows, so we always use APPDATA here.
+    $zellijConfig = Join-Path $env:APPDATA 'Zellij\config'
+    $zellijParent = Join-Path $env:APPDATA 'Zellij'
     if (-not (Test-Path $zellijParent) -and -not $DryRun) {
         New-Item -ItemType Directory -Path $zellijParent -Force | Out-Null
         Write-Info "Created:    $zellijParent"
