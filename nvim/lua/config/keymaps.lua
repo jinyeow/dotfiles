@@ -59,15 +59,8 @@ map('n', '<C-Down>',  ':resize -2<CR>')
 map('n', '<C-Left>',  ':vertical resize -2<CR>')
 map('n', '<C-Right>', ':vertical resize +2<CR>')
 
--- Buffer navigation
-map('n', '<S-l>', ':bnext<CR>')
-map('n', '<S-h>', ':bprevious<CR>')
-
 -- Editing
-map('n', 'Y',   'y$')   -- Y yanks to EOL, consistent with C and D
 map('n', '0',   '^')    -- 0 goes to first non-blank (^ is hard to reach)
-map('i', 'jj',  '<Esc>')
-
 -- Move selected lines
 map('v', 'J', ":m '>+1<CR>gv=gv")
 map('v', 'K', ":m '<-2<CR>gv=gv")
