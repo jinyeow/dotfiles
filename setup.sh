@@ -5,7 +5,7 @@
 #   ./setup.sh -m neovim,vim
 #   ./setup.sh -m all --dry-run
 #
-# Modules: neovim, vim, powershell, git, bash, tig, tmux, curl, claude, all
+# Modules: neovim, vim, powershell, git, bash, tig, tmux, zellij, curl, claude, all
 
 set -euo pipefail
 
@@ -17,7 +17,7 @@ DRY_RUN=0
 
 usage() {
     echo "Usage: $0 -m <module[,module,...]> [--dry-run]"
-    echo "  Modules: neovim, vim, powershell, git, bash, tig, tmux, curl, claude, all"
+    echo "  Modules: neovim, vim, powershell, git, bash, tig, tmux, zellij, curl, claude, all"
     echo "  Example: $0 -m neovim,vim"
     exit 1
 }
@@ -40,7 +40,7 @@ done
 # Expand 'all'
 for m in "${MODULES[@]}"; do
     if [[ "$m" == "all" ]]; then
-        MODULES=(neovim vim powershell git bash tig tmux curl claude lazygit windowsterminal)
+        MODULES=(neovim vim powershell git bash tig tmux zellij curl claude lazygit windowsterminal)
         break
     fi
 done
@@ -169,6 +169,13 @@ install_tmux() {
     make_symlink "$DOTFILES/tmux/tmux.conf" "$HOME/.tmux.conf"
 }
 
+install_zellij() {
+    echo ''
+    info '=== Zellij ==='
+    local xdg_config="${XDG_CONFIG_HOME:-$HOME/.config}"
+    make_symlink "$DOTFILES/zellij/config.kdl" "$xdg_config/zellij/config.kdl"
+}
+
 install_curl() {
     echo ''
     info '=== Curl ==='
@@ -220,6 +227,7 @@ for module in "${MODULES[@]}"; do
         bash)       install_bash       ;;
         tig)        install_tig        ;;
         tmux)       install_tmux       ;;
+        zellij)     install_zellij     ;;
         curl)       install_curl       ;;
         claude)     install_claude     ;;
         lazygit)         install_lazygit    ;;

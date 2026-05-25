@@ -16,10 +16,17 @@ Config for [Zellij](https://zellij.dev/) — a terminal workspace / multiplexer.
 
 ## Install
 
-```sh
-mkdir -p ~/.config/zellij
-cp config.kdl ~/.config/zellij/config.kdl
+```powershell
+# Windows
+.\setup.ps1 -Module zellij
 ```
+
+```bash
+# Linux / WSL
+./setup.sh -m zellij
+```
+
+On Windows this creates a directory junction `~/.config/zellij -> dotfiles/zellij/` so changes are live. On Linux it symlinks `config.kdl` directly.
 
 ## Design: locked-first
 
@@ -79,6 +86,12 @@ automatically. Press **Ctrl+g** or **Esc** again to exit back to locked.
 | `h/j/k/l` | Resize in direction |
 | `=` / `-` | Increase / decrease overall |
 
+## Default shell
+
+`default_shell "pwsh"` — new panes open PowerShell 7. Known limitation: new
+panes open at `$HOME` rather than the current pane's directory (upstream Zellij
+bug with pwsh CWD inheritance, no workaround in config).
+
 ## Theme
 
 Catppuccin Mocha (dark) and Latte (light) are built into Zellij — no extra
@@ -87,3 +100,12 @@ automatically when the terminal sends a CSI 2031 signal (Windows Terminal
 supports this).
 
 Manual toggle: `zellij action toggle-theme`
+
+## Neovim integration
+
+Ctrl+hjkl pane navigation is handled by the
+[vim-zellij-navigator](https://github.com/hiasr/vim-zellij-navigator) WASM
+plugin (v0.3.0, downloaded on first use) together with
+[zellij-nav.nvim](https://github.com/swaits/zellij-nav.nvim) on the Neovim
+side. When the focused pane is running nvim the key is forwarded to nvim first;
+at the window edge nvim hands control back to Zellij to cross panes.

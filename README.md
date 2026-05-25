@@ -21,6 +21,7 @@ Personal dotfiles for Windows (primary) and Linux/WSL.
 | `bat/` | bat syntax highlighter config | Windows + Linux |
 | `vscode/` | VSCode settings snapshot | Windows |
 | `winget/` | winget bootstrap script + package list | Windows |
+| `zellij/` | Zellij terminal multiplexer | Windows + Linux |
 | `tmux/` | tmux config | Linux / WSL |
 | `nix/` | Nix/Home Manager (legacy snapshot) | Linux |
 
@@ -38,7 +39,7 @@ cd $HOME/dotfiles
 .\setup.ps1 -Module all -DryRun  # preview without changes
 ```
 
-Available modules: `git`, `neovim`, `vim`, `powershell`, `tig`, `curl`, `lazygit`, `windowsterminal`, `bat`, `vscode`, `winget`
+Available modules: `git`, `neovim`, `vim`, `powershell`, `tig`, `zellij`, `curl`, `lazygit`, `windowsterminal`, `bat`, `vscode`, `winget`
 
 ### Linux / WSL
 
@@ -50,7 +51,7 @@ cd ~/dotfiles
 ./setup.sh -m all --dry-run    # preview without changes
 ```
 
-Available modules: `git`, `neovim`, `vim`, `powershell`, `bash`, `tig`, `tmux`, `fzf`, `curl`, `lazygit`
+Available modules: `git`, `neovim`, `vim`, `powershell`, `bash`, `tig`, `tmux`, `zellij`, `fzf`, `curl`, `lazygit`
 
 ## Requirements
 

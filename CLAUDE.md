@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository scope
 
-Personal dotfiles spanning Windows (PowerShell 7) and Linux/WSL (bash, Neovim, tmux, i3/bspwm). Active development is on the **Windows side**: the PowerShell profile under `powershell/`, the prompt in `powershell/Profile/Set-Prompt.ps1`, the Neovim Lua config under `nvim/`, and the git config under `git/`. Configs are organized into per-tool directories: `git/`, `nvim/`, `vim/`, `bash/`, `powershell/`, `tig/`, `tmux/`, `fzf/`, `curl/`. The Linux setup (`bootstrap.sh`, `Makefile`, `pwsh_profile.ps1`, the Arch package lists in the `install:` target, `config/bspwm`, `config/sxhkd`, etc.) is a legacy snapshot — touch only when explicitly asked.
+Personal dotfiles spanning Windows (PowerShell 7) and Linux/WSL (bash, Neovim, tmux, i3/bspwm). Active development is on the **Windows side**: the PowerShell profile under `powershell/`, the prompt in `powershell/Profile/Set-Prompt.ps1`, the Neovim Lua config under `nvim/`, the Zellij config under `zellij/`, and the git config under `git/`. Configs are organized into per-tool directories: `git/`, `nvim/`, `vim/`, `bash/`, `powershell/`, `tig/`, `tmux/`, `zellij/`, `fzf/`, `curl/`. The Linux setup (`bootstrap.sh`, `Makefile`, `pwsh_profile.ps1`, the Arch package lists in the `install:` target, `config/bspwm`, `config/sxhkd`, etc.) is a legacy snapshot — touch only when explicitly asked.
 
 `pwsh_profile.ps1` at the repo root is the **old** profile and is superseded by `powershell/Microsoft.PowerShell_profile.*.ps1`. Edit the per-machine file under `powershell/`, not the root one.
 
@@ -82,3 +82,15 @@ The `vim/` directory (Vimscript setup) is the older Vim config — kept as the L
 ### Install
 
 Installed via `setup.ps1` (Windows) or `setup.sh` (Linux) at the repo root — see the Installation entry points section. The per-tool install scripts inside `nvim/` (`install.sh`, `install.ps1`, `install.py`) are an older standalone installer kept for backward compatibility.
+
+## Zellij (`zellij/`)
+
+Single KDL config file at `zellij/config.kdl`. Installed via `setup.ps1 -Module zellij` (Windows — junction of the whole `zellij/` dir) or `setup.sh -m zellij` (Linux — symlink of `config.kdl`).
+
+### Key decisions (do not reverse without asking)
+
+- **Locked-first**: `default_mode "locked"` — all input passes to the pane by default; Ctrl+g enters command mode. Do not change the default mode.
+- **Default shell**: `default_shell "pwsh"`. New panes open at `$HOME` due to an upstream Zellij/pwsh CWD bug — not fixable in config.
+- **Themes**: `theme_dark "catppuccin-mocha"` / `theme_light "catppuccin-latte"` — built-in, no extra files. Zellij auto-switches on CSI 2031 signal from Windows Terminal.
+- **Neovim integration**: vim-zellij-navigator WASM plugin (v0.3.0, fetched by Zellij on first use) + `zellij-nav.nvim` on the Neovim side. This pair handles Ctrl+hjkl navigation across nvim windows and zellij panes seamlessly. Do not replace with a different approach.
+- **No layout files yet**: single `config.kdl` only. Add layouts to `zellij/layouts/` if needed.

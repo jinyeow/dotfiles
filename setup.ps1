@@ -33,7 +33,7 @@ $Dotfiles = $PSScriptRoot
 
 # Expand 'all'
 if ($Module -contains 'all') {
-    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'curl', 'claude', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget')
+    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'curl', 'claude', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget')
 }
 $Module = $Module | Select-Object -Unique
 
@@ -237,6 +237,15 @@ function Install-Tmux {
     Write-Warn 'Tmux module is Linux/WSL only — skipping on Windows.'
 }
 
+function Install-Zellij {
+    Write-Host ''
+    Write-Info '=== Zellij ==='
+    $configBase = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { Join-Path $env:USERPROFILE '.config' }
+    New-Junction `
+        -Link   (Join-Path $configBase 'zellij') `
+        -Target (Join-Path $Dotfiles 'zellij')
+}
+
 function Install-Curl {
     Write-Host ''
     Write-Info '=== Curl ==='
@@ -352,6 +361,7 @@ foreach ($m in $Module) {
         'bash'       { Install-Bash       }
         'tig'        { Install-Tig        }
         'tmux'       { Install-Tmux       }
+        'zellij'     { Install-Zellij     }
         'curl'       { Install-Curl       }
         'winget'     { Install-Winget     }
         'vscode'     { Install-VSCode     }
