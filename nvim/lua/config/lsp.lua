@@ -11,8 +11,6 @@ vim.api.nvim_create_autocmd('LspAttach', {
     end
     map('gd',         vim.lsp.buf.definition,    'Go to definition')
     map('gD',         vim.lsp.buf.declaration,   'Go to declaration')
-    map('gr',         vim.lsp.buf.references,    'Go to references')
-    map('gi',         vim.lsp.buf.implementation,'Go to implementation')
     map('<leader>rn', vim.lsp.buf.rename,        'Rename symbol')
     map('<leader>ca', vim.lsp.buf.code_action,   'Code action')
     map('<leader>d',  vim.diagnostic.open_float, 'Show diagnostics')

@@ -30,7 +30,8 @@ opt.undofile = true
 opt.swapfile    = false
 opt.backup      = false
 opt.updatetime  = 250
-opt.timeoutlen  = 150
+opt.timeoutlen  = 50
+opt.ttimeoutlen = 10
 
 opt.splitright = true
 opt.splitbelow = true
@@ -55,11 +56,9 @@ opt.wildignore = {
   'tags', '*.min.js', '*.min.css',
 }
 
--- Clipboard: deferred so the provider isn't spawned during startup.
--- SSH_TTY guard disables sync over SSH (avoids hangs without a clipboard forwarder).
-vim.schedule(function()
-  vim.opt.clipboard = vim.env.SSH_TTY and '' or 'unnamedplus'
-end)
+-- Clipboard: not set to unnamedplus — win32yank process overhead causes
+-- perceptible delay on every d/c/x/y. Use "+y / "+p explicitly instead
+-- (keymaps in keymaps.lua).
 
 -- Netrw
 vim.g.netrw_banner  = 0

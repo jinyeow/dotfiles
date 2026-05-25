@@ -72,6 +72,11 @@ map('v', '>', '>gv')
 -- Paste without overwriting register
 map('v', 'p', '"_dP')
 
+-- Explicit system clipboard access (clipboard is not set to unnamedplus)
+map({'n', 'v'}, '<leader>y', '"+y', { desc = 'Yank to clipboard' })
+map('n',        '<leader>Y', '"+Y', { desc = 'Yank line to clipboard' })
+map({'n', 'v'}, '<leader>p', '"+p', { desc = 'Paste from clipboard' })
+
 -- Centred scrolling
 map('n', '<C-d>', '<C-d>zz')
 map('n', '<C-u>', '<C-u>zz')
