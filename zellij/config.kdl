@@ -31,8 +31,10 @@ osc8_hyperlinks true         // clickable file:// and https:// links
 // Theme files live in themes/ alongside this file (pulled in via the junction).
 // The new semantic format (text_unselected / ribbon_selected / etc.) is
 // required for Zellij 0.40+; old fg/bg palette blocks render incorrectly.
-// theme_dark/theme_light auto-switch on CSI 2031 signal from the terminal.
-// Windows Terminal does not emit CSI 2031 — use: zellij action toggle-theme
+// theme applies immediately on startup.
+// theme_dark/theme_light auto-switch on CSI 2031 signal (Windows Terminal
+// does not emit this — toggle manually: zellij action toggle-theme).
+theme       "catppuccin-mocha"
 theme_dark  "catppuccin-mocha"
 theme_light "catppuccin-latte"
 
