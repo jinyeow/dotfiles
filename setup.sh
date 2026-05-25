@@ -173,7 +173,8 @@ install_zellij() {
     echo ''
     info '=== Zellij ==='
     local xdg_config="${XDG_CONFIG_HOME:-$HOME/.config}"
-    make_symlink "$DOTFILES/zellij/config.kdl" "$xdg_config/zellij/config.kdl"
+    # Symlink the whole directory so themes/ and layouts/ are included automatically.
+    make_symlink "$DOTFILES/zellij" "$xdg_config/zellij"
 }
 
 install_curl() {
