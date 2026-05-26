@@ -159,6 +159,11 @@ function Install-Git {
         -StubPath  (Join-Path $env:USERPROFILE '.gitignore') `
         -RealSource (Join-Path $Dotfiles 'git\gitignore')
 
+    # ~/.gitignore-work — extra ignore patterns for work repos (overrides core.excludesFile via gitconfig-work).
+    New-GitIncludeStub `
+        -StubPath  (Join-Path $env:USERPROFILE '.gitignore-work') `
+        -RealSource (Join-Path $Dotfiles 'git\gitignore-work')
+
     # ~/.gitmessage — commit message template.
     Copy-Dotfile `
         -Dest   (Join-Path $env:USERPROFILE '.gitmessage') `

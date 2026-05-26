@@ -4,5 +4,8 @@
 [user]
     email = justin.puah@hollard.com.au
 
+[core]
+    excludesFile = ~/.gitignore-work
+
 [diff]
     tool = delta

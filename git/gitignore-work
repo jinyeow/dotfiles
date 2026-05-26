@@ -1,0 +1,62 @@
+# Work-specific global gitignore — ~/.gitignore-work
+# Replaces core.excludesFile for repos matched by [includeIf] in gitconfig.
+# Must include all patterns from gitignore (global) since it fully overrides it.
+
+# ── Carried over from gitignore (global) ────────────────────────────────────
+vim/common/.netrwhist
+&undodir
+
+**/.env
+**/.envrc
+
+*.pyc
+*.tags
+
+.mix_tasks
+.projections.json
+.tags
+.tasks
+
+_build
+
+Session.vim
+tags
+
+# ── Work-specific ────────────────────────────────────────────────────────────
+
+# .NET / Visual Studio
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.userosscache
+TestResults/
+
+# Azure Functions
+local.settings.json
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+!*.tfvars.example
+.terraformrc
+terraform.rc
+
+# AI / LLM tooling
+.claude/
+CLAUDE.md
+AGENTS.md
+GEMINI.md
+.cursor/
+.cursorrules
+.cursorignore
+.aider*
+.continue/
+.codeium/
+.windsurf/
+.roomodes
+.clinerules
+.github/copilot-instructions.md

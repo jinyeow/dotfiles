@@ -102,6 +102,7 @@ install_git() {
     make_symlink "$DOTFILES/git/gitconfig"      "$HOME/.gitconfig"
     make_symlink "$DOTFILES/git/gitconfig-work" "$HOME/.gitconfig-work"
     make_symlink "$DOTFILES/git/gitignore"      "$HOME/.gitignore"
+    make_symlink "$DOTFILES/git/gitignore-work" "$HOME/.gitignore-work"
     make_symlink "$DOTFILES/git/gitmessage"     "$HOME/.gitmessage"
     make_symlink "$DOTFILES/git/templates"      "$HOME/.git_templates"
 }
