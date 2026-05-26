@@ -10,20 +10,36 @@
 
 .PARAMETER Module
     One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, curl, all.
+    Optional when -CleanBackups is specified.
 
 .PARAMETER DryRun
     Preview what would happen without making any changes.
+
+.PARAMETER CleanBackups
+    Remove old backup files (.bak.TIMESTAMP) left by previous runs.
+
+.PARAMETER KeepBackups
+    When -CleanBackups is set: keep this many of the most recent backups per file. Default: 5. 0 = no limit.
+
+.PARAMETER MaxBackupAgeDays
+    When -CleanBackups is set: delete backups older than this many days. Default: 0 (disabled).
 
 .EXAMPLE
     .\setup.ps1 -Module neovim,powershell
     .\setup.ps1 -Module git
     .\setup.ps1 -Module all -DryRun
+    .\setup.ps1 -CleanBackups
+    .\setup.ps1 -CleanBackups -KeepBackups 3
+    .\setup.ps1 -Module git -CleanBackups -MaxBackupAgeDays 30
 #>
 param(
-    [Parameter(Mandatory)]
-    [string[]] $Module,
+    [string[]] $Module = @(),
 
-    [switch] $DryRun
+    [switch] $DryRun,
+
+    [switch] $CleanBackups,
+    [int] $KeepBackups = 5,
+    [int] $MaxBackupAgeDays = 0
 )
 
 Set-StrictMode -Version Latest
@@ -360,7 +376,72 @@ function Install-Claude {
     }
 }
 
+function Remove-OldBackups {
+    Write-Host ''
+    Write-Info '=== Cleaning backups ==='
+
+    if ($KeepBackups -eq 0 -and $MaxBackupAgeDays -eq 0) {
+        Write-Warn '-KeepBackups 0 and -MaxBackupAgeDays 0 — nothing to prune.'
+        return
+    }
+
+    $docs = [Environment]::GetFolderPath('MyDocuments')
+    $configBase = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { $env:LOCALAPPDATA }
+
+    $searchDirs = @(
+        $env:USERPROFILE,
+        (Join-Path $docs 'PowerShell'),
+        (Join-Path $docs 'WindowsPowerShell'),
+        (Join-Path $configBase 'nvim'),
+        (Join-Path $env:USERPROFILE '.claude'),
+        (Join-Path $env:LOCALAPPDATA 'Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState'),
+    ) | Where-Object { Test-Path $_ -PathType Container }
+
+    $allBackups = @(foreach ($dir in $searchDirs) {
+        Get-ChildItem -Path $dir -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match '\.bak\.(\d{8}_\d{6})$' }
+    })
+
+    if ($allBackups.Count -eq 0) { Write-Info 'No backup files found.'; return }
+
+    $cutoff = if ($MaxBackupAgeDays -gt 0) { (Get-Date).AddDays(-$MaxBackupAgeDays) } else { $null }
+    $removed = 0
+    $groups = $allBackups | Group-Object { $_.FullName -replace '\.bak\.\d{8}_\d{6}$', '' }
+
+    foreach ($group in $groups) {
+        $sorted = @($group.Group | Sort-Object Name -Descending)  # newest first
+
+        for ($i = 0; $i -lt $sorted.Count; $i++) {
+            $file = $sorted[$i]
+            $removeByCount = $KeepBackups -gt 0 -and $i -ge $KeepBackups
+            $removeByAge = $false
+            if ($cutoff -and $file.Name -match '\.bak\.(\d{8}_\d{6})$') {
+                $ts = [datetime]::ParseExact($Matches[1], 'yyyyMMdd_HHmmss', $null)
+                $removeByAge = $ts -lt $cutoff
+            }
+
+            if (-not ($removeByCount -or $removeByAge)) { continue }
+
+            $reason = if ($removeByAge) { 'age' } else { 'count' }
+            if ($DryRun) {
+                Write-Info "[DRY RUN] would remove ($reason): $($file.FullName)"
+            } else {
+                Remove-Item -Path $file.FullName -Force
+                Write-Ok "Removed ($reason): $($file.FullName)"
+            }
+            $removed++
+        }
+    }
+
+    if ($removed -eq 0) { Write-Info 'Nothing to prune.' }
+}
+
 # ── Main ─────────────────────────────────────────────────────────────────────
+
+if ($Module.Count -eq 0 -and -not $CleanBackups) {
+    Write-Fail "Specify -Module <modules> and/or -CleanBackups. Run 'Get-Help .\setup.ps1' for usage."
+    exit 1
+}
 
 if ($DryRun) { Write-Warn 'DRY RUN — no changes will be made.' }
 
@@ -384,6 +465,8 @@ foreach ($m in $Module) {
         default          { Write-Warn "Unknown module '$m' — skipping." }
     }
 }
+
+if ($CleanBackups) { Remove-OldBackups }
 
 Write-Host ''
 Write-Ok 'Done.'

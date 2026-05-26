@@ -12,13 +12,21 @@ set -euo pipefail
 DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODULES=()
 DRY_RUN=0
+CLEAN_BACKUPS=0
+KEEP_BACKUPS=5
+MAX_BACKUP_AGE_DAYS=0
 
 # ── Arg parsing ───────────────────────────────────────────────────────────────
 
 usage() {
-    echo "Usage: $0 -m <module[,module,...]> [--dry-run]"
+    echo "Usage: $0 -m <module[,module,...]> [--dry-run] [--clean-backups [--keep-backups N] [--max-backup-age-days N]]"
     echo "  Modules: neovim, vim, powershell, git, bash, tig, tmux, zellij, curl, claude, all"
+    echo "  --clean-backups          remove old .bak.TIMESTAMP files from previous runs"
+    echo "  --keep-backups N         keep N most recent backups per file (default: 5, 0 = no limit)"
+    echo "  --max-backup-age-days N  delete backups older than N days (default: 0 = disabled)"
     echo "  Example: $0 -m neovim,vim"
+    echo "  Example: $0 --clean-backups --keep-backups 3"
+    echo "  Example: $0 -m git --clean-backups --max-backup-age-days 30"
     exit 1
 }
 
@@ -30,12 +38,19 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --dry-run) DRY_RUN=1; shift ;;
+        --clean-backups) CLEAN_BACKUPS=1; shift ;;
+        --keep-backups)
+            [[ -n "${2:-}" ]] || { echo "Error: --keep-backups requires an argument" >&2; usage; }
+            KEEP_BACKUPS="$2"; shift 2 ;;
+        --max-backup-age-days)
+            [[ -n "${2:-}" ]] || { echo "Error: --max-backup-age-days requires an argument" >&2; usage; }
+            MAX_BACKUP_AGE_DAYS="$2"; shift 2 ;;
         -h|--help) usage ;;
         *) echo "Unknown option: $1" >&2; usage ;;
     esac
 done
 
-[[ ${#MODULES[@]} -eq 0 ]] && usage
+[[ ${#MODULES[@]} -eq 0 && $CLEAN_BACKUPS -eq 0 ]] && usage
 
 # Expand 'all'
 for m in "${MODULES[@]}"; do
@@ -216,6 +231,94 @@ install_claude() {
     fi
 }
 
+clean_backups() {
+    echo ''
+    info '=== Cleaning backups ==='
+
+    if [[ $KEEP_BACKUPS -eq 0 && $MAX_BACKUP_AGE_DAYS -eq 0 ]]; then
+        warn '--keep-backups 0 and --max-backup-age-days 0 — nothing to prune.'
+        return
+    fi
+
+    local xdg="${XDG_CONFIG_HOME:-$HOME/.config}"
+    local search_dirs=(
+        "$HOME"
+        "$xdg/powershell"
+        "$xdg/nvim"
+        "$xdg/zellij"
+        "$xdg/lazygit"
+        "$HOME/.claude"
+    )
+
+    # Collect all backup files grouped by original path (stem).
+    # Keys are stems; values are newline-separated lists of matching backup paths.
+    declare -A stem_files
+
+    for dir in "${search_dirs[@]}"; do
+        [[ -d "$dir" ]] || continue
+        while IFS= read -r -d '' f; do
+            local stem="${f%.bak.[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]}"
+            stem_files[$stem]+="$f"$'\n'
+        done < <(find "$dir" -maxdepth 1 \( -f -o -L \) \
+            -name "*.bak.[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]" \
+            -print0 2>/dev/null)
+    done
+
+    if [[ ${#stem_files[@]} -eq 0 ]]; then
+        info 'No backup files found.'
+        return
+    fi
+
+    local cutoff_epoch=0
+    if [[ $MAX_BACKUP_AGE_DAYS -gt 0 ]]; then
+        cutoff_epoch=$(date -d "$MAX_BACKUP_AGE_DAYS days ago" +%s 2>/dev/null || echo 0)
+    fi
+
+    local removed=0
+
+    for stem in "${!stem_files[@]}"; do
+        mapfile -t sorted < <(printf '%s' "${stem_files[$stem]}" | sort -r)
+
+        local i=0
+        for f in "${sorted[@]}"; do
+            [[ -z "$f" ]] && continue
+
+            local remove_by_count=0 remove_by_age=0
+
+            if [[ $KEEP_BACKUPS -gt 0 && $i -ge $KEEP_BACKUPS ]]; then
+                remove_by_count=1
+            fi
+
+            if [[ $cutoff_epoch -gt 0 ]]; then
+                local ts="${f##*.bak.}"
+                local file_epoch
+                file_epoch=$(date -d "${ts:0:8} ${ts:9:2}:${ts:11:2}:${ts:13:2}" +%s 2>/dev/null || echo 0)
+                if [[ $file_epoch -gt 0 && $file_epoch -lt $cutoff_epoch ]]; then
+                    remove_by_age=1
+                fi
+            fi
+
+            if [[ $remove_by_count -eq 1 || $remove_by_age -eq 1 ]]; then
+                local reason
+                reason=$([ $remove_by_age -eq 1 ] && echo 'age' || echo 'count')
+                if [[ $DRY_RUN -eq 0 ]]; then
+                    rm -f "$f"
+                    ok "Removed ($reason): $f"
+                else
+                    info "[DRY RUN] would remove ($reason): $f"
+                fi
+                removed=$((removed + 1))
+            fi
+
+            i=$((i + 1))
+        done
+    done
+
+    if [[ $removed -eq 0 ]]; then
+        info 'Nothing to prune.'
+    fi
+}
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 [[ $DRY_RUN -eq 1 ]] && warn 'DRY RUN — no changes will be made.'
@@ -237,6 +340,8 @@ for module in "${MODULES[@]}"; do
         *)               warn "Unknown module '$module' — skipping." ;;
     esac
 done
+
+[[ $CLEAN_BACKUPS -eq 1 ]] && clean_backups
 
 echo ''
 ok 'Done.'
