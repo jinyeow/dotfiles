@@ -76,3 +76,31 @@ Or install individually:
 | [Neovim](https://neovim.io) 0.11+ | Editor | `winget install Neovim.Neovim` |
 
 See each tool's `README.md` for full prerequisites and setup notes.
+
+## Claude Code skills
+
+Global skills live in `claude/skills/` and are junctioned into `~/.claude/skills/` by `setup.ps1 -Module claude`. They are available across all Claude Code sessions, not just this repo.
+
+| Skill | Source | Purpose |
+|---|---|---|
+| `azure-enterprise-infra-planner` | microsoft/azure-skills | Architect enterprise Azure infra — landing zones, hub-spoke, Bicep/Terraform |
+| `azure-prepare` | microsoft/azure-skills | Prepare apps for Azure deployment — IaC, Dockerfiles, `azure.yaml` |
+| `azure-validate` | microsoft/azure-skills | Pre-deployment validation — Bicep/Terraform, RBAC, what-if |
+| `azure-compliance` | microsoft/azure-skills | Compliance/security audits via `azqr`, Key Vault expiry checks |
+| `azure-devops` | MicrosoftDocs/Agent-Skills | ADO org/project management, Analytics/OData, permissions |
+| `azure-pipelines` | MicrosoftDocs/Agent-Skills | YAML pipelines, service connections, Key Vault secrets, agents |
+| `azure-resource-manager` | MicrosoftDocs/Agent-Skills | Bicep/ARM troubleshooting (BCP errors), deployment stacks, template specs |
+| `diagnose` | mattpocock/skills | Disciplined debug loop — reproduce → minimise → hypothesise → fix |
+| `tdd` | mattpocock/skills | Red-green-refactor TDD with interface-design references |
+| `prototype` | mattpocock/skills | Throwaway prototype for logic questions or UI exploration |
+| `improve-codebase-architecture` | mattpocock/skills | Find deepening opportunities, consolidate coupling |
+| `git-guardrails-claude-code` | mattpocock/skills | Hook blocking dangerous git commands |
+| `zoom-out` | mattpocock/skills | Step back and assess the bigger picture |
+| `to-prd` | mattpocock/skills | Turn conversation into a PRD on the issue tracker |
+| `to-issues` | mattpocock/skills | Break a plan into independently-grabbable issues |
+| `triage` | mattpocock/skills | State-machine issue triage |
+| `grill-me` | mattpocock/skills | Relentless interview to stress-test a plan or design |
+| `grill-with-docs` | mattpocock/skills | Grilling against existing domain model and ADRs |
+| `write-a-skill` | mattpocock/skills | Create new skills with proper structure |
+| `handoff` | local | Compact conversation into a handoff doc for a fresh agent |
+| `caveman` | mattpocock/skills | ~75% token reduction mode |
