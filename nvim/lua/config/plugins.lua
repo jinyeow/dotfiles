@@ -24,18 +24,7 @@ local specs = {
   'https://github.com/MeanderingProgrammer/render-markdown.nvim',
 }
 
--- zellij-nav.nvim: only install when the zellij binary is present.
-if vim.fn.executable('zellij') == 1 then
-  table.insert(specs, 'https://github.com/swaits/zellij-nav.nvim')
-end
-
 -- load=true: sources plugin/ and ftdetect/ files immediately so subsequent
 -- config modules (treesitter, lsp, ui, gitsigns) can use the plugins.
 -- confirm=false: installs silently on a fresh machine.
 vim.pack.add(specs, { load = true, confirm = false })
-
--- zellij-nav.nvim setup: pcall guards the first launch before the plugin is installed.
-if vim.fn.executable('zellij') == 1 then
-  local ok, nav = pcall(require, 'zellij-nav')
-  if ok then nav.setup() end
-end

@@ -43,7 +43,10 @@ automatically. Press **Ctrl+g** or **Esc** again to exit back to locked.
 | Key | Action |
 |---|---|
 | `Ctrl+g` | Enter command mode |
-| `Ctrl+h/j/k/l` | Move focus (nvim-aware — moves nvim windows first, then panes) |
+| `Alt+h/j/k/l` | Move focus between panes (wraps to adjacent tab on left/right edges) |
+| `Alt+s` | Enter scroll mode |
+| `Alt+n` | New pane |
+| `Alt+z` | Toggle fullscreen |
 | `Alt+[` | Previous pane layout |
 | `Alt+]` | Next pane layout |
 
@@ -134,9 +137,7 @@ bug with pwsh CWD inheritance, no workaround in config).
 
 ## Neovim integration
 
-Ctrl+hjkl pane navigation is handled by the
-[vim-zellij-navigator](https://github.com/hiasr/vim-zellij-navigator) WASM
-plugin (v0.3.0, downloaded on first use) together with
-[zellij-nav.nvim](https://github.com/swaits/zellij-nav.nvim) on the Neovim
-side. When the focused pane is running nvim the key is forwarded to nvim first;
-at the window edge nvim hands control back to Zellij to cross panes.
+Pane navigation uses `Alt+hjkl` in locked mode. Inside nvim, use `Ctrl+w hjkl`
+to move between nvim windows; at the window edge nvim calls
+`zellij action move-focus` via CLI to cross into the adjacent Zellij pane.
+vim-zellij-navigator and zellij-nav.nvim are not used.
