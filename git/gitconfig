@@ -156,12 +156,6 @@
 [rerere]
     enabled = true
 
-[status]
-    submoduleSummary = true
-
-[submodule]
-    recurse = true
-
 [tag]
     sort = taggerdate
 

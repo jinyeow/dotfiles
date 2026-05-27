@@ -9,3 +9,9 @@
 
 [diff]
     tool = delta
+
+[status]
+    submoduleSummary = true
+
+[submodule]
+    recurse = true
