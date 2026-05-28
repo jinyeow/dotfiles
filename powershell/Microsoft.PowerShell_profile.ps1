@@ -333,7 +333,7 @@ function Initialize-DeferredProfile {
     # git-completion
     if ($global:ProfileModules['git-completion']) {
         Import-Module git-completion
-        Register-GitCompletion 'g'
+        Register-ArgumentCompleter -Native -CommandName g -ScriptBlock ${Function:Complete-Git}
     }
 
     # PSFzf (~1.1s)
