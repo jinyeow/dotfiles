@@ -10,6 +10,8 @@
   },
   "effortLevel": "medium",
   "theme": "auto",
+  "editorMode": "vim",
+  "agentPushNotifEnabled": true,
   "statusLine": {
     "type": "command",
     "command": "bash ~/.claude/statusline-command.sh"
