@@ -109,6 +109,16 @@ function which ($command) {
 function Start-AdminSession { Start-Process wt -Verb RunAs }
 Set-Alias -Name su -Value Start-AdminSession
 
+function y {
+    $tmp = (New-TemporaryFile).FullName
+    yazi.exe @args --cwd-file="$tmp"
+    $cwd = Get-Content -Path $tmp -Encoding UTF8
+    if ($cwd -and $cwd -ne $PWD.Path -and (Test-Path -LiteralPath $cwd -PathType Container)) {
+        Set-Location -LiteralPath (Resolve-Path -LiteralPath $cwd).Path
+    }
+    Remove-Item -Path $tmp
+}
+
 $_chocoProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
 if ($_chocoProfile -and (Test-Path $_chocoProfile)) {
     function chocoRefresh {

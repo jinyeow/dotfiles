@@ -1,0 +1,43 @@
+[mgr]
+ratio          = [1, 3, 4]
+sort_by        = "natural"
+sort_sensitive = false
+sort_reverse   = false
+sort_dir_first = true
+show_hidden    = false
+show_symlink   = true
+scrolloff      = 5
+linemode       = "size"
+
+[preview]
+tab_size   = 2
+max_width  = 1200
+max_height = 1200
+wrap       = "no"
+
+[opener]
+edit = [
+  { run = 'nvim %s', block = true, desc = "Edit in Neovim" },
+]
+open = [
+  { run = 'start %s',    orphan = true, desc = "Open",      for = "windows" },
+  { run = 'open %s',     orphan = true, desc = "Open",      for = "macos"   },
+  { run = 'xdg-open %s', orphan = true, desc = "Open",      for = "linux"   },
+]
+reveal = [
+  { run = 'explorer /select,%s', orphan = true, for = "windows" },
+  { run = 'open -R %s',          orphan = true, for = "macos"   },
+]
+
+[open]
+rules = [
+  { mime = "text/*",           use = ["edit", "open"] },
+  { mime = "application/json", use = ["edit", "open"] },
+  { mime = "application/toml", use = ["edit", "open"] },
+  { mime = "application/xml",  use = ["edit", "open"] },
+  { mime = "image/*",          use = ["open"]         },
+  { mime = "video/*",          use = ["open"]         },
+  { mime = "audio/*",          use = ["open"]         },
+  { mime = "application/pdf",  use = ["open"]         },
+  { mime = "*",                use = ["open", "edit"] },
+]

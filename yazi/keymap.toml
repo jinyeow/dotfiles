@@ -1,0 +1,5 @@
+[mgr]
+prepend_keymap = [
+  # o → interactive opener picker (Enter opens with first-match rule, o lets you choose)
+  { on = "o", run = "open --interactive", desc = "Open with picker" },
+]

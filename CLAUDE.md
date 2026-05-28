@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository scope
 
-Personal dotfiles spanning Windows (PowerShell 7) and Linux/WSL (bash, Neovim, tmux, i3/bspwm). Active development is on the **Windows side**: the PowerShell profile under `powershell/`, the prompt in `powershell/Profile/Set-Prompt.ps1`, the Neovim Lua config under `nvim/`, the Zellij config under `zellij/`, and the git config under `git/`. Configs are organized into per-tool directories: `git/`, `nvim/`, `vim/`, `bash/`, `powershell/`, `tig/`, `tmux/`, `zellij/`, `fzf/`, `curl/`. The Linux setup (`bootstrap.sh`, `Makefile`, `pwsh_profile.ps1`, the Arch package lists in the `install:` target, `config/bspwm`, `config/sxhkd`, etc.) is a legacy snapshot — touch only when explicitly asked.
+Personal dotfiles spanning Windows (PowerShell 7) and Linux/WSL (bash, Neovim, tmux, i3/bspwm). Active development is on the **Windows side**: the PowerShell profile under `powershell/`, the prompt in `powershell/Profile/Set-Prompt.ps1`, the Neovim Lua config under `nvim/`, the Zellij config under `zellij/`, the Yazi config under `yazi/`, and the git config under `git/`. Configs are organized into per-tool directories: `git/`, `nvim/`, `vim/`, `bash/`, `powershell/`, `tig/`, `tmux/`, `zellij/`, `yazi/`, `fzf/`, `curl/`. The Linux setup (`bootstrap.sh`, `Makefile`, `pwsh_profile.ps1`, the Arch package lists in the `install:` target, `config/bspwm`, `config/sxhkd`, etc.) is a legacy snapshot — touch only when explicitly asked.
 
 `pwsh_profile.ps1` at the repo root is the **old** profile and is superseded by `powershell/Microsoft.PowerShell_profile.*.ps1`. Edit the per-machine file under `powershell/`, not the root one.
 
@@ -19,14 +19,14 @@ The PowerShell profile (`powershell/Microsoft.PowerShell_profile.ps1`) is a sing
 
 | Script | Target | Notes |
 |---|---|---|
-| `setup.ps1` | Windows | Module-based installer. `-Module git,neovim,vim,powershell,tig,fzf,curl` or `-Module all`. Supports `-DryRun`. |
+| `setup.ps1` | Windows | Module-based installer. `-Module git,neovim,vim,powershell,zellij,yazi,tig,fzf,curl` or `-Module all`. Supports `-DryRun`. |
 | `setup.sh` | Linux / WSL | Module-based installer. `-m git,neovim,vim,powershell,bash,tig,tmux,fzf,curl` or `-m all`. Supports `--dry-run`. |
 
 ## PowerShell profile architecture
 
 `Microsoft.PowerShell_profile.JYJP-PC.ps1` is structured as **three phases** to keep startup fast:
 
-1. **Phase 1 (blocking, must stay cheap)**: module-availability cache (single `PSModulePath` scan into `$global:ProfileModules`), PSReadLine with `PredictionSource History` only, keybindings, dot-source `Profile/Set-Prompt.ps1`, az CLI argument completer, aliases.
+1. **Phase 1 (blocking, must stay cheap)**: module-availability cache (single `PSModulePath` scan into `$global:ProfileModules`), PSReadLine with `PredictionSource History` only, keybindings, dot-source `Profile/Set-Prompt.ps1`, az CLI argument completer, aliases, tool wrapper functions (`y` for yazi).
 2. **Phase 2 (deferred via `PowerShell.OnIdle`)**: `Initialize-DeferredProfile` loads PSFzf, WinGet CommandNotFound, Chocolatey, zoxide, and upgrades PSReadLine to `HistoryAndPlugin`. Guarded by `$global:ProfileDeferredDone` because `OnIdle` fires ~2×/sec.
 3. **Phase 3 (async runspace)**: Az context refresh, driven from `Set-Prompt.ps1`.
 
@@ -94,3 +94,16 @@ Single KDL config file at `zellij/config.kdl`. Installed via `setup.ps1 -Module 
 - **Themes**: `theme_dark "catppuccin-mocha"` / `theme_light "catppuccin-latte"`. Theme files live in `zellij/themes/` using the new semantic format (`text_unselected`, `ribbon_selected`, etc.) required by Zellij 0.40+. The old `fg`/`bg` palette format renders incorrectly — do not revert to it. Windows Terminal does not emit CSI 2031 so auto-switching does not work; use `zellij action toggle-theme` manually.
 - **Pane navigation**: `Alt+hjkl` in locked mode moves between Zellij panes (`MoveFocusOrTab` on left/right). Inside nvim, use `Ctrl+w hjkl` for window splits; at the window edge nvim falls back to `zellij action move-focus` via CLI (see `keymaps.lua`). vim-zellij-navigator and zellij-nav.nvim have been removed.
 - **No layout files yet**: single `config.kdl` only. Add layouts to `zellij/layouts/` if needed.
+
+## Yazi (`yazi/`)
+
+Three config files: `yazi.toml` (manager/opener/preview settings), `keymap.toml` (keybinding additions via `prepend_keymap`), `theme.toml` (flavor reference). Installed via `setup.ps1 -Module yazi` (Windows — junction of the whole `yazi/` dir to `%AppData%\yazi\config\`).
+
+### Key decisions (do not reverse without asking)
+
+- **Junction strategy**: the entire `yazi/` dir is junctioned to `%AppData%\yazi\config\`, so `package.toml` (the `ya pkg` lock file) is version-controlled alongside the hand-written config. `plugins/` and `flavors/` are gitignored because they are downloaded content managed by `ya pkg`.
+- **Editor opener**: `nvim %s` with `block = true` — yazi suspends while nvim is open. No platform split needed since nvim is on PATH everywhere.
+- **Enter behaviour**: opens with the first matching `[open]` rule — text/code → nvim, everything else → OS default (`start`, `xdg-open`, `open`). Press `o` to get the interactive picker instead.
+- **Theme**: `catppuccin-mocha` (dark) / `catppuccin-latte` (light) via the flavor system, matching Zellij. Run `ya pkg add yazi-rs/flavors:catppuccin-mocha` and `ya pkg add yazi-rs/flavors:catppuccin-latte` after `setup.ps1`.
+- **Shell wrapper**: `y` function in the PowerShell profile wraps `yazi --cwd-file` so the shell follows yazi's final directory on quit. `yazi` still works as-is.
+- **Keymap style**: defaults are kept intact; only `prepend_keymap` additions are used. Do not switch to a full `keymap` replacement.

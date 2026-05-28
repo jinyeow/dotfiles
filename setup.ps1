@@ -9,7 +9,7 @@
     before being replaced.
 
 .PARAMETER Module
-    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, curl, all.
+    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, zellij, yazi, curl, claude, lazygit, windowsterminal, bat, vscode, winget, all.
     Optional when -CleanBackups is specified.
 
 .PARAMETER DryRun
@@ -49,7 +49,7 @@ $Dotfiles = $PSScriptRoot
 
 # Expand 'all'
 if ($Module -contains 'all') {
-    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'curl', 'claude', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget')
+    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'yazi', 'curl', 'claude', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget')
 }
 $Module = $Module | Select-Object -Unique
 
@@ -274,6 +274,28 @@ function Install-Zellij {
         -Target (Join-Path $Dotfiles 'zellij')
 }
 
+function Install-Yazi {
+    Write-Host ''
+    Write-Info '=== Yazi ==='
+    $yaziConfig = Join-Path $env:APPDATA 'yazi\config'
+    $yaziParent = Join-Path $env:APPDATA 'yazi'
+    if (-not (Test-Path $yaziParent) -and -not $DryRun) {
+        New-Item -ItemType Directory -Path $yaziParent -Force | Out-Null
+        Write-Info "Created:    $yaziParent"
+    }
+    New-Junction `
+        -Link   $yaziConfig `
+        -Target (Join-Path $Dotfiles 'yazi')
+    if (-not (Get-Command -Name yazi -ErrorAction Ignore)) {
+        Write-Warn 'yazi not found. Install with: winget install sxyazi.yazi'
+    } else {
+        Write-Ok 'yazi is installed.'
+    }
+    Write-Info 'After setup, install flavors:'
+    Write-Info '  ya pkg add yazi-rs/flavors:catppuccin-mocha'
+    Write-Info '  ya pkg add yazi-rs/flavors:catppuccin-latte'
+}
+
 function Install-Curl {
     Write-Host ''
     Write-Info '=== Curl ==='
@@ -455,6 +477,7 @@ foreach ($m in $Module) {
         'tig'        { Install-Tig        }
         'tmux'       { Install-Tmux       }
         'zellij'     { Install-Zellij     }
+        'yazi'       { Install-Yazi       }
         'curl'       { Install-Curl       }
         'winget'     { Install-Winget     }
         'vscode'     { Install-VSCode     }
