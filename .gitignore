@@ -20,3 +20,6 @@ tags
 # Git worktrees
 **/.worktrees
 .worktrees
+
+# Claude Code project-local settings (auto-modified by sessions; intentional config goes in settings.json)
+.claude/settings.local.json
