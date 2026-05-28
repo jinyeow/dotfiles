@@ -9,6 +9,7 @@ PowerShell 7 profile and prompt for Windows (and Linux where applicable).
 | PowerShell 7+ | Shell | `winget install Microsoft.PowerShell` |
 | [PSReadLine](https://github.com/PowerShell/PSReadLine) 2.2+ | Line editing | ships with pwsh 7; update via `Install-Module PSReadLine` |
 | [PSFzf](https://github.com/kelleyma49/PSFzf) | Fzf integration | `Install-Module PSFzf` |
+| [git-completion](https://github.com/kzrnm/git-completion-pwsh) | Git tab completion | `Install-Module git-completion` |
 | [fzf](https://github.com/junegunn/fzf) | Fuzzy finder | `winget install junegunn.fzf` |
 | [zoxide](https://github.com/ajeetdsouza/zoxide) | Smart `cd` | `winget install ajeetdsouza.zoxide` |
 | [Az.Tools.Predictor](https://github.com/Azure/azure-powershell) | Azure command prediction | `Install-Module Az.Tools.Predictor` |
@@ -38,10 +39,14 @@ theme) to catppuccin mocha or latte — mirrors nvim's theme detection.
 Sets `_ZO_RESOLVE_SYMLINKS=1` so zoxide stores resolved paths; prevents
 duplicate database entries when navigating through junctions.
 
-**Phase 2 — deferred (fires on first idle):**
-PSFzf, WinGet CommandNotFound, Chocolatey, zoxide, upgrade to
-`PredictionSource HistoryAndPlugin`. Guarded by `$global:ProfileDeferredDone`
-so it runs exactly once per session.
+**Phase 2a — first idle:**
+PSFzf, zoxide, upgrade to `PredictionSource HistoryAndPlugin`. Guarded by
+`$global:ProfileDeferredDone`. Interactive tools needed immediately.
+
+**Phase 2b — next idle:**
+git-completion (+ `g` alias registration), WinGet CommandNotFound, Chocolatey.
+Guarded by `$global:ProfileDeferredSecondaryDone`. Split from 2a so the first
+keypress isn't blocked by their combined ~2.7s import cost.
 
 **Phase 3 — async (background runspace):**
 Azure context refresh on a 60-second timer, driven from `Set-Prompt.ps1`.

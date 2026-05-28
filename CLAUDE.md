@@ -24,11 +24,12 @@ The PowerShell profile (`powershell/Microsoft.PowerShell_profile.ps1`) is a sing
 
 ## PowerShell profile architecture
 
-`Microsoft.PowerShell_profile.JYJP-PC.ps1` is structured as **three phases** to keep startup fast:
+`Microsoft.PowerShell_profile.ps1` is structured as **three phases** to keep startup fast:
 
 1. **Phase 1 (blocking, must stay cheap)**: module-availability cache (single `PSModulePath` scan into `$global:ProfileModules`), PSReadLine with `PredictionSource History` only, keybindings, dot-source `Profile/Set-Prompt.ps1`, az CLI argument completer, aliases, tool wrapper functions (`y` for yazi).
-2. **Phase 2 (deferred via `PowerShell.OnIdle`)**: `Initialize-DeferredProfile` loads PSFzf, WinGet CommandNotFound, Chocolatey, zoxide, and upgrades PSReadLine to `HistoryAndPlugin`. Guarded by `$global:ProfileDeferredDone` because `OnIdle` fires ~2×/sec.
-3. **Phase 3 (async runspace)**: Az context refresh, driven from `Set-Prompt.ps1`.
+2. **Phase 2a (first idle)**: `Initialize-DeferredProfile` loads PSFzf, zoxide, and upgrades PSReadLine to `HistoryAndPlugin`. Guarded by `$global:ProfileDeferredDone`. These are the interactive tools needed immediately after the prompt appears.
+3. **Phase 2b (next idle)**: `Initialize-DeferredProfileSecondary` loads git-completion, WinGet CommandNotFound, and Chocolatey. Guarded by `$global:ProfileDeferredSecondaryDone`. Split from 2a so the first keypress isn't blocked by their combined ~2.7s import cost.
+4. **Phase 3 (async runspace)**: Az context refresh, driven from `Set-Prompt.ps1`.
 
 When adding to the profile, classify by cost first — anything that loads .NET assemblies or scans the filesystem belongs in Phase 2, not Phase 1. Use the `$global:ProfileModules` cache rather than calling `Get-Module -ListAvailable` again.
 

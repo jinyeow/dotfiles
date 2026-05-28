@@ -17,6 +17,8 @@ Config for [Claude Code](https://claude.ai/code).
 | `model` | `sonnet` | Default model |
 | `effortLevel` | `medium` | Default thinking effort |
 | `theme` | `auto` | Follows OS dark/light mode |
+| `editorMode` | `vim` | Vim keybindings in the prompt input |
+| `agentPushNotifEnabled` | `true` | Mobile push notifications |
 | `statusLine` | command | Runs `statusline-command.sh` |
 
 ## Statusline
