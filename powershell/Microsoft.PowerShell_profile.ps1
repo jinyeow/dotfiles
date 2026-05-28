@@ -12,7 +12,7 @@
 # --- Module availability cache (single scan of PSModulePath) ---------------
 $global:ProfileModules = @{}
 $modulePaths = $env:PSModulePath -split [IO.Path]::PathSeparator
-foreach ($name in @('PSFzf', 'posh-git', 'Az.Accounts', 'Az.Tools.Predictor', 'Microsoft.WinGet.CommandNotFound')) {
+foreach ($name in @('PSFzf', 'git-completion', 'Az.Accounts', 'Az.Tools.Predictor', 'Microsoft.WinGet.CommandNotFound')) {
     $global:ProfileModules[$name] = $false
     foreach ($root in $modulePaths) {
         if (Test-Path (Join-Path $root $name)) {
@@ -328,6 +328,12 @@ function Initialize-DeferredProfile {
     $ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
     if ($ChocolateyProfile -and (Test-Path $ChocolateyProfile)) {
         Import-Module $ChocolateyProfile
+    }
+
+    # git-completion
+    if ($global:ProfileModules['git-completion']) {
+        Import-Module git-completion
+        Register-GitCompletion 'g'
     }
 
     # PSFzf (~1.1s)
