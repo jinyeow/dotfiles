@@ -9,6 +9,12 @@
 #   Phase 3 (async): Az context via background runspace (in Set-Prompt.ps1)
 # ============================================================================
 
+# --- Terminal capabilities --------------------------------------------------
+# Advertise true-colour support so tools like Claude Code and delta use 24-bit
+# RGB colours for diffs instead of falling back to indexed-256 palette colours
+# (where colour 8 dark-gray is near-invisible on dark Zellij pane backgrounds).
+if (-not $env:COLORTERM) { $env:COLORTERM = 'truecolor' }
+
 # --- Module availability cache (single scan of PSModulePath) ---------------
 $global:ProfileModules = @{}
 $modulePaths = $env:PSModulePath -split [IO.Path]::PathSeparator
