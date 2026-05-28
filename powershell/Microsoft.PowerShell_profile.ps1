@@ -309,32 +309,17 @@ $env:TIGRC_USER = Join-Path $_dotfiles $(if ($_isDark) { 'tig\tigrc-mocha' } els
 
 Remove-Variable _dotfiles, _regOut, _isDark
 
-# --- Deferred loading (Phase 2) --------------------------------------------
-# Heavy modules loaded via PowerShell.OnIdle — the prompt appears immediately,
-# and these load silently in the background while waiting for user input.
-# Initialize-DeferredProfile guards with a boolean so it only runs once.
+# --- Deferred loading (Phase 2a + 2b) --------------------------------------
+# Two-stage OnIdle loading: prompt appears immediately, Phase 2a unblocks
+# interactive tools (PSFzf, zoxide) on the first idle, then Phase 2b loads
+# less-frequently-needed modules (git-completion, WinGet, Chocolatey) on the
+# next idle so the first keypress isn't delayed by their import cost.
 $global:ProfileDeferredDone = $false
+$global:ProfileDeferredSecondaryDone = $false
 
 function Initialize-DeferredProfile {
     if ($global:ProfileDeferredDone) { return }
     $global:ProfileDeferredDone = $true
-
-    # WinGet CommandNotFound (~1.4s — .NET assembly loading)
-    if ($global:ProfileModules['Microsoft.WinGet.CommandNotFound']) {
-        Import-Module -Name Microsoft.WinGet.CommandNotFound
-    }
-
-    # Chocolatey (~790ms — .NET assembly loading)
-    $ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
-    if ($ChocolateyProfile -and (Test-Path $ChocolateyProfile)) {
-        Import-Module $ChocolateyProfile
-    }
-
-    # git-completion
-    if ($global:ProfileModules['git-completion']) {
-        Import-Module git-completion
-        Register-ArgumentCompleter -Native -CommandName g -ScriptBlock ${Function:Complete-Git}
-    }
 
     # PSFzf (~1.1s)
     if ($global:ProfileModules['PSFzf']) {
@@ -370,13 +355,40 @@ function Initialize-DeferredProfile {
     }
 }
 
+function Initialize-DeferredProfileSecondary {
+    if ($global:ProfileDeferredSecondaryDone) { return }
+    $global:ProfileDeferredSecondaryDone = $true
+
+    # git-completion
+    if ($global:ProfileModules['git-completion']) {
+        Import-Module git-completion
+        Register-ArgumentCompleter -Native -CommandName g -ScriptBlock ${Function:Complete-Git}
+    }
+
+    # WinGet CommandNotFound (~1.4s — .NET assembly loading)
+    if ($global:ProfileModules['Microsoft.WinGet.CommandNotFound']) {
+        Import-Module -Name Microsoft.WinGet.CommandNotFound
+    }
+
+    # Chocolatey (~790ms — .NET assembly loading)
+    $ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+    if ($ChocolateyProfile -and (Test-Path $ChocolateyProfile)) {
+        Import-Module $ChocolateyProfile
+    }
+}
+
 # Fire deferred loading on first idle.
 # OnIdle fires repeatedly (~2x/sec), but Initialize-DeferredProfile guards
 # with $global:ProfileDeferredDone and returns immediately after the first run.
-# Idempotent for . $PROFILE reloads.
+# Phase 2a fires on first idle; 2b fires on the next idle after 2a completes.
+# Both guards are booleans so . $PROFILE reloads stay idempotent.
 Get-EventSubscriber -ErrorAction SilentlyContinue |
     Where-Object { $_.SourceIdentifier -eq 'PowerShell.OnIdle' -and $_.Action.Command -match 'DeferredProfile' } |
     Unregister-Event
 Register-EngineEvent -SourceIdentifier PowerShell.OnIdle -Action {
-    Initialize-DeferredProfile
+    if (-not $global:ProfileDeferredDone) {
+        Initialize-DeferredProfile
+    } elseif (-not $global:ProfileDeferredSecondaryDone) {
+        Initialize-DeferredProfileSecondary
+    }
 } | Out-Null
