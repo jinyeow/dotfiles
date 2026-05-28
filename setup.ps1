@@ -416,7 +416,7 @@ function Remove-OldBackups {
         (Join-Path $docs 'WindowsPowerShell'),
         (Join-Path $configBase 'nvim'),
         (Join-Path $env:USERPROFILE '.claude'),
-        (Join-Path $env:LOCALAPPDATA 'Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState'),
+        (Join-Path $env:LOCALAPPDATA 'Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState')
     ) | Where-Object { Test-Path $_ -PathType Container }
 
     $allBackups = @(foreach ($dir in $searchDirs) {
