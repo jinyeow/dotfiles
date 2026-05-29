@@ -77,7 +77,7 @@ The `vim/` directory (Vimscript setup) is the older Vim config — kept as the L
 - **Theme detection**: `ui.lua` queries OS dark/light mode (Windows registry → macOS `defaults` → GNOME `gsettings` → KDE `kreadconfig5`), falls back to `sunrise_hour`/`sunset_hour` from `user.lua`.
 - **`vim.loader.enable()`**: must remain the first line of `performance.lua`.
 - **Bicep filetype**: no built-in Neovim support — autocmd in `lsp.lua` registers `filetype = bicep` for `*.bicep`, only when `bicep_lsp_path` is non-empty.
-- **Azure Pipelines filetype**: `autocmds.lua` sets `filetype = azure-pipelines` for `*.azure-pipelines.yml/yaml` so `azure_pipelines_ls` attaches exclusively and `yamlls` does not compete.
+- **Azure Pipelines filetype**: `autocmds.lua` sets `filetype = azure-pipelines` for `*.azure-pipelines.yml/yaml` so `azure_pipelines_ls` attaches exclusively and `yamlls` does not compete. Because that custom filetype has no Treesitter grammar of its own, `autocmds.lua` also calls `vim.treesitter.language.register('yaml', 'azure-pipelines')` so highlighting/indent fall back to the `yaml` parser — without it the buffer renders unhighlighted.
 - **No per-machine variants yet**: single `init.lua` only — no `init.WORK-PC.lua`. Apply the `.<HOSTNAME>` suffix convention when machine-specific behaviour is needed.
 
 ### Install

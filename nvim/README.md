@@ -141,6 +141,8 @@ Falls back to sunrise/sunset window if detection fails.
 | `*.bicep` | `bicep` |
 | `*.azure-pipelines.yml` / `*.yaml` | `azure-pipelines` |
 
+The `azure-pipelines` filetype has no Treesitter grammar of its own, so `autocmds.lua` registers it against the `yaml` parser (`vim.treesitter.language.register('yaml', 'azure-pipelines')`) — highlighting and indent fall back to YAML while `azure_pipelines_ls` still attaches exclusively via the dedicated filetype.
+
 ## Key mappings
 
 `<leader>` = `Space`, `<localleader>` = `\`
