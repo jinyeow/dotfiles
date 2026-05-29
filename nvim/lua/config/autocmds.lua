@@ -28,6 +28,11 @@ autocmd({ 'BufNewFile', 'BufRead' }, {
   callback = function() vim.bo.filetype = 'azure-pipelines' end,
 })
 
+-- The azure-pipelines filetype has no Treesitter grammar of its own; map it to
+-- the yaml parser so highlighting/indent work (azure_pipelines_ls still attaches
+-- exclusively via the dedicated filetype). See lsp.lua.
+vim.treesitter.language.register('yaml', 'azure-pipelines')
+
 -- Reload buffer when file changes externally (autoread is on by default in Neovim;
 -- checktime is needed to actually trigger it in terminal workflows)
 autocmd({ 'FocusGained', 'BufEnter' }, {
