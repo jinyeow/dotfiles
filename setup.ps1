@@ -161,34 +161,46 @@ function Install-Git {
     Write-Info '=== Git ==='
 
     # ~/.gitconfig — stub that [include]s the repo file; cross-volume, always live.
-    New-GitIncludeStub `
-        -StubPath  (Join-Path $env:USERPROFILE '.gitconfig') `
-        -RealSource (Join-Path $Dotfiles 'git\gitconfig')
+    $params = @{
+        StubPath = Join-Path $env:USERPROFILE '.gitconfig'
+        RealSource = Join-Path $Dotfiles 'git\gitconfig'
+    }
+    New-GitIncludeStub @params
 
     # ~/.gitconfig-work — referenced by [includeIf] inside gitconfig.
-    New-GitIncludeStub `
-        -StubPath  (Join-Path $env:USERPROFILE '.gitconfig-work') `
-        -RealSource (Join-Path $Dotfiles 'git\gitconfig-work')
+    $params = @{
+        StubPath = Join-Path $env:USERPROFILE '.gitconfig-work'
+        RealSource = Join-Path $Dotfiles 'git\gitconfig-work'
+    }
+    New-GitIncludeStub @params
 
     # ~/.gitignore — global ignore file.
-    New-GitIncludeStub `
-        -StubPath  (Join-Path $env:USERPROFILE '.gitignore') `
-        -RealSource (Join-Path $Dotfiles 'git\gitignore')
+    $params = @{
+        StubPath = Join-Path $env:USERPROFILE '.gitignore'
+        RealSource = Join-Path $Dotfiles 'git\gitignore'
+    }
+    New-GitIncludeStub @params
 
     # ~/.gitignore-work — extra ignore patterns for work repos (overrides core.excludesFile via gitconfig-work).
-    New-GitIncludeStub `
-        -StubPath  (Join-Path $env:USERPROFILE '.gitignore-work') `
-        -RealSource (Join-Path $Dotfiles 'git\gitignore-work')
+    $params = @{
+        StubPath = Join-Path $env:USERPROFILE '.gitignore-work'
+        RealSource = Join-Path $Dotfiles 'git\gitignore-work'
+    }
+    New-GitIncludeStub @params
 
     # ~/.gitmessage — commit message template.
-    Copy-Dotfile `
-        -Dest   (Join-Path $env:USERPROFILE '.gitmessage') `
-        -Source (Join-Path $Dotfiles 'git\gitmessage')
+    $params = @{
+        Dest = Join-Path $env:USERPROFILE '.gitmessage'
+        Source = Join-Path $Dotfiles 'git\gitmessage'
+    }
+    Copy-Dotfile @params
 
     # ~/.git_templates — hooks directory (init.templatedir + core.hooksPath).
-    New-Junction `
-        -Link   (Join-Path $env:USERPROFILE '.git_templates') `
-        -Target (Join-Path $Dotfiles 'git\templates')
+    $params = @{
+        Link = Join-Path $env:USERPROFILE '.git_templates'
+        Target = Join-Path $Dotfiles 'git\templates'
+    }
+    New-Junction @params
 }
 
 function Install-Neovim {
@@ -196,18 +208,22 @@ function Install-Neovim {
     Write-Info '=== Neovim ==='
     # Honour XDG_CONFIG_HOME if set (the PowerShell profile exports it as ~/.config).
     $configBase = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { $env:LOCALAPPDATA }
-    New-Junction `
-        -Link   (Join-Path $configBase 'nvim') `
-        -Target (Join-Path $Dotfiles 'nvim')
+    $params = @{
+        Link = Join-Path $configBase 'nvim'
+        Target = Join-Path $Dotfiles 'nvim'
+    }
+    New-Junction @params
 }
 
 function Install-Vim {
     Write-Host ''
     Write-Info '=== Vim ==='
     # vimrc lives inside vim/ so Vim finds it at ~/vimfiles/vimrc automatically.
-    New-Junction `
-        -Link   (Join-Path $env:USERPROFILE 'vimfiles') `
-        -Target (Join-Path $Dotfiles 'vim')
+    $params = @{
+        Link = Join-Path $env:USERPROFILE 'vimfiles'
+        Target = Join-Path $Dotfiles 'vim'
+    }
+    New-Junction @params
 }
 
 function Install-PowerShell {
@@ -269,12 +285,16 @@ function Install-Bash {
 function Install-Tig {
     Write-Host ''
     Write-Info '=== Tig ==='
-    Copy-Dotfile `
-        -Dest   (Join-Path $env:USERPROFILE '.tigrc') `
-        -Source (Join-Path $Dotfiles 'tig\tigrc')
-    Copy-Dotfile `
-        -Dest   (Join-Path $env:USERPROFILE '.tigrc.vim') `
-        -Source (Join-Path $Dotfiles 'tig\tigrc.vim')
+    $params = @{
+        Dest = Join-Path $env:USERPROFILE '.tigrc'
+        Source = Join-Path $Dotfiles 'tig\tigrc'
+    }
+    Copy-Dotfile @params
+    $params = @{
+        Dest = Join-Path $env:USERPROFILE '.tigrc.vim'
+        Source = Join-Path $Dotfiles 'tig\tigrc.vim'
+    }
+    Copy-Dotfile @params
 }
 
 function Install-Tmux {
@@ -294,9 +314,11 @@ function Install-Zellij {
         New-Item -ItemType Directory -Path $zellijParent -Force | Out-Null
         Write-Info "Created:    $zellijParent"
     }
-    New-Junction `
-        -Link   $zellijConfig `
-        -Target (Join-Path $Dotfiles 'zellij')
+    $params = @{
+        Link = $zellijConfig
+        Target = Join-Path $Dotfiles 'zellij'
+    }
+    New-Junction @params
 }
 
 function Install-Yazi {
@@ -308,9 +330,11 @@ function Install-Yazi {
         New-Item -ItemType Directory -Path $yaziParent -Force | Out-Null
         Write-Info "Created:    $yaziParent"
     }
-    New-Junction `
-        -Link   $yaziConfig `
-        -Target (Join-Path $Dotfiles 'yazi')
+    $params = @{
+        Link = $yaziConfig
+        Target = Join-Path $Dotfiles 'yazi'
+    }
+    New-Junction @params
     if (-not (Get-Command -Name yazi -ErrorAction Ignore)) {
         Write-Warn 'yazi not found. Install with: winget install sxyazi.yazi'
     } else {
@@ -324,9 +348,11 @@ function Install-Yazi {
 function Install-Curl {
     Write-Host ''
     Write-Info '=== Curl ==='
-    Copy-Dotfile `
-        -Dest   (Join-Path $env:USERPROFILE '.curlrc') `
-        -Source (Join-Path $Dotfiles 'curl\curlrc')
+    $params = @{
+        Dest = Join-Path $env:USERPROFILE '.curlrc'
+        Source = Join-Path $Dotfiles 'curl\curlrc'
+    }
+    Copy-Dotfile @params
 }
 
 function Install-WindowsTerminal {
@@ -337,9 +363,11 @@ function Install-WindowsTerminal {
         Write-Warn 'Windows Terminal not found — skipping.'
         return
     }
-    Copy-Dotfile `
-        -Dest   (Join-Path $wtState 'settings.json') `
-        -Source (Join-Path $Dotfiles 'windowsterminal\settings.json')
+    $params = @{
+        Dest = Join-Path $wtState 'settings.json'
+        Source = Join-Path $Dotfiles 'windowsterminal\settings.json'
+    }
+    Copy-Dotfile @params
 }
 
 function Install-Lazygit {
@@ -399,12 +427,16 @@ function Install-Claude {
     Write-Host ''
     Write-Info '=== Claude Code ==='
     $claudeDir = Join-Path $env:USERPROFILE '.claude'
-    Copy-Dotfile `
-        -Dest   (Join-Path $claudeDir 'settings.json') `
-        -Source (Join-Path $Dotfiles 'claude\settings.json')
-    Copy-Dotfile `
-        -Dest   (Join-Path $claudeDir 'statusline-command.sh') `
-        -Source (Join-Path $Dotfiles 'claude\statusline-command.sh')
+    $params = @{
+        Dest = Join-Path $claudeDir 'settings.json'
+        Source = Join-Path $Dotfiles 'claude\settings.json'
+    }
+    Copy-Dotfile @params
+    $params = @{
+        Dest = Join-Path $claudeDir 'statusline-command.sh'
+        Source = Join-Path $Dotfiles 'claude\statusline-command.sh'
+    }
+    Copy-Dotfile @params
 
     # Skills — junction each subdirectory into ~/.claude/skills/
     $skillsSrc = Join-Path $Dotfiles 'claude\skills'
