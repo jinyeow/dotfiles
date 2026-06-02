@@ -15,6 +15,15 @@
 # (where colour 8 dark-gray is near-invisible on dark Zellij pane backgrounds).
 if (-not $env:COLORTERM) { $env:COLORTERM = 'truecolor' }
 
+# Force Zellij's VT input path on Windows so bracketed paste survives. Without
+# TERM, Zellij's native-console reader (ReadConsoleInput) decomposes a multi-line
+# paste into one Enter per line, so each newline submits (e.g. Claude Code turns
+# one paste into several messages). The guard matters: the outer pwsh that
+# launches Zellij has no TERM (Windows doesn't set it) so this kicks in there,
+# while inside a Zellij pane TERM is already set and is left untouched.
+# See docs/zellij-windows-terminal-colors.md §4.
+if (-not $env:TERM) { $env:TERM = 'xterm-256color' }
+
 # --- Module availability cache (single scan of PSModulePath) ---------------
 $global:ProfileModules = @{}
 $modulePaths = $env:PSModulePath -split [IO.Path]::PathSeparator
