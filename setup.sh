@@ -212,6 +212,7 @@ install_claude() {
     echo ''
     info '=== Claude Code ==='
     make_symlink "$DOTFILES/claude/settings.json"          "$HOME/.claude/settings.json"
+    make_symlink "$DOTFILES/claude/CLAUDE.md"              "$HOME/.claude/CLAUDE.md"
     make_symlink "$DOTFILES/claude/statusline-command.sh"  "$HOME/.claude/statusline-command.sh"
 
     # Skills — symlink each subdirectory into ~/.claude/skills/

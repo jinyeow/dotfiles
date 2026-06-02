@@ -7,8 +7,17 @@ Config for [Claude Code](https://claude.ai/code).
 | File / Directory | Installed to | Notes |
 |---|---|---|
 | `settings.json` | `~/.claude/settings.json` | Model, theme, effort level, statusline |
+| `CLAUDE.md` | `~/.claude/CLAUDE.md` | Global user instructions / preferences |
 | `statusline-command.sh` | `~/.claude/statusline-command.sh` | Token usage statusline script |
-| `skills/<name>/` | `~/.claude/skills/<name>/` | Global custom skills (junctions/symlinks) |
+| `skills/<name>/` | `~/.claude/skills/<name>/` | Global custom skills |
+
+**Install method differs by OS.** On **Windows**, `settings.json`, `CLAUDE.md`,
+and `statusline-command.sh` are **copied** (a file symlink would need Developer
+Mode/admin), and each skill directory is **junctioned**. On **Linux**, all four
+are **symlinked**. Consequence on Windows: because they are copies and Claude
+Code writes to `settings.json` / `CLAUDE.md` itself, the live files can drift
+from the repo — re-run `setup.ps1 -Module claude` to push repo → live, and copy
+changes back by hand (or just edit the repo file) to go live → repo.
 
 ## Settings
 

@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository scope
 
-Personal dotfiles spanning Windows (PowerShell 7) and Linux/WSL (bash, Neovim, tmux, i3/bspwm). Active development is on the **Windows side**: the PowerShell profile under `powershell/`, the prompt in `powershell/Profile/Set-Prompt.ps1`, the Neovim Lua config under `nvim/`, the Zellij config under `zellij/`, the Yazi config under `yazi/`, and the git config under `git/`. Configs are organized into per-tool directories: `git/`, `nvim/`, `vim/`, `bash/`, `powershell/`, `tig/`, `tmux/`, `zellij/`, `yazi/`, `fzf/`, `curl/`. The Linux setup (`bootstrap.sh`, `Makefile`, `pwsh_profile.ps1`, the Arch package lists in the `install:` target, `config/bspwm`, `config/sxhkd`, etc.) is a legacy snapshot — touch only when explicitly asked.
+Personal dotfiles spanning Windows (PowerShell 7) and Linux/WSL (bash, Neovim, tmux, i3/bspwm). Active development is on the **Windows side**: the PowerShell profile under `powershell/`, the prompt in `powershell/Profile/Set-Prompt.ps1`, the Neovim Lua config under `nvim/`, the Zellij config under `zellij/`, the Yazi config under `yazi/`, and the git config under `git/`. Configs are organized into per-tool directories: `git/`, `nvim/`, `vim/`, `bash/`, `powershell/`, `tig/`, `tmux/`, `zellij/`, `yazi/`, `fzf/`, `curl/`, `claude/`, `windowsterminal/`. The Linux setup (`bootstrap.sh`, `Makefile`, `pwsh_profile.ps1`, the Arch package lists in the `install:` target, `config/bspwm`, `config/sxhkd`, etc.) is a legacy snapshot — touch only when explicitly asked.
 
 `pwsh_profile.ps1` at the repo root is the **old** profile and is superseded by `powershell/Microsoft.PowerShell_profile.*.ps1`. Edit the per-machine file under `powershell/`, not the root one.
+
+Note the two `CLAUDE.md` files: this root one is **project instructions for the dotfiles repo**; `claude/CLAUDE.md` is the **global user instructions** that `setup.ps1 -Module claude` installs to `~/.claude/CLAUDE.md`. They are unrelated — don't merge them. See `claude/README.md` for the Claude Code module (settings, statusline, skills); note its files are **copied** on Windows (so the live `~/.claude` copies can drift) and **symlinked** on Linux.
 
 ## Per-machine convention
 

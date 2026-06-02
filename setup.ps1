@@ -433,6 +433,11 @@ function Install-Claude {
     }
     Copy-Dotfile @params
     $params = @{
+        Dest = Join-Path $claudeDir 'CLAUDE.md'
+        Source = Join-Path $Dotfiles 'claude\CLAUDE.md'
+    }
+    Copy-Dotfile @params
+    $params = @{
         Dest = Join-Path $claudeDir 'statusline-command.sh'
         Source = Join-Path $Dotfiles 'claude\statusline-command.sh'
     }
