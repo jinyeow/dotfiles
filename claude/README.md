@@ -16,7 +16,7 @@ Config for [Claude Code](https://claude.ai/code).
 |---|---|---|
 | `model` | `sonnet` | Default model |
 | `effortLevel` | `medium` | Default thinking effort |
-| `theme` | `auto` | Follows OS dark/light mode |
+| `theme` | `dark-ansi` | Palette-based dark theme — readable under Zellij on Windows Terminal, where `auto` + truecolor diff backgrounds collapse into the pane (see `docs/zellij-windows-terminal-colors.md`) |
 | `editorMode` | `vim` | Vim keybindings in the prompt input |
 | `agentPushNotifEnabled` | `true` | Mobile push notifications |
 | `statusLine` | command | Runs `statusline-command.sh` |

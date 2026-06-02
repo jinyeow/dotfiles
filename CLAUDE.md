@@ -93,6 +93,7 @@ Single KDL config file at `zellij/config.kdl`. Installed via `setup.ps1 -Module 
 - **Locked-first**: `default_mode "locked"` — all input passes to the pane by default; Ctrl+g enters command mode. Do not change the default mode.
 - **Default shell**: `default_shell "pwsh"`. New panes open at `$HOME` due to an upstream Zellij/pwsh CWD bug — not fixable in config.
 - **Themes**: `theme_dark "catppuccin-mocha"` / `theme_light "catppuccin-latte"`. Theme files live in `zellij/themes/` using the new semantic format (`text_unselected`, `ribbon_selected`, etc.) required by Zellij 0.40+. The old `fg`/`bg` palette format renders incorrectly — do not revert to it. Windows Terminal does not emit CSI 2031 so auto-switching does not work; use `zellij action toggle-theme` manually.
+- **Color under Windows Terminal**: Zellij mishandles terminal color negotiation (truecolor fallback + OSC 11 background queries), which breaks diff/TUI colors in tools running inside it. Two workarounds are in place — `COLORTERM=truecolor` in the PowerShell profile and pinning Claude Code to a `*-ansi` theme. See `docs/zellij-windows-terminal-colors.md`.
 - **Pane navigation**: `Alt+hjkl` in locked mode moves between Zellij panes (`MoveFocusOrTab` on left/right). Inside nvim, use `Ctrl+w hjkl` for window splits; at the window edge nvim falls back to `zellij action move-focus` via CLI (see `keymaps.lua`). vim-zellij-navigator and zellij-nav.nvim have been removed.
 - **No layout files yet**: single `config.kdl` only. Add layouts to `zellij/layouts/` if needed.
 

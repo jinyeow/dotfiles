@@ -9,7 +9,7 @@
     }
   },
   "effortLevel": "medium",
-  "theme": "auto",
+  "theme": "dark-ansi",
   "editorMode": "vim",
   "agentPushNotifEnabled": true,
   "statusLine": {
