@@ -174,19 +174,20 @@ function Install-Git {
     }
     New-GitIncludeStub @params
 
-    # ~/.gitignore — global ignore file.
+    # ~/.gitignore — global ignore file. Copied (not a git [include] stub): gitignore
+    # has no include mechanism, so git would read the stub text as ignore patterns.
     $params = @{
-        StubPath = Join-Path $env:USERPROFILE '.gitignore'
-        RealSource = Join-Path $Dotfiles 'git\gitignore'
+        Dest = Join-Path $env:USERPROFILE '.gitignore'
+        Source = Join-Path $Dotfiles 'git\gitignore'
     }
-    New-GitIncludeStub @params
+    Copy-Dotfile @params
 
     # ~/.gitignore-work — extra ignore patterns for work repos (overrides core.excludesFile via gitconfig-work).
     $params = @{
-        StubPath = Join-Path $env:USERPROFILE '.gitignore-work'
-        RealSource = Join-Path $Dotfiles 'git\gitignore-work'
+        Dest = Join-Path $env:USERPROFILE '.gitignore-work'
+        Source = Join-Path $Dotfiles 'git\gitignore-work'
     }
-    New-GitIncludeStub @params
+    Copy-Dotfile @params
 
     # ~/.gitmessage — commit message template.
     $params = @{
