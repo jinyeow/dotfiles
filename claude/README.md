@@ -2,6 +2,20 @@
 
 Config for [Claude Code](https://claude.ai/code).
 
+## Binary install method
+
+Install the Claude Code CLI with the **native installer** (`irm
+https://claude.ai/install.ps1 | iex` on Windows → `~\.local\bin\claude.exe`),
+**not** via Volta/npm-global. A Volta-managed npm-global install conflicts with
+Claude Code's own background auto-updater: both mutate the same install, leaving
+the PATH shim out of sync with Volta's package dir and printing `'"...\bin\
+claude.exe"' is not recognized as an internal or external command` mid-update
+(the updater shells through Volta's `claude.cmd` while the 240 MB exe is being
+swapped). The native install self-updates cleanly with no Volta in the loop.
+Verify with `claude doctor` (install method = native) and `Get-Command claude`
+(resolves to `~\.local\bin`, no Volta entries). This repo only tracks the
+*config* under `~/.claude`, not the binary.
+
 ## Files
 
 | File / Directory | Installed to | Notes |
