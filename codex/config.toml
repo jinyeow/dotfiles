@@ -1,0 +1,20 @@
+# ~/.codex/config.toml — Codex CLI global config
+# Installed by setup.ps1 -Module codex. Docs: https://developers.openai.com/codex/config-reference
+#
+# This is the STANDALONE posture (when you run `codex` directly): it can edit files in the
+# workspace but asks before edits/commands. The read-only REVIEWER posture used when Claude
+# Code calls Codex is set separately, as -c overrides on the MCP registration — see
+# codex/README.md. Do not relax this to danger-full-access.
+
+model = "gpt-5.5"
+
+# "untrusted" | "on-request" | "never"
+approval_policy = "on-request"
+
+# "read-only" | "workspace-write" | "danger-full-access"
+sandbox_mode = "workspace-write"
+
+# Personal coding conventions shared with Claude Code live in ~/.codex/AGENTS.md
+# (sourced from dotfiles claude/AGENTS.md). Cap the instruction chain generously so the
+# full conventions file is always read.
+project_doc_max_bytes = 32768

@@ -9,7 +9,7 @@
     before being replaced.
 
 .PARAMETER Module
-    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, zellij, yazi, curl, claude, lazygit, windowsterminal, bat, vscode, winget, all.
+    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, zellij, yazi, curl, claude, codex, lazygit, windowsterminal, bat, vscode, winget, all.
     Optional when -CleanBackups is specified.
 
 .PARAMETER DryRun
@@ -49,7 +49,7 @@ $Dotfiles = $PSScriptRoot
 
 # Expand 'all'
 if ($Module -contains 'all') {
-    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'yazi', 'curl', 'claude', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget')
+    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'yazi', 'curl', 'claude', 'codex', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget')
 }
 $Module = $Module | Select-Object -Unique
 
@@ -76,6 +76,26 @@ function New-Junction ([string]$Link, [string]$Target) {
     if (-not (Test-Path $Target -PathType Container)) {
         Write-Fail "Source directory not found: $Target"; return
     }
+
+    # Idempotent: if the link already exists as a junction pointing at $Target, leave it.
+    # Without this, re-running a module backs the link up to a .bak.TIMESTAMP junction and
+    # recreates it on every run — churn that also pollutes ~/.claude/skills/ with stale
+    # backup junctions (which -CleanBackups can't prune, since it only scans files).
+    if (Test-Path $Link) {
+        $existing = Get-Item $Link -Force -ErrorAction SilentlyContinue
+        if ($existing -and ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+            $curTarget = if ($existing.LinkTarget) { $existing.LinkTarget } else { @($existing.Target)[0] }
+            if ($curTarget) {
+                $a = [IO.Path]::GetFullPath($curTarget).TrimEnd('\')
+                $b = [IO.Path]::GetFullPath($Target).TrimEnd('\')
+                if ([string]::Equals($a, $b, [StringComparison]::OrdinalIgnoreCase)) {
+                    Write-Ok "Junction:   $Link (already current)"
+                    return
+                }
+            }
+        }
+    }
+
     if ($DryRun) { Write-Info "[DRY RUN] junction $Link -> $Target"; return }
 
     Backup-Existing $Link
@@ -438,6 +458,13 @@ function Install-Claude {
         Source = Join-Path $Dotfiles 'claude\CLAUDE.md'
     }
     Copy-Dotfile @params
+    # Shared coding conventions. CLAUDE.md imports this via `@AGENTS.md` (resolves to
+    # ~/.claude/AGENTS.md). The codex module installs the same source to ~/.codex/AGENTS.md.
+    $params = @{
+        Dest = Join-Path $claudeDir 'AGENTS.md'
+        Source = Join-Path $Dotfiles 'claude\AGENTS.md'
+    }
+    Copy-Dotfile @params
     $params = @{
         Dest = Join-Path $claudeDir 'statusline-command.sh'
         Source = Join-Path $Dotfiles 'claude\statusline-command.sh'
@@ -461,6 +488,66 @@ function Install-Claude {
     }
 }
 
+function Install-Codex {
+    Write-Host ''
+    Write-Info '=== Codex CLI ==='
+
+    # 1. Install the Codex CLI via OpenAI's native installer (self-updating), mirroring the
+    #    claude module's native-install decision. Skip if already present.
+    if (Get-Command -Name codex -ErrorAction Ignore) {
+        Write-Ok 'codex is already installed.'
+    } elseif ($DryRun) {
+        Write-Info '[DRY RUN] would install Codex CLI via native installer (https://chatgpt.com/codex/install.ps1)'
+    } else {
+        Write-Info 'Installing Codex CLI (native installer)...'
+        $installer = Join-Path $env:TEMP 'codex-install.ps1'
+        Invoke-RestMethod -Uri 'https://chatgpt.com/codex/install.ps1' -OutFile $installer
+        & $installer
+        Remove-Item -Path $installer -Force -ErrorAction Ignore
+        if (Get-Command -Name codex -ErrorAction Ignore) {
+            Write-Ok 'codex installed.'
+        } else {
+            Write-Warn 'codex not on PATH yet — open a new shell, or re-run this module, before using it.'
+        }
+    }
+
+    # 2. Global config: standalone posture (workspace-write + on-request).
+    $codexDir = Join-Path $env:USERPROFILE '.codex'
+    $params = @{
+        Dest = Join-Path $codexDir 'config.toml'
+        Source = Join-Path $Dotfiles 'codex\config.toml'
+    }
+    Copy-Dotfile @params
+
+    # 3. Shared conventions — same source the claude module installs to ~/.claude/AGENTS.md.
+    $params = @{
+        Dest = Join-Path $codexDir 'AGENTS.md'
+        Source = Join-Path $Dotfiles 'claude\AGENTS.md'
+    }
+    Copy-Dotfile @params
+
+    # 4. Register Codex as a user-scope, read-only MCP reviewer in Claude Code. User-scope MCP
+    #    config lives in ~/.claude.json (settings.json does not support mcpServers), so this is
+    #    a CLI registration, not a tracked file. The -c overrides pin the reviewer read-only and
+    #    non-interactive regardless of ~/.codex/config.toml. Idempotent: remove any prior entry first.
+    if (-not (Get-Command -Name claude -ErrorAction Ignore)) {
+        Write-Warn 'claude CLI not found — skipping MCP registration. Install the claude module first.'
+    } elseif ($DryRun) {
+        Write-Info '[DRY RUN] would register user-scope MCP: claude mcp add --scope user codex -- codex mcp-server -c sandbox_mode=read-only -c approval_policy=never'
+    } else {
+        # Native command: a non-zero exit when no prior entry exists is benign and does not throw.
+        & claude mcp remove --scope user codex 2>$null | Out-Null
+        & claude mcp add --scope user --transport stdio codex -- codex mcp-server -c sandbox_mode=read-only -c approval_policy=never
+        if ($LASTEXITCODE -eq 0) {
+            Write-Ok 'Registered read-only Codex MCP reviewer (user scope).'
+        } else {
+            Write-Fail "claude mcp add failed (exit $LASTEXITCODE)."
+        }
+    }
+
+    Write-Info 'Next: run `codex login` (interactive ChatGPT-account OAuth) to authenticate.'
+}
+
 function Remove-OldBackups {
     Write-Host ''
     Write-Info '=== Cleaning backups ==='
@@ -479,6 +566,7 @@ function Remove-OldBackups {
         (Join-Path $docs 'WindowsPowerShell'),
         (Join-Path $configBase 'nvim'),
         (Join-Path $env:USERPROFILE '.claude'),
+        (Join-Path $env:USERPROFILE '.codex'),
         (Join-Path $env:LOCALAPPDATA 'Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState')
     ) | Where-Object { Test-Path $_ -PathType Container }
 
@@ -546,6 +634,7 @@ foreach ($m in $Module) {
         'vscode'     { Install-VSCode     }
         'bat'        { Install-Bat        }
         'claude'     { Install-Claude     }
+        'codex'      { Install-Codex      }
         'lazygit'        { Install-Lazygit        }
         'windowsterminal' { Install-WindowsTerminal }
         default          { Write-Warn "Unknown module '$m' — skipping." }
