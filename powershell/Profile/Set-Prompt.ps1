@@ -319,9 +319,16 @@ function prompt {
     $c = $global:PromptConst
     $out = [System.Text.StringBuilder]::new(256)
 
-    # --- Windows Terminal CWD tracking (OSC 9;9) ---
+    # --- CWD tracking ---
     $loc = Get-Location
     if ($loc.Provider.Name -eq 'FileSystem') {
+        # Sync the Win32 process CWD so Zellij opens new panes in this directory
+        # (pwsh's Set-Location only moves its provider, not the process CWD).
+        if ($loc.ProviderPath -ne [System.Environment]::CurrentDirectory) {
+            try { [System.Environment]::CurrentDirectory = $loc.ProviderPath }
+            catch [System.IO.IOException] { }  # cwd deleted or UNC — leave process CWD as-is
+        }
+        # Windows Terminal CWD tracking (OSC 9;9)
         $null = $out.Append("$($c.ESC)]9;9;`"$($loc.ProviderPath)`"$($c.ESC)\")
     }
 

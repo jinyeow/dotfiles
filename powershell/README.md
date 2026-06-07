@@ -75,7 +75,7 @@ Azure context refresh on a 60-second timer, driven from `Set-Prompt.ps1`.
 - Azure subscription context — async via background runspace, refreshed every 60s
 - Last command exit status (colour coded) and execution time
 - Truncated path for long directories
-- Windows Terminal OSC 9;9 CWD tracking
+- Windows Terminal OSC 9;9 CWD tracking; also syncs the Win32 process CWD so Zellij opens new panes in the current directory
 
 ## Per-machine differences
 
