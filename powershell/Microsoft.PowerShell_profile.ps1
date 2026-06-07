@@ -102,6 +102,23 @@ if (Get-Command -Name az -ErrorAction Ignore) {
     }
 }
 
+# --- Zellij session tab completion -----------------------------------------
+if (Get-Command -Name zellij -ErrorAction Ignore) {
+    Register-ArgumentCompleter -Native -CommandName zellij -ScriptBlock {
+        param($wordToComplete, $commandAst, $cursorPosition)
+        $sessionCmds = 'attach', 'a', 'kill-session', 'k', 'delete-session', 'd'
+        $elements = $commandAst.CommandElements
+        if ($elements.Count -ge 2 -and $elements[1].Value -in $sessionCmds) {
+            zellij list-sessions --no-formatting 2>$null |
+                ForEach-Object { ($_ -split '\s+')[0] } |
+                Where-Object { $_ -like "$wordToComplete*" } |
+                ForEach-Object {
+                    [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+                }
+        }
+    }
+}
+
 # --- Aliases ----------------------------------------------------------------
 if ($PSVersionTable.PSVersion.Major -eq 5) {
     Remove-Item alias:wget -ErrorAction SilentlyContinue
