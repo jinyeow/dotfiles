@@ -28,7 +28,7 @@ $global:PromptConst = @{
     DimWhite     = "`e[37;2m"
 
     # Prompt settings
-    MaxPathLength   = 30
+    MaxPathLength   = 50   # upper cap; the prompt scales this to ~1/3 of pane width
     MaxBranchLength = 35
     ShowWorktree    = $true
     ShowUsername     = $true
@@ -195,23 +195,34 @@ function Get-GitPromptInfo {
     .SYNOPSIS
     Returns a hashtable with git status info, or $null if not in a repo.
     All git calls are synchronous — fast enough for interactive prompt.
-    Uses 3 git processes total: rev-parse (combined), rev-list, status.
+    Uses up to 4 git processes: rev-parse (gate), rev-parse (top-level),
+    rev-list, status. The top-level call only runs when the gate passes.
     #>
 
-    # Single rev-parse call: branch, git-dir, git-common-dir
-    # Fails entirely if not in a repo, so this doubles as the gate check
+    # Gate: branch + git-dir + git-common-dir. Works in bare repos, so it doubles
+    # as the "are we in a repo" check. --show-toplevel is deliberately NOT here:
+    # it errors in a bare repo and would wipe the whole git segment.
     $revParts = git rev-parse --abbrev-ref HEAD --git-dir --git-common-dir 2>$null
     if ($LASTEXITCODE -ne 0 -or -not $revParts) { return $null }
 
     # rev-parse returns one value per line
     $revLines = @($revParts)
-    $branch      = $revLines[0]
-    $gitDir      = if ($revLines.Count -gt 1) { $revLines[1] } else { $null }
+    $branch       = $revLines[0]
+    $gitDir       = if ($revLines.Count -gt 1) { $revLines[1] } else { $null }
     $gitCommonDir = if ($revLines.Count -gt 2) { $revLines[2] } else { $null }
+
+    # Repo top-level for truncate-to-repo. Separate call because --show-toplevel
+    # errors in a bare repo; tolerate that and leave TopLevel null there. Only
+    # runs when the gate passed, so non-repo dirs pay nothing for it.
+    $topLevel = git rev-parse --show-toplevel 2>$null
+    if ($LASTEXITCODE -ne 0) { $topLevel = $null }
 
     $info = @{
         Branch     = $branch
         IsWorktree = $false
+        # git emits forward slashes; normalise to the platform separator so the
+        # truncate-to-repo prefix match against $PWD.Path works on Windows.
+        TopLevel   = if ($topLevel) { $topLevel.Replace('/', [IO.Path]::DirectorySeparatorChar) } else { $null }
         Ahead      = 0
         Behind     = 0
         Staged     = 0
@@ -270,37 +281,65 @@ function Get-GitPromptInfo {
 }
 
 # --- Path shortening --------------------------------------------------------
-function Get-ShortenedPath {
-    param([int]$MaxLength = 30)
+function Test-PathUnder {
+    <#
+    .SYNOPSIS
+    True if $Path equals $Base or is a descendant of it, matching only on a
+    directory-separator boundary so e.g. C:\src\repo2 does NOT match C:\src\repo.
+    #>
+    param([string]$Path, [string]$Base)
+    if (-not $Base) { return $false }
+    $sep = [IO.Path]::DirectorySeparatorChar
+    if ($Path.Equals($Base, [StringComparison]::OrdinalIgnoreCase)) { return $true }
+    return $Path.StartsWith($Base.TrimEnd($sep) + $sep, [StringComparison]::OrdinalIgnoreCase)
+}
 
+function Get-ShortenedPath {
+    <#
+    .SYNOPSIS
+    Responsive path shortening, anchored at the git repo root when inside one
+    (truncate-to-repo). Leading components are abbreviated to their first
+    character left-to-right, only as far as needed to fit MaxLength; the anchor
+    (repo leaf / drive / ~) and the current (last) folder are always kept full.
+    e.g. outside a repo: ~\Personal Projects\dotfiles\powershell -> ~\P\...\powershell
+         inside a repo:  E:\Personal Projects\dotfiles\powershell\Profile -> dotfiles\powershell\Profile
+    #>
+    param(
+        [int]$MaxLength = 30,
+        [string]$RepoRoot
+    )
+
+    $sep  = [IO.Path]::DirectorySeparatorChar
     $path = $PWD.Path
-    if ($path.StartsWith($HOME)) {
+
+    if ($RepoRoot -and (Test-PathUnder $path $RepoRoot)) {
+        # truncate-to-repo: anchor at the repo-root leaf, drop everything above it
+        $repoLeaf = Split-Path $RepoRoot -Leaf
+        $rel      = $path.Substring($RepoRoot.Length).TrimStart($sep)
+        $path     = if ($rel) { "${repoLeaf}${sep}${rel}" } else { $repoLeaf }
+    }
+    elseif (Test-PathUnder $path $HOME) {
         $path = '~' + $path.Substring($HOME.Length)
     }
 
     if ($path.Length -le $MaxLength) { return $path }
 
-    $sep = [IO.Path]::DirectorySeparatorChar
     $parts = $path.Split($sep)
-    if ($parts.Count -le 3) {
-        return $path.Substring(0, $MaxLength - 3) + '...'
+
+    # Only an anchor + folder (or less): nothing meaningful to abbreviate
+    if ($parts.Count -le 2) { return $path }
+
+    # Abbreviate leading segments left-to-right, stopping as soon as it fits.
+    # Hidden dirs keep their leading dot (.config -> .c) so they stay recognisable.
+    for ($i = 1; $i -lt $parts.Count - 1; $i++) {
+        $seg = $parts[$i]
+        if ([string]::IsNullOrEmpty($seg)) { continue }  # UNC leading '\\' empties
+        $parts[$i] = if ($seg.StartsWith('.') -and $seg.Length -gt 1) { $seg.Substring(0, 2) }
+                     else { $seg.Substring(0, 1) }
+        if (($parts -join $sep).Length -le $MaxLength) { break }
     }
 
-    # Keep first segment, abbreviate middle to initials, keep last
-    $first = $parts[0]
-    $last  = $parts[-1]
-    $middle = ($parts[1..($parts.Count - 2)] | ForEach-Object { $_[0] }) -join $sep
-    $shortened = "${first}${sep}${middle}${sep}${last}"
-
-    if ($shortened.Length -gt $MaxLength) {
-        $available = $MaxLength - $first.Length - $middle.Length - $sep.Length * 2 - 3
-        if ($available -gt 0) {
-            $last = $last.Substring(0, [Math]::Min($last.Length, $available)) + '...'
-        }
-        $shortened = "${first}${sep}${middle}${sep}${last}"
-    }
-
-    return $shortened
+    return $parts -join $sep
 }
 
 function Get-ShortenedBranch {
@@ -339,12 +378,20 @@ function prompt {
         $null = $out.Append("$($c.Blue)$([Environment]::UserName)$($c.Reset) ")
     }
 
-    # Path
-    $shortPath = Get-ShortenedPath -MaxLength $c.MaxPathLength
+    # Git (computed before the path so the path can anchor at the repo root)
+    $git = Get-GitPromptInfo
+
+    # Path — width-relative budget (~1/3 of the pane), capped, with a sane floor.
+    # Anchored at the repo root when inside one (truncate-to-repo).
+    $width = try { [Console]::WindowWidth } catch { 0 }
+    $pathMax = if ($width -gt 0) {
+        [Math]::Max(20, [Math]::Min($c.MaxPathLength, [int]($width / 3)))
+    } else { $c.MaxPathLength }
+    $repoRoot  = if ($git) { $git.TopLevel } else { $null }
+    $shortPath = Get-ShortenedPath -MaxLength $pathMax -RepoRoot $repoRoot
     $null = $out.Append("in $($c.Green)$shortPath$($c.Reset) ")
 
     # Git
-    $git = Get-GitPromptInfo
     if ($git -and $git.Branch) {
         $branchDisplay = Get-ShortenedBranch -Branch $git.Branch -MaxLength $c.MaxBranchLength
         $branchColor = if ($git.HasChanges) { $c.Red } else { $c.Yellow }
