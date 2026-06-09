@@ -25,9 +25,13 @@ REVIEW → KANBAN → FIX → TEST → COMMIT → repeat
 
 ### Step 1 — Review
 
-Invoke the `code-review` skill on the current branch diff.
+Review the current branch diff against the shared rubric in
+[`../_shared/review-rubric.md`](../_shared/review-rubric.md) — Layer 1 (`AGENTS.md` conformance) is the
+floor; Layer 2 (thermo-nuclear structural quality) is the ambition. Be ambitious: surface code-judo
+restructurings that delete complexity, not just local nits. You may use the built-in `code-review`
+skill to gather candidates, but the rubric above is the bar.
 - Use effort `high` for the first cycle, `medium` for subsequent cycles.
-- Collect all findings as a JSON array.
+- Collect all findings as a JSON array, each tagged with the rubric's severity scale.
 - If findings list is empty → exit loop cleanly.
 
 ### Step 2 — KANBAN update

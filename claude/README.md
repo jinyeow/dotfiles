@@ -68,6 +68,11 @@ The installer junctions (Windows) or symlinks (Linux) each skill directory into
 `~/.claude/skills/`, making it available in every project. To add a skill,
 create its subdirectory here and re-run `setup.ps1 -Module claude`.
 
+`_shared/` is **not a skill** — it holds resources shared by multiple skills (e.g.
+`review-rubric.md`, the merged AGENTS.md + thermo-nuclear review rubric used by both
+`codex-review` and `review-fix-loop`). It has no `SKILL.md`, so the harness ignores it as a
+skill; it is still junctioned so skills can reference it via `../_shared/<file>`.
+
 Built-in Claude Code skills (`handoff`, `code-review`, etc.) are provided by
 the harness and do not need to be installed.
 

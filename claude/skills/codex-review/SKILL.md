@@ -34,10 +34,12 @@ Codex only returns findings.
 
 2. **Call the `codex` MCP tool** with a prompt that includes:
    - The role: an independent reviewer giving a second opinion; **findings only, do not approve or block**.
-   - The review criteria: correctness/logic bugs, error handling, type safety, test coverage,
-     security (secret exposure, injection), and the conventions in `AGENTS.md`.
+   - The review criteria: the shared rubric in [`../_shared/review-rubric.md`](../_shared/review-rubric.md) —
+     Layer 1 (`AGENTS.md` conformance) is the floor; Layer 2 (thermo-nuclear structural quality) is the
+     ambition. Paste its substance into the prompt (Codex does not auto-load it). Be ambitious: surface
+     code-judo restructurings that delete complexity, not just local nits.
    - Instruction to tag each finding **HIGH** (blocks merge), **MEDIUM** (should fix), or **LOW** (style/preference),
-     each with file:line and a one-line rationale.
+     each with file:line and a one-line rationale — collapsing the rubric's 5-level scale per its mapping.
    - The diff (or the changed file paths if the diff is too large for the prompt — Codex can read the files itself).
 
 3. **Summarise** Codex's response back to the user, grouped by severity, most severe first.

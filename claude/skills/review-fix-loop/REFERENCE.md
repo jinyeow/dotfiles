@@ -39,13 +39,11 @@
 
 ### Priority levels
 
-| Label | Meaning |
-|---|---|
-| CRITICAL | Silent data loss, unhandled termination, security |
-| HIGH | Incorrect output, replication race, infinite loop |
-| MEDIUM | Latent correctness bug, missing escape, wrong type |
-| LOW | Wrong diagnostic message, observability gap |
-| CLEANUP | Duplication, dead code, style — no correctness impact |
+Use the canonical 5-level severity scale defined in the shared rubric's **Severity scale** section
+([`../_shared/review-rubric.md`](../_shared/review-rubric.md)) — CRITICAL / HIGH / MEDIUM / LOW /
+CLEANUP. Structural regressions (1k-line explosion, spaghetti growth, leaked-boundary feature logic)
+map to **HIGH**; a flag/mode parameter that switches logic is a presumptive block to raise with the
+user before fixing.
 
 ---
 
@@ -55,13 +53,13 @@ Run the linter on each modified file immediately after editing it.
 
 | Signal | Linter command |
 |---|---|
-| `.vscode/PSScriptAnalyzerSettings.psd1` present | `Invoke-ScriptAnalyzer -Path <file> -Settings <settings-file>` |
+| `.vscode/PSScriptAnalyzerSettings.psd1` present | `Invoke-ScriptAnalyzer -Path <src-tree> -Recurse -Settings .vscode/PSScriptAnalyzerSettings.psd1` |
 | `package.json` with eslint | `npx eslint <file>` |
 | `pyproject.toml` / `.flake8` | `flake8 <file>` or `ruff check <file>` |
 | `Cargo.toml` | `cargo clippy` |
 | None found | Skip linter; note it in the commit message |
 
-For PSScriptAnalyzer: pre-existing violations that exist in the HEAD version of the file are not your responsibility. Verify with `git show HEAD:<file> | Invoke-ScriptAnalyzer ...`. Only fix violations that your edit introduced or that are in lines you touched.
+For PSScriptAnalyzer, run `-Recurse` over the whole source tree with the project settings file — CI does, so a per-file run can pass while CI fails on a pre-existing violation in an untouched file. Use that full run to see CI's verdict. The loop is responsible for fixing violations your edits introduced; pre-existing violations in files you didn't touch — confirm with `git show HEAD:<file> | Invoke-ScriptAnalyzer ...` — are noted, not necessarily fixed in this loop.
 
 ---
 
