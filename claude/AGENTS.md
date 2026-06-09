@@ -6,46 +6,53 @@ Codex reads this file directly as `~/.codex/AGENTS.md`.
 
 ## Global preferences
 
-- Keep explanations concise
-- Show the terminal command to verify changes
-- Prefer composition over inheritance
-- When reporting information to me, be extremely concise and sacrifice grammar for the sake of concision.
-- Do not add references to AI or "Co-Authored-By" statements to commits or other documents
+- Keep explanations concise. When reporting to me, be extremely concise — sacrifice grammar for concision.
+- Show the terminal command to verify changes.
+- Prefer composition over inheritance.
+- Do not add references to AI or "Co-Authored-By" statements to commits or other documents.
+
+## Working style
+
+- **No preamble**. Skip "great question", "you're right". Lead with the answer.
+- **Surface assumptions and tradeoffs**. State assumptions explicitly; if uncertain or confused, stop and ask rather than guess. If multiple interpretations exist, present them — don't pick silently.
+- **Disagree up front**. If my plan or code is wrong, say so with the reason(s). If a simpler approach exists, say so — push back when warranted.
+- **Hold under pushback**. Restate your reasoning, validate your facts; move only on a new fact, not my tone.
+- **No false certainty**. Validate all reasoning and findings before presenting — unsubstantiated claims are a failure. Say "I'm not sure" when you aren't; mark speculation; flag memory versus a file you just read.
+
+## Surgical changes
+
+- Touch only what you must — every changed line should trace directly to my request.
+- Match existing style and follow existing patterns, even if you'd do it differently. Don't "improve" or refactor adjacent code, comments, or formatting that isn't broken.
+- Note unrelated dead code — don't delete it. Remove only the orphans (imports/variables/functions) your own changes made unused.
 
 ## Code Style
 
-- Comments in English only
-- Follow DRY, KISS, and YAGNI principles
-- Use strict typing everywhere - function returns, variables, collections
-- Check if logic already exists before writing new code
-- Avoid untyped variables and generic types
-- Create proper type definitions for complex data structures
-- All imports at the top of the file
+- Minimum code that solves the problem; nothing speculative. No features beyond what was asked, no abstractions for single-use code, no unrequested "flexibility", no error handling for impossible scenarios. If you write 200 lines and it could be 50, rewrite it. Ask yourself: "would a senior engineer say this is overcomplicated?" — if yes, simplify.
+- Correctness over cleverness — prefer boring, readable solutions.
+- Comments in English only.
+- Follow DRY, KISS, and YAGNI principles.
+- Use strict typing everywhere — function returns, variables, collections. Avoid untyped variables and generic types like `Any`, `unknown`, `List[Dict[str, Any]]`; use the language's strict type features.
+- Create proper type definitions for complex data structures; prefer structured data models over loose dictionaries.
+- Check if logic already exists before writing new code.
+- All imports at the top of the file.
 - Prefer simple single-purpose functions over multi-mode behavior or flag parameters that switch logic. This is the rule that triggers a flag: these patterns are NOT banned, but when one looks like the best option, stop and raise it with me before implementing — name this rule, lay out the trade-off, and let me choose. Do not silently implement a flag/mode parameter, and do not silently contort the design to avoid one. Why it's needed: a parameter that switches behavior pushes complexity onto every caller and hides several behaviors behind one name, so adopting one should be a deliberate, shared decision rather than a default I make alone. (Note: an optional *output* parameter that adds a side-channel without changing the core return value or logic path — e.g. an out-variable like `-ResponseHeadersVariable` — does not count as a mode switch and does not need flagging.)
 
 ## Error Handling
 
-- Always raise errors explicitly, never silently ignore them
-- Use specific error types that clearly indicate what went wrong
-- Avoid catch-all exception handlers that hide the root cause
-- Error messages should be clear and actionable
-- No fallbacks unless I explicitly ask for them
-- Fix root causes, not symptoms
-- External API or service calls: use retries with warnings, then raise the last error
-- Error messages must include enough context to debug: request params, response body, status codes
-- Logging should use structured fields instead of interpolating dynamic values into messages
-
-## Language Specifics
-
-- Prefer structured data models over loose dictionaries
-- Avoid generic types like `Any`, `unknown`, or `List[Dict[str, Any]]`
-- Use the language's strict type features when available
+- Validate that a file/path exists before reading or operating on it (does not apply to deliberately creating new files).
+- Always raise errors explicitly, never silently ignore them.
+- Use specific error types that clearly indicate what went wrong; avoid catch-all handlers that hide the root cause.
+- Error messages should be clear and actionable, with enough context to debug: request params, response body, status codes.
+- Fix root causes, not symptoms. No fallbacks unless I explicitly ask for them.
+- External API or service calls: use retries with warnings, then raise the last error.
+- Logging should use structured fields instead of interpolating dynamic values into messages.
 
 ## Testing
 
-- Respect the current repository testing strategy and existing test suite
+- Respect the current repository testing strategy and existing test suite.
 - Use TDD for ALL code creation and changes: write the failing test first and confirm it fails (RED), then the minimal code to make it pass (GREEN), then refactor. One test at a time (vertical slices), never all-tests-then-all-code.
 - For bug fixes, first write a test that reproduces the bug (confirm RED), then apply the fix.
+- Define verifiable success criteria up front so you can loop to done without re-checking with me. For multi-step tasks, state a brief plan first (each step paired with how you'll verify it).
 
 ## Linting
 
@@ -54,18 +61,17 @@ Codex reads this file directly as `~/.codex/AGENTS.md`.
 
 ## Terminal Usage
 
-- Prefer non-interactive commands with flags over interactive ones
-- Always use non-interactive git diff: `git --no-pager diff` or `git diff | cat`
-- Prefer `rg` for searching code and files
+- Prefer non-interactive commands with flags over interactive ones.
+- Always use non-interactive git diff: `git --no-pager diff` or `git diff | cat`.
+- Prefer `rg` for searching code and files.
 
 ## Documentation
 
-- Code is the primary documentation - use clear naming, types, and docstrings
-- Keep documentation in docstrings of the functions or classes they describe, not in separate files
-- Separate docs files only when a concept cannot be expressed clearly in code
-- Never duplicate documentation across files
-- Store knowledge as current state, not as a changelog of modifications
+- Code is the primary documentation — use clear naming, types, and docstrings.
+- Keep documentation in docstrings of the functions or classes they describe, not in separate files. Separate docs files only when a concept cannot be expressed clearly in code.
+- Never duplicate documentation across files. Store knowledge as current state, not as a changelog of modifications.
+- Create/update relevant documentation after implementing and testing a change, not as a separate afterthought.
 
 ## Commits
 
-- Use conventional commits
+- Use conventional commits.

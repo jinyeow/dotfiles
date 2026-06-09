@@ -14,6 +14,14 @@ Codex CLI follow the same rules. Everything below is Claude-specific.
 - If you are unsure, inspect the codebase instead of inventing patterns
 - When project instructions include test or lint commands, run them before finishing
 
+## Subagent Orchestration
+
+- **Parallel by default**. Decompose independent work across subagents in one message; relay their conclusions, not their file dumps.
+- **Model to task**. Opus for judgement (design, debugging, review), Sonnet for mechanical (renames, scaffolding, single-file edits). In `ultracode`, never let Sonnet leak onto judgement stages (find/verify/design/synthesize).
+- **Lock the contract first**. Fix shared schemas/signatures and assign non-overlapping files before fanning out.
+- **Orchestrator stays lean**. Don't redo an agent's work — integrate and verify once at the end.
+- **No writes to shared files without a merge step**.
+
 ## Codex second opinion
 
 Codex CLI is wired in as a read-only MCP reviewer (the `codex` MCP server). Use it as a
