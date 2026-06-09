@@ -14,13 +14,14 @@ PowerShell 7 profile and prompt for Windows (and Linux where applicable).
 | [zoxide](https://github.com/ajeetdsouza/zoxide) | Smart `cd` | `winget install ajeetdsouza.zoxide` |
 | [Az.Tools.Predictor](https://github.com/Azure/azure-powershell) | Azure command prediction | `Install-Module Az.Tools.Predictor` |
 | [WinGet.CommandNotFound](https://github.com/microsoft/winget-command-not-found) | Package suggestions | installed via Microsoft Store |
+| [jujutsu (jj)](https://github.com/jj-vcs/jj) | _Optional_ — jj VCS segment in the prompt | `winget install jj-vcs.jj` |
 
 ## Files
 
 | File | Notes |
 |---|---|
 | `Microsoft.PowerShell_profile.ps1` | Shared profile — used on all machines |
-| `Profile/Set-Prompt.ps1` | Prompt definition (git + Azure context) |
+| `Profile/Set-Prompt.ps1` | Prompt definition (jj/git + Azure context) |
 
 The installer generates a stub at `~/Documents/PowerShell/Microsoft.PowerShell_profile.ps1`
 that dot-sources the repo file — changes are live immediately without re-running setup.
@@ -71,7 +72,8 @@ Azure context refresh on a 60-second timer, driven from `Set-Prompt.ps1`.
 
 ## Prompt (`Set-Prompt.ps1`)
 
-- Git branch and status — synchronous, 3 git processes per prompt
+- jj (Jujutsu) change-id, closest bookmark, ahead count, and state — shown instead of git in jj repos (takes precedence in colocated repos; toggle `ShowJj`). Gate is a filesystem walk; up to 3 jj processes, all `--ignore-working-copy`. Renders `jj:<change-id> <bookmark> ↑<dist> *<files> ∅ ✎` (`∅` empty, `✎` no description, `!` conflict)
+- Git branch and status — synchronous, 3 git processes per prompt (used when not in a jj repo)
 - Azure subscription context — async via background runspace, refreshed every 60s
 - Last command exit status (colour coded) and execution time
 - Truncated path for long directories

@@ -50,6 +50,7 @@ Install-Package 'jqlang.jq'
 Write-Host "`n=== Git ===" -ForegroundColor Green
 Install-Package 'Git.Git'
 Install-Package 'GitHub.cli'
+Install-Package 'jj-vcs.jj'
 Install-Package 'JesseDuffield.lazygit'
 Install-Package 'JesseDuffield.Lazydocker'
 

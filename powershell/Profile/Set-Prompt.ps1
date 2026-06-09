@@ -32,6 +32,7 @@ $global:PromptConst = @{
     MaxBranchLength = 35
     ShowWorktree    = $true
     ShowUsername     = $true
+    ShowJj          = $true   # jj (Jujutsu) takes precedence over git in colocated repos
 }
 
 # --- Az context async infrastructure ---------------------------------------
@@ -280,6 +281,84 @@ function Get-GitPromptInfo {
     return $info
 }
 
+# --- jj (Jujutsu) helpers (synchronous) -------------------------------------
+function Find-JjRoot {
+    <#
+    .SYNOPSIS
+    Walks up from $StartPath looking for a `.jj` directory and returns the
+    containing dir (the workspace root), or $null. Pure filesystem — no process
+    spawn — so non-jj directories pay nothing. Handles subdirectories correctly
+    (unlike a naive `.jj`-in-PWD check) and doubles as the truncate-to-repo anchor.
+    #>
+    param([string]$StartPath)
+    $dir = $StartPath
+    while ($dir) {
+        if (Test-Path -LiteralPath (Join-Path $dir '.jj') -PathType Container) { return $dir }
+        $parent = Split-Path $dir -Parent
+        if (-not $parent -or $parent -eq $dir) { break }
+        $dir = $parent
+    }
+    return $null
+}
+
+function Get-JjPromptInfo {
+    <#
+    .SYNOPSIS
+    Returns a hashtable of jj working-copy (@) status, or $null if not in a jj
+    repo. Uses up to 3 jj processes, only inside a jj repo (the gate is a
+    filesystem walk): @ info, closest-bookmark name, bookmark→@ distance. All
+    calls pass --ignore-working-copy so the prompt never
+    triggers a working-copy snapshot (a write); the tradeoff is that FileCount
+    and Empty reflect the last snapshot jj took, not un-snapshotted editor edits.
+    #>
+    $root = Find-JjRoot -StartPath $PWD.Path
+    if (-not $root) { return $null }
+
+    # Single template for @: change-id, conflict, empty, has-description, file
+    # count — tab-separated on one line.
+    $tpl = 'change_id.shortest(8) ++ "\t" ++ if(conflict,"1","0") ++ "\t" ++ ' +
+           'if(empty,"1","0") ++ "\t" ++ if(description,"1","0") ++ "\t" ++ ' +
+           'self.diff().files().len()'
+    $raw = jj log --ignore-working-copy --no-graph --color never --limit 1 -r '@' -T $tpl 2>$null
+    if ($LASTEXITCODE -ne 0 -or -not $raw) { return $null }
+
+    $f = ([string]$raw).Split("`t")
+    if ($f.Count -lt 5) { return $null }
+
+    # Parse defensively — a prompt must never throw, so never let a bad cast bubble
+    $fileCount = 0
+    [void][int]::TryParse($f[4], [ref]$fileCount)
+
+    $info = @{
+        Root              = $root
+        ChangeId          = $f[0]
+        Conflict          = $f[1] -eq '1'
+        Empty             = $f[2] -eq '1'
+        HasDesc           = $f[3] -eq '1'
+        FileCount         = $fileCount
+        Bookmark          = ''
+        BookmarkDistance  = 0
+    }
+
+    # Closest ancestor bookmark — the branch-like pointer @ is working ahead of.
+    # `bookmarks` on @ is usually empty (anonymous changes), so resolve the nearest
+    # bookmarked ancestor instead, the way git shows the branch you're on.
+    $closest = 'heads(::@ & bookmarks())'
+    $bm = jj log --ignore-working-copy --no-graph --color never --limit 1 -r $closest -T 'bookmarks.join(",")' 2>$null
+    if ($LASTEXITCODE -eq 0 -and $bm) {
+        $info.Bookmark = [string]$bm
+        # Commits between that bookmark and @ (one 'x' per rev). Only meaningful
+        # when a bookmark exists; an empty left side would match all ancestors.
+        # -join '' collapses any multi-line capture into one string so the char
+        # count is the rev count regardless of how the native command is captured.
+        $dist = (jj log --ignore-working-copy --no-graph --color never -r "$closest..@" -T '"x"' 2>$null) -join ''
+        if ($LASTEXITCODE -eq 0 -and $dist) { $info.BookmarkDistance = $dist.Length }
+    }
+
+    $info.HasChanges = ($info.FileCount -gt 0) -or $info.Conflict
+    return $info
+}
+
 # --- Path shortening --------------------------------------------------------
 function Test-PathUnder {
     <#
@@ -378,8 +457,11 @@ function prompt {
         $null = $out.Append("$($c.Blue)$([Environment]::UserName)$($c.Reset) ")
     }
 
-    # Git (computed before the path so the path can anchor at the repo root)
-    $git = Get-GitPromptInfo
+    # VCS (computed before the path so the path can anchor at the repo root).
+    # jj takes precedence: in a colocated repo git would show a detached HEAD,
+    # so when a jj repo is detected we skip git entirely.
+    $jj  = if ($c.ShowJj) { Get-JjPromptInfo } else { $null }
+    $git = if ($jj) { $null } else { Get-GitPromptInfo }
 
     # Path — width-relative budget (~1/3 of the pane), capped, with a sane floor.
     # Anchored at the repo root when inside one (truncate-to-repo).
@@ -387,12 +469,40 @@ function prompt {
     $pathMax = if ($width -gt 0) {
         [Math]::Max(20, [Math]::Min($c.MaxPathLength, [int]($width / 3)))
     } else { $c.MaxPathLength }
-    $repoRoot  = if ($git) { $git.TopLevel } else { $null }
+    $repoRoot  = if ($jj) { $jj.Root } elseif ($git) { $git.TopLevel } else { $null }
     $shortPath = Get-ShortenedPath -MaxLength $pathMax -RepoRoot $repoRoot
     $null = $out.Append("in $($c.Green)$shortPath$($c.Reset) ")
 
+    # jj (Jujutsu) — change-id is the stable identity; bookmarks are the
+    # branch-like pointers. Rendered instead of git when a jj repo is detected.
+    if ($jj) {
+        # change-id always BrightCyan so jj is visually distinct from git's ±
+        $null = $out.Append("$($c.BrightCyan)jj:$($jj.ChangeId)$($c.Reset)")
+
+        # Closest bookmark (branch-like); colour mirrors git: red when dirty
+        if ($jj.Bookmark) {
+            $bmColor = if ($jj.HasChanges) { $c.Red } else { $c.Yellow }
+            $bm = Get-ShortenedBranch -Branch $jj.Bookmark -MaxLength $c.MaxBranchLength
+            $null = $out.Append(" ${bmColor}${bm}$($c.Reset)")
+        }
+
+        # Commits ahead of that bookmark
+        if ($jj.BookmarkDistance -gt 0) {
+            $null = $out.Append(" $($c.Green)↑$($jj.BookmarkDistance)$($c.Reset)")
+        }
+
+        # State indicators
+        $jjInd = [System.Text.StringBuilder]::new(32)
+        if ($jj.Conflict)        { $null = $jjInd.Append(" $($c.Red)!$($c.Reset)") }
+        if ($jj.FileCount -gt 0) { $null = $jjInd.Append(" $($c.Yellow)*$($jj.FileCount)$($c.Reset)") }
+        if ($jj.Empty)           { $null = $jjInd.Append(" $($c.DimWhite)∅$($c.Reset)") }
+        if (-not $jj.HasDesc)    { $null = $jjInd.Append(" $($c.Magenta)✎$($c.Reset)") }
+        $null = $out.Append($jjInd.ToString())
+
+        $null = $out.Append(' ')
+    }
     # Git
-    if ($git -and $git.Branch) {
+    elseif ($git -and $git.Branch) {
         $branchDisplay = Get-ShortenedBranch -Branch $git.Branch -MaxLength $c.MaxBranchLength
         $branchColor = if ($git.HasChanges) { $c.Red } else { $c.Yellow }
 

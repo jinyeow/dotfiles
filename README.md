@@ -73,6 +73,7 @@ Or install individually:
 | [zoxide](https://github.com/ajeetdsouza/zoxide) | Smart `cd` | `winget install ajeetdsouza.zoxide` |
 | [lazygit](https://github.com/jesseduffield/lazygit) | Terminal git UI | `winget install JesseDuffield.lazygit` |
 | [tig](https://jonas.github.io/tig/) | Terminal git browser | `winget install Jonas.Tig` |
+| [jujutsu (jj)](https://github.com/jj-vcs/jj) | Git-compatible VCS (prompt-integrated) | `winget install jj-vcs.jj` |
 | [Neovim](https://neovim.io) 0.11+ | Editor | `winget install Neovim.Neovim` |
 
 See each tool's `README.md` for full prerequisites and setup notes.
