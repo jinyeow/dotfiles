@@ -38,8 +38,9 @@ Sets `RIPGREP_CONFIG_PATH` and `FZF_DEFAULT_OPTS_FILE` pointing at repo files
 (`FZF_DEFAULT_COMMAND`, `FZF_CTRL_T_COMMAND`, `FZF_ALT_C_COMMAND`) at it — kept
 separate from `ripgreprc` so the picker stays `.gitignore`-clean while rg search
 remains exhaustive. Reads `AppsUseLightTheme` from the registry once into
-`$_isDark`, then sets `FZF_DEFAULT_OPTS` and `LG_CONFIG_FILE` (lazygit base +
-theme) to catppuccin mocha or latte — mirrors nvim's theme detection.
+`$_isDark`, then sets `FZF_DEFAULT_OPTS`, `LG_CONFIG_FILE` (lazygit base +
+theme), and `EZA_CONFIG_DIR` (eza theme dir) to catppuccin mocha or latte —
+mirrors nvim's theme detection.
 Sets `_ZO_RESOLVE_SYMLINKS=1` so zoxide stores resolved paths; prevents
 duplicate database entries when navigating through junctions.
 

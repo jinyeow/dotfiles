@@ -367,6 +367,10 @@ $env:LG_CONFIG_FILE = (Join-Path $_dotfiles 'lazygit\config.yml') + ',' + $(if (
 # tig theme — TIGRC_USER overrides ~/.tigrc; theme files source ~/.tigrc for base settings
 $env:TIGRC_USER = Join-Path $_dotfiles $(if ($_isDark) { 'tig\tigrc-mocha' } else { 'tig\tigrc-latte' })
 
+# eza theme (catppuccin mauve) — eza reads theme.yml from EZA_CONFIG_DIR, so each
+# flavour lives in its own dir; point at the mocha or latte one to match the rest.
+$env:EZA_CONFIG_DIR = Join-Path $_dotfiles $(if ($_isDark) { 'eza\themes\mocha' } else { 'eza\themes\latte' })
+
 Remove-Variable _dotfiles, _regOut, _isDark
 
 # --- Deferred loading (Phase 2a + 2b) --------------------------------------
