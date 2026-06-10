@@ -246,6 +246,14 @@ function Invoke-Tig {
 }
 Set-Alias -Name tig -Value Invoke-Tig -Force
 
+function Invoke-Bat {
+    # Re-check OS theme on each call so bat picks up mid-session dark/light toggles
+    # (BAT_THEME is otherwise resolved once at profile load — see the bat block below)
+    $env:BAT_THEME = if (Get-IsDarkMode) { 'Catppuccin Mocha' } else { 'Catppuccin Latte' }
+    & (Get-Command bat -CommandType Application -ErrorAction Stop) @args
+}
+Set-Alias -Name bat -Value Invoke-Bat -Force
+
 # --- Hotkey cheatsheet ------------------------------------------------------
 function Show-Hotkeys {
     $entries = @(
@@ -353,7 +361,8 @@ $env:FZF_DEFAULT_OPTS = if ($_isDark) {
 # structural defaults (layout, preview, height).
 $env:_ZO_FZF_OPTS = $env:FZF_DEFAULT_OPTS
 
-# bat config and preview theme — must match fzf theme so alt+f preview pane doesn't clash
+# bat config and preview theme — must match fzf theme so alt+f preview pane doesn't clash.
+# Load-time default; the `bat` alias (Invoke-Bat) re-checks per call for mid-session toggles.
 $env:BAT_CONFIG_PATH = Join-Path $_dotfiles 'bat\config'
 $env:BAT_THEME = if ($_isDark) { 'Catppuccin Mocha' } else { 'Catppuccin Latte' }
 
