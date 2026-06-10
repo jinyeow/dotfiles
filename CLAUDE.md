@@ -46,6 +46,7 @@ When adding to the profile, classify by cost first — anything that loads .NET 
 - **`$?` / `$LASTEXITCODE` must be captured on the first two lines of `prompt`** before any other command runs, and `$LASTEXITCODE` is restored at the end so git calls inside the prompt don't leak a non-zero exit to the user's next command.
 - Constants (ANSI escapes, admin check, length limits) are computed once into `$global:PromptConst`; the prompt body uses a `StringBuilder`.
 - Emits Windows Terminal OSC 9;9 for CWD tracking when on a filesystem provider, and syncs `[System.Environment]::CurrentDirectory` so Zellij opens new panes in the current directory (see the Zellij section).
+- **zoxide recording is driven by the prompt, not by zoxide's hook.** Zoxide is initialised with `zoxide init powershell --hook none` (Phase 2a), so it does *not* wrap `$function:prompt`. The default wrapper detaches on `. $PROFILE` (Phase 1 redefines the prompt and the deferred-once guard blocks re-wrapping), which silently stops recording. Instead the prompt records the directory itself inside the filesystem-provider block (mirroring zoxide's `__zoxide_hook`: dedup on `$global:__zoxide_oldpwd`, `zoxide add` only when it changed) — survives reloads, and the line-end `$LASTEXITCODE` restore undoes the exit code `zoxide add` leaves behind. It self-guards on `$function:__zoxide_pwd` (defined only with `--hook none`) so it no-ops until Phase 2a initialises zoxide.
 
 ## Git configuration
 

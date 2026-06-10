@@ -325,6 +325,12 @@ $env:FZF_DEFAULT_OPTS = if ($_isDark) {
     '--color=selected-bg:#BCC0CC --color=border:#9CA0B0,label:#4C4F69'
 }
 
+# zoxide's `zi` picker spawns fzf with its own FZF_DEFAULT_OPTS (no colours),
+# clobbering the themed env var above. _ZO_FZF_OPTS is appended to that child
+# env, so this restores the catppuccin theme on `zi` without losing zoxide's
+# structural defaults (layout, preview, height).
+$env:_ZO_FZF_OPTS = $env:FZF_DEFAULT_OPTS
+
 # bat config and preview theme — must match fzf theme so alt+f preview pane doesn't clash
 $env:BAT_CONFIG_PATH = Join-Path $_dotfiles 'bat\config'
 $env:BAT_THEME = if ($_isDark) { 'Catppuccin Mocha' } else { 'Catppuccin Latte' }
@@ -381,9 +387,13 @@ function Initialize-DeferredProfile {
         Set-PSReadLineOption -PredictionSource HistoryAndPlugin
     }
 
-    # Zoxide (~340ms)
+    # Zoxide (~340ms) — --hook none: zoxide's default hook wraps $function:prompt,
+    # but Phase 1 redefines the prompt on every reload and the deferred-once guard
+    # blocks re-wrapping, so the wrapper detaches after `. $PROFILE` and recording
+    # silently stops. With --hook none the custom prompt records directories itself
+    # (see Set-Prompt.ps1), which survives reloads and keeps $LASTEXITCODE intact.
     if (Get-Command -Name zoxide -ErrorAction Ignore) {
-        Invoke-Expression (& { (zoxide init powershell | Out-String) })
+        Invoke-Expression (& { (zoxide init powershell --hook none | Out-String) })
     }
 }
 

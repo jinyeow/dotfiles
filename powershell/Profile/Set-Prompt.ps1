@@ -448,6 +448,21 @@ function prompt {
         }
         # Windows Terminal CWD tracking (OSC 9;9)
         $null = $out.Append("$($c.ESC)]9;9;`"$($loc.ProviderPath)`"$($c.ESC)\")
+
+        # Record the directory in zoxide. zoxide is initialised with --hook none
+        # (see profile), so it doesn't wrap the prompt — that wrapper detaches on
+        # `. $PROFILE` reloads and silently stops recording. The prompt records
+        # instead, mirroring zoxide's own __zoxide_hook: dedup on oldpwd so a
+        # process spawns only when the directory changed, and the LASTEXITCODE
+        # restore below undoes the exit code `zoxide add` leaves behind. Guarded on
+        # __zoxide_pwd so it no-ops until Phase 2a initialises zoxide.
+        if ($null -ne $function:__zoxide_pwd) {
+            $zoxidePwd = __zoxide_pwd
+            if ($zoxidePwd -ne $global:__zoxide_oldpwd) {
+                if ($null -ne $zoxidePwd) { zoxide add '--' $zoxidePwd }
+                $global:__zoxide_oldpwd = $zoxidePwd
+            }
+        }
     }
 
     # --- Line 1: user path git az ---
