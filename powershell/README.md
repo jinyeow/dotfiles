@@ -34,7 +34,10 @@ The profile is structured in three phases to keep startup fast:
 Single `PSModulePath` scan into `$global:ProfileModules` cache, PSReadLine
 with `PredictionSource History`, all key bindings, prompt definition.
 Sets `RIPGREP_CONFIG_PATH` and `FZF_DEFAULT_OPTS_FILE` pointing at repo files
-(no copy needed). Reads `AppsUseLightTheme` from the registry once into
+(no copy needed). When `fd` is present, points fzf's file/dir pickers
+(`FZF_DEFAULT_COMMAND`, `FZF_CTRL_T_COMMAND`, `FZF_ALT_C_COMMAND`) at it — kept
+separate from `ripgreprc` so the picker stays `.gitignore`-clean while rg search
+remains exhaustive. Reads `AppsUseLightTheme` from the registry once into
 `$_isDark`, then sets `FZF_DEFAULT_OPTS` and `LG_CONFIG_FILE` (lazygit base +
 theme) to catppuccin mocha or latte — mirrors nvim's theme detection.
 Sets `_ZO_RESOLVE_SYMLINKS=1` so zoxide stores resolved paths; prevents

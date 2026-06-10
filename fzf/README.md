@@ -11,6 +11,14 @@ Config for [fzf](https://github.com/junegunn/fzf).
 Color theme (catppuccin mocha/latte) is set dynamically in `$env:FZF_DEFAULT_OPTS`
 by the PowerShell profile based on the OS dark/light setting — mirrors nvim.
 
+File and directory sources come from [`fd`](https://github.com/sharkdp/fd) when it
+is installed: the profile sets `FZF_DEFAULT_COMMAND` / `FZF_CTRL_T_COMMAND` (files)
+and `FZF_ALT_C_COMMAND` (directories) to `fd`. This is deliberately decoupled from
+`ripgreprc` — rg is tuned exhaustive (`--no-ignore`) for *searching*, whereas the
+pickers want a clean, `.gitignore`-respecting list. Only the `Alt+c` directory
+picker strictly needs `fd` (rg cannot list directories). Without `fd`, fzf falls
+back to its built-in walker. Live `Alt+f` search (`Invoke-FzfRipgrep`) still uses rg.
+
 ## Settings
 
 | Setting | Effect |

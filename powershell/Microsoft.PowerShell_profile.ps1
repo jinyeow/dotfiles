@@ -141,6 +141,14 @@ function which ($command) {
 function Start-AdminSession { Start-Process wt -Verb RunAs }
 Set-Alias -Name su -Value Start-AdminSession
 
+# eza — modern ls. Native ls/Get-ChildItem kept for object pipelines; these are
+# the interactive listing helpers: long+git+icons, all, and a 2-level tree.
+if (Get-Command -Name eza -CommandType Application -ErrorAction Ignore) {
+    function ll { eza --long --git --icons=auto --group-directories-first @args }
+    function la { eza --long --git --icons=auto --group-directories-first --all @args }
+    function lt { eza --tree --level=2 --icons=auto --git-ignore @args }
+}
+
 function y {
     $tmp = (New-TemporaryFile).FullName
     yazi.exe @args --cwd-file="$tmp"
@@ -257,6 +265,9 @@ function Show-Hotkeys {
         '[alias]  fkill           fuzzy process picker — kill selection'
         '[alias]  fcd             fuzzy directory picker — cd into selection'
         '[alias]  zi              zoxide interactive directory jump'
+        '[eza]    ll              long list with git status + icons'
+        '[eza]    la              long list including hidden entries'
+        '[eza]    lt              2-level directory tree'
         '[nvim]   <leader>ff      find files'
         '[nvim]   <leader>fg      grep in files (ripgrep)'
         '[nvim]   <leader>fb      find open buffers'
@@ -304,6 +315,17 @@ $_dotfiles = Split-Path $PSScriptRoot
 $env:DOTFILES = $_dotfiles  # persist so wrapper functions can find theme files at runtime
 $env:RIPGREP_CONFIG_PATH  = Join-Path $_dotfiles 'ripgrep\ripgreprc'
 $env:FZF_DEFAULT_OPTS_FILE = Join-Path $_dotfiles 'fzf\fzfrc'
+
+# fd feeds fzf's file/dir pickers (bare fzf via FZF_DEFAULT_COMMAND, PSFzf's Ctrl+t
+# and Alt+c via the *_COMMAND vars). Deliberately not driven by ripgreprc: rg is
+# tuned exhaustive (--no-ignore) for searching, but a picker wants a clean,
+# .gitignore-respecting list. Only Alt+c (dir picker) genuinely needs fd — rg can't
+# list directories. Guarded so fzf falls back to its built-in walker without fd.
+if (Get-Command -Name fd -CommandType Application -ErrorAction Ignore) {
+    $env:FZF_DEFAULT_COMMAND = 'fd --type f --hidden --exclude .git'
+    $env:FZF_CTRL_T_COMMAND  = $env:FZF_DEFAULT_COMMAND
+    $env:FZF_ALT_C_COMMAND   = 'fd --type d --hidden --exclude .git'
+}
 
 # Zoxide — store resolved paths so junctions don't produce duplicate entries
 $env:_ZO_RESOLVE_SYMLINKS = '1'
