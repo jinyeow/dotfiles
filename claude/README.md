@@ -38,7 +38,7 @@ changes back by hand (or just edit the repo file) to go live → repo.
 
 | Setting | Value | Notes |
 |---|---|---|
-| `model` | `sonnet` | Default model |
+| `model` | `claude-opus-4-8` | Default model |
 | `effortLevel` | `high` | Default thinking effort |
 | `theme` | `dark-ansi` | Palette-based dark theme — readable under Zellij on Windows Terminal, where `auto` + truecolor diff backgrounds collapse into the pane (see `docs/zellij-windows-terminal-colors.md`) |
 | `editorMode` | `vim` | Vim keybindings in the prompt input |
