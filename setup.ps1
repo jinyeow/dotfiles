@@ -15,6 +15,13 @@
 .PARAMETER DryRun
     Preview what would happen without making any changes.
 
+.PARAMETER Backup
+    Reverse-sync: pull each module's live copied files (e.g. ~/.claude/CLAUDE.md)
+    back INTO the repo, capturing drift before a normal run would overwrite them.
+    Only copied files are synced — junctions and stubs reference the repo directly
+    and cannot drift, so they are skipped. Git is the review/safety net: nothing is
+    overwritten silently — inspect with `git diff` and commit what you want to keep.
+
 .PARAMETER CleanBackups
     Remove old backup files (.bak.TIMESTAMP) left by previous runs.
 
@@ -28,6 +35,8 @@
     .\setup.ps1 -Module neovim,powershell
     .\setup.ps1 -Module git
     .\setup.ps1 -Module all -DryRun
+    .\setup.ps1 -Module claude -Backup
+    .\setup.ps1 -Module all -Backup -DryRun
     .\setup.ps1 -CleanBackups
     .\setup.ps1 -CleanBackups -KeepBackups 3
     .\setup.ps1 -Module git -CleanBackups -MaxBackupAgeDays 30
@@ -36,6 +45,8 @@ param(
     [string[]] $Module = @(),
 
     [switch] $DryRun,
+
+    [switch] $Backup,
 
     [switch] $CleanBackups,
     [int] $KeepBackups = 5,
@@ -73,6 +84,7 @@ function Backup-Existing ([string]$Path) {
 
 # Directory junction — works cross-volume, no elevation required.
 function New-Junction ([string]$Link, [string]$Target) {
+    if ($Backup) { Write-Info "Skipped (linked, no drift):  $Link"; return }
     if (-not (Test-Path $Target -PathType Container)) {
         Write-Fail "Source directory not found: $Target"; return
     }
@@ -106,7 +118,21 @@ function New-Junction ([string]$Link, [string]$Target) {
 
 # File copy — simple, always works cross-volume.
 # Re-run the installer to pick up changes from the repo.
+# With -Backup, runs in reverse: pulls the live copy ($Dest) back into the repo ($Source).
 function Copy-Dotfile ([string]$Dest, [string]$Source) {
+    if ($Backup) {
+        # Reverse-sync: live copy ($Dest) -> repo ($Source). Only copied files drift
+        # (junctions/stubs point at the repo), so this is where drift is captured. Git is
+        # the review/safety net — no .bak is written into the repo. Review with `git diff`.
+        if (-not (Test-Path $Dest)) {
+            Write-Warn "No live file to back up: $Dest"; return
+        }
+        if ($DryRun) { Write-Info "[DRY RUN] backup (live -> repo) $Dest -> $Source"; return }
+        Copy-Item -Path $Dest -Destination $Source -Force
+        Write-Ok "Backed up:  $Dest"
+        Write-Ok "         -> $Source"
+        return
+    }
     if (-not (Test-Path $Source)) {
         Write-Fail "Source file not found: $Source"; return
     }
@@ -126,6 +152,7 @@ function Copy-Dotfile ([string]$Dest, [string]$Source) {
 # Generated stub — sources the real PS file from the repo path.
 # Changes to the repo file are live immediately; no elevation needed.
 function New-SourceStub ([string]$StubPath, [string]$RealSource) {
+    if ($Backup) { Write-Info "Skipped (stub, no drift):    $StubPath"; return }
     if (-not (Test-Path $RealSource)) {
         Write-Fail "Source file not found: $RealSource"; return
     }
@@ -150,6 +177,7 @@ function New-SourceStub ([string]$StubPath, [string]$RealSource) {
 # Git [include] stub — installs a gitconfig that includes the real file from the
 # repo via git's native include mechanism. Works cross-volume; changes are live.
 function New-GitIncludeStub ([string]$StubPath, [string]$RealSource) {
+    if ($Backup) { Write-Info "Skipped (stub, no drift):    $StubPath"; return }
     if (-not (Test-Path $RealSource)) {
         Write-Fail "Source file not found: $RealSource"; return
     }
@@ -250,6 +278,10 @@ function Install-Vim {
 function Install-PowerShell {
     Write-Host ''
     Write-Info '=== PowerShell ==='
+
+    # Purely linked: profile stubs source the repo and Profile\ is a junction — nothing copied,
+    # nothing to drift, so a backup run has nothing to capture here.
+    if ($Backup) { Write-Info 'PowerShell is stub + junction — no copied files to back up.'; return }
 
     $docs = [Environment]::GetFolderPath('MyDocuments')
 
@@ -494,7 +526,9 @@ function Install-Codex {
 
     # 1. Install the Codex CLI via OpenAI's native installer (self-updating), mirroring the
     #    claude module's native-install decision. Skip if already present.
-    if (Get-Command -Name codex -ErrorAction Ignore) {
+    if ($Backup) {
+        Write-Info 'Backup mode — skipping Codex CLI install.'
+    } elseif (Get-Command -Name codex -ErrorAction Ignore) {
         Write-Ok 'codex is already installed.'
     } elseif ($DryRun) {
         Write-Info '[DRY RUN] would install Codex CLI via native installer (https://chatgpt.com/codex/install.ps1)'
@@ -530,7 +564,9 @@ function Install-Codex {
     #    config lives in ~/.claude.json (settings.json does not support mcpServers), so this is
     #    a CLI registration, not a tracked file. The -c overrides pin the reviewer read-only and
     #    non-interactive regardless of ~/.codex/config.toml. Idempotent: remove any prior entry first.
-    if (-not (Get-Command -Name claude -ErrorAction Ignore)) {
+    if ($Backup) {
+        Write-Info 'Backup mode — skipping MCP registration.'
+    } elseif (-not (Get-Command -Name claude -ErrorAction Ignore)) {
         Write-Warn 'claude CLI not found — skipping MCP registration. Install the claude module first.'
     } elseif ($DryRun) {
         Write-Info '[DRY RUN] would register user-scope MCP: claude mcp add --scope user codex -- codex mcp-server -c sandbox_mode=read-only -c approval_policy=never'
@@ -617,6 +653,7 @@ if ($Module.Count -eq 0 -and -not $CleanBackups) {
 }
 
 if ($DryRun) { Write-Warn 'DRY RUN — no changes will be made.' }
+if ($Backup) { Write-Warn 'BACKUP MODE — pulling live copies back into the repo. Review with `git diff` before committing.' }
 
 foreach ($m in $Module) {
     switch ($m) {
@@ -645,3 +682,4 @@ if ($CleanBackups) { Remove-OldBackups }
 
 Write-Host ''
 Write-Ok 'Done.'
+if ($Backup -and -not $DryRun) { Write-Info "Review the captured drift: git -C `"$Dotfiles`" diff" }
