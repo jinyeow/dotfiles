@@ -42,8 +42,31 @@ changes back by hand (or just edit the repo file) to go live → repo.
 | `effortLevel` | `high` | Default thinking effort |
 | `theme` | `dark-ansi` | Palette-based dark theme — readable under Zellij on Windows Terminal, where `auto` + truecolor diff backgrounds collapse into the pane (see `docs/zellij-windows-terminal-colors.md`) |
 | `editorMode` | `vim` | Vim keybindings in the prompt input |
-| `agentPushNotifEnabled` | `true` | Mobile push notifications |
+| `agentPushNotifEnabled` | `true` | Mobile push notifications (cloud/background agents — not local CLI) |
+| `preferredNotifChannel` | `terminal_bell` | Built-in bell on the **needs-input** notification → marks the Zellij tab |
+| `hooks` | Stop, Notification | Local completion alert — see Notifications |
 | `statusLine` | command | Runs `statusline-command.sh` |
+
+## Notifications
+
+Alerts when Claude finishes (`Stop`) or is waiting on you (`Notification`), tuned for
+the `Claude → Zellij → Windows Terminal` stack:
+
+- **Audible beep** is the most reliable signal. Both hooks run `pwsh -NoProfile -Command
+  "[console]::beep()"`, which goes through the system speaker and bypasses Zellij and
+  Windows Terminal — so it reaches you even when WT is unfocused or minimized, provided audio
+  is on (a muted/absent audio endpoint silences it).
+- **Zellij tab mark** is the in-multiplexer indicator. A terminal bell (`BEL`) emitted
+  inside a pane is **caught by Zellij** (it flags the tab) and is **not** forwarded out to
+  Windows Terminal — so WT's own bell/taskbar-flash style never fires from inside Zellij.
+  The tab mark is reliable on **needs-input** (Claude emits the `BEL` itself via
+  `preferredNotifChannel: terminal_bell`) and best-effort on **done** (the `Stop` hook
+  writes `[char]7`; whether a hook subprocess's `BEL` reaches the pane is not guaranteed).
+
+PowerShell-native by design (this is a pwsh machine) — no `bash`/`printf '\a'`/`/dev/tty`.
+For a visual toast on completion, replace the `Stop` hook's beep with
+`New-BurntToastNotification -Text 'Claude Code','Done'` (needs `Install-Module BurntToast`);
+the `Notification` hook still beeps unless you swap it too.
 
 ## Statusline
 
