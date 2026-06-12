@@ -53,6 +53,7 @@ Codex reads this file directly as `~/.codex/AGENTS.md`.
 - Use TDD for ALL code creation and changes: write the failing test first and confirm it fails (RED), then the minimal code to make it pass (GREEN), then refactor. One test at a time (vertical slices), never all-tests-then-all-code.
 - For bug fixes, first write a test that reproduces the bug (confirm RED), then apply the fix.
 - Define verifiable success criteria up front so you can loop to done without re-checking with me. For multi-step tasks, state a brief plan first (each step paired with how you'll verify it).
+- Assert on the returned result/state whenever the behaviour is observable in the function's contract. Use mock-invocation verification (Pester `Should -Invoke`/`Assert-MockCalled`, Jest spies, etc.) ONLY for behaviour not visible in the return: side effects with no return value, `-WhatIf`/no-op guarantees, and boundary parameters passed to an external command where wrong args are a real bug. Never both return a value from a mock AND verify its invocation for the same behaviour — that is redundant; assert the result instead.
 
 ## Linting
 
@@ -63,7 +64,8 @@ Codex reads this file directly as `~/.codex/AGENTS.md`.
 
 - Prefer non-interactive commands with flags over interactive ones.
 - Always use non-interactive git diff: `git --no-pager diff` or `git diff | cat`.
-- Prefer `rg` for searching code and files.
+- Display diffs with `delta --side-by-side` (e.g. `git -c core.pager='delta --side-by-side' diff`).
+- Prefer `fd` for finding files and `rg` for searching code/content; avoid `find`. Both are installed.
 
 ## Documentation
 
