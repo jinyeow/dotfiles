@@ -23,8 +23,8 @@ The PowerShell profile (`powershell/Microsoft.PowerShell_profile.ps1`) is a sing
 
 | Script | Target | Notes |
 |---|---|---|
-| `setup.ps1` | Windows | Module-based installer. `-Module git,neovim,vim,powershell,zellij,yazi,tig,fzf,curl,claude,codex` or `-Module all`. Supports `-DryRun`. |
-| `setup.sh` | Linux / WSL | Module-based installer. `-m git,neovim,vim,powershell,bash,tig,tmux,fzf,curl` or `-m all`. Supports `--dry-run`. (No `codex` module yet — Windows only.) |
+| `setup.ps1` | Windows | Module-based installer. `-Module neovim,vim,powershell,git,bash,tig,tmux,zellij,yazi,curl,claude,codex,lazygit,windowsterminal,bat,vscode,winget` or `-Module all`. Supports `-DryRun`. |
+| `setup.sh` | Linux / WSL | Module-based installer. `-m neovim,vim,powershell,git,bash,tig,tmux,zellij,curl,claude,lazygit,windowsterminal` or `-m all`. Supports `--dry-run`. (No `codex` module yet — Windows only.) |
 
 ## PowerShell profile architecture
 

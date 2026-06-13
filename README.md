@@ -39,7 +39,7 @@ cd $HOME/dotfiles
 .\setup.ps1 -Module all -DryRun  # preview without changes
 ```
 
-Available modules: `git`, `neovim`, `vim`, `powershell`, `tig`, `zellij`, `curl`, `lazygit`, `windowsterminal`, `bat`, `vscode`, `winget`
+Available modules: `neovim`, `vim`, `powershell`, `git`, `bash`, `tig`, `tmux`, `zellij`, `yazi`, `curl`, `claude`, `codex`, `lazygit`, `windowsterminal`, `bat`, `vscode`, `winget`
 
 ### Linux / WSL
 
@@ -51,7 +51,7 @@ cd ~/dotfiles
 ./setup.sh -m all --dry-run    # preview without changes
 ```
 
-Available modules: `git`, `neovim`, `vim`, `powershell`, `bash`, `tig`, `tmux`, `zellij`, `fzf`, `curl`, `lazygit`
+Available modules: `neovim`, `vim`, `powershell`, `git`, `bash`, `tig`, `tmux`, `zellij`, `curl`, `claude`, `lazygit`, `windowsterminal`
 
 ## Requirements
 
