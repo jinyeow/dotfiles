@@ -36,15 +36,20 @@ Install-Package 'ZedIndustries.Zed'
 
 # ── Terminal / shell utilities ────────────────────────────────────────────────
 Write-Host "`n=== Terminal / shell utilities ===" -ForegroundColor Green
+Install-Package 'Microsoft.PowerShell'
 Install-Package 'Microsoft.WindowsTerminal'
 Install-Package 'Zellij.Zellij'
+Install-Package 'sxyazi.yazi'
 Install-Package 'sharkdp.bat'
 Install-Package 'BurntSushi.ripgrep.GNU'
 Install-Package 'dandavison.delta'
 Install-Package 'sharkdp.fd'
 Install-Package 'ajeetdsouza.zoxide'
 Install-Package 'uutils.coreutils'
+Install-Package 'eza-community.eza'
+Install-Package 'chmln.sd'
 Install-Package 'jqlang.jq'
+Install-Package 'MikeFarah.yq'
 
 # ── Git ───────────────────────────────────────────────────────────────────────
 Write-Host "`n=== Git ===" -ForegroundColor Green
@@ -65,6 +70,7 @@ Install-Package 'astral-sh.uv'
 Install-Package 'Erlang.ErlangOTP'
 Install-Package 'Gleam.Gleam'
 Install-Package 'odin-lang.Odin'
+Install-Package 'Microsoft.DotNet.SDK.10'
 
 # ── Azure / cloud ─────────────────────────────────────────────────────────────
 Write-Host "`n=== Azure / cloud ===" -ForegroundColor Green
@@ -74,6 +80,7 @@ Install-Package 'Microsoft.Bicep'
 Install-Package 'Pulumi.Pulumi'
 Install-Package 'Hashicorp.Terraform'
 Install-Package 'Infracost.Infracost'
+Install-Package 'Microsoft.FoundryLocal'
 
 # ── Containers / Kubernetes ───────────────────────────────────────────────────
 Write-Host "`n=== Containers / Kubernetes ===" -ForegroundColor Green
@@ -95,6 +102,9 @@ Install-Package 'PuTTY.PuTTY'
 # ── Windows utilities ─────────────────────────────────────────────────────────
 Write-Host "`n=== Windows utilities ===" -ForegroundColor Green
 Install-Package 'Microsoft.PowerToys'
+Install-Package 'Microsoft.CmdPalAzureExtension'
+Install-Package 'Microsoft.CmdPalGitHubExtension'
+Install-Package 'davidegiacometti.EdgeFavoritesForCmdPal'
 Install-Package 'Greenshot.Greenshot'
 Install-Package 'AntoineAflalo.SoundSwitch'
 Install-Package 'GermanCoding.SyncTrayzor'
@@ -108,10 +118,13 @@ Install-Package 'OBSProject.OBSStudio'
 Install-Package 'Obsidian.Obsidian'
 Install-Package 'Anki.Anki'
 Install-Package 'Anthropic.Claude'
+Install-Package 'Discord.Discord'
+Install-Package 'Tencent.WeChat.Universal'
+Install-Package 'Google.GoogleDrive'
 
 # ── Browsers ──────────────────────────────────────────────────────────────────
 Write-Host "`n=== Browsers ===" -ForegroundColor Green
-Install-Package 'Mozilla.Firefox.en-CA'
+Install-Package 'Mozilla.Firefox'
 Install-Package 'Zen-Team.Zen-Browser'
 
 # ── WSL ───────────────────────────────────────────────────────────────────────

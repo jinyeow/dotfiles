@@ -2,8 +2,12 @@
 
 Curated package list for bootstrapping a new Windows machine. Covers dev tools,
 editors, terminal utilities, languages, cloud/Azure tooling, containers, and
-general utilities. Excludes games, hardware software, system runtimes, and
-work-specific tools.
+general utilities, plus a few daily-driver personal apps (communication, cloud
+sync). Excludes games, hardware software, system runtimes, and work-specific
+tools.
+
+`packages.ps1` and `packages.json` are kept **identical** — the same package set
+in both. The `.ps1` installs them; the `.json` is for `winget import`.
 
 ## Usage
 
@@ -44,7 +48,12 @@ winget search <tool-name>
 ## What's not included
 
 - **MSIX-only apps** (Ditto, DevToys, EarTrumpet) — install from the Microsoft Store
-- **Games** — Steam, Epic, Battle.net, etc.
+- **Games & launchers** — Steam, Epic, Battle.net, Riot, etc.
 - **Hardware software** — ASUS Armoury, Logitech G HUB, AMD Software, etc.
-- **Work-specific tools** — Azure VPN Client, Cosmos DB Emulator, Webex, etc.
+- **Work-specific tools** — Azure VPN Client, Cosmos DB / Storage Emulator, Webex, Teams, etc.
 - **.NET / VC++ runtimes** — installed automatically as dependencies
+- **Duplicate SDK versions** — keep only the latest of a given SDK (e.g. .NET SDK 10, not 7/8/9)
+- **Secondary browsers** — beyond the curated Firefox + Zen (no Chrome, Edge, etc.)
+- **Standalone media players & taggers** — Jellyfin, Sonixd, Mp3tag, etc.
+- **Antivirus / security suites** — Bitdefender, etc. (use the OS default)
+- **Tools that duplicate a curated CLI** — e.g. Git GUIs (Git Extensions) when lazygit/jj are already in
