@@ -1,5 +1,10 @@
 # Handoff — next session
 
+> **Prior session (2026-06-13):** winget package list curated and committed
+> (`9f9c26a`). `packages.ps1` and `packages.json` are now kept **identical**
+> (72 packages); curation rules live in `winget/README.md`. No follow-up — the
+> task below is unchanged and remains the next priority.
+
 ## Task: scheduled task/workflow to sync Claude Code settings → dotfiles
 
 **Goal:** automatically pull the live `~/.claude` config back into the repo's
