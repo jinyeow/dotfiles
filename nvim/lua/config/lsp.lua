@@ -84,6 +84,17 @@ if vim.fn.executable('marksman') == 1 then
   vim.lsp.enable('marksman')
 end
 
+-- C# / .NET (Roslyn) — only when the dotnet SDK is available
+if vim.fn.executable('dotnet') == 1 then
+  require('roslyn').setup({})  -- registers + starts roslyn on the `cs` filetype
+  vim.lsp.config('roslyn', {
+    settings = {
+      -- openFiles (not fullSolution) keeps background analysis cheap — perf-first
+      ['csharp|background_analysis'] = { dotnet_analyzer_diagnostics_scope = 'openFiles' },
+    },
+  })
+end
+
 -- Bicep (only if path is set)
 if _G.user_config.bicep_lsp_path ~= '' then
   vim.api.nvim_create_autocmd({ 'BufNewFile', 'BufRead' }, {

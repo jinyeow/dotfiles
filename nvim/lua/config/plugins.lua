@@ -4,8 +4,10 @@ vim.g.maplocalleader = '\\'
 if _G.user_config.profile == 'minimal' then return end
 
 local specs = {
-  'https://github.com/nvim-treesitter/nvim-treesitter',
-  'https://github.com/nvim-treesitter/nvim-treesitter-textobjects',
+  -- Pinned to master: the main branch is a from-scratch rewrite that drops the
+  -- configs.setup{} module framework this config relies on (repo archived 2026-04).
+  { src = 'https://github.com/nvim-treesitter/nvim-treesitter', version = 'master' },
+  { src = 'https://github.com/nvim-treesitter/nvim-treesitter-textobjects', version = 'master' },
   'https://github.com/junegunn/fzf',
   -- fzf-lua: Neovim-native fzf frontend. Uses the same fzf binary as the shell
   -- integration (rfv/frg in the PS profile). The 'fzf-vim' profile creates the
@@ -16,9 +18,11 @@ local specs = {
   'https://github.com/tpope/vim-fugitive',
   'https://github.com/kylechui/nvim-surround',
   'https://github.com/stevearc/oil.nvim',
+  'https://github.com/refractalize/oil-git-status.nvim',
   'https://github.com/stevearc/aerial.nvim',
   'https://github.com/catppuccin/nvim',
   'https://github.com/neovim/nvim-lspconfig',
+  'https://github.com/seblyng/roslyn.nvim',
   'https://github.com/b0o/schemastore.nvim',
   'https://github.com/lewis6991/gitsigns.nvim',
   'https://github.com/MeanderingProgrammer/render-markdown.nvim',

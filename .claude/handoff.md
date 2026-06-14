@@ -1,9 +1,14 @@
 # Handoff — next session
 
-> **Prior session (2026-06-13):** winget package list curated and committed
-> (`9f9c26a`). `packages.ps1` and `packages.json` are now kept **identical**
-> (72 packages); curation rules live in `winget/README.md`. No follow-up — the
-> task below is unchanged and remains the next priority.
+> **Prior session (2026-06-14):** Neovim C#/.NET support added — `roslyn.nvim`
+> LSP (gated on `dotnet`), `c_sharp` Treesitter parser, and CLI test/run/build
+> keymaps in `nvim/after/ftplugin/cs.lua`. Also fixed a latent issue:
+> `nvim-treesitter` was on the archived `main` branch while `treesitter.lua`
+> targets the `master` API — **pinned both treesitter plugins to `master`**,
+> installed **Zig** as the parser compiler, and pre-built all 16 parsers. Added
+> `oil-git-status.nvim` for per-file git signs in oil. Prereqs installed:
+> `dotnet tool install -g roslyn-language-server --prerelease`, `winget install
+> zig.zig`. No follow-up — the task below is unchanged and remains the next priority.
 
 ## Task: scheduled task/workflow to sync Claude Code settings → dotfiles
 

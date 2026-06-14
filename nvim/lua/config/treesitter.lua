@@ -10,6 +10,7 @@ configs.setup({
     'html', 'css', 'json', 'bash',
     'markdown', 'markdown_inline',
     'yaml', 'powershell', 'bicep',
+    'c_sharp',
   },
   auto_install = false,
   highlight = {

@@ -11,6 +11,8 @@ manager and native LSP API (`vim.lsp.config` / `vim.lsp.enable`).
 | Git | Plugin auto-install | — |
 | [ripgrep](https://github.com/BurntSushi/ripgrep) | FZF live grep | `winget install BurntSushi.ripgrep.MSVC` |
 | A [Nerd Font](https://www.nerdfonts.com/) | Diagnostic and gitsigns icons | — |
+| [Zig](https://ziglang.org/) | C compiler for building Treesitter parsers (used as `zig cc`) | `winget install zig.zig` |
+| .NET SDK + roslyn-language-server | C# LSP (optional, only if editing C#) | `dotnet tool install -g roslyn-language-server --prerelease` |
 
 ## Structure
 
@@ -20,6 +22,8 @@ nvim/
 ├── install.sh         # standalone Linux installer (legacy)
 ├── install.ps1        # standalone Windows installer (legacy)
 ├── install.py         # standalone cross-platform installer (legacy)
+├── after/ftplugin/
+│   └── cs.lua         # buffer-local C# test/run/build + inlay-hint toggle
 └── lua/config/
     ├── performance.lua
     ├── user.lua
@@ -110,8 +114,8 @@ Falls back to sunrise/sunset window if detection fails.
 
 | Plugin | Purpose |
 |---|---|
-| nvim-treesitter | Syntax highlighting and text objects |
-| nvim-treesitter-textobjects | Function/class text objects |
+| nvim-treesitter | Syntax highlighting and text objects (pinned to `master`; needs Zig to build parsers) |
+| nvim-treesitter-textobjects | Function/class text objects (pinned to `master`) |
 | fzf + fzf.vim | Fuzzy finding (files, grep, buffers) |
 | vim-fugitive | Git command wrapper |
 | vim-commentary | Commenting (`gcc`) |
@@ -119,6 +123,8 @@ Falls back to sunrise/sunset window if detection fails.
 | catppuccin | Colour scheme |
 | mini.surround | Surround text objects |
 | nvim-lspconfig | LSP server definitions |
+| roslyn.nvim | C# / .NET LSP (Roslyn; needs `dotnet` on PATH) |
+| oil-git-status.nvim | Per-file git status in oil's sign columns |
 | schemastore.nvim | JSON/YAML schema catalogue |
 | gitsigns.nvim | In-buffer git signs and hunk actions |
 | render-markdown.nvim | In-buffer markdown rendering |
@@ -133,6 +139,7 @@ Falls back to sunrise/sunset window if detection fails.
 | marksman | Markdown |
 | bicep | Bicep (requires `bicep_lsp_path` in user.lua) |
 | powershell_es | PowerShell (requires `pwsh_bundle_path` in user.lua) |
+| roslyn | C# / .NET (auto-enabled when `dotnet` is on PATH) |
 
 ## Filetype detection
 
@@ -197,6 +204,15 @@ The `azure-pipelines` filetype has no Treesitter grammar of its own, so `autocmd
 | `<leader>ca` | Code action |
 | `<leader>d` | Diagnostics float |
 | `[d` / `]d` | Previous / next diagnostic |
+
+### C# / .NET (in `.cs` buffers)
+
+| Key | Action |
+|---|---|
+| `<leader>nt` | `dotnet test` in a terminal split |
+| `<leader>nr` | `dotnet run` in a terminal split |
+| `<leader>nb` | `dotnet build` in a terminal split |
+| `<leader>th` | Toggle LSP inlay hints |
 
 ### Fugitive (full profile only)
 

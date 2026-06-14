@@ -93,8 +93,14 @@ if oil_ok then
   oil.setup({
     default_file_explorer = true,
     view_options = { show_hidden = true },
+    -- yes:2 reserves the two sign columns oil-git-status draws into
+    win_options = { signcolumn = 'yes:2' },
   })
 end
+
+-- oil-git-status: per-file git status in oil's sign columns (left = index, right = working tree)
+local ogs_ok, oil_git_status = pcall(require, 'oil-git-status')
+if ogs_ok then oil_git_status.setup() end
 
 -- aerial.nvim: code outline sidebar + symbol navigation
 local aerial_ok, aerial = pcall(require, 'aerial')
