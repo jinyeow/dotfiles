@@ -44,6 +44,7 @@ Install-Package 'sharkdp.bat'
 Install-Package 'BurntSushi.ripgrep.GNU'
 Install-Package 'dandavison.delta'
 Install-Package 'sharkdp.fd'
+Install-Package 'junegunn.fzf'
 Install-Package 'ajeetdsouza.zoxide'
 Install-Package 'uutils.coreutils'
 Install-Package 'eza-community.eza'
@@ -55,6 +56,7 @@ Install-Package 'MikeFarah.yq'
 Write-Host "`n=== Git ===" -ForegroundColor Green
 Install-Package 'Git.Git'
 Install-Package 'GitHub.cli'
+Install-Package 'GitTools.GitVersion'
 Install-Package 'jj-vcs.jj'
 Install-Package 'JesseDuffield.lazygit'
 Install-Package 'JesseDuffield.Lazydocker'
@@ -71,6 +73,7 @@ Install-Package 'Erlang.ErlangOTP'
 Install-Package 'Gleam.Gleam'
 Install-Package 'odin-lang.Odin'
 Install-Package 'Microsoft.DotNet.SDK.10'
+Install-Package 'Microsoft.NuGet'
 
 # ── Azure / cloud ─────────────────────────────────────────────────────────────
 Write-Host "`n=== Azure / cloud ===" -ForegroundColor Green
@@ -98,6 +101,9 @@ Install-Package 'JohnMacFarlane.Pandoc'
 Install-Package 'ShiningLight.OpenSSL.Dev'
 Install-Package 'ar51an.iPerf3'
 Install-Package 'PuTTY.PuTTY'
+Install-Package 'cURL.cURL'
+Install-Package 'Gyan.FFmpeg'
+Install-Package 'yt-dlp.yt-dlp'
 
 # ── Windows utilities ─────────────────────────────────────────────────────────
 Write-Host "`n=== Windows utilities ===" -ForegroundColor Green
