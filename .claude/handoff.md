@@ -1,22 +1,31 @@
 # Handoff — next session
 
-> **Prior session (2026-06-15):** PowerShell profile **startup optimization**.
-> Phase 1 (blocking, time-to-prompt) cut ~706ms → ~528ms by deferring
-> `Initialize-AzTimer` (+ its `PowerShell.Exiting` cleanup) to Phase 2a, the
-> az/zellij tab-completers to Phase 2b, and the eza `ll`/`la`/`lt` helpers +
-> fd-backed `FZF_*_COMMAND` vars to Phase 2a; dark-mode detection now uses
-> `[Microsoft.Win32.Registry]::GetValue` instead of spawning `reg.exe`. Two
-> attempted micro-opts (IsAdmin `WindowsBuiltInRole` enum, module-cache
-> `[IO.Directory]::Exists`) measured **net-zero** — the cost was JIT/first-call
-> discovery tax that just relocates between sections — and were reverted.
-> **Hard finding:** the pwsh *interactive* floor is ~493–600ms on this machine
-> and is immovable, so a sub-600ms **total** time-to-prompt is unreachable; only
-> Phase 1 is controllable (details in memory `project_pwsh_startup`). Also
-> **removed Chocolatey** from the profile + docs, and deleted 5 stale
-> `*.bak`/`*.old` backups (>7 days). Codex-reviewed — 2 findings applied
-> (Exiting-handler reload idempotency; CLAUDE.md timing inconsistency).
-> **3 commits on `main`, NOT yet pushed.** No follow-up — the task below is
-> unchanged and remains the next priority.
+> **Prior session (2026-06-15):** three unrelated items.
+> 1. **Diagnosed `<leader>ff` "fzf is not a valid executable"** in nvim — root
+>    cause was a **stale environment**, not config/install. fzf moved choco →
+>    winget (new PATH dir) during the choco decommission, so any terminal /
+>    Zellij / nvim session started *before* the PATH refresh can't see it. fzf
+>    is fine (winget `junegunn.fzf 0.73.1`, on the persistent User PATH; nvim's
+>    `<leader>ff` → `FzfLua files` → shells out to `fzf`). **Fix: restart the
+>    session** that owns nvim. Verify inside the broken nvim with
+>    `:echo exepath('fzf')` (empty = stale PATH).
+> 2. **Chocolatey leftover** `C:\ProgramData\chocolatey` — deleted everything
+>    except `helpers\Chocolatey.PowerShell.dll`, which is **access-denied to a
+>    non-elevated shell** (owner `BUILTIN\Administrators`; sibling files deleted
+>    fine, so it's file-specific permission, not a broad lock). **PENDING:** run
+>    `Remove-Item -Recurse -Force 'C:\ProgramData\chocolatey'` from an
+>    **elevated** pwsh (or let the SYSTEM `CleanupChocoLeftover` task clear it on
+>    next boot), then confirm `Test-Path` is `False`.
+> 3. **New nvim feature — shipped:** `<leader>A` source↔test alternate toggle
+>    for C#/PowerShell in `nvim/lua/config/autocmds.lua` (lazy-bound to
+>    `cs`/`ps1` buffers). C# uses the Microsoft/xUnit layout
+>    (`src/<Proj>/Foo.cs ↔ tests/<Proj>.Tests/FooTests.cs`), PowerShell the
+>    Pester mirror (`Foo.ps1 ↔ Foo.Tests.ps1`); project root resolved via
+>    `vim.fs.root(abs, { '.git', '.jj' })` (`.jj` for non-colocated jj repos);
+>    open-or-create with lazy dir creation on first write. 3 Codex passes (final
+>    clean) + `loadfile` parse check. Committed + pushed (`4531566`).
+>
+> The task below (Claude settings sync) is unchanged and remains the next priority.
 
 ## Task: scheduled task/workflow to sync Claude Code settings → dotfiles
 
