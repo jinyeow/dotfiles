@@ -1,14 +1,22 @@
 # Handoff — next session
 
-> **Prior session (2026-06-14):** Neovim C#/.NET support added — `roslyn.nvim`
-> LSP (gated on `dotnet`), `c_sharp` Treesitter parser, and CLI test/run/build
-> keymaps in `nvim/after/ftplugin/cs.lua`. Also fixed a latent issue:
-> `nvim-treesitter` was on the archived `main` branch while `treesitter.lua`
-> targets the `master` API — **pinned both treesitter plugins to `master`**,
-> installed **Zig** as the parser compiler, and pre-built all 16 parsers. Added
-> `oil-git-status.nvim` for per-file git signs in oil. Prereqs installed:
-> `dotnet tool install -g roslyn-language-server --prerelease`, `winget install
-> zig.zig`. No follow-up — the task below is unchanged and remains the next priority.
+> **Prior session (2026-06-15):** PowerShell profile **startup optimization**.
+> Phase 1 (blocking, time-to-prompt) cut ~706ms → ~528ms by deferring
+> `Initialize-AzTimer` (+ its `PowerShell.Exiting` cleanup) to Phase 2a, the
+> az/zellij tab-completers to Phase 2b, and the eza `ll`/`la`/`lt` helpers +
+> fd-backed `FZF_*_COMMAND` vars to Phase 2a; dark-mode detection now uses
+> `[Microsoft.Win32.Registry]::GetValue` instead of spawning `reg.exe`. Two
+> attempted micro-opts (IsAdmin `WindowsBuiltInRole` enum, module-cache
+> `[IO.Directory]::Exists`) measured **net-zero** — the cost was JIT/first-call
+> discovery tax that just relocates between sections — and were reverted.
+> **Hard finding:** the pwsh *interactive* floor is ~493–600ms on this machine
+> and is immovable, so a sub-600ms **total** time-to-prompt is unreachable; only
+> Phase 1 is controllable (details in memory `project_pwsh_startup`). Also
+> **removed Chocolatey** from the profile + docs, and deleted 5 stale
+> `*.bak`/`*.old` backups (>7 days). Codex-reviewed — 2 findings applied
+> (Exiting-handler reload idempotency; CLAUDE.md timing inconsistency).
+> **3 commits on `main`, NOT yet pushed.** No follow-up — the task below is
+> unchanged and remains the next priority.
 
 ## Task: scheduled task/workflow to sync Claude Code settings → dotfiles
 
