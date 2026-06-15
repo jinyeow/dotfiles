@@ -213,6 +213,7 @@ The `azure-pipelines` filetype has no Treesitter grammar of its own, so `autocmd
 | `<leader>nr` | `dotnet run` in a terminal split |
 | `<leader>nb` | `dotnet build` in a terminal split |
 | `<leader>th` | Toggle LSP inlay hints |
+| `<leader>A` | Alternate source ⇄ test file (also in `.ps1` buffers) |
 
 ### Fugitive (full profile only)
 
