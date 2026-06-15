@@ -133,11 +133,14 @@ function Get-AzAsyncResult {
 
 # --- Az context auto-refresh timer (60s) ------------------------------------
 function Initialize-AzTimer {
-    # Idempotent: unregister existing before re-registering
-    # NOTE: Get-EventSubscriber -SourceIdentifier does NOT support wildcards,
-    #       so we filter with Where-Object. Use -Force to find -SupportEvent subs.
+    # Idempotent: unregister existing before re-registering. Runs *before* the Az
+    # guard so a reload never leaves a stale PowerShell.Exiting handler behind when
+    # Az has since become unavailable (the guard would otherwise return early).
+    # NOTE: Get-EventSubscriber -SourceIdentifier does NOT support wildcards, so we
+    #       filter with Where-Object. -Force finds hidden -SupportEvent subscribers.
     Get-EventSubscriber -Force -ErrorAction SilentlyContinue |
-        Where-Object { $_.SourceIdentifier -like 'Profile.Az*' } |
+        Where-Object { $_.SourceIdentifier -like 'Profile.Az*' -or
+                       ($_.SourceIdentifier -eq 'PowerShell.Exiting' -and $_.SupportEvent) } |
         Unregister-Event -Force
 
     # Dispose previous timer object if reloading profile
@@ -148,6 +151,25 @@ function Initialize-AzTimer {
     }
 
     if (-not $global:ProfileModules['Az.Accounts']) { return }
+
+    # Clean up timer + runspace on shell exit. Registered here (Phase 2a, when the
+    # timer is created) rather than at profile load — the first eventing call pays
+    # the eventing-subsystem init (~86ms cold), so keeping it off Phase 1 leaves
+    # only the mandatory OnIdle registration to absorb that one-time cost. The
+    # matching unregister lives in the top cleanup block above (before the guard).
+    Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action {
+        if ($global:PromptCache.AzTimer) {
+            $global:PromptCache.AzTimer.Stop()
+            $global:PromptCache.AzTimer.Dispose()
+        }
+        if ($global:PromptCache.AzRunspace) {
+            try {
+                $global:PromptCache.AzRunspace.PowerShell.Stop()
+                $global:PromptCache.AzRunspace.PowerShell.Dispose()
+                $global:PromptCache.AzRunspace.Runspace.Dispose()
+            } catch {}
+        }
+    } -SupportEvent | Out-Null
 
     $timer = [System.Timers.Timer]::new(60000)  # 60 seconds
     $timer.AutoReset = $true
@@ -170,25 +192,6 @@ function Initialize-AzTimer {
     # Fire initial refresh immediately
     Start-AzContextRefresh
 }
-
-# Clean up on exit (idempotent for . $PROFILE reloads)
-# -SupportEvent subscribers are hidden; -Force is required to find and unregister them
-Get-EventSubscriber -Force -ErrorAction SilentlyContinue |
-    Where-Object { $_.SourceIdentifier -eq 'PowerShell.Exiting' -and $_.SupportEvent } |
-    Unregister-Event -Force
-Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action {
-    if ($global:PromptCache.AzTimer) {
-        $global:PromptCache.AzTimer.Stop()
-        $global:PromptCache.AzTimer.Dispose()
-    }
-    if ($global:PromptCache.AzRunspace) {
-        try {
-            $global:PromptCache.AzRunspace.PowerShell.Stop()
-            $global:PromptCache.AzRunspace.PowerShell.Dispose()
-            $global:PromptCache.AzRunspace.Runspace.Dispose()
-        } catch {}
-    }
-} -SupportEvent | Out-Null
 
 # --- Git helpers (synchronous) ----------------------------------------------
 function Get-GitPromptInfo {
@@ -616,5 +619,6 @@ function prompt {
     return $out.ToString()
 }
 
-# --- Initialize async Az context -------------------------------------------
-Initialize-AzTimer
+# --- Az context init is deferred to Phase 2a (Initialize-DeferredProfile) ---
+# Initialize-AzTimer is NOT called at profile load — runspace.Open() + eventing
+# cost ~115ms cold. The main profile calls it on first idle to keep startup fast.

@@ -34,10 +34,7 @@ The profile is structured in three phases to keep startup fast:
 Single `PSModulePath` scan into `$global:ProfileModules` cache, PSReadLine
 with `PredictionSource History`, all key bindings, prompt definition.
 Sets `RIPGREP_CONFIG_PATH` and `FZF_DEFAULT_OPTS_FILE` pointing at repo files
-(no copy needed). When `fd` is present, points fzf's file/dir pickers
-(`FZF_DEFAULT_COMMAND`, `FZF_CTRL_T_COMMAND`, `FZF_ALT_C_COMMAND`) at it — kept
-separate from `ripgreprc` so the picker stays `.gitignore`-clean while rg search
-remains exhaustive. Reads `AppsUseLightTheme` from the registry once into
+(no copy needed). Reads `AppsUseLightTheme` from the registry once into
 `$_isDark`, then sets `FZF_DEFAULT_OPTS`, `LG_CONFIG_FILE` (lazygit base +
 theme), and `EZA_CONFIG_DIR` (eza theme dir) to catppuccin mocha or latte —
 mirrors nvim's theme detection.
@@ -45,16 +42,22 @@ Sets `_ZO_RESOLVE_SYMLINKS=1` so zoxide stores resolved paths; prevents
 duplicate database entries when navigating through junctions.
 
 **Phase 2a — first idle:**
-PSFzf, zoxide, upgrade to `PredictionSource HistoryAndPlugin`. Guarded by
+PSFzf, zoxide, upgrade to `PredictionSource HistoryAndPlugin`, the fd-backed
+`FZF_*_COMMAND` vars (kept separate from `ripgreprc` so pickers stay
+`.gitignore`-clean while rg search stays exhaustive), the eza `ll`/`la`/`lt`
+helpers, and the Azure context timer (`Initialize-AzTimer`, moved off the load
+path). Guarded by
 `$global:ProfileDeferredDone`. Interactive tools needed immediately.
 
 **Phase 2b — next idle:**
-git-completion (+ `g` alias registration), WinGet CommandNotFound, Chocolatey.
-Guarded by `$global:ProfileDeferredSecondaryDone`. Split from 2a so the first
-keypress isn't blocked by their combined ~2.7s import cost.
+az + zellij tab-completers, git-completion (+ `g` alias registration), WinGet
+CommandNotFound. Guarded by `$global:ProfileDeferredSecondaryDone`. Split from 2a
+so the first keypress isn't blocked by their import cost.
 
 **Phase 3 — async (background runspace):**
-Azure context refresh on a 60-second timer, driven from `Set-Prompt.ps1`.
+Azure context refresh on a 60-second timer. The timer is created in Phase 2a
+(`Initialize-AzTimer`); the refresh itself runs in a background runspace wired up
+in `Set-Prompt.ps1`.
 
 ## Key bindings
 

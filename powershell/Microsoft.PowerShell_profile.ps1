@@ -81,43 +81,9 @@ Set-PSReadLineKeyHandler -Chord 'Ctrl+?' -ScriptBlock { Show-Hotkeys | Out-Null;
 # --- Prompt -----------------------------------------------------------------
 . "$(Split-Path -Path $PROFILE)/Profile/Set-Prompt.ps1"
 
-# --- Az CLI tab completion --------------------------------------------------
-if (Get-Command -Name az -ErrorAction Ignore) {
-    Register-ArgumentCompleter -Native -CommandName az -ScriptBlock {
-        param($commandName, $wordToComplete, $cursorPosition)
-        $completion_file = New-TemporaryFile
-        $env:ARGCOMPLETE_USE_TEMPFILES = 1
-        $env:_ARGCOMPLETE_STDOUT_FILENAME = $completion_file
-        $env:COMP_LINE = $wordToComplete
-        $env:COMP_POINT = $cursorPosition
-        $env:_ARGCOMPLETE = 1
-        $env:_ARGCOMPLETE_SUPPRESS_SPACE = 0
-        $env:_ARGCOMPLETE_IFS = "`n"
-        $env:_ARGCOMPLETE_SHELL = 'powershell'
-        az 2>&1 | Out-Null
-        Get-Content $completion_file | Sort-Object | ForEach-Object {
-            [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
-        }
-        Remove-Item $completion_file, Env:\_ARGCOMPLETE_STDOUT_FILENAME, Env:\ARGCOMPLETE_USE_TEMPFILES, Env:\COMP_LINE, Env:\COMP_POINT, Env:\_ARGCOMPLETE, Env:\_ARGCOMPLETE_SUPPRESS_SPACE, Env:\_ARGCOMPLETE_IFS, Env:\_ARGCOMPLETE_SHELL
-    }
-}
-
-# --- Zellij session tab completion -----------------------------------------
-if (Get-Command -Name zellij -ErrorAction Ignore) {
-    Register-ArgumentCompleter -Native -CommandName zellij -ScriptBlock {
-        param($wordToComplete, $commandAst, $cursorPosition)
-        $sessionCmds = 'attach', 'a', 'kill-session', 'k', 'delete-session', 'd'
-        $elements = $commandAst.CommandElements
-        if ($elements.Count -ge 2 -and $elements[1].Value -in $sessionCmds) {
-            zellij list-sessions --no-formatting 2>$null |
-                ForEach-Object { ($_ -split '\s+')[0] } |
-                Where-Object { $_ -like "$wordToComplete*" } |
-                ForEach-Object {
-                    [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
-                }
-        }
-    }
-}
+# Native tab-completers for az + zellij are registered in Phase 2b
+# (Initialize-DeferredProfileSecondary) — they only matter once you tab-complete,
+# so registering them at load just delayed the first prompt.
 
 # --- Aliases ----------------------------------------------------------------
 if ($PSVersionTable.PSVersion.Major -eq 5) {
@@ -130,7 +96,12 @@ Set-Alias gcif Get-ChildItem -Force
 
 # --- Functions --------------------------------------------------------------
 function Get-IsDarkMode {
-    (reg query 'HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' /v AppsUseLightTheme 2>$null) -match '0x0'
+    # AppsUseLightTheme: 0 = dark, 1 = light. [Microsoft.Win32.Registry]::GetValue
+    # reads in-process; the old `reg query` spawned reg.exe (~37ms). Missing value
+    # defaults to 1 (light), matching the old no-match behaviour.
+    [Microsoft.Win32.Registry]::GetValue(
+        'HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize',
+        'AppsUseLightTheme', 1) -eq 0
 }
 
 function gst { git status }
@@ -141,13 +112,8 @@ function which ($command) {
 function Start-AdminSession { Start-Process wt -Verb RunAs }
 Set-Alias -Name su -Value Start-AdminSession
 
-# eza — modern ls. Native ls/Get-ChildItem kept for object pipelines; these are
-# the interactive listing helpers: long+git+icons, all, and a 2-level tree.
-if (Get-Command -Name eza -CommandType Application -ErrorAction Ignore) {
-    function ll { eza --long --git --icons=auto --group-directories-first @args }
-    function la { eza --long --git --icons=auto --group-directories-first --all @args }
-    function lt { eza --tree --level=2 --icons=auto --git-ignore @args }
-}
+# eza helpers (ll/la/lt) are defined in Phase 2a (Initialize-DeferredProfile) —
+# the Get-Command -CommandType Application PATH scan is deferred off the load path.
 
 function y {
     $tmp = (New-TemporaryFile).FullName
@@ -315,24 +281,18 @@ $env:DOTFILES = $_dotfiles  # persist so wrapper functions can find theme files 
 $env:RIPGREP_CONFIG_PATH  = Join-Path $_dotfiles 'ripgrep\ripgreprc'
 $env:FZF_DEFAULT_OPTS_FILE = Join-Path $_dotfiles 'fzf\fzfrc'
 
-# fd feeds fzf's file/dir pickers (bare fzf via FZF_DEFAULT_COMMAND, PSFzf's Ctrl+t
-# and Alt+c via the *_COMMAND vars). Deliberately not driven by ripgreprc: rg is
-# tuned exhaustive (--no-ignore) for searching, but a picker wants a clean,
-# .gitignore-respecting list. Only Alt+c (dir picker) genuinely needs fd — rg can't
-# list directories. Guarded so fzf falls back to its built-in walker without fd.
-if (Get-Command -Name fd -CommandType Application -ErrorAction Ignore) {
-    $env:FZF_DEFAULT_COMMAND = 'fd --type f --hidden --exclude .git'
-    $env:FZF_CTRL_T_COMMAND  = $env:FZF_DEFAULT_COMMAND
-    $env:FZF_ALT_C_COMMAND   = 'fd --type d --hidden --exclude .git'
-}
+# The fd-backed FZF_*_COMMAND vars are set in Phase 2a (Initialize-DeferredProfile),
+# alongside PSFzf which consumes them — the Get-Command fd PATH scan is deferred
+# off the load path.
 
 # Zoxide — store resolved paths so junctions don't produce duplicate entries
 $env:_ZO_RESOLVE_SYMLINKS = '1'
 
 # Theme detection — catppuccin mocha (dark) / latte (light), shared by fzf + lazygit
-# AppsUseLightTheme: 0x0 = dark, 0x1 = light
-$_regOut = reg query 'HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' /v AppsUseLightTheme 2>$null
-$_isDark = $_regOut -match '0x0'
+# AppsUseLightTheme: 0 = dark, 1 = light. .NET registry read avoids a reg.exe spawn.
+$_isDark = [Microsoft.Win32.Registry]::GetValue(
+    'HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize',
+    'AppsUseLightTheme', 1) -eq 0
 
 $env:FZF_DEFAULT_OPTS = if ($_isDark) {
     '--color=bg+:#313244,bg:#1E1E2E,spinner:#F5E0DC,hl:#F38BA8 ' +
@@ -371,7 +331,7 @@ $env:TIGRC_USER = Join-Path $_dotfiles $(if ($_isDark) { 'tig\tigrc-mocha' } els
 # flavour lives in its own dir; point at the mocha or latte one to match the rest.
 $env:EZA_CONFIG_DIR = Join-Path $_dotfiles $(if ($_isDark) { 'eza\themes\mocha' } else { 'eza\themes\latte' })
 
-Remove-Variable _dotfiles, _regOut, _isDark
+Remove-Variable _dotfiles, _isDark
 
 # --- Deferred loading (Phase 2a + 2b) --------------------------------------
 # Two-stage OnIdle loading: prompt appears immediately, Phase 2a unblocks
@@ -408,6 +368,26 @@ function Initialize-DeferredProfile {
             -PSReadlineChordReverseHistory 'Ctrl+r'
     }
 
+    # fd-backed fzf pickers (moved off Phase 1). PSFzf and bare fzf read these at
+    # invocation, so setting them on first idle is in time for the first picker.
+    if (Get-Command -Name fd -CommandType Application -ErrorAction Ignore) {
+        $env:FZF_DEFAULT_COMMAND = 'fd --type f --hidden --exclude .git'
+        $env:FZF_CTRL_T_COMMAND  = $env:FZF_DEFAULT_COMMAND
+        $env:FZF_ALT_C_COMMAND   = 'fd --type d --hidden --exclude .git'
+    }
+
+    # eza listing helpers (moved off Phase 1). Defined global: so they reach the
+    # session scope — a bare `function ll` here would be local to this function.
+    if (Get-Command -Name eza -CommandType Application -ErrorAction Ignore) {
+        function global:ll { eza --long --git --icons=auto --group-directories-first @args }
+        function global:la { eza --long --git --icons=auto --group-directories-first --all @args }
+        function global:lt { eza --tree --level=2 --icons=auto --git-ignore @args }
+    }
+
+    # Az context timer (moved off Phase 1 — runspace.Open() + eventing ~115ms).
+    # Defined in Set-Prompt.ps1, dot-sourced in Phase 1; self-guards on Az.Accounts.
+    Initialize-AzTimer
+
     # Upgrade prediction source to include Az.Tools.Predictor plugin (~650ms)
     if ($global:ProfileModules['Az.Tools.Predictor']) {
         Set-PSReadLineOption -PredictionSource HistoryAndPlugin
@@ -426,6 +406,42 @@ function Initialize-DeferredProfile {
 function Initialize-DeferredProfileSecondary {
     if ($global:ProfileDeferredSecondaryDone) { return }
     $global:ProfileDeferredSecondaryDone = $true
+
+    # Native tab-completers (moved off Phase 1 — only needed once you tab-complete)
+    if (Get-Command -Name az -ErrorAction Ignore) {
+        Register-ArgumentCompleter -Native -CommandName az -ScriptBlock {
+            param($commandName, $wordToComplete, $cursorPosition)
+            $completion_file = New-TemporaryFile
+            $env:ARGCOMPLETE_USE_TEMPFILES = 1
+            $env:_ARGCOMPLETE_STDOUT_FILENAME = $completion_file
+            $env:COMP_LINE = $wordToComplete
+            $env:COMP_POINT = $cursorPosition
+            $env:_ARGCOMPLETE = 1
+            $env:_ARGCOMPLETE_SUPPRESS_SPACE = 0
+            $env:_ARGCOMPLETE_IFS = "`n"
+            $env:_ARGCOMPLETE_SHELL = 'powershell'
+            az 2>&1 | Out-Null
+            Get-Content $completion_file | Sort-Object | ForEach-Object {
+                [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+            }
+            Remove-Item $completion_file, Env:\_ARGCOMPLETE_STDOUT_FILENAME, Env:\ARGCOMPLETE_USE_TEMPFILES, Env:\COMP_LINE, Env:\COMP_POINT, Env:\_ARGCOMPLETE, Env:\_ARGCOMPLETE_SUPPRESS_SPACE, Env:\_ARGCOMPLETE_IFS, Env:\_ARGCOMPLETE_SHELL
+        }
+    }
+    if (Get-Command -Name zellij -ErrorAction Ignore) {
+        Register-ArgumentCompleter -Native -CommandName zellij -ScriptBlock {
+            param($wordToComplete, $commandAst, $cursorPosition)
+            $sessionCmds = 'attach', 'a', 'kill-session', 'k', 'delete-session', 'd'
+            $elements = $commandAst.CommandElements
+            if ($elements.Count -ge 2 -and $elements[1].Value -in $sessionCmds) {
+                zellij list-sessions --no-formatting 2>$null |
+                    ForEach-Object { ($_ -split '\s+')[0] } |
+                    Where-Object { $_ -like "$wordToComplete*" } |
+                    ForEach-Object {
+                        [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+                    }
+            }
+        }
+    }
 
     # git-completion
     if ($global:ProfileModules['git-completion']) {
