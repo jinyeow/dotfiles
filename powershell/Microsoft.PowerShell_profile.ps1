@@ -159,15 +159,6 @@ function y {
     Remove-Item -Path $tmp
 }
 
-$_chocoProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
-if ($_chocoProfile -and (Test-Path $_chocoProfile)) {
-    function chocoRefresh {
-        Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
-        RefreshEnv
-    }
-}
-Remove-Variable _chocoProfile
-
 if ($global:ProfileModules['PSFzf']) {
     function switch_git_branch {
         $branches = git branch -vv | Select-String ': gone]' -NotMatch | ForEach-Object {
@@ -385,8 +376,8 @@ Remove-Variable _dotfiles, _regOut, _isDark
 # --- Deferred loading (Phase 2a + 2b) --------------------------------------
 # Two-stage OnIdle loading: prompt appears immediately, Phase 2a unblocks
 # interactive tools (PSFzf, zoxide) on the first idle, then Phase 2b loads
-# less-frequently-needed modules (git-completion, WinGet, Chocolatey) on the
-# next idle so the first keypress isn't delayed by their import cost.
+# less-frequently-needed modules (git-completion, WinGet) on the next idle so
+# the first keypress isn't delayed by their import cost.
 $global:ProfileDeferredDone = $false
 $global:ProfileDeferredSecondaryDone = $false
 
@@ -445,12 +436,6 @@ function Initialize-DeferredProfileSecondary {
     # WinGet CommandNotFound (~1.4s — .NET assembly loading)
     if ($global:ProfileModules['Microsoft.WinGet.CommandNotFound']) {
         Import-Module -Name Microsoft.WinGet.CommandNotFound
-    }
-
-    # Chocolatey (~790ms — .NET assembly loading)
-    $ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
-    if ($ChocolateyProfile -and (Test-Path $ChocolateyProfile)) {
-        Import-Module $ChocolateyProfile
     }
 }
 
