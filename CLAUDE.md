@@ -75,7 +75,7 @@ User-scope Claude Code subagents live as flat `.md` files (frontmatter + system-
 
 - **Whole-dir link, not per-file** — the entire `agents/` dir is junctioned (Windows) / symlinked (Linux), deliberately unlike skills (junctioned per-subdir). Agents are flat files in a dir nothing else writes to, so this keeps live == repo *and* lets agents created via `/agents` land straight in the repo.
 - **Bodies are self-contained** — a subagent body cannot `@import AGENTS.md`. Share conventions via the `skills:` frontmatter field (injects a skill's `SKILL.md` at startup) or restate them in the body with a maintenance note to keep them in sync with `claude/AGENTS.md`.
-- **Seed**: `pwsh-implementer` — TDD PowerShell 7+ specialist (`skills: tdd`, `model: inherit`). Role-based, not domain-based; we dropped proposed `explorer`/`reviewer` as redundant with the built-in `Explore` agent and `code-review` skill + Codex.
+- **Seed**: `pwsh-implementer` — TDD PowerShell 7+ specialist (`skills: tdd`, `model: inherit`); and `powershell-module-architect` — its module *design/review* companion (`model: inherit`, no `skills:` preload) that owns module layout/manifest/structure and delegates behaviour (function bodies + tests) back to `pwsh-implementer`. Role-based, not domain-based; we dropped proposed `explorer`/`reviewer` as redundant with the built-in `Explore` agent and `code-review` skill + Codex.
 
 ## Conventions
 

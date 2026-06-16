@@ -153,6 +153,10 @@ Seeded agents:
   PSScriptAnalyzer, strict typing, enterprise error handling; covers Azure/Graph/CI-CD when
   the work is primarily PowerShell). Preloads the `tdd` skill via `skills: tdd`;
   `model: inherit`.
+- **`powershell-module-architect`** — module *design/review* companion to `pwsh-implementer`.
+  Owns the skeleton (layout, `.psd1`/`.psm1` manifest, public/private split, `src`/`tests`
+  structure) and module-health reviews; delegates behaviour (function bodies + Pester tests)
+  to `pwsh-implementer`. No `skills:` preload; `model: inherit`.
 
 ## Install
 
