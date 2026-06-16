@@ -72,7 +72,7 @@
         "editor.defaultFormatter": "vscode.json-language-features"
     },
     "security.workspace.trust.untrustedFiles": "prompt",
-    "editor.fontFamily": "Fira Code",
+    "editor.fontFamily": "CommitMono Nerd Font Mono, Fira Code, monospace",
     "editor.fontSize": 15,
     "editor.fontLigatures": true,
     "editor.rulers": [120],

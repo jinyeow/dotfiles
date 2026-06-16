@@ -31,7 +31,7 @@ elseif has('win32')
   if has('nvim') || has('termguicolors')
     set termguicolors
   elseif has('gui_running')
-    set guifont=Fira_Code_Retina:h10:W450:cANSI:qDRAFT
+    set guifont=CommitMono_Nerd_Font_Mono:h10:cANSI:qDRAFT
   endif
 
   silent! colorscheme desert

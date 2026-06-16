@@ -12,7 +12,7 @@ Windows Terminal settings.
 
 - **Theme**: Catppuccin Mocha (dark) / Catppuccin Latte (light), following the OS
   dark/light setting — consistent with fzf, nvim, and lazygit
-- **Font**: Fira Code 13pt (must be installed separately)
+- **Font**: CommitMono Nerd Font Mono 13pt (must be installed separately)
 - **Keybindings**: vi-style pane focus (`alt+h/j/k/l`), `ctrl+c` copy,
   `ctrl+shift+v` paste, `ctrl+shift+f` find
 - **Window restore**: `firstWindowPreference: persistedWindowLayout` — WT restores
@@ -25,7 +25,7 @@ Windows Terminal settings.
 
 | Tool | Install |
 |---|---|
-| [Fira Code](https://github.com/tonsky/FiraCode) | `winget install tonsky.FiraCode` |
+| [CommitMono Nerd Font](https://github.com/ryanoasis/nerd-fonts) | Not on winget — download `CommitMono.zip` from the [Nerd Fonts latest release](https://github.com/ryanoasis/nerd-fonts/releases/latest) and install the `*NerdFontMono-*.otf` faces per-user |
 
 ## Notes
 

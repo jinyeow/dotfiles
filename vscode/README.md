@@ -29,4 +29,4 @@ Some settings are excluded from Settings Sync via `settingsSync.ignoredSettings`
 - **Vim**: vscode-neovim (`asvetliakov.vscode-neovim`) is the primary Vim integration. VSCodeVim (`vim.*`) settings are kept as a fallback for machines without Neovim installed — disable VSCodeVim on machines where vscode-neovim is active
 - **Formatter**: EditorConfig as default; language-specific overrides for JSON, YAML, Azure Pipelines, Docker Compose, JavaScript
 - **Line length**: 120 columns (rulers + wordWrapColumn)
-- **Font**: Fira Code with ligatures
+- **Font**: CommitMono Nerd Font Mono with ligatures (falls back to Fira Code, then monospace)
