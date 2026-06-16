@@ -26,6 +26,24 @@ PowerShell 7 profile and prompt for Windows (and Linux where applicable).
 The installer generates a stub at `~/Documents/PowerShell/Microsoft.PowerShell_profile.ps1`
 that dot-sources the repo file — changes are live immediately without re-running setup.
 
+## Scripts (`Scripts/`)
+
+Standalone PowerShell tools (not loaded by the profile — run on demand). Each has
+comment-based help; run `Get-Help .\Scripts\<Name>.ps1 -Full`.
+
+| Script | Purpose |
+|---|---|
+| `Set-CodingFont.ps1` | Switch the coding font across **all** dotfiles targets at once — Windows Terminal (live + repo), VS Code (live + repo snapshot), and Vim guifont. `Set-CodingFont commit` |
+| `Install-CodingFont.ps1` | Download + per-user install + session-activate Nerd Font (Mono) faces from the nerd-fonts release. `Install-CodingFont CommitMono` |
+| `New-FontComparison.ps1` | Self-contained side-by-side HTML/PNG comparison of the candidate fonts with a PowerShell/C#/Bicep language switcher. `-Fonts` filters the set |
+| `New-FontGlyphTest.ps1` | Glyph-separation torture test (rn/m, cl/d, vv/w, 1lI\|, 0O) across Commit/JetBrains/0xProto |
+| `New-FontLigatureTest.ps1` | Ligatures-on vs -off comparison so you can see what each font actually fuses |
+
+The `New-Font*` tools subset each font to the sample glyphs and embed them as base64 woff2,
+so the output HTML renders the real fonts in any browser. They need Python with
+`fonttools` + `brotli` (`pip install fonttools brotli`) for subsetting and Edge for the PNG.
+Generated `.font-*.html`/`.png` land at the repo root and are git-ignored.
+
 ## Profile architecture
 
 The profile is structured in three phases to keep startup fast:

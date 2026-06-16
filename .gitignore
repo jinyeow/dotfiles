@@ -23,3 +23,11 @@ tags
 
 # Claude Code project-local settings (auto-modified by sessions; intentional config goes in settings.json)
 .claude/settings.local.json
+
+# Generated artifacts from the font-comparison tools (powershell/Scripts/New-Font*.ps1)
+.font-samples.html
+.font-samples.png
+.font-glyph-test.html
+.font-glyph-test.png
+.font-liga-test.html
+.font-liga-test.png
