@@ -1,7 +1,33 @@
 # Handoff — next session
 
-> **Last session (2026-06-16): Claude subagents framework added (pwsh-implementer) — COMPLETE.**
-> No pending tasks.
+> **Last session (2026-06-16/17): subagents framework + `pwsh-implementer` shipped & pushed.
+> 2026-06-17: `jj` skill + `powershell-module-architect` agent shipped (below). No pending task.**
+
+## Done this session (2026-06-17) — jj skill + module-architect agent
+
+Implemented the queued plan (`.claude/plans/agents-jj-skill-and-module-architect.md`). Both
+files were **Codex-reviewed** (A before writing, B after) and findings applied.
+
+- **Part A — `claude/skills/jj/SKILL.md`** (new): self-authored Jujutsu workflow skill,
+  Windows/pwsh-native, conventional-commits aware. Codex caught that the draft was written
+  against stale jj knowledge — **verified every command against the installed jj 0.42** and
+  fixed: `jj rebase -o` (not `-d`, renamed to `--onto/-o`); `jj new` does *not* open an editor
+  (only `describe`/`commit` do, and `squash` only when combining descriptions); `jj split` is
+  interactive *by default* (prefer `jj restore --from/--into`); softened "nothing is ever lost"
+  (pushes aren't un-pushed by `jj undo`) and "elevated permission" → auth/passphrase.
+  Pinned a "written against jj 0.42" note. Attribution: structure/Description-Check-Protocol
+  adapted from HotThoughts/jj-skills (MIT).
+- **Part B — `claude/agents/powershell-module-architect.md`** (new): module *design/review*
+  companion to `pwsh-implementer` (architect owns layout/manifest/structure; implementer owns
+  TDD behaviour). Codex fixes applied: `ModuleVersion` is a `System.Version` (prerelease →
+  `PSData.Prerelease`, not in the version string); test path is the **pure `src`↔`tests`
+  mirror** with `.Tests.ps1` suffix (the C# `.Tests`-folder form was wrong for PowerShell);
+  manifest `PowerShellVersion` is the import-time gate (not `#Requires`); conditional
+  verification (no manifest to import on a pure design review).
+- **Docs**: `claude/README.md` Agents "Seeded agents" + root `CLAUDE.md` Subagents "Seed" line.
+- **Install/verify**: `setup.ps1 -Module claude -DryRun` → real run; `~/.claude/skills/jj`
+  junction resolves to the repo, `~/.claude/skills/jj/SKILL.md` and
+  `~/.claude/agents/powershell-module-architect.md` both live. No installer code changes.
 
 ## Done this session (2026-06-16) — Claude subagents framework
 

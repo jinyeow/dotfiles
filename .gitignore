@@ -24,6 +24,10 @@ tags
 # Claude Code project-local settings (auto-modified by sessions; intentional config goes in settings.json)
 .claude/settings.local.json
 
+# Claude Code session working-state (handoff notes + deferred plans; local-only, not for the public remote)
+.claude/handoff.md
+.claude/plans/
+
 # Generated artifacts from the font-comparison tools (powershell/Scripts/New-Font*.ps1)
 .font-samples.html
 .font-samples.png
