@@ -8,7 +8,7 @@ Personal dotfiles spanning Windows (PowerShell 7) and Linux/WSL (bash, Neovim, t
 
 `pwsh_profile.ps1` at the repo root is the **old** profile and is superseded by `powershell/Microsoft.PowerShell_profile.*.ps1`. Edit the per-machine file under `powershell/`, not the root one.
 
-Note the two `CLAUDE.md` files: this root one is **project instructions for the dotfiles repo**; `claude/CLAUDE.md` is the **global user instructions** that `setup.ps1 -Module claude` installs to `~/.claude/CLAUDE.md`. They are unrelated — don't merge them. See `claude/README.md` for the Claude Code module (settings, statusline, skills); its files are **symlinked** into `~/.claude` on both Windows and Linux (Windows file symlinks need Developer Mode; skill dirs are junctioned on Windows), so the live files and the repo never drift.
+Note the two `CLAUDE.md` files: this root one is **project instructions for the dotfiles repo**; `claude/CLAUDE.md` is the **global user instructions** that `setup.ps1 -Module claude` installs to `~/.claude/CLAUDE.md`. They are unrelated — don't merge them. See `claude/README.md` for the Claude Code module (settings, statusline, skills, agents); its files are **symlinked** into `~/.claude` on both Windows and Linux (Windows file symlinks need Developer Mode; skill dirs are junctioned on Windows), so the live files and the repo never drift.
 
 **Shared agent conventions live in `claude/AGENTS.md`** (single source). `claude/CLAUDE.md` imports it via `@AGENTS.md`, and the `codex` module installs the same file to `~/.codex/AGENTS.md`, so Claude Code and Codex CLI follow identical coding conventions. Edit conventions in `claude/AGENTS.md` only; keep `CLAUDE.md` to Claude-specific behaviour. See the Claude + Codex integration section below.
 
@@ -68,6 +68,14 @@ Codex CLI is wired in as a **read-only second-opinion reviewer** for Claude Code
 - **Two postures, one config**: `codex/config.toml` sets the **standalone** posture (`workspace-write` + `on-request`) for when you run `codex` directly; the MCP registration overrides to **read-only/never** for the reviewer path.
 - **Shared conventions**: `claude/AGENTS.md` installs to both `~/.claude/AGENTS.md` (imported by `CLAUDE.md`) and `~/.codex/AGENTS.md`, so both tools obey the same rules. Codex also concatenates a repo's own `AGENTS.md` on top — that's the layering point for work overlays (`codex/templates/work-AGENTS.md`).
 - **Trigger**: review is **on-demand only** — the `/codex-review` skill, or Claude *offers* a second opinion after a change but never calls Codex or applies findings without approval (see `claude/CLAUDE.md` → "Codex second opinion"). Auth is `codex login` (interactive, run once).
+
+## Subagents (`claude/agents/`)
+
+User-scope Claude Code subagents live as flat `.md` files (frontmatter + system-prompt body) under `claude/agents/`, installed to `~/.claude/agents/`. See `claude/README.md` for the full design.
+
+- **Whole-dir link, not per-file** — the entire `agents/` dir is junctioned (Windows) / symlinked (Linux), deliberately unlike skills (junctioned per-subdir). Agents are flat files in a dir nothing else writes to, so this keeps live == repo *and* lets agents created via `/agents` land straight in the repo.
+- **Bodies are self-contained** — a subagent body cannot `@import AGENTS.md`. Share conventions via the `skills:` frontmatter field (injects a skill's `SKILL.md` at startup) or restate them in the body with a maintenance note to keep them in sync with `claude/AGENTS.md`.
+- **Seed**: `pwsh-implementer` — TDD PowerShell 7+ specialist (`skills: tdd`, `model: inherit`). Role-based, not domain-based; we dropped proposed `explorer`/`reviewer` as redundant with the built-in `Explore` agent and `code-review` skill + Codex.
 
 ## Conventions
 

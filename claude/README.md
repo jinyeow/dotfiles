@@ -25,6 +25,7 @@ Verify with `claude doctor` (install method = native) and `Get-Command claude`
 | `AGENTS.md` | `~/.claude/AGENTS.md` | Shared coding conventions (single source). The `codex` module installs the same file to `~/.codex/AGENTS.md` so Claude Code and Codex CLI agree. See `../codex/README.md`. |
 | `statusline-command.sh` | `~/.claude/statusline-command.sh` | Token usage statusline script |
 | `skills/<name>/` | `~/.claude/skills/<name>/` | Global custom skills |
+| `agents/<name>.md` | `~/.claude/agents/<name>.md` | User-scope subagents (whole dir junctioned/symlinked) |
 
 **Install method.** `settings.json`, `CLAUDE.md`, `AGENTS.md`, and
 `statusline-command.sh` are **symlinked** into `~/.claude`, and each skill directory is
@@ -120,6 +121,38 @@ skill; it is still junctioned so skills can reference it via `../_shared/<file>`
 
 Built-in Claude Code skills (`handoff`, `code-review`, etc.) are provided by
 the harness and do not need to be installed.
+
+## Agents
+
+`claude/agents/` holds user-scope [subagents](https://code.claude.com/docs/en/subagents) —
+each is a single `.md` with YAML frontmatter (`name`, `description`, `tools`, `model`,
+`skills`, …) plus a system-prompt body:
+
+```
+claude/agents/
+  pwsh-implementer.md   ← one agent = one self-contained file
+```
+
+Unlike skills (junctioned per-subdirectory), the **whole `agents/` dir is junctioned**
+(Windows) / **symlinked** (Linux) into `~/.claude/agents/`. Agent definitions are flat files
+in a dir nothing else writes to, so a whole-dir link keeps live == repo *and* lets an agent
+created interactively via `/agents` (Personal scope) land straight in the repo — no drift,
+no manual relocation. To add an agent, drop a `.md` here and re-run `setup.ps1 -Module claude`
+(only needed the first time, to create the junction).
+
+**Gotcha — bodies are self-contained.** A subagent's markdown body is **not** able to
+`@import AGENTS.md` the way `CLAUDE.md` does. The only sanctioned way to share content into an
+agent is the `skills:` frontmatter field, which injects the listed skill's `SKILL.md` body at
+startup. Any convention an agent needs (TDD, linting, error handling) must be either preloaded
+via `skills:` or restated in the body — so restated rules carry a maintenance note to update
+them alongside `AGENTS.md`.
+
+Seeded agents:
+
+- **`pwsh-implementer`** — TDD specialist/implementer for PowerShell 7+ (Pester first,
+  PSScriptAnalyzer, strict typing, enterprise error handling; covers Azure/Graph/CI-CD when
+  the work is primarily PowerShell). Preloads the `tdd` skill via `skills: tdd`;
+  `model: inherit`.
 
 ## Install
 

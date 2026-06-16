@@ -545,6 +545,17 @@ function Install-Claude {
     } else {
         Write-Info 'No skills to install (claude/skills/ is empty).'
     }
+
+    # Agents — junction the whole dir into ~/.claude/agents/ (unlike skills, which junction
+    # per-subdir). Agent definitions are flat .md files in one dir nothing else writes to, so a
+    # whole-dir junction preserves the no-drift philosophy and lets agents created via /agents
+    # land straight in the repo. Bodies are self-contained — they can't @import AGENTS.md.
+    $agentsSrc = Join-Path $Dotfiles 'claude\agents'
+    if (Test-Path $agentsSrc) {
+        New-Junction -Link (Join-Path $claudeDir 'agents') -Target $agentsSrc
+    } else {
+        Write-Info 'No agents to install (claude/agents/ is missing).'
+    }
 }
 
 function Install-Codex {

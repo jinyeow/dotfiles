@@ -1,7 +1,35 @@
 # Handoff — next session
 
-> **Last session (2026-06-16): coding-font work + Claude config-sync both COMPLETE.**
-> No pending tasks. (Chocolatey leftover is gone — cleared.)
+> **Last session (2026-06-16): Claude subagents framework added (pwsh-implementer) — COMPLETE.**
+> No pending tasks.
+
+## Done this session (2026-06-16) — Claude subagents framework
+
+Added a user-scope subagents framework to the Claude module, seeded with one agent. Grilled the
+design end-to-end (`/grill-me`) and reviewed each step with Codex (plan + finished agent body).
+
+- **`claude/agents/pwsh-implementer.md`** (new) — TDD specialist/implementer for PowerShell 7+
+  (Pester first, PSScriptAnalyzer `-Recurse` + settings file, strict typing, flag-before-mode
+  rule, surgical changes, enterprise error handling; extends to Azure/Graph/CI-CD when the work is
+  primarily PowerShell). `model: inherit`, `color: blue`, `skills: tdd` (preloads the tdd
+  SKILL.md body only — verified, ~110 lines, bundled resources stay on-demand),
+  tools `Read,Write,Edit,Bash,Glob,Grep`.
+- **Install** — `setup.ps1 → Install-Claude` junctions the whole `claude/agents/` dir into
+  `~/.claude/agents/` (deliberately *unlike* skills, which junction per-subdir): agents are flat
+  `.md` files in a dir nothing else writes to, so a whole-dir link keeps live == repo and lets
+  `/agents`-created agents land in the repo. `setup.sh` does the Linux symlink equivalent.
+- **Fixed a pre-existing Linux bug** (found by Codex): `setup.sh`'s claude module never symlinked
+  `AGENTS.md` despite the README claiming it did, so `@AGENTS.md` resolved to nothing on Linux.
+  Added the symlink.
+- **Docs** — `claude/README.md` Agents section + Files-table row; root `CLAUDE.md` Subagents
+  section. Both capture the whole-dir-link rationale and the self-contained-body / no-`@import`
+  gotcha (share conventions via `skills:` or restate with a maintenance note).
+- **Design decisions** (so they're not re-litigated): user-scope only; role-based not
+  domain-based; seeded with `pwsh-implementer` only — proposed `explorer`/`reviewer` were dropped
+  as redundant with the built-in `Explore` agent and `code-review` skill + Codex.
+- **Verified:** `setup.ps1 -Module claude -DryRun` clean → real install → junction resolves to the
+  repo → `~/.claude/agents/pwsh-implementer.md` live. New agents need a one-time `setup.ps1` re-run
+  only to create the junction (the first time); after that, dropping a `.md` in the repo is enough.
 
 ## Done this session (2026-06-16) — coding font → Commit Mono
 

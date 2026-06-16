@@ -213,6 +213,8 @@ install_claude() {
     info '=== Claude Code ==='
     make_symlink "$DOTFILES/claude/settings.json"          "$HOME/.claude/settings.json"
     make_symlink "$DOTFILES/claude/CLAUDE.md"              "$HOME/.claude/CLAUDE.md"
+    # Shared conventions — CLAUDE.md imports this via `@AGENTS.md` (resolves to ~/.claude/AGENTS.md).
+    make_symlink "$DOTFILES/claude/AGENTS.md"              "$HOME/.claude/AGENTS.md"
     make_symlink "$DOTFILES/claude/statusline-command.sh"  "$HOME/.claude/statusline-command.sh"
 
     # Skills — symlink each subdirectory into ~/.claude/skills/
@@ -229,6 +231,16 @@ install_claude() {
         done
     else
         info 'No skills to install (claude/skills/ is empty).'
+    fi
+
+    # Agents — symlink the whole dir into ~/.claude/agents/ (Linux equivalent of the Windows
+    # dir-junction; unlike skills, which link per-subdir). Agent definitions are flat .md files
+    # in one dir nothing else writes to, so a whole-dir link preserves the no-drift philosophy
+    # and lets agents created via /agents land in the repo. Bodies can't @import AGENTS.md.
+    if [ -d "$DOTFILES/claude/agents" ]; then
+        make_symlink "$DOTFILES/claude/agents" "$HOME/.claude/agents"
+    else
+        info 'No agents to install (claude/agents/ is missing).'
     fi
 }
 
