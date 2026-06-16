@@ -24,6 +24,15 @@ if (-not $env:COLORTERM) { $env:COLORTERM = 'truecolor' }
 # See docs/zellij-windows-terminal-colors.md §4.
 if (-not $env:TERM) { $env:TERM = 'xterm-256color' }
 
+# yazi shells out to file(1) to guess MIME types for files its rules don't match.
+# Git for Windows bundles file.exe but doesn't put usr\bin on PATH, so point yazi
+# at it directly via YAZI_FILE_ONE (yazi's documented Windows override) rather than
+# polluting PATH with all of Git's Unix tools.
+if (-not $env:YAZI_FILE_ONE) {
+    $fileExe = "$env:ProgramFiles\Git\usr\bin\file.exe"
+    if (Test-Path -LiteralPath $fileExe) { $env:YAZI_FILE_ONE = $fileExe }
+}
+
 # --- Module availability cache (single scan of PSModulePath) ---------------
 $global:ProfileModules = @{}
 $modulePaths = $env:PSModulePath -split [IO.Path]::PathSeparator

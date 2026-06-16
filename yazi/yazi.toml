@@ -20,7 +20,7 @@ edit = [
   { run = 'nvim %s', block = true, desc = "Edit in Neovim" },
 ]
 open = [
-  { run = 'start %s',    orphan = true, desc = "Open",      for = "windows" },
+  { run = 'start "" "%s"', orphan = true, desc = "Open",    for = "windows" },
   { run = 'open %s',     orphan = true, desc = "Open",      for = "macos"   },
   { run = 'xdg-open %s', orphan = true, desc = "Open",      for = "linux"   },
 ]
@@ -31,6 +31,7 @@ reveal = [
 
 [open]
 rules = [
+  { mime = "text/html",        use = ["open", "edit"] },
   { mime = "text/*",           use = ["edit", "open"] },
   { mime = "application/json", use = ["edit", "open"] },
   { mime = "application/toml", use = ["edit", "open"] },
