@@ -20,13 +20,19 @@ edit = [
   { run = 'nvim %s', block = true, desc = "Edit in Neovim" },
 ]
 open = [
-  { run = 'start "" "%s"', orphan = true, desc = "Open",    for = "windows" },
+  { run = 'cmd /c start "" "%s"', orphan = true, desc = "Open", for = "windows" },
   { run = 'open %s',     orphan = true, desc = "Open",      for = "macos"   },
   { run = 'xdg-open %s', orphan = true, desc = "Open",      for = "linux"   },
 ]
 reveal = [
-  { run = 'explorer /select,%s', orphan = true, for = "windows" },
-  { run = 'open -R %s',          orphan = true, for = "macos"   },
+  # explorer /select needs the path quoted but the /select, prefix unquoted
+  # (/select,"path", not "/select,path"). yazi+Rust quote the whole token, so
+  # bare `explorer /select,%s` breaks on spaced paths. Start-Process -ArgumentList
+  # passes the string verbatim, preserving the partial-quoted form.
+  # Limitation: yazi substitutes %s unescaped, so a filename containing a literal
+  # ' (single quote) closes the PS string early and won't reveal correctly.
+  { run = "pwsh -NoProfile -Command \"Start-Process explorer -ArgumentList '/select,\\\"%s\\\"'\"", orphan = true, for = "windows" },
+  { run = 'open -R %s', orphan = true, for = "macos" },
 ]
 
 [open]
