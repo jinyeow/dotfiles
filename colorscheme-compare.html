@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Terminal / Coding Colorscheme Comparison</title>
+<style>
+  :root {
+    --page-bg: #0c0c10;
+    --page-fg: #d7d9e0;
+    --muted: #8a8d99;
+    --line: #232531;
+    --mono: "Commit Mono", "JetBrains Mono", "Cascadia Code", ui-monospace,
+            "SFMono-Regular", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 32px clamp(16px, 4vw, 56px) 64px;
+    background: var(--page-bg);
+    color: var(--page-fg);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  header.page { max-width: 880px; margin: 0 auto 28px; }
+  h1 { font-size: 1.7rem; margin: 0 0 6px; letter-spacing: -0.01em; }
+  p.sub { margin: 0; color: var(--muted); font-size: 0.95rem; line-height: 1.5; }
+  .controls {
+    max-width: 880px; margin: 0 auto 28px;
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  }
+  .controls .label { color: var(--muted); font-size: 0.85rem; margin-right: 4px; }
+  button.filter {
+    background: #16161d; color: var(--page-fg);
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: 6px 16px; font-size: 0.85rem; cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  button.filter:hover { border-color: #3a3d4d; }
+  button.filter.active { background: #2a2d3a; border-color: #555a72; color: #fff; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 20px;
+    max-width: 1500px;
+    margin: 0 auto;
+  }
+  .card {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+    background: #111;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  }
+  .card-head {
+    display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+    padding: 11px 14px;
+    border-bottom: 1px solid rgba(127,127,127,0.18);
+  }
+  .card-head .name { font-weight: 600; font-size: 0.95rem; }
+  .card-head .variant { font-size: 0.78rem; opacity: 0.7; }
+  .card-head .tag {
+    margin-left: auto; font-size: 0.68rem; text-transform: uppercase;
+    letter-spacing: 0.06em; padding: 2px 8px; border-radius: 999px;
+    border: 1px solid currentColor; opacity: 0.65;
+  }
+  pre.code {
+    margin: 0; padding: 16px 18px;
+    font-family: var(--mono);
+    font-size: 13px; line-height: 1.62;
+    overflow-x: auto;
+    tab-size: 2;
+  }
+  .swatches {
+    display: flex; gap: 0; padding: 0;
+    border-top: 1px solid rgba(127,127,127,0.18);
+  }
+  .swatches .sw {
+    flex: 1; height: 26px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.6rem; font-family: var(--mono);
+    color: rgba(0,0,0,0.55); font-weight: 600;
+  }
+  footer.page {
+    max-width: 880px; margin: 40px auto 0; color: var(--muted);
+    font-size: 0.82rem; line-height: 1.6;
+  }
+  footer.page code { font-family: var(--mono); color: var(--page-fg); }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>Terminal / Coding Colorscheme Comparison</h1>
+  <p class="sub">The same JavaScript snippet rendered with each theme's real palette (accurate hex values).
+  Token roles are mapped per theme: keyword, function, string, number, type, constant, operator, comment.
+  Rendered in <code style="font-family:var(--mono)">Commit Mono</code> if installed.</p>
+</header>
+
+<div class="controls">
+  <span class="label">Show:</span>
+  <button class="filter active" data-filter="all">All</button>
+  <button class="filter" data-filter="dark">Dark</button>
+  <button class="filter" data-filter="light">Light</button>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<footer class="page">
+  Palettes sourced from each theme's official repo. Syntax token→color mapping is a faithful approximation of
+  each theme's tree-sitter highlighting, but exact assignment varies by language and config.
+  Generated as a static comparison aid — delete <code>colorscheme-compare.html</code> when done.
+</footer>
+
+<script>
+// --- snippet: array of lines; each line is an array of [class, text] tokens ---
+const SNIPPET = [
+  [["com", "// Fetch a user, then greet them"]],
+  [["kw","import"],["pn"," { "],["vr","getUser"],["pn"," } "],["kw","from"],["str"," \"./api\""],["pn",";"]],
+  [],
+  [["kw","const"],["pn"," "],["cn","MAX_RETRIES"],["op"," = "],["num","3"],["pn",";"]],
+  [],
+  [["kw","async function"],["pn"," "],["fn","greet"],["pn","("],["vr","id"],["pn",") {"]],
+  [["kw","  const"],["pn"," "],["vr","user"],["op"," = "],["kw","await"],["pn"," "],["fn","getUser"],["pn","("],["vr","id"],["pn",");"]],
+  [["kw","  if"],["pn"," ("],["op","!"],["vr","user"],["pn",") {"]],
+  [["kw","    return"],["str"," \"unknown\""],["pn",";"]],
+  [["pn","  }"]],
+  [["kw","  return"],["str"," `Hello, "],["pn","${"],["vr","user"],["pn","."],["fn","name"],["pn","}"],["str","!`"],["pn",";"]],
+  [["pn","}"]],
+];
+
+// --- themes: bg, panel(header), fg, com, kw, fn, str, num, ty, vr, op, cn ---
+const THEMES = [
+  { name:"Catppuccin", variant:"Mocha", mode:"dark",
+    bg:"#1e1e2e", panel:"#181825", fg:"#cdd6f4", com:"#6c7086",
+    kw:"#cba6f7", fn:"#89b4fa", str:"#a6e3a1", num:"#fab387", ty:"#f9e2af",
+    vr:"#cdd6f4", op:"#89dceb", cn:"#fab387", pn:"#9399b2" },
+
+  { name:"Tokyo Night", variant:"Night", mode:"dark",
+    bg:"#1a1b26", panel:"#16161e", fg:"#c0caf5", com:"#565f89",
+    kw:"#bb9af7", fn:"#7aa2f7", str:"#9ece6a", num:"#ff9e64", ty:"#e0af68",
+    vr:"#c0caf5", op:"#89ddff", cn:"#ff9e64", pn:"#9aa5ce" },
+
+  { name:"Tokyo Night", variant:"Storm", mode:"dark",
+    bg:"#24283b", panel:"#1f2335", fg:"#c0caf5", com:"#565f89",
+    kw:"#bb9af7", fn:"#7aa2f7", str:"#9ece6a", num:"#ff9e64", ty:"#e0af68",
+    vr:"#c0caf5", op:"#89ddff", cn:"#ff9e64", pn:"#9aa5ce" },
+
+  { name:"Kanagawa", variant:"Wave", mode:"dark",
+    bg:"#1f1f28", panel:"#16161d", fg:"#dcd7ba", com:"#727169",
+    kw:"#957fb8", fn:"#7e9cd8", str:"#98bb6c", num:"#ffa066", ty:"#e6c384",
+    vr:"#dcd7ba", op:"#7aa89f", cn:"#ffa066", pn:"#9cabca" },
+
+  { name:"Everforest", variant:"Dark · Medium", mode:"dark",
+    bg:"#2d353b", panel:"#232a2e", fg:"#d3c6aa", com:"#859289",
+    kw:"#e67e80", fn:"#7fbbb3", str:"#a7c080", num:"#d699b6", ty:"#dbbc7f",
+    vr:"#d3c6aa", op:"#e69875", cn:"#d699b6", pn:"#9da9a0" },
+
+  { name:"Rosé Pine", variant:"Main", mode:"dark",
+    bg:"#191724", panel:"#1f1d2e", fg:"#e0def4", com:"#6e6a86",
+    kw:"#31748f", fn:"#ebbcba", str:"#f6c177", num:"#c4a7e7", ty:"#9ccfd8",
+    vr:"#e0def4", op:"#908caa", cn:"#c4a7e7", pn:"#908caa" },
+
+  { name:"Gruvbox Material", variant:"Dark · Medium", mode:"dark",
+    bg:"#282828", panel:"#1d2021", fg:"#d4be98", com:"#928374",
+    kw:"#ea6962", fn:"#89b482", str:"#a9b665", num:"#d3869b", ty:"#d8a657",
+    vr:"#d4be98", op:"#e78a4e", cn:"#d3869b", pn:"#a89984" },
+
+  { name:"Nord", variant:"", mode:"dark",
+    bg:"#2e3440", panel:"#272c36", fg:"#d8dee9", com:"#4c566a",
+    kw:"#81a1c1", fn:"#88c0d0", str:"#a3be8c", num:"#b48ead", ty:"#8fbcbb",
+    vr:"#d8dee9", op:"#81a1c1", cn:"#d08770", pn:"#9098a8" },
+
+  { name:"Sonokai", variant:"Default", mode:"dark",
+    bg:"#2c2e34", panel:"#222327", fg:"#e2e2e3", com:"#7f8490",
+    kw:"#fc5d7c", fn:"#9ed072", str:"#e7c664", num:"#b39df3", ty:"#76cce0",
+    vr:"#e2e2e3", op:"#f39660", cn:"#b39df3", pn:"#a8a9ac" },
+
+  { name:"Nightfox", variant:"", mode:"dark",
+    bg:"#192330", panel:"#131a24", fg:"#cdcecf", com:"#71839b",
+    kw:"#9d79d6", fn:"#719cd6", str:"#81b29a", num:"#f4a261", ty:"#dbc074",
+    vr:"#cdcecf", op:"#63cdcf", cn:"#f4a261", pn:"#aeafb0" },
+
+  // --- warm / low-contrast comfort ---
+  { name:"Melange", variant:"Dark", mode:"dark",
+    bg:"#292522", panel:"#34302c", fg:"#ece1d7", com:"#867462",
+    kw:"#d47766", fn:"#a3a9ce", str:"#85b695", num:"#cf9bc2", ty:"#ebc06d",
+    vr:"#ece1d7", op:"#89b3b6", cn:"#cf9bc2", pn:"#c1a78e" },
+
+  { name:"Zenburn", variant:"", mode:"dark",
+    bg:"#3f3f3f", panel:"#2f2f2f", fg:"#dcdccc", com:"#7f9f7f",
+    kw:"#f0dfaf", fn:"#efef8f", str:"#cc9393", num:"#8cd0d3", ty:"#dfdfbf",
+    vr:"#dcdccc", op:"#f0dfaf", cn:"#dca3a3", pn:"#c3bf9f" },
+
+  { name:"Palenight", variant:"Material", mode:"dark",
+    bg:"#292d3e", panel:"#242837", fg:"#a6accd", com:"#676e95",
+    kw:"#c792ea", fn:"#82aaff", str:"#c3e88d", num:"#f78c6c", ty:"#ffcb6b",
+    vr:"#a6accd", op:"#89ddff", cn:"#f78c6c", pn:"#a6accd" },
+
+  // --- accessibility-first (high, WCAG-grade contrast) ---
+  { name:"Modus Vivendi", variant:"Accessible · AAA", mode:"dark",
+    bg:"#000000", panel:"#1e1e1e", fg:"#ffffff", com:"#989898",
+    kw:"#b6a0ff", fn:"#feacd0", str:"#79a8ff", num:"#44bc44", ty:"#6ae4b9",
+    vr:"#00d3d0", op:"#f78fe7", cn:"#2fafff", pn:"#989898" },
+
+  { name:"Selenized", variant:"Dark", mode:"dark",
+    bg:"#103c48", panel:"#184956", fg:"#adbcbc", com:"#72898f",
+    kw:"#75b938", fn:"#4695f7", str:"#41c7b9", num:"#af88eb", ty:"#dbb32d",
+    vr:"#adbcbc", op:"#ed8649", cn:"#f275be", pn:"#72898f" },
+
+  { name:"Catppuccin", variant:"Latte", mode:"light",
+    bg:"#eff1f5", panel:"#e6e9ef", fg:"#4c4f69", com:"#9ca0b0",
+    kw:"#8839ef", fn:"#1e66f5", str:"#40a02b", num:"#fe640b", ty:"#df8e1d",
+    vr:"#4c4f69", op:"#179299", cn:"#fe640b", pn:"#7c7f93" },
+
+  { name:"Tokyo Night", variant:"Day", mode:"light",
+    bg:"#e1e2e7", panel:"#d4d6e1", fg:"#3760bf", com:"#848cb5",
+    kw:"#9854f1", fn:"#2e7de9", str:"#587539", num:"#b15c00", ty:"#8c6c3e",
+    vr:"#3760bf", op:"#007197", cn:"#b15c00", pn:"#6172b0" },
+
+  { name:"Modus Operandi", variant:"Accessible · AAA", mode:"light",
+    bg:"#ffffff", panel:"#f0f0f0", fg:"#000000", com:"#595959",
+    kw:"#531ab6", fn:"#721045", str:"#3548cf", num:"#006800", ty:"#005f5f",
+    vr:"#005e8b", op:"#8f0075", cn:"#0031a9", pn:"#595959" },
+];
+
+function colorFor(theme, cls) {
+  const map = { com:"com", kw:"kw", fn:"fn", str:"str", num:"num",
+                ty:"ty", vr:"vr", op:"op", cn:"cn", pn:"pn" };
+  return theme[map[cls]] || theme.fg;
+}
+
+function renderCode(theme) {
+  let html = "";
+  for (const line of SNIPPET) {
+    if (line.length === 0) { html += "\n"; continue; }
+    for (const [cls, text] of line) {
+      const c = colorFor(theme, cls);
+      const safe = text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+      html += `<span style="color:${c}">${safe}</span>`;
+    }
+    html += "\n";
+  }
+  return html;
+}
+
+const SWATCH_KEYS = [
+  ["kw","kw"], ["fn","fn"], ["str","str"], ["num","#"],
+  ["ty","ty"], ["cn","cn"], ["op","op"], ["com","//"],
+];
+
+function card(theme) {
+  const el = document.createElement("div");
+  el.className = "card";
+  el.dataset.mode = theme.mode;
+  const tagColor = theme.mode === "light" ? "#222" : theme.fg;
+  const swatches = SWATCH_KEYS.map(([k,label]) =>
+    `<div class="sw" style="background:${theme[k]}">${label}</div>`).join("");
+  el.innerHTML = `
+    <div class="card-head" style="background:${theme.panel};color:${theme.fg}">
+      <span class="name">${theme.name}</span>
+      <span class="variant">${theme.variant}</span>
+      <span class="tag" style="color:${tagColor}">${theme.mode}</span>
+    </div>
+    <pre class="code" style="background:${theme.bg};color:${theme.fg}">${renderCode(theme)}</pre>
+    <div class="swatches">${swatches}</div>
+  `;
+  return el;
+}
+
+const grid = document.getElementById("grid");
+THEMES.forEach(t => grid.appendChild(card(t)));
+
+document.querySelectorAll("button.filter").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("button.filter").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const f = btn.dataset.filter;
+    document.querySelectorAll(".card").forEach(c => {
+      c.style.display = (f === "all" || c.dataset.mode === f) ? "" : "none";
+    });
+  });
+});
+</script>
+</body>
+</html>
