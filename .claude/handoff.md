@@ -1,7 +1,7 @@
 # Handoff — next session
 
-> **Last session (2026-06-16): coding-font work COMPLETE and pushed to `origin/main`.**
-> Remaining item: the Claude settings-sync task (below). (Chocolatey leftover is now gone — cleared.)
+> **Last session (2026-06-16): coding-font work + Claude config-sync both COMPLETE.**
+> No pending tasks. (Chocolatey leftover is gone — cleared.)
 
 ## Done this session (2026-06-16) — coding font → Commit Mono
 
@@ -26,60 +26,21 @@
 - All 9 candidate fonts remain installed per-user (`%LOCALAPPDATA%\Microsoft\Windows\Fonts` + HKCU)
   for future switching via `Set-CodingFont`.
 
-## Pending: scheduled task/workflow to sync Claude Code settings → dotfiles
+## Done this session (2026-06-16) — Claude config drift, solved by symlinking
 
-**Goal:** automatically pull the live `~/.claude` config back into the repo's `claude/` directory so
-the tracked copies stop drifting.
+The planned live→repo *sync task* was dropped in favour of eliminating drift at the source:
+`setup.ps1 → Install-Claude` now **symlinks** `settings.json`, `CLAUDE.md`, `AGENTS.md` and
+`statusline-command.sh` into `~/.claude` (was copy), so live == repo and there is nothing to sync.
+Skills stay junctioned. Needs **Developer Mode** for the file symlinks (confirmed on; non-elevated
+symlink creation works). Per user choice, the `model` pin was removed from `claude/settings.json`
+(picked per session via `/model`) — with a symlink the repo file can't diverge from live, so a pin
+made no sense.
 
-### Why it's needed
-On **Windows** the Claude config files are **copied**, not linked (file symlinks need Developer
-Mode/admin, and `settings.json`/`CLAUDE.md` are self-mutating — see `claude/README.md`). So the live
-files drift from the repo:
-- `settings.json` — Claude Code writes `model`, `theme`, `effortLevel`, etc.
-- `CLAUDE.md` — `/memory` and `#`-shortcuts can append to it.
-- `skills/` — new skills can appear as real dirs in `~/.claude/skills/` (this is how
-  `review-fix-loop` showed up untracked).
-
-(On **Linux** these are symlinked, so no sync is needed there — scope this to Windows.)
-
-### CRITICAL design constraint — this is a MERGE, not a blind copy
-A dumb live→repo copy would clobber deliberate repo decisions. Concrete example: the repo **pins
-`model: sonnet`** but the live file has **no `model` key** — the user chose to KEEP the pin. So the
-sync must:
-- Preserve repo-only keys the user intentionally pins (e.g. `model`).
-- Pull through genuine drift (e.g. `effortLevel` medium→high).
-- Likely need a small per-key merge policy / allowlist, not `Copy-Item`.
-
-Decide the policy with the user before writing the script.
-
-### What to sync (tracked artifacts only)
-- `~/.claude/settings.json` → `claude/settings.json` (with merge policy above)
-- `~/.claude/CLAUDE.md` → `claude/CLAUDE.md`
-- `~/.claude/statusline-command.sh` → `claude/statusline-command.sh`
-- New/changed dirs under `~/.claude/skills/` that are **real dirs** (not junctions back to the repo)
-  → copy into `claude/skills/<name>/`
-
-### Exclusions (never sync — per claude/README.md)
-`.credentials.json`, `history.jsonl`, `mcp-needs-auth-cache.json`, `stats-cache.json`,
-`settings.local.json`, `projects/`, session data.
-
-### Scheduler choice — must be LOCAL
-- The harness `/schedule` skill creates **remote** cloud routines — they CANNOT read the local
-  `~/.claude`, so they are NOT suitable here.
-- `/loop` is interactive-session-only — also not a background sync.
-- Use **Windows Task Scheduler** running a PowerShell sync script committed to the repo (e.g.
-  `claude/sync-from-live.ps1`). Open question: auto-commit, or stage changes + notify for review?
-  (Lean: stage + notify, given the merge policy needs occasional human eyes.)
-
-### Open questions for the user
-1. Merge policy for `settings.json` — which keys are repo-pinned (never overwritten from live) vs.
-   always-pulled? (At minimum `model` is pinned.)
-2. Auto-commit, or stage-and-notify only?
-3. Frequency (daily? on logon? on a timer?).
-4. Should the script also reconcile real-dir skills into junctions (re-run `setup.ps1 -Module
-   claude`), or just copy content into the repo?
-
-### Relevant code pointers
-- `setup.ps1` → `Install-Claude` (~line 373) — current copy/junction install.
-- `setup.sh` → `install_claude` (~line 211) — Linux symlink install.
-- `claude/README.md` — documents the copy-vs-symlink asymmetry and drift.
+- New `New-FileSymlink` helper in `setup.ps1` (mirrors `New-Junction`: idempotent, `-Backup` skips).
+- `claude/README.md` + root `CLAUDE.md` updated (symlink, no drift).
+- Old live copies were backed up to `~/.claude/*.bak.<timestamp>` by the relink — safe to delete
+  once happy (or `setup.ps1 -CleanBackups`).
+- **Watch item:** verify Claude Code writes `settings.json` *in place* (not write-temp-rename, which
+  would replace the symlink with a plain file and silently reintroduce drift). Linux has symlinked
+  these for ages without issue, so in-place write is likely — but confirm on Windows by changing a
+  setting via `/config` and checking the repo file updated and the link survived.

@@ -20,25 +20,25 @@ Verify with `claude doctor` (install method = native) and `Get-Command claude`
 
 | File / Directory | Installed to | Notes |
 |---|---|---|
-| `settings.json` | `~/.claude/settings.json` | Model, theme, effort level, statusline |
+| `settings.json` | `~/.claude/settings.json` | Theme, effort level, editor mode, hooks, statusline (no `model` pin — chosen per session) |
 | `CLAUDE.md` | `~/.claude/CLAUDE.md` | Claude-specific instructions; imports `AGENTS.md` via `@AGENTS.md` |
 | `AGENTS.md` | `~/.claude/AGENTS.md` | Shared coding conventions (single source). The `codex` module installs the same file to `~/.codex/AGENTS.md` so Claude Code and Codex CLI agree. See `../codex/README.md`. |
 | `statusline-command.sh` | `~/.claude/statusline-command.sh` | Token usage statusline script |
 | `skills/<name>/` | `~/.claude/skills/<name>/` | Global custom skills |
 
-**Install method differs by OS.** On **Windows**, `settings.json`, `CLAUDE.md`,
-`AGENTS.md`, and `statusline-command.sh` are **copied** (a file symlink would need
-Developer Mode/admin), and each skill directory is **junctioned**. On **Linux**, all
-are **symlinked**. Consequence on Windows: because they are copies and Claude
-Code writes to `settings.json` / `CLAUDE.md` itself, the live files can drift
-from the repo — re-run `setup.ps1 -Module claude` to push repo → live, and copy
-changes back by hand (or just edit the repo file) to go live → repo.
+**Install method.** `settings.json`, `CLAUDE.md`, `AGENTS.md`, and
+`statusline-command.sh` are **symlinked** into `~/.claude`, and each skill directory is
+**junctioned** (Windows) / symlinked (Linux). Windows file symlinks require **Developer
+Mode** (Settings → For developers) — junctions don't need it but can't link files. Because
+the live files are links to the repo, edits flow both ways and there is **no drift**: Claude
+Code writing `settings.json`, or `/memory` appending to `CLAUDE.md`, updates the repo file
+directly. Just `git diff` / commit when you want to capture the changes. (This replaces the
+old copy-based install + planned live→repo sync.)
 
 ## Settings
 
 | Setting | Value | Notes |
 |---|---|---|
-| `model` | `claude-opus-4-8` | Default model |
 | `effortLevel` | `high` | Default thinking effort |
 | `theme` | `dark-ansi` | Palette-based dark theme — readable under Zellij on Windows Terminal, where `auto` + truecolor diff backgrounds collapse into the pane (see `docs/zellij-windows-terminal-colors.md`) |
 | `editorMode` | `vim` | Vim keybindings in the prompt input |

@@ -8,7 +8,7 @@ Personal dotfiles spanning Windows (PowerShell 7) and Linux/WSL (bash, Neovim, t
 
 `pwsh_profile.ps1` at the repo root is the **old** profile and is superseded by `powershell/Microsoft.PowerShell_profile.*.ps1`. Edit the per-machine file under `powershell/`, not the root one.
 
-Note the two `CLAUDE.md` files: this root one is **project instructions for the dotfiles repo**; `claude/CLAUDE.md` is the **global user instructions** that `setup.ps1 -Module claude` installs to `~/.claude/CLAUDE.md`. They are unrelated — don't merge them. See `claude/README.md` for the Claude Code module (settings, statusline, skills); note its files are **copied** on Windows (so the live `~/.claude` copies can drift) and **symlinked** on Linux.
+Note the two `CLAUDE.md` files: this root one is **project instructions for the dotfiles repo**; `claude/CLAUDE.md` is the **global user instructions** that `setup.ps1 -Module claude` installs to `~/.claude/CLAUDE.md`. They are unrelated — don't merge them. See `claude/README.md` for the Claude Code module (settings, statusline, skills); its files are **symlinked** into `~/.claude` on both Windows and Linux (Windows file symlinks need Developer Mode; skill dirs are junctioned on Windows), so the live files and the repo never drift.
 
 **Shared agent conventions live in `claude/AGENTS.md`** (single source). `claude/CLAUDE.md` imports it via `@AGENTS.md`, and the `codex` module installs the same file to `~/.codex/AGENTS.md`, so Claude Code and Codex CLI follow identical coding conventions. Edit conventions in `claude/AGENTS.md` only; keep `CLAUDE.md` to Claude-specific behaviour. See the Claude + Codex integration section below.
 

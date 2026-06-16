@@ -116,6 +116,46 @@ function New-Junction ([string]$Link, [string]$Target) {
     Write-Ok "         -> $Target"
 }
 
+# File symlink — the live file points at the repo file, so edits flow both ways and there is
+# no drift. Needs Developer Mode (or elevation) on Windows for non-elevated creation; junctions
+# can't link files, only directories. With -Backup there is nothing to capture (linked), so skip.
+function New-FileSymlink ([string]$Link, [string]$Target) {
+    if ($Backup) { Write-Info "Skipped (linked, no drift):  $Link"; return }
+    if (-not (Test-Path $Target -PathType Leaf)) {
+        Write-Fail "Source file not found: $Target"; return
+    }
+
+    # Idempotent: leave an existing symlink that already points at $Target.
+    if (Test-Path $Link) {
+        $existing = Get-Item $Link -Force -ErrorAction SilentlyContinue
+        if ($existing -and ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+            $curTarget = if ($existing.LinkTarget) { $existing.LinkTarget } else { @($existing.Target)[0] }
+            if ($curTarget) {
+                $a = [IO.Path]::GetFullPath($curTarget)
+                $b = [IO.Path]::GetFullPath($Target)
+                if ([string]::Equals($a, $b, [StringComparison]::OrdinalIgnoreCase)) {
+                    Write-Ok "Symlink:    $Link (already current)"
+                    return
+                }
+            }
+        }
+    }
+
+    if ($DryRun) { Write-Info "[DRY RUN] symlink $Link -> $Target"; return }
+
+    $dir = Split-Path $Link
+    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+    Backup-Existing $Link
+    try {
+        New-Item -ItemType SymbolicLink -Path $Link -Target $Target -ErrorAction Stop | Out-Null
+    } catch {
+        Write-Fail "Symlink failed for $Link ($($_.Exception.Message)). Enable Developer Mode (Settings > For developers) or run elevated."
+        return
+    }
+    Write-Ok "Symlink:    $Link"
+    Write-Ok "         -> $Target"
+}
+
 # File copy — simple, always works cross-volume.
 # Re-run the installer to pick up changes from the repo.
 # With -Backup, runs in reverse: pulls the live copy ($Dest) back into the repo ($Source).
@@ -480,28 +520,15 @@ function Install-Claude {
     Write-Host ''
     Write-Info '=== Claude Code ==='
     $claudeDir = Join-Path $env:USERPROFILE '.claude'
-    $params = @{
-        Dest = Join-Path $claudeDir 'settings.json'
-        Source = Join-Path $Dotfiles 'claude\settings.json'
-    }
-    Copy-Dotfile @params
-    $params = @{
-        Dest = Join-Path $claudeDir 'CLAUDE.md'
-        Source = Join-Path $Dotfiles 'claude\CLAUDE.md'
-    }
-    Copy-Dotfile @params
+    # Symlink the tracked files into the repo so live == repo (no drift, no sync needed).
+    # settings.json and CLAUDE.md self-mutate (Claude writes settings; /memory appends), so the
+    # link lets those edits land straight in the repo. Needs Developer Mode (see New-FileSymlink).
+    New-FileSymlink -Link (Join-Path $claudeDir 'settings.json') -Target (Join-Path $Dotfiles 'claude\settings.json')
+    New-FileSymlink -Link (Join-Path $claudeDir 'CLAUDE.md') -Target (Join-Path $Dotfiles 'claude\CLAUDE.md')
     # Shared coding conventions. CLAUDE.md imports this via `@AGENTS.md` (resolves to
     # ~/.claude/AGENTS.md). The codex module installs the same source to ~/.codex/AGENTS.md.
-    $params = @{
-        Dest = Join-Path $claudeDir 'AGENTS.md'
-        Source = Join-Path $Dotfiles 'claude\AGENTS.md'
-    }
-    Copy-Dotfile @params
-    $params = @{
-        Dest = Join-Path $claudeDir 'statusline-command.sh'
-        Source = Join-Path $Dotfiles 'claude\statusline-command.sh'
-    }
-    Copy-Dotfile @params
+    New-FileSymlink -Link (Join-Path $claudeDir 'AGENTS.md') -Target (Join-Path $Dotfiles 'claude\AGENTS.md')
+    New-FileSymlink -Link (Join-Path $claudeDir 'statusline-command.sh') -Target (Join-Path $Dotfiles 'claude\statusline-command.sh')
 
     # Skills — junction each subdirectory into ~/.claude/skills/
     $skillsSrc = Join-Path $Dotfiles 'claude\skills'
