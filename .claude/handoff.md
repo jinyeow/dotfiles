@@ -1,7 +1,7 @@
 # Handoff — next session
 
 > **Last session (2026-06-16): coding-font work COMPLETE and pushed to `origin/main`.**
-> Remaining items: the Chocolatey leftover check, and the Claude settings-sync task (both below).
+> Remaining item: the Claude settings-sync task (below). (Chocolatey leftover is now gone — cleared.)
 
 ## Done this session (2026-06-16) — coding font → Commit Mono
 
@@ -25,13 +25,6 @@
   (switch to Commit Mono).
 - All 9 candidate fonts remain installed per-user (`%LOCALAPPDATA%\Microsoft\Windows\Fonts` + HKCU)
   for future switching via `Set-CodingFont`.
-
-## Pending: Chocolatey leftover
-
-`C:\ProgramData\chocolatey\helpers\Chocolatey.PowerShell.dll` — access-denied to a non-elevated
-shell (owner `BUILTIN\Administrators`). Run `Remove-Item -Recurse -Force 'C:\ProgramData\chocolatey'`
-from **elevated** pwsh (or let the SYSTEM `CleanupChocoLeftover` task clear it on next boot), then
-confirm `Test-Path 'C:\ProgramData\chocolatey'` is False. (Check each session until gone.)
 
 ## Pending: scheduled task/workflow to sync Claude Code settings → dotfiles
 
