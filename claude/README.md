@@ -107,12 +107,20 @@ mishandles escape sequences (see `docs/zellij-windows-terminal-colors.md`).
 ```
 claude/skills/
   my-skill/
-    SKILL.md    ← skill definition
+    SKILL.md            ← skill definition (frontmatter: name + description)
+    commands/           ← optional: slash-command prompt files
+    references/         ← optional: progressive-disclosure docs loaded on demand
 ```
 
 The installer junctions (Windows) or symlinks (Linux) each skill directory into
 `~/.claude/skills/`, making it available in every project. To add a skill,
 create its subdirectory here and re-run `setup.ps1 -Module claude`.
+
+`azure-boards-organiser` (Azure DevOps Boards management for a Scrum process — PBIs,
+sprints, backlog) needs a one-time local setup: copy its `config.example.json` to
+`config.json` (gitignored) and fill in your ADO project / team / iteration root; the org
+is read from `az devops configure`. It prefers the Azure DevOps MCP server when connected
+and falls back to PowerShell-native `az boards` CLI.
 
 `_shared/` is **not a skill** — it holds resources shared by multiple skills (e.g.
 `review-rubric.md`, the merged AGENTS.md + thermo-nuclear review rubric used by both

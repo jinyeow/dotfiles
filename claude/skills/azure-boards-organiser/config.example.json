@@ -1,0 +1,19 @@
+{
+  "project": "<YOUR_PROJECT>",
+  "team": "<YOUR_TEAM>",
+  "iterationRoot": "<YOUR_PROJECT>\\<YOUR_TEAM>\\<YEAR>",
+  "areaPathDefault": "<YOUR_PROJECT>",
+  "tags": [
+    "azure-policy",
+    "bicep",
+    "networking",
+    "iam",
+    "landing-zone",
+    "monitoring",
+    "cost-management",
+    "security",
+    "pipeline",
+    "documentation",
+    "tech-debt"
+  ]
+}
