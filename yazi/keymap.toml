@@ -2,4 +2,6 @@
 prepend_keymap = [
   # o → interactive opener picker (Enter opens with first-match rule, o lets you choose)
   { on = "o", run = "open --interactive", desc = "Open with picker" },
+  # g i → open lazygit in the current directory (lazygit.yazi; needs lazygit on PATH)
+  { on = [ "g", "i" ], run = "plugin lazygit", desc = "Run lazygit" },
 ]
