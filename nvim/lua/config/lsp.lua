@@ -15,11 +15,24 @@ vim.api.nvim_create_autocmd('LspAttach', {
     map('<leader>ca', vim.lsp.buf.code_action,   'Code action')
     map('<leader>d',  vim.diagnostic.open_float, 'Show diagnostics')
 
-    -- Enable native LSP completion (manual trigger: <C-x><C-o>)
-    vim.lsp.completion.enable(true, ev.data.client_id, ev.buf, { autotrigger = false })
+    -- Enable native LSP completion (autotrigger: complete as you type)
+    vim.lsp.completion.enable(true, ev.data.client_id, ev.buf, { autotrigger = true })
+
+    local client = vim.lsp.get_client_by_id(ev.data.client_id)
+
+    -- Highlight other references to the symbol under the cursor on CursorHold
+    -- (updatetime = 250); cleared on move. Skipped for servers without the capability.
+    if client and client:supports_method('textDocument/documentHighlight') then
+      local hl = vim.api.nvim_create_augroup('lsp_doc_highlight_' .. ev.buf, { clear = true })
+      vim.api.nvim_create_autocmd({ 'CursorHold', 'CursorHoldI' }, {
+        group = hl, buffer = ev.buf, callback = vim.lsp.buf.document_highlight,
+      })
+      vim.api.nvim_create_autocmd({ 'CursorMoved', 'CursorMovedI' }, {
+        group = hl, buffer = ev.buf, callback = vim.lsp.buf.clear_references,
+      })
+    end
 
     -- Prime PowerShell workspace index once per client so cross-file gd works immediately
-    local client = vim.lsp.get_client_by_id(ev.data.client_id)
     if client and client.name == 'powershell_es' and not client._pwsh_indexed then
       client._pwsh_indexed = true
       vim.defer_fn(function()
