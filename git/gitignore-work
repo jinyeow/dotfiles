@@ -47,6 +47,7 @@ terraform.rc
 
 # AI / LLM tooling
 .claude/
+.serena/
 CLAUDE.md
 AGENTS.md
 GEMINI.md
