@@ -9,7 +9,7 @@
     before being replaced.
 
 .PARAMETER Module
-    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, zellij, yazi, curl, claude, codex, lazygit, windowsterminal, bat, vscode, winget, all.
+    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, zellij, yazi, curl, claude, codex, serena, lazygit, windowsterminal, bat, vscode, winget, all.
     Optional when -CleanBackups is specified.
 
 .PARAMETER DryRun
@@ -60,7 +60,7 @@ $Dotfiles = $PSScriptRoot
 
 # Expand 'all'
 if ($Module -contains 'all') {
-    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'yazi', 'curl', 'claude', 'codex', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget')
+    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'yazi', 'curl', 'claude', 'codex', 'serena', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget')
 }
 $Module = $Module | Select-Object -Unique
 
@@ -622,6 +622,56 @@ function Install-Codex {
     Write-Info 'Next: run `codex login` (interactive ChatGPT-account OAuth) to authenticate.'
 }
 
+function Install-Serena {
+    Write-Host ''
+    Write-Info '=== serena (semantic code-intelligence MCP for Claude Code) ==='
+
+    # 1. Install the serena-agent tool (idempotent) via uv, and ensure uv's tool-bin dir is on PATH
+    #    so the `serena` launch command resolves in future shells. Pins Python 3.13 (uv fetches it if
+    #    absent). `uv` itself comes from the winget module; under -Module all winget runs after this,
+    #    so a fresh machine may need a serena re-run once uv is present. The uv check sits after
+    #    $Backup/$DryRun so those no-op modes work regardless.
+    if ($Backup) {
+        Write-Info 'Backup mode — skipping serena install.'
+    } elseif ($DryRun) {
+        Write-Info '[DRY RUN] would run: uv tool install -p 3.13 serena-agent; uv tool update-shell'
+    } elseif (-not (Get-Command -Name uv -ErrorAction Ignore)) {
+        Write-Warn 'uv not found — install the winget module first (astral-sh.uv), then re-run.'
+    } else {
+        & uv tool install -p 3.13 serena-agent
+        if ($LASTEXITCODE -ne 0) {
+            Write-Fail "uv tool install serena-agent failed (exit $LASTEXITCODE)."
+        } else {
+            & uv tool update-shell
+            if ($LASTEXITCODE -eq 0) {
+                Write-Ok 'Installed serena-agent (uv tool).'
+            } else {
+                Write-Warn "serena-agent installed, but 'uv tool update-shell' failed (exit $LASTEXITCODE) — ensure uv's tool-bin dir is on PATH or the serena MCP command won't resolve in new shells."
+            }
+        }
+    }
+
+    # 2. Register serena as a user-scope MCP server in Claude Code. Like the codex reviewer this is
+    #    a CLI registration in ~/.claude.json (not a tracked file). --context claude-code +
+    #    --project-from-cwd activate the project from each session's working dir. Idempotent.
+    if ($Backup) {
+        Write-Info 'Backup mode — skipping MCP registration.'
+    } elseif (-not (Get-Command -Name claude -ErrorAction Ignore)) {
+        Write-Warn 'claude CLI not found — skipping MCP registration. Install the claude module first.'
+    } elseif ($DryRun) {
+        Write-Info '[DRY RUN] would register user-scope MCP: claude mcp add --scope user serena -- serena start-mcp-server --context claude-code --project-from-cwd'
+    } else {
+        # Native command: a non-zero exit when no prior entry exists is benign and does not throw.
+        & claude mcp remove --scope user serena 2>$null | Out-Null
+        & claude mcp add --scope user --transport stdio serena -- serena start-mcp-server --context claude-code --project-from-cwd
+        if ($LASTEXITCODE -eq 0) {
+            Write-Ok 'Registered serena MCP (user scope).'
+        } else {
+            Write-Fail "claude mcp add failed (exit $LASTEXITCODE)."
+        }
+    }
+}
+
 function Remove-OldBackups {
     Write-Host ''
     Write-Info '=== Cleaning backups ==='
@@ -710,6 +760,7 @@ foreach ($m in $Module) {
         'bat'        { Install-Bat        }
         'claude'     { Install-Claude     }
         'codex'      { Install-Codex      }
+        'serena'     { Install-Serena     }
         'lazygit'        { Install-Lazygit        }
         'windowsterminal' { Install-WindowsTerminal }
         default          { Write-Warn "Unknown module '$m' — skipping." }

@@ -69,6 +69,13 @@ Codex CLI is wired in as a **read-only second-opinion reviewer** for Claude Code
 - **Shared conventions**: `claude/AGENTS.md` installs to both `~/.claude/AGENTS.md` (imported by `CLAUDE.md`) and `~/.codex/AGENTS.md`, so both tools obey the same rules. Codex also concatenates a repo's own `AGENTS.md` on top — that's the layering point for work overlays (`codex/templates/work-AGENTS.md`).
 - **Trigger**: review is **on-demand only** — the `/codex-review` skill, or Claude *offers* a second opinion after a change but never calls Codex or applies findings without approval (see `claude/CLAUDE.md` → "Codex second opinion"). Auth is `codex login` (interactive, run once).
 
+## Code intelligence (serena + ast-grep)
+
+Two tools give the coding agent better-than-grep understanding of the code:
+
+- **serena** — a semantic code-intelligence MCP (LSP-backed: symbol search, find-references, type hierarchy, symbol-level edits) covering the whole stack including **PowerShell** and **C#**. `setup.ps1 -Module serena` installs it as a `uv` tool (`uv tool install -p 3.13 serena-agent`, `uv` from the `winget` module) and registers it at **user scope** in `~/.claude.json` (`claude mcp add --scope user serena -- serena start-mcp-server --context claude-code --project-from-cwd`) — the same registration model as the codex MCP. It activates a project from each session's working dir; the MCP loads at session start, so a new session is needed after registering.
+- **ast-grep** (`ast-grep.ast-grep`, alias `sg`; in `winget/packages.json`) — tree-sitter **structural** search/replace, used straight from the shell (no server). Covers C#, Lua, JS/TS, Bash, YAML, etc. — **not PowerShell** (no built-in grammar), which is exactly the gap serena fills.
+
 ## Subagents (`claude/agents/`)
 
 User-scope Claude Code subagents live as flat `.md` files (frontmatter + system-prompt body) under `claude/agents/`, installed to `~/.claude/agents/`. See `claude/README.md` for the full design.

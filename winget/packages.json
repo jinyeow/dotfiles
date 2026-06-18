@@ -10,6 +10,7 @@
         { "PackageIdentifier": "Anthropic.Claude" },
         { "PackageIdentifier": "AntoineAflalo.SoundSwitch" },
         { "PackageIdentifier": "ar51an.iPerf3" },
+        { "PackageIdentifier": "ast-grep.ast-grep" },
         { "PackageIdentifier": "astral-sh.uv" },
         { "PackageIdentifier": "BurntSushi.ripgrep.GNU" },
         { "PackageIdentifier": "chmln.sd" },
