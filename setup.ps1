@@ -654,16 +654,19 @@ function Install-Serena {
     # 2. Register serena as a user-scope MCP server in Claude Code. Like the codex reviewer this is
     #    a CLI registration in ~/.claude.json (not a tracked file). --context claude-code +
     #    --project-from-cwd activate the project from each session's working dir. Idempotent.
+    #    --open-web-dashboard False stops a dashboard window opening on every session start; to also
+    #    tie a manually-opened dashboard's lifecycle to the session, set web_dashboard_interface: app
+    #    in ~/.serena/serena_config.yml (no CLI flag exists for the interface, so it can't live here).
     if ($Backup) {
         Write-Info 'Backup mode — skipping MCP registration.'
     } elseif (-not (Get-Command -Name claude -ErrorAction Ignore)) {
         Write-Warn 'claude CLI not found — skipping MCP registration. Install the claude module first.'
     } elseif ($DryRun) {
-        Write-Info '[DRY RUN] would register user-scope MCP: claude mcp add --scope user serena -- serena start-mcp-server --context claude-code --project-from-cwd'
+        Write-Info '[DRY RUN] would register user-scope MCP: claude mcp add --scope user serena -- serena start-mcp-server --context claude-code --project-from-cwd --open-web-dashboard False'
     } else {
         # Native command: a non-zero exit when no prior entry exists is benign and does not throw.
         & claude mcp remove --scope user serena 2>$null | Out-Null
-        & claude mcp add --scope user --transport stdio serena -- serena start-mcp-server --context claude-code --project-from-cwd
+        & claude mcp add --scope user --transport stdio serena -- serena start-mcp-server --context claude-code --project-from-cwd --open-web-dashboard False
         if ($LASTEXITCODE -eq 0) {
             Write-Ok 'Registered serena MCP (user scope).'
         } else {
