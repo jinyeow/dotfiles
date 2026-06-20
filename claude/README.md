@@ -24,11 +24,13 @@ Verify with `claude doctor` (install method = native) and `Get-Command claude`
 | `CLAUDE.md` | `~/.claude/CLAUDE.md` | Claude-specific instructions; imports `AGENTS.md` via `@AGENTS.md` |
 | `AGENTS.md` | `~/.claude/AGENTS.md` | Shared coding conventions (single source). The `codex` module installs the same file to `~/.codex/AGENTS.md` so Claude Code and Codex CLI agree. See `../codex/README.md`. |
 | `statusline-command.sh` | `~/.claude/statusline-command.sh` | Token usage statusline script |
+| `no-claude-session-trailer.sh` | `~/.claude/no-claude-session-trailer.sh` | PreToolUse hook (wired in `settings.json`) that blocks commits carrying the AI session-URL trailer |
 | `skills/<name>/` | `~/.claude/skills/<name>/` | Global custom skills |
 | `agents/<name>.md` | `~/.claude/agents/<name>.md` | User-scope subagents (whole dir junctioned/symlinked) |
 
-**Install method.** `settings.json`, `CLAUDE.md`, `AGENTS.md`, and
-`statusline-command.sh` are **symlinked** into `~/.claude`, and each skill directory is
+**Install method.** `settings.json`, `CLAUDE.md`, `AGENTS.md`,
+`statusline-command.sh`, and `no-claude-session-trailer.sh` are **symlinked** into
+`~/.claude`, and each skill directory is
 **junctioned** (Windows) / symlinked (Linux). Windows file symlinks require **Developer
 Mode** (Settings → For developers) — junctions don't need it but can't link files. Because
 the live files are links to the repo, edits flow both ways and there is **no drift**: Claude
@@ -45,7 +47,7 @@ old copy-based install + planned live→repo sync.)
 | `editorMode` | `vim` | Vim keybindings in the prompt input |
 | `agentPushNotifEnabled` | `true` | Mobile push notifications (cloud/background agents — not local CLI) |
 | `preferredNotifChannel` | `terminal_bell` | Built-in bell on the **needs-input** notification → marks the Zellij tab |
-| `hooks` | Stop, Notification | Local completion alert — see Notifications |
+| `hooks` | PreToolUse, Stop, Notification | PreToolUse blocks commits carrying the AI session-URL trailer (runs `no-claude-session-trailer.sh`); Stop/Notification are the local completion alert — see Notifications |
 | `statusLine` | command | Runs `statusline-command.sh` |
 
 ## Notifications

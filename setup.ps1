@@ -529,6 +529,8 @@ function Install-Claude {
     # ~/.claude/AGENTS.md). The codex module installs the same source to ~/.codex/AGENTS.md.
     New-FileSymlink -Link (Join-Path $claudeDir 'AGENTS.md') -Target (Join-Path $Dotfiles 'claude\AGENTS.md')
     New-FileSymlink -Link (Join-Path $claudeDir 'statusline-command.sh') -Target (Join-Path $Dotfiles 'claude\statusline-command.sh')
+    # PreToolUse hook wired in settings.json; blocks commits carrying the AI session-URL trailer.
+    New-FileSymlink -Link (Join-Path $claudeDir 'no-claude-session-trailer.sh') -Target (Join-Path $Dotfiles 'claude\no-claude-session-trailer.sh')
 
     # Skills — junction each subdirectory into ~/.claude/skills/
     $skillsSrc = Join-Path $Dotfiles 'claude\skills'
