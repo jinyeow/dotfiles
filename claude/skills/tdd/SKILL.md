@@ -15,6 +15,18 @@ description: Test-driven development with red-green-refactor loop. Use when user
 
 See [tests.md](tests.md) for examples and [mocking.md](mocking.md) for mocking guidelines.
 
+## Prefer result-driven assertions
+
+Assert on what a function **returns, or the observable state it changes** — not on which collaborators it called. Invocation checks (Jest `toHaveBeenCalled`, Pester `Should -Invoke`, mock spies) couple the test to _how_ the code works and can pass even when the real outcome is wrong.
+
+Reserve invocation verification for behaviour that **cannot** be observed in the return:
+
+- side effects with no return value (a backoff `sleep`, a log line, a fire-and-forget publish);
+- absence-of-side-effect guarantees ("does not create a duplicate", "no write on a no-op / `--WhatIf`");
+- boundary arguments handed to an external system where a wrong argument is itself the bug.
+
+Even then, never **both** return a value from a mock **and** assert its invocation for the _same_ behaviour — assert the result instead. Useful trick: have the mock **echo its inputs into its return value**, so a result assertion proves the right data was wired through without spying.
+
 ## Anti-Pattern: Horizontal Slices
 
 **DO NOT write all tests first, then all implementation.** This is "horizontal slicing" - treating RED as "write all tests" and GREEN as "write all code."
@@ -103,6 +115,8 @@ After all tests pass, look for [refactor candidates](refactoring.md):
 ```
 [ ] Test describes behavior, not implementation
 [ ] Test uses public interface only
+[ ] Asserts on returned result/state, not on which collaborators were called
+[ ] External/boundary calls are mocked (no real network, DB, or cloud tenant)
 [ ] Test would survive internal refactor
 [ ] Code is minimal for this test
 [ ] No speculative features added
