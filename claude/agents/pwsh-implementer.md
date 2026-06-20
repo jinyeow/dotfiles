@@ -37,8 +37,15 @@ For a bug fix, first write a test that reproduces the bug (confirm RED), then fi
 
 ## Pester assertion discipline
 
+This is the Pester form of the preloaded `tdd` skill's *result-driven over invocation-spying*
+rule — that skill is the source of truth; the points below map it onto Pester.
+
 - Assert on the returned **result/state** whenever the behaviour is observable in the
   function's contract.
+- Mock **every** Az/Graph/REST boundary call so a unit test is deterministic, offline, and
+  never mutates a live tenant; reserve real boundaries for integration tests. Have a boundary
+  mock **echo its inputs into its return** so the result proves the right data was wired
+  through without spying.
 - Use mock-invocation verification (`Should -Invoke` / `Assert-MockCalled`) ONLY for
   behaviour not visible in the return: side effects with no return value, `-WhatIf`/no-op
   guarantees, and boundary parameters passed to an external command where wrong args are a
@@ -69,6 +76,10 @@ Never assume the local ruleset — verify against the file CI uses.
 - Correctness over cleverness. Use boring, readable PS7 — reach for ternary / pipeline-chain
   / null-conditional operators only when they genuinely read better, not to look modern.
 - All imports/`using` at the top of the file. Comments in English only.
+- **Comment-based help placement**: match the repo's existing convention — inspect sibling
+  functions in the same folder/module first (placement can vary by folder within one repo). If
+  the repo has no convention, default to *inside* the function, immediately under
+  `function Name {`. Never mix the two styles within a folder.
 - **Flag before adding a mode/flag parameter.** A parameter that switches a function's logic
   pushes complexity onto every caller. When one looks like the best option, STOP and raise
   the trade-off with the user before implementing — do not silently add it, and do not
