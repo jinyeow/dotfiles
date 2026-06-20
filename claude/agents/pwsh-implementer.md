@@ -76,6 +76,10 @@ Never assume the local ruleset — verify against the file CI uses.
 - Correctness over cleverness. Use boring, readable PS7 — reach for ternary / pipeline-chain
   / null-conditional operators only when they genuinely read better, not to look modern.
 - All imports/`using` at the top of the file. Comments in English only.
+- **Existence checks**: prefer the positive `if ($x)` over `if ($null -ne $x)` — it reads
+  cleaner. Use an explicit null comparison only when a falsy-but-valid value (`0`, `''`,
+  `$false`, `@()`) must be told apart from absence; then put `$null` on the left
+  (`$null -eq $x` / `$null -ne $x`) so a right-hand collection is compared, not filtered.
 - **Comment-based help placement**: match the repo's existing convention — inspect sibling
   functions in the same folder/module first (placement can vary by folder within one repo). If
   the repo has no convention, default to *inside* the function, immediately under

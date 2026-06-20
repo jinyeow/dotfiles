@@ -76,8 +76,9 @@ For a 7+-only module the import-time gate is `PowerShellVersion = '7.0'` in the 
 When reviewing an existing module, report against:
 
 1. **Public interface** — exports are intentional, documented (comment-based help on each
-   public function), and named to a consistent `Verb-Noun` using approved verbs
-   (`Get-Verb`).
+   public function, placed to match the repo's existing convention — inspect same-folder
+   siblings first, as placement can vary by folder; default *inside* the function if the repo
+   has none), and named to a consistent `Verb-Noun` using approved verbs (`Get-Verb`).
 2. **Private helpers** — internals are in `Private/`, not exported, and genuinely reused
    (a single-use private helper may belong inlined).
 3. **Manifest** — complete and accurate; `FunctionsToExport` explicit and matching the `.psm1`;
