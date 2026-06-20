@@ -38,7 +38,9 @@ Check every change against `~/.claude/AGENTS.md`. Flag where the diff breaks the
 - **Documentation.** Behavior changed but the relevant docstring / README / CLAUDE.md not updated
   in the same change. Duplicated docs across files. Changelog-style docs instead of current-state.
 - **Testing (TDD).** New code or bug fix without a test-first slice; a bug fix without a test that
-  reproduces the bug. Respect the repo's existing test strategy.
+  reproduces the bug. A test asserting on mock invocations (`Should -Invoke`, `toHaveBeenCalled`)
+  where a result/state assertion would prove the behaviour; both returning a value from a mock and
+  verifying its invocation for the same behaviour. Respect the repo's existing test strategy.
 
 ---
 
