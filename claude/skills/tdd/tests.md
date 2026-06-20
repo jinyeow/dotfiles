@@ -78,8 +78,11 @@ test("checkout charges the card", async () => {
 test("checkout confirms the order and reports the charged total", async () => {
   const result = await checkout(cart, { charge: (amount) => ({ id: "ch_1", amount }) });
   expect(result.status).toBe("confirmed");
-  expect(result.charge.amount).toBe(100);
+  expect(result.charge.id).toBe("ch_1"); // mock-only value: proves the boundary was actually used
+  expect(result.charge.amount).toBe(100); // echoed input: proves the right amount was wired through
 });
 ```
 
-Legitimate invocation checks have no return to assert on: a debounce/backoff `sleep`, a "did **not** create a duplicate" guarantee, a `--dry-run` / `--WhatIf` no-op. Never both return a value from a mock and assert its invocation for the same behaviour.
+Assert a **mock-only** value (here `id: "ch_1"`) alongside the echoed input — the echoed value alone can pass even if the code skips the boundary and synthesizes the same shape.
+
+Legitimate invocation checks have no return to assert on: a debounce/backoff `sleep`, a "did **not** create a duplicate" guarantee, a `--dry-run` / `-WhatIf` no-op. Never both return a value from a mock and assert its invocation for the same behaviour.

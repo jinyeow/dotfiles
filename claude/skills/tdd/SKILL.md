@@ -22,7 +22,7 @@ Assert on what a function **returns, or the observable state it changes** — no
 Reserve invocation verification for behaviour that **cannot** be observed in the return:
 
 - side effects with no return value (a backoff `sleep`, a log line, a fire-and-forget publish);
-- absence-of-side-effect guarantees ("does not create a duplicate", "no write on a no-op / `--WhatIf`");
+- absence-of-side-effect guarantees ("does not create a duplicate", "no write on a no-op / `-WhatIf`");
 - boundary arguments handed to an external system where a wrong argument is itself the bug.
 
 Even then, never **both** return a value from a mock **and** assert its invocation for the _same_ behaviour — assert the result instead. Useful trick: have the mock **echo its inputs into its return value**, so a result assertion proves the right data was wired through without spying.

@@ -29,8 +29,11 @@ const graph = {
 };
 
 const sp = await createServicePrincipal("my-app", graph);
-expect(sp.appId).toBe("my-app"); // outcome, not "was createServicePrincipal called with my-app"
+expect(sp.id).toBe("sp-for-my-app"); // mock-only value: proves the boundary was actually used
+expect(sp.appId).toBe("my-app"); // echoed input: outcome, not "was createServicePrincipal called with my-app"
 ```
+
+Assert a **mock-only** value (here `id`) alongside the echoed input — the echoed value alone can pass even if the code bypasses the boundary and returns the input directly.
 
 Rule: never both return a value from a mock **and** assert its invocation for the same behaviour — assert the result.
 
