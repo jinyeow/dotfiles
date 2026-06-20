@@ -1,18 +1,23 @@
 {
-  "extraKnownMarketplaces": {
-    "claude-plugins-official": {
-      "source": {
-        "source": "github",
-        "repo": "anthropics/claude-plugins-official"
-      }
-    }
+  "attribution": {
+    "commit": "",
+    "pr": "",
+    "sessionUrl": false
   },
-  "effortLevel": "high",
-  "theme": "dark-ansi",
-  "editorMode": "vim",
-  "agentPushNotifEnabled": true,
-  "preferredNotifChannel": "terminal_bell",
+  "model": "opus",
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "bash ~/.claude/no-claude-session-trailer.sh"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
@@ -38,8 +43,17 @@
     "type": "command",
     "command": "bash ~/.claude/statusline-command.sh"
   },
-  "attribution": {
-    "commit": "",
-    "pr": ""
-  }
+  "extraKnownMarketplaces": {
+    "claude-plugins-official": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-plugins-official"
+      }
+    }
+  },
+  "effortLevel": "high",
+  "theme": "dark-ansi",
+  "editorMode": "vim",
+  "preferredNotifChannel": "terminal_bell",
+  "agentPushNotifEnabled": true
 }
