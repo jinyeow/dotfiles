@@ -29,6 +29,7 @@ Codex reads this file directly as `~/.codex/AGENTS.md`.
 
 - Minimum code that solves the problem; nothing speculative. No features beyond what was asked, no abstractions for single-use code, no unrequested "flexibility", no error handling for impossible scenarios. If you write 200 lines and it could be 50, rewrite it. Ask yourself: "would a senior engineer say this is overcomplicated?" — if yes, simplify.
 - Correctness over cleverness — prefer boring, readable solutions.
+- For existence checks, prefer the positive truthiness form (`if ($x)` / `if (x)`) over an explicit null comparison — it reads cleaner. Switch to an explicit null/None check **only** when a falsy-but-valid value (`0`, `''`, `false`, an empty collection) must be distinguished from absence. In PowerShell, when you do compare to null put `$null` on the **left** (`$null -eq $x` / `$null -ne $x`) so a right-hand collection is compared, not filtered.
 - Comments in English only.
 - Follow DRY, KISS, and YAGNI principles.
 - Use strict typing everywhere — function returns, variables, collections. Avoid untyped variables and generic types like `Any`, `unknown`, `List[Dict[str, Any]]`; use the language's strict type features.
@@ -71,6 +72,7 @@ Codex reads this file directly as `~/.codex/AGENTS.md`.
 
 - Code is the primary documentation — use clear naming, types, and docstrings.
 - Keep documentation in docstrings of the functions or classes they describe, not in separate files. Separate docs files only when a concept cannot be expressed clearly in code.
+- Match the project's existing docstring/comment-based-help **placement** convention — inspect same-folder siblings first (e.g. PowerShell comment-based help can sit *above* or *inside* the function, and the choice can differ by folder within one repo). If the project has no convention, default to placing help adjacent to the definition (for PowerShell, *inside* the function, just under `function Name {`).
 - Never duplicate documentation across files. Store knowledge as current state, not as a changelog of modifications.
 - Create/update relevant documentation after implementing and testing a change, not as a separate afterthought.
 
