@@ -1,6 +1,6 @@
 ---
 name: bicep-tdd
-description: "Use when authoring or changing Azure Bicep and you want it validated test-first — a local RED→GREEN loop of bicep build, bicep lint, and PSRule for Azure (WAF policy-as-code), plus Pester golden-fixture tests over the compiled ARM. Fully offline: no tenant auth, no what-if, no deploy. Does not fire for Terraform or for live-Azure tasks."
+description: "Use when authoring or changing Azure Bicep and you want it validated test-first — a local RED→GREEN loop of bicep build, bicep lint, PSRule for Azure (WAF policy-as-code), and a committed snapshot-compare regression gate, plus Pester golden-fixture tests over the compiled ARM. Fully offline: no tenant auth, no what-if, no deploy. Does not fire for Terraform or for live-Azure tasks."
 metadata:
   author: justin
   version: "1.0.0"
@@ -9,7 +9,7 @@ metadata:
 # Bicep TDD (local, offline)
 
 Drive Azure Bicep with a **red**-green loop that never deploys, runs `what-if`, or queries
-the tenant control plane — so it creates no deployment audit-log entry. The gate is three
+the tenant control plane — so it creates no deployment audit-log entry. The gate is four
 local checks plus optional fixtures, run against source and compiled ARM on disk.
 
 > **One network caveat.** Bicep *module restore* can reach a registry — public MCR/AVM, or a
@@ -22,7 +22,8 @@ The loop goes **red** when any gate fails; green only when all pass:
 1. **compile** — `bicep build` succeeds (syntax + type errors are hard failures)
 2. **lint** — `bicep lint` is clean at the repo's configured severity
 3. **policy** — `Assert-PSRule -Module PSRule.Rules.Azure` passes (WAF + security rules)
-4. **fixtures** (where they earn it) — Pester assertions over the compiled ARM shape
+4. **snapshot** — `bicep snapshot --mode validate` shows zero drift from the committed golden
+5. **fixtures** (where they earn it) — Pester assertions over the compiled ARM shape
 
 > **Out of scope — these touch the tenant.** `az deployment ... what-if`, `azd provision`,
 > `New-AzResourceGroupDeployment`, deployment stacks. That's the `azure-validate` →
@@ -64,6 +65,7 @@ green. Where the expectation lives depends on what you're constraining:
 | a syntax/type contract | nothing extra — `bicep build` is already the red gate |
 | an org/WAF/security rule | a PSRule expectation (the standing rule set is usually enough) |
 | a module's emitted shape | a Pester golden-fixture test over the compiled ARM (below) |
+| the whole template's shape | the committed snapshot — `--mode validate` red on any drift; accept intended change with `--mode overwrite` |
 
 1. **RED** — Add or identify the check that currently fails. For a new resource property
    or required tag, the Pester fixture or PSRule rule should fail *before* you touch the
@@ -71,8 +73,8 @@ green. Where the expectation lives depends on what you're constraining:
 2. **GREEN** — Write the minimal Bicep to pass. Re-run the gate.
 3. **REFACTOR** — Extract modules/params, tidy naming; the gate stays green throughout.
 
-Completion criterion: **every** changed `.bicep` (and any module it calls) passes all four
-gates, and the fixtures you added are green for the right reason — not skipped, not green by
+Completion criterion: **every** changed `.bicep` (and any module it calls) passes every gate,
+and the fixtures you added are green for the right reason — not skipped, not green by
 accident.
 
 ## Commands (PowerShell)
@@ -88,11 +90,40 @@ Assert-PSRule -InputPath . -Module PSRule.Rules.Azure -Format File -ErrorAction 
 
 # investigate failures without throwing (detailed, per-rule output)
 Invoke-PSRule -InputPath . -Module PSRule.Rules.Azure -Format File -Outcome Fail
+
+# snapshot regression gate — validate the committed golden on every change (exits non-zero + prints the diff on drift)
+bicep snapshot .\main.bicepparam --mode validate `
+  --subscription-id 00000000-0000-0000-0000-000000000000 --resource-group rg-local --location eastus
 ```
 
 `Assert-PSRule` is the **gate** — with `-ErrorAction Stop` a failed rule throws and fails the
 command (→ red). `Invoke-PSRule -Outcome Fail` is the **lens** — use it to read which rule
 failed and why, then fix and re-assert.
+
+## Snapshot regression gate
+
+`bicep snapshot` normalises a whole deployment to JSON and diffs it — snapshot-testing for
+IaC, and **fully offline** (verified: dummy context, no auth, no network call). It runs
+against a `.bicepparam` file, not the `.bicep` directly.
+
+- **Capture the golden once**, then commit it:
+  ```powershell
+  bicep snapshot .\main.bicepparam --mode overwrite `
+    --subscription-id 00000000-0000-0000-0000-000000000000 --resource-group rg-local --location eastus
+  ```
+  This writes `main.snapshot.json` beside the param file. **Commit it** — unlike `.bicep-out/`,
+  the snapshot *is* the test baseline.
+- **Validate on every change** — `--mode validate` exits non-zero and prints the exact diff on
+  any drift (e.g. `properties.minimumTlsVersion: "TLS1_2" => "TLS1_1"`).
+- **Accept an intended change** — re-run `--mode overwrite` and commit the new
+  `main.snapshot.json` in the *same* change as the Bicep edit; the diff is the review.
+
+The context flags are required by the CLI, but **dummy values are fine** — they only populate
+`subscription()`/`resourceGroup()`/`location` in the normalised output and trigger no network
+call. Use the *same* dummy values for capture and validate so the baseline is stable.
+
+Snapshot is the broad net (catches *any* unintended shape change); Pester fixtures are the
+sharp, intentional contracts (this resource, this property). Use both.
 
 ## Golden-fixture tests (the genuine test-first piece)
 
@@ -134,6 +165,7 @@ version control (compiled artefact).
 | `Error BCPnnn` | compile | Bicep source — type/reference error, never suppress |
 | `Warning no-unused-params`, `prefer-interpolation`, … | lint | source, or adjust `bicepconfig.json` severity if a rule is wrong for the repo |
 | `Azure.Storage.MinTLS` (and similar) failed | policy | source — satisfy the rule; suppress only with a justified `ps-rule.yaml` `suppression` and a comment |
+| `Snapshot validation failed` + a diff | snapshot | source if the shape drifted unintentionally; re-capture with `--mode overwrite` if the change is intended |
 | Pester shape assertion failed | fixture | source if the shape regressed; the test if the contract genuinely changed |
 
 Never make a gate green by deleting its check. A suppressed PSRule rule needs a one-line
@@ -146,7 +178,8 @@ reason; a relaxed lint severity belongs in `bicepconfig.json`, not an inline ign
 - PSRule auto-discovers **all** `.bicep` under the input path when expansion is on — scope it
   with `input.pathIgnore` so module files aren't double-analysed (they're covered via their
   callers).
-- Keep `.bicep-out/` (and any `ps-rule.yaml`-built artefacts) gitignored.
+- Keep `.bicep-out/` (and any `ps-rule.yaml`-built artefacts) gitignored. The
+  `*.snapshot.json` is the opposite — it's the **committed** baseline, versioned with the Bicep.
 
 ---
 

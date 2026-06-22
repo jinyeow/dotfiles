@@ -125,7 +125,8 @@ is read from `az devops configure`. It prefers the Azure DevOps MCP server when 
 and falls back to PowerShell-native `az boards` CLI.
 
 `bicep-tdd` (local, offline RED→GREEN loop for Azure Bicep — `bicep build`/`lint`, PSRule
-for Azure policy-as-code, Pester golden fixtures over compiled ARM) needs two prerequisites
+for Azure policy-as-code, a committed `bicep snapshot` compare gate, and Pester golden
+fixtures over compiled ARM) needs two prerequisites
 on the machine: the **Bicep CLI** on PATH and the **PSRule.Rules.Azure** module
 (`Install-Module PSRule.Rules.Azure -Scope CurrentUser`). It deliberately stops at compiled
 ARM — no `what-if`/deploy, so it never authenticates to a tenant.
