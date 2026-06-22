@@ -34,10 +34,12 @@ Codex only returns findings.
 
 2. **Call the `codex` MCP tool** with a prompt that includes:
    - The role: an independent reviewer giving a second opinion; **findings only, do not approve or block**.
-   - The review criteria: the shared rubric in [`../_shared/review-rubric.md`](../_shared/review-rubric.md) —
+   - The review criteria: the shared quality bar in [`../_shared/review-rubric.md`](../_shared/review-rubric.md) —
      Layer 1 (`AGENTS.md` conformance) is the floor; Layer 2 (thermo-nuclear structural quality) is the
      ambition. Paste its substance into the prompt (Codex does not auto-load it). Be ambitious: surface
-     code-judo restructurings that delete complexity, not just local nits.
+     code-judo restructurings that delete complexity, not just local nits. (The full multi-dimension
+     fan-out version of this bar lives in [`../_shared/dimensions.md`](../_shared/dimensions.md), used
+     by `deep-review`; this skill is the lightweight standalone Codex pass.)
    - Instruction to tag each finding **HIGH** (blocks merge), **MEDIUM** (should fix), or **LOW** (style/preference),
      each with file:line and a one-line rationale — collapsing the rubric's 5-level scale per its mapping.
    - The diff (or the changed file paths if the diff is too large for the prompt — Codex can read the files itself).
