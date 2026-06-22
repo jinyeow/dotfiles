@@ -1,90 +1,89 @@
 ---
 name: review-fix-loop
-description: Iterative review-fix cycle for a branch or PR. Runs a code review, logs each finding as a KANBAN ticket, implements the fixes, runs tests and linter, commits, then loops until the review passes clean or the user sends a stop message. Use when asked to "review and fix", "fix all issues", "clean up the branch", "iterative review loop", "review until no issues", or "keep fixing until clean".
+description: Iterative review-fix cycle for a branch or PR. Chains deep-review (find + verify issues) and fix-findings (apply + commit fixes) each cycle, then loops until the review passes clean at the severity floor or a safety rail trips. Use when asked to "review and fix", "fix all issues", "clean up the branch", "iterative review loop", "review until no issues", or "keep fixing until clean".
 ---
 
 # Review-Fix Loop
 
+A **thin orchestrator**. Each cycle it invokes `deep-review` then `fix-findings`, then evaluates a
+deterministic gate. It owns only the looping, the gate, the rails, and the state transitions between
+the two skills — it does not review or fix itself.
+
+Composition: [`deep-review`](../deep-review/SKILL.md) emits findings → [`fix-findings`](../fix-findings/SKILL.md)
+consumes them → this loop evaluates the gate and decides whether to go again. Shared store +
+fingerprint + rail definitions: [`../_shared/findings-schema.md`](../_shared/findings-schema.md).
+
 ## Quick start
 
 ```
-/review-fix-loop [kanban-path]
+/review-fix-loop [ref-or-range | --pr <n>] [--floor MEDIUM] [--cap 8]
 ```
-
-`kanban-path` — path to KANBAN.md. If omitted, search upward from the git repo root; create one at the repo root if not found. The user may supply a specific path in their message (e.g. `E:\...\TSC Cloud Platform Engineering\KANBAN.md`).
 
 ---
 
 ## Loop
 
-Repeat until the review returns no findings, or the user sends any message:
-
 ```
-REVIEW → KANBAN → FIX → TEST → COMMIT → repeat
+deep-review → fix-findings → GATE? → repeat | stop
 ```
 
-### Step 1 — Review
+Each cycle:
 
-Review the current branch diff against the shared rubric in
-[`../_shared/review-rubric.md`](../_shared/review-rubric.md) — Layer 1 (`AGENTS.md` conformance) is the
-floor; Layer 2 (thermo-nuclear structural quality) is the ambition. Be ambitious: surface code-judo
-restructurings that delete complexity, not just local nits. You may use the built-in `code-review`
-skill to gather candidates, but the rubric above is the bar.
-- Use effort `high` for the first cycle, `medium` for subsequent cycles.
-- Collect all findings as a JSON array, each tagged with the rubric's severity scale.
-- If findings list is empty → exit loop cleanly.
+1. **Review** — invoke `deep-review`. Cycle 1 fixes `base_sha` + the frozen `review_session_id`; every
+   later cycle diffs the **same frozen `base_sha`** against the current HEAD (which the loop's own
+   commits have advanced) and reuses the same session snapshot, so the per-cycle ledger distinguishes
+   fixed / absent / reappeared fingerprints. It writes confirmed findings to the store.
+2. **Fix** — invoke `fix-findings`. It fixes the confirmed `introduced` above-floor findings, runs the
+   full suite + full-tree lint, commits one fix-unit at a time, and returns `suite_green` /
+   `lint_clean`.
+3. **Evaluate** the gate and rails (below) using the store ledger + the returned signals, then repeat
+   or stop.
 
-### Step 2 — KANBAN update
+### Clean gate — exit success
 
-Read the existing KANBAN.md. Find the highest existing `TICKET-NNN` number; new tickets start from `NNN+1` (or `TICKET-001` if none exist).
+Stop and report **"Review clean"** when all three hold:
 
-Add each finding as a ticket under `## To Do`. See [REFERENCE.md](REFERENCE.md) for the exact ticket format.
+- Zero `confirmed` `introduced` findings **at or above the floor** (default MEDIUM) remain unfixed
+  (read from the store), and
+- `fix-findings` returned `lint_clean: true` and `suite_green: true` for the cycle.
 
-Do not duplicate tickets that are already present (match on file + line + summary).
+The loop relies on `fix-findings`' returned gate signals — it does not re-run lint/tests itself.
+Below-floor findings (LOW/CLEANUP) and pre-existing findings are reported, not gated on.
 
-### Step 3 — Fix
+### Safety rails — stop and escalate
 
-Work through every `## To Do` ticket in priority order (CRITICAL → HIGH → MEDIUM → LOW → CLEANUP):
+Stop, hand back to the user, and print the remaining store + the reason, if any of:
 
-For each ticket:
-1. Move it to `## In Progress` in KANBAN.md.
-2. State a one-sentence "why" before every file edit (the defect being fixed or invariant being enforced).
-3. Apply the fix. Use splatting over backticks; `foreach ($singular in $plural)`; no aligned `=` outside hashtables.
-4. Run the linter (see [REFERENCE.md](REFERENCE.md) for detection logic). Fix any violations introduced by the edit before moving on.
-5. Move the ticket to `## Done` in KANBAN.md.
+- **Cap** — cycle count reaches `--cap` (default 8).
+- **Reappearance** — a fingerprint returns as `introduced` above floor after being marked `fixed` and
+  verified-absent the previous cycle (a fix didn't hold).
+- **No-progress** — a cycle resolves no above-floor fingerprint and reduces no above-floor severity
+  (excluding newly discovered pre-existing findings).
 
-If a ticket's fix depends on another ticket (noted in the ticket body), fix the dependency first.
-
-### Step 4 — Test
-
-After all tickets for this cycle are fixed, run the full test suite. See [REFERENCE.md](REFERENCE.md) for test runner detection.
-
-- All tests must pass before committing.
-- If tests fail: diagnose, fix, re-run. Update the relevant KANBAN ticket if the fix was incomplete.
-- Do not commit with a failing test suite.
-
-### Step 5 — Commit
-
-Stage only the files changed by the fixes. Write a commit message that:
-- Uses `fix(Scope): ...` prefix
-- Lists each logical change as a bullet
-- Does not mention AI, Claude, or this skill
-- Does not include `Co-Authored-By`
-
-Then return to Step 1.
+Reappearance + no-progress are defined on **fingerprints**, not line numbers (findings-schema.md).
 
 ---
 
-## Exit conditions
+## Args
 
-- Review returns zero findings → print a one-line "Review clean — no findings." and stop.
-- User sends any message during the loop → stop after the current step completes cleanly.
+| Arg | Default | Meaning |
+|---|---|---|
+| `ref-or-range` / `--pr <n>` | `main...HEAD` | scope, passed to `deep-review` (see its REFERENCE) |
+| `--floor <sev>` | `MEDIUM` | gate + verify floor |
+| `--cap <n>` | `8` | max cycles before escalating |
+
+Floor and cap are scoping inputs (which findings gate / how many cycles), not logic switches.
 
 ---
 
 ## Notes
 
-- One logical unit per commit — do not bundle unrelated fixes.
-- Never skip or suppress linter rules to make the check pass; fix the underlying issue.
-- Never commit with `--no-verify`.
-- Working docs (KANBAN.md, HANDOFF.md) live outside the repo — do not commit them.
+- **Thin.** Reviewing is `deep-review`; fixing is `fix-findings`. This skill sequences them, owns the
+  store's state transitions across cycles, and decides stop-vs-go. Don't reimplement review or fix here.
+- **Frozen base.** Capture `base_sha` once on cycle 1; every later cycle re-reviews against it so
+  origin classification and the rails stay stable as fixes shift lines.
+- **User interrupt** — any message during the loop stops it at the next safe point: finish the
+  in-flight subagent batch, let the orchestrator write the store + commit any fix-unit already verified
+  green, then stop without starting a new review/fix/commit step. Leaves the worktree + store
+  consistent.
+- Working store lives under `~/.claude/`, outside the repo — never committed.

@@ -1,6 +1,12 @@
 # Review Rubric — AGENTS.md conformance + thermo-nuclear structural quality
 
-The shared rubric for both review skills (`codex-review`, `review-fix-loop`). Two layers:
+The shared **quality bar** for the review skills (`codex-review`, `deep-review`, and via the loop,
+`review-fix-loop`). Companion contracts: the dimension registry + charters live in
+[`dimensions.md`](dimensions.md); the finding record schema, fingerprint, origin/`fix_verification`
+metadata, and store discipline live in [`findings-schema.md`](findings-schema.md). This file is the
+bar; those map it onto dimensions and a store.
+
+Two layers:
 
 - **Layer 1 is the floor** — conformance to `~/.claude/AGENTS.md`. A change that violates it
   is a finding, full stop.
@@ -68,7 +74,8 @@ direct. Prefer deleting complexity over rearranging it.
    contracts and explicit boundaries. (Reinforces Layer 1 strict-typing.)
 6. **Canonical layer + reuse.** Call out feature logic leaking into shared paths, implementation
    details leaking through APIs, and bespoke one-offs where a canonical utility already exists. Push
-   code toward the package/module/layer that already owns the concept.
+   code toward the package/module/layer that already owns the concept. *(Owned by the `architecture`
+   dimension in `dimensions.md` — `structural` does not report this item, to avoid double-counting.)*
 7. **Atomicity and avoidable orchestration.** If independent work is serialized for no reason, ask
    whether it should run in parallel. If related updates can leave state half-applied, push for a
    more atomic structure. Don't over-index on micro-optimizations.

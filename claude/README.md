@@ -131,10 +131,18 @@ on the machine: the **Bicep CLI** on PATH and the **PSRule.Rules.Azure** module
 (`Install-Module PSRule.Rules.Azure -Scope CurrentUser`). It deliberately stops at compiled
 ARM — no `what-if`/deploy, so it never authenticates to a tenant.
 
-`_shared/` is **not a skill** — it holds resources shared by multiple skills (e.g.
-`review-rubric.md`, the merged AGENTS.md + thermo-nuclear review rubric used by both
-`codex-review` and `review-fix-loop`). It has no `SKILL.md`, so the harness ignores it as a
-skill; it is still junctioned so skills can reference it via `../_shared/<file>`.
+The review→fix skills compose around `_shared/` contracts: **`deep-review`** fans out parallel
+per-dimension reviewers + Codex over a branch diff/PR, adversarially verifies the findings, and
+emits them to a findings store; **`fix-findings`** consumes that store and applies fixes (parallel,
+partitioned by conflict-set, one commit per fix-unit); **`review-fix-loop`** is the thin orchestrator
+that chains the two each cycle and loops to a deterministic clean gate. `codex-review` is the
+standalone lightweight Codex second-opinion pass.
+
+`_shared/` is **not a skill** — it holds resources shared by multiple skills: `review-rubric.md` (the
+merged AGENTS.md + thermo-nuclear quality bar), `dimensions.md` (the 7-dimension registry + charters
+for `deep-review`), and `findings-schema.md` (the JSONL finding schema, semantic fingerprint, and
+store discipline shared by the review→fix skills). It has no `SKILL.md`, so the harness ignores it as
+a skill; it is still junctioned so skills can reference it via `../_shared/<file>`.
 
 Built-in Claude Code skills (`handoff`, `code-review`, etc.) are provided by
 the harness and do not need to be installed.
