@@ -25,12 +25,16 @@ Verify with `claude doctor` (install method = native) and `Get-Command claude`
 | `AGENTS.md` | `~/.claude/AGENTS.md` | Shared coding conventions (single source). The `codex` module installs the same file to `~/.codex/AGENTS.md` so Claude Code and Codex CLI agree. See `../codex/README.md`. |
 | `statusline-command.sh` | `~/.claude/statusline-command.sh` | Token usage statusline script |
 | `no-claude-session-trailer.sh` | `~/.claude/no-claude-session-trailer.sh` | PreToolUse hook (wired in `settings.json`) that blocks commits carrying the AI session-URL trailer |
+| `block-destructive-vcs.ps1` | `~/.claude/block-destructive-vcs.ps1` | PreToolUse(Bash\|PowerShell) hook that denies destructive git (`push --force`, `reset --hard`, `clean -f`, `branch -D`) |
+| `block-pwsh-in-bash.ps1` | `~/.claude/block-pwsh-in-bash.ps1` | PreToolUse(Bash) hook that denies PowerShell mis-sent to the Bash tool, pointing at the PowerShell tool |
+| `lint-powershell.ps1` | `~/.claude/lint-powershell.ps1` | PostToolUse(Edit\|Write) hook that runs PSScriptAnalyzer on edited `.ps1/.psm1/.psd1` and feeds findings back |
 | `skills/<name>/` | `~/.claude/skills/<name>/` | Global custom skills |
 | `agents/<name>.md` | `~/.claude/agents/<name>.md` | User-scope subagents (whole dir junctioned/symlinked) |
 
 **Install method.** `settings.json`, `CLAUDE.md`, `AGENTS.md`,
-`statusline-command.sh`, and `no-claude-session-trailer.sh` are **symlinked** into
-`~/.claude`, and each skill directory is
+`statusline-command.sh`, `no-claude-session-trailer.sh`, and the three pwsh hook scripts
+(`block-destructive-vcs.ps1`, `block-pwsh-in-bash.ps1`, `lint-powershell.ps1`) are
+**symlinked** into `~/.claude`, and each skill directory is
 **junctioned** (Windows) / symlinked (Linux). Windows file symlinks require **Developer
 Mode** (Settings → For developers) — junctions don't need it but can't link files. Because
 the live files are links to the repo, edits flow both ways and there is **no drift**: Claude
@@ -47,8 +51,29 @@ old copy-based install + planned live→repo sync.)
 | `editorMode` | `vim` | Vim keybindings in the prompt input |
 | `agentPushNotifEnabled` | `true` | Mobile push notifications (cloud/background agents — not local CLI) |
 | `preferredNotifChannel` | `terminal_bell` | Built-in bell on the **needs-input** notification → marks the Zellij tab |
-| `hooks` | PreToolUse, Stop, Notification | PreToolUse blocks commits carrying the AI session-URL trailer (runs `no-claude-session-trailer.sh`); Stop/Notification are the local completion alert — see Notifications |
+| `hooks` | PreToolUse, PostToolUse, Stop, Notification | PreToolUse: blocks the AI session-URL commit trailer, denies destructive git, and denies PowerShell mis-sent to the Bash tool. PostToolUse: PSScriptAnalyzer lint-on-edit. Stop/Notification: local completion alert — see Hooks and Notifications |
 | `statusLine` | command | Runs `statusline-command.sh` |
+
+## Hooks
+
+Beyond the notification beeps, `settings.json` wires deterministic guardrails and a lint
+pass. The three pwsh hooks read the tool-call JSON on stdin and are invoked through `bash`
+(so `~` expands) as `pwsh -NoProfile -File ~/.claude/<script>.ps1`; they need **pwsh** on
+PATH, and the lint hook additionally needs the **PSScriptAnalyzer** module (it self-skips if
+absent). All allow silently and only emit JSON when they act.
+
+| Event / matcher | Script | Behaviour |
+|---|---|---|
+| `PreToolUse` (Bash\|PowerShell) | `no-claude-session-trailer.sh` | Denies a `git commit` carrying the `Claude-Session:` trailer |
+| `PreToolUse` (Bash\|PowerShell) | `block-destructive-vcs.ps1` | Denies destructive **git** — `push --force` (allows `--force-with-lease`), `reset --hard`, `clean -f`, `branch -D`. jj is left ungated (its op-log makes rewrites recoverable). The git-guardrails *skill* only advises; this hook is non-bypassable |
+| `PreToolUse` (Bash) | `block-pwsh-in-bash.ps1` | Denies PowerShell sent to the Bash tool (a segment that *starts* with `pwsh`/`powershell`, `$env:`, or a `Verb-Noun` cmdlet), pointing at the PowerShell tool. Command-position only, so a cmdlet quoted as a search string is allowed |
+| `PostToolUse` (Edit\|Write) | `lint-powershell.ps1` | Runs PSScriptAnalyzer on an edited `.ps1/.psm1/.psd1` (using the nearest `.vscode/PSScriptAnalyzerSettings.psd1` when present) and feeds findings back via `additionalContext` |
+
+**Lint caveat:** the PostToolUse hook lints only the *single edited file* — it is a fast
+inner-loop nudge, **not** a substitute for the full `-Recurse` run CI does over the whole
+source tree (a per-file pass can miss violations in untouched files). It is non-blocking
+(`additionalContext`, not `decision: block`), so findings are surfaced for fixing without
+halting the turn.
 
 ## Notifications
 
