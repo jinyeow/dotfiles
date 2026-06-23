@@ -218,6 +218,12 @@ install_claude() {
     make_symlink "$DOTFILES/claude/statusline-command.sh"  "$HOME/.claude/statusline-command.sh"
     # PreToolUse hook wired in settings.json; blocks commits carrying the AI session-URL trailer.
     make_symlink "$DOTFILES/claude/no-claude-session-trailer.sh" "$HOME/.claude/no-claude-session-trailer.sh"
+    # pwsh-native hooks wired in settings.json: PreToolUse guardrails (destructive git, PowerShell
+    # mis-sent to the Bash tool) and a PostToolUse PSScriptAnalyzer lint-on-edit pass. Need pwsh on
+    # PATH to run; the lint hook also needs the PSScriptAnalyzer module (it self-skips if absent).
+    make_symlink "$DOTFILES/claude/block-destructive-vcs.ps1" "$HOME/.claude/block-destructive-vcs.ps1"
+    make_symlink "$DOTFILES/claude/block-pwsh-in-bash.ps1" "$HOME/.claude/block-pwsh-in-bash.ps1"
+    make_symlink "$DOTFILES/claude/lint-powershell.ps1" "$HOME/.claude/lint-powershell.ps1"
 
     # Skills — symlink each subdirectory into ~/.claude/skills/
     local skills_src="$DOTFILES/claude/skills"

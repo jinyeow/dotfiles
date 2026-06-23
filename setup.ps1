@@ -531,6 +531,11 @@ function Install-Claude {
     New-FileSymlink -Link (Join-Path $claudeDir 'statusline-command.sh') -Target (Join-Path $Dotfiles 'claude\statusline-command.sh')
     # PreToolUse hook wired in settings.json; blocks commits carrying the AI session-URL trailer.
     New-FileSymlink -Link (Join-Path $claudeDir 'no-claude-session-trailer.sh') -Target (Join-Path $Dotfiles 'claude\no-claude-session-trailer.sh')
+    # pwsh-native hooks wired in settings.json: PreToolUse guardrails (destructive git, PowerShell
+    # mis-sent to the Bash tool) and a PostToolUse PSScriptAnalyzer lint-on-edit pass.
+    New-FileSymlink -Link (Join-Path $claudeDir 'block-destructive-vcs.ps1') -Target (Join-Path $Dotfiles 'claude\block-destructive-vcs.ps1')
+    New-FileSymlink -Link (Join-Path $claudeDir 'block-pwsh-in-bash.ps1') -Target (Join-Path $Dotfiles 'claude\block-pwsh-in-bash.ps1')
+    New-FileSymlink -Link (Join-Path $claudeDir 'lint-powershell.ps1') -Target (Join-Path $Dotfiles 'claude\lint-powershell.ps1')
 
     # Skills — junction each subdirectory into ~/.claude/skills/
     $skillsSrc = Join-Path $Dotfiles 'claude\skills'
