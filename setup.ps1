@@ -9,7 +9,7 @@
     before being replaced.
 
 .PARAMETER Module
-    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, zellij, yazi, curl, claude, codex, serena, lazygit, windowsterminal, bat, vscode, winget, all.
+    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, zellij, yazi, curl, claude, codex, serena, context7, lazygit, windowsterminal, bat, vscode, winget, all.
     Optional when -CleanBackups is specified.
 
 .PARAMETER DryRun
@@ -60,7 +60,7 @@ $Dotfiles = $PSScriptRoot
 
 # Expand 'all'
 if ($Module -contains 'all') {
-    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'yazi', 'curl', 'claude', 'codex', 'serena', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget')
+    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'yazi', 'curl', 'claude', 'codex', 'serena', 'context7', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget')
 }
 $Module = $Module | Select-Object -Unique
 
@@ -677,6 +677,51 @@ function Install-Serena {
     }
 }
 
+function Install-Context7 {
+    Write-Host ''
+    Write-Info '=== Context7 (up-to-date library-docs MCP for Claude Code) ==='
+
+    # Context7 is a hosted docs service — nothing to install locally. Register it as a user-scope
+    # remote HTTP MCP in Claude Code (~/.claude.json, not a tracked file), mirroring the codex/serena
+    # registrations. No API key is required for basic use; set $env:CONTEXT7_API_KEY (free key from
+    # context7.com/dashboard) before running to raise rate limits — it is passed as a request header
+    # and lives only in ~/.claude.json, never in the repo. Idempotent: remove any prior entry first.
+    if ($Backup) {
+        Write-Info 'Backup mode — skipping MCP registration.'
+        return
+    }
+    if (-not (Get-Command -Name claude -ErrorAction Ignore)) {
+        Write-Warn 'claude CLI not found — skipping MCP registration. Install the claude module first.'
+        return
+    }
+
+    $endpoint = 'https://mcp.context7.com/mcp'
+    $addArgs  = @('mcp', 'add', '--scope', 'user', '--transport', 'http', 'context7', $endpoint)
+    if ($env:CONTEXT7_API_KEY) {
+        $addArgs += @('--header', "CONTEXT7_API_KEY: $env:CONTEXT7_API_KEY")
+    }
+
+    if ($DryRun) {
+        $keyNote = if ($env:CONTEXT7_API_KEY) { ' (with API-key header)' } else { ' (anonymous — no API key)' }
+        Write-Info "[DRY RUN] would register user-scope MCP: claude mcp add --scope user --transport http context7 $endpoint$keyNote"
+        return
+    }
+
+    # Native command: a non-zero exit when no prior entry exists is benign and does not throw.
+    & claude mcp remove --scope user context7 2>$null | Out-Null
+    & claude @addArgs
+    if ($LASTEXITCODE -ne 0) {
+        Write-Fail "claude mcp add failed (exit $LASTEXITCODE)."
+        return
+    }
+    if ($env:CONTEXT7_API_KEY) {
+        Write-Ok 'Registered Context7 MCP (user scope, with API-key header).'
+    } else {
+        Write-Ok 'Registered Context7 MCP (user scope, anonymous).'
+        Write-Info 'Optional: set $env:CONTEXT7_API_KEY (free key from https://context7.com/dashboard) and re-run for higher rate limits.'
+    }
+}
+
 function Remove-OldBackups {
     Write-Host ''
     Write-Info '=== Cleaning backups ==='
@@ -766,6 +811,7 @@ foreach ($m in $Module) {
         'claude'     { Install-Claude     }
         'codex'      { Install-Codex      }
         'serena'     { Install-Serena     }
+        'context7'   { Install-Context7   }
         'lazygit'        { Install-Lazygit        }
         'windowsterminal' { Install-WindowsTerminal }
         default          { Write-Warn "Unknown module '$m' — skipping." }

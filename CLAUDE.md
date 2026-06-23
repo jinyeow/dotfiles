@@ -78,6 +78,14 @@ Two tools give the coding agent better-than-grep understanding of the code:
 
 The `.serena/` dir is created per-project on first activation. Commit the whole dir and let serena's own nested `.serena/.gitignore` (`/cache`, `/project.local.yml`) filter it — that leaves `.serena/.gitignore` and `.serena/project.yml` (the shared, versioned config: `project_name`, `languages`) tracked, while the machine-specific symbol cache and local overrides stay untracked. Keep anything machine-specific or private out of `project.yml`; it belongs in the ignored `project.local.yml`. In **work (Hollard) repos** `.serena/` is excluded entirely via `git/gitignore-work` so it is never pushed.
 
+## Documentation lookup (Context7)
+
+**Context7** is a hosted MCP that serves up-to-date, version-specific library/API docs on demand — it complements the **Microsoft Learn** MCP (which only covers MS/Azure) for third-party packages (npm, .NET, Lua/Neovim plugins, etc.).
+
+- **Registration**: `setup.ps1 -Module context7` registers it as a **remote HTTP** MCP at **user scope** in `~/.claude.json` (`claude mcp add --scope user --transport http context7 https://mcp.context7.com/mcp`) — same registration model as codex/serena, but HTTP transport (like the other hosted connectors) instead of a local stdio command, so there is **nothing to install** and no Node/`uv` dependency. The MCP loads at session start, so a new session is needed after registering.
+- **API key (optional)**: basic use is anonymous and rate-limited. Set `$env:CONTEXT7_API_KEY` (free key from `context7.com/dashboard`) **before** running the module to raise limits — it is passed as a request `CONTEXT7_API_KEY` header and stored only in `~/.claude.json` (untracked), never committed. Re-run the module to apply.
+- **Windows-only**, like the codex/serena modules: `setup.sh` does not register MCP servers.
+
 ## Subagents (`claude/agents/`)
 
 User-scope Claude Code subagents live as flat `.md` files (frontmatter + system-prompt body) under `claude/agents/`, installed to `~/.claude/agents/`. See `claude/README.md` for the full design.
