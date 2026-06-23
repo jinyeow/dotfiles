@@ -69,6 +69,16 @@ Codex CLI is wired in as a **read-only second-opinion reviewer** for Claude Code
 - **Shared conventions**: `claude/AGENTS.md` installs to both `~/.claude/AGENTS.md` (imported by `CLAUDE.md`) and `~/.codex/AGENTS.md`, so both tools obey the same rules. Codex also concatenates a repo's own `AGENTS.md` on top — that's the layering point for work overlays (`codex/templates/work-AGENTS.md`).
 - **Trigger**: review is **on-demand only** — the `/codex-review` skill, or Claude *offers* a second opinion after a change but never calls Codex or applies findings without approval (see `claude/CLAUDE.md` → "Codex second opinion"). Auth is `codex login` (interactive, run once).
 
+## Claude Code hooks (`claude/`)
+
+`claude/settings.json` wires `PreToolUse`/`PostToolUse` hooks alongside the Stop/Notification beeps. The three pwsh hooks (`block-destructive-vcs.ps1`, `block-pwsh-in-bash.ps1`, `lint-powershell.ps1`) are symlinked into `~/.claude` by `setup.ps1/setup.sh -Module claude` and invoked through **bash** (`pwsh -NoProfile -File ~/.claude/<x>.ps1`) so `~` expands; each reads the tool-call JSON on stdin, **fails open**, and emits JSON only when it acts. The older `no-claude-session-trailer.sh` (bash) is the fourth hook. See `claude/README.md` → Hooks for the full table.
+
+### Key decisions (do not reverse without asking)
+
+- **Deterministic guardrails, not only the skill.** `block-destructive-vcs.ps1` denies destructive **git** (`push --force` — allows `--force-with-lease` —, `reset --hard`, `clean -f`, `branch -D`) as a non-bypassable `PreToolUse` deny, where the `git-guardrails` skill only *advises*. **jj is intentionally ungated** (its op-log makes rewrites recoverable). `block-pwsh-in-bash.ps1` denies PowerShell sent to the Bash tool, enforcing the pwsh-native rule.
+- **Both deny hooks strip quoted substrings before matching**, so a destructive phrase quoted in a commit message (`git commit -m "reset --hard …"`) or a separator inside a quoted arg does not mis-trigger. VCS matching is **case-sensitive** on purpose: `git branch -d` (safe) and `-D` (force) differ only by case, so a case-insensitive match would deny the safe form too. Cmdlet detection is command-position + capitalized `Verb-Noun` only (lowercase cmdlets are *not* caught — that would false-block executables like `start-stop-daemon`).
+- **Lint is a per-file inner-loop nudge, not CI.** `lint-powershell.ps1` runs PSScriptAnalyzer on the single edited `.ps1/.psm1/.psd1` (using the nearest `.vscode/PSScriptAnalyzerSettings.psd1` when present) and feeds findings back via `additionalContext` — non-blocking. It does **not** replace the full `-Recurse` run CI does over the whole source tree (a per-file pass can miss violations in untouched files).
+
 ## Code intelligence (serena + ast-grep)
 
 Two tools give the coding agent better-than-grep understanding of the code:
