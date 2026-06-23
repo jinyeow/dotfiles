@@ -14,6 +14,34 @@
             "type": "command",
             "shell": "bash",
             "command": "bash ~/.claude/no-claude-session-trailer.sh"
+          },
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "pwsh -NoProfile -File ~/.claude/block-destructive-vcs.ps1"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "pwsh -NoProfile -File ~/.claude/block-pwsh-in-bash.ps1"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "timeout": 60,
+            "command": "pwsh -NoProfile -File ~/.claude/lint-powershell.ps1"
           }
         ]
       }
