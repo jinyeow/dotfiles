@@ -71,7 +71,7 @@ Codex CLI is wired in as a **read-only second-opinion reviewer** for Claude Code
 
 ## Claude Code hooks (`claude/`)
 
-`claude/settings.json` wires `PreToolUse`/`PostToolUse` hooks alongside the Stop/Notification beeps. The three pwsh hooks (`block-destructive-vcs.ps1`, `block-pwsh-in-bash.ps1`, `lint-powershell.ps1`) are symlinked into `~/.claude` by `setup.ps1/setup.sh -Module claude` and invoked through **bash** (`pwsh -NoProfile -File ~/.claude/<x>.ps1`) so `~` expands; each reads the tool-call JSON on stdin, **fails open**, and emits JSON only when it acts. The older `no-claude-session-trailer.sh` (bash) is the fourth hook. See `claude/README.md` → Hooks for the full table.
+`claude/settings.json` wires `SessionStart`/`PreToolUse`/`PostToolUse` hooks alongside the Stop/Notification beeps. The four pwsh hooks (`inject-handoff.ps1`, `block-destructive-vcs.ps1`, `block-pwsh-in-bash.ps1`, `lint-powershell.ps1`) are symlinked into `~/.claude` by `setup.ps1/setup.sh -Module claude` and invoked through **bash** (`pwsh -NoProfile -File ~/.claude/<x>.ps1`) so `~` expands; each reads the hook JSON on stdin, **fails open**, and emits JSON only when it acts. The older `no-claude-session-trailer.sh` (bash) is the fifth hook. The `handoff` skill writes `.claude/handoff.md` in the workspace; `inject-handoff.ps1` is the `SessionStart` hook that reads it back into a fresh session (on `startup`/`clear`) via `additionalContext` — nothing else auto-reads that file. See `claude/README.md` → Hooks for the full table.
 
 ### Key decisions (do not reverse without asking)
 

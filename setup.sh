@@ -224,6 +224,8 @@ install_claude() {
     make_symlink "$DOTFILES/claude/block-destructive-vcs.ps1" "$HOME/.claude/block-destructive-vcs.ps1"
     make_symlink "$DOTFILES/claude/block-pwsh-in-bash.ps1" "$HOME/.claude/block-pwsh-in-bash.ps1"
     make_symlink "$DOTFILES/claude/lint-powershell.ps1" "$HOME/.claude/lint-powershell.ps1"
+    # SessionStart hook: inject a pending .claude/handoff.md (from the handoff skill) into a fresh session.
+    make_symlink "$DOTFILES/claude/inject-handoff.ps1" "$HOME/.claude/inject-handoff.ps1"
 
     # Skills — symlink each subdirectory into ~/.claude/skills/
     local skills_src="$DOTFILES/claude/skills"

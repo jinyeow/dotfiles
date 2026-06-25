@@ -25,6 +25,7 @@ Verify with `claude doctor` (install method = native) and `Get-Command claude`
 | `AGENTS.md` | `~/.claude/AGENTS.md` | Shared coding conventions (single source). The `codex` module installs the same file to `~/.codex/AGENTS.md` so Claude Code and Codex CLI agree. See `../codex/README.md`. |
 | `statusline-command.sh` | `~/.claude/statusline-command.sh` | Token usage statusline script |
 | `no-claude-session-trailer.sh` | `~/.claude/no-claude-session-trailer.sh` | PreToolUse hook (wired in `settings.json`) that blocks commits carrying the AI session-URL trailer |
+| `inject-handoff.ps1` | `~/.claude/inject-handoff.ps1` | SessionStart hook that injects `.claude/handoff.md` (from the `handoff` skill) into a fresh session |
 | `block-destructive-vcs.ps1` | `~/.claude/block-destructive-vcs.ps1` | PreToolUse(Bash\|PowerShell) hook that denies destructive git (`push --force`, `reset --hard`, `clean -f`, `branch -D`) |
 | `block-pwsh-in-bash.ps1` | `~/.claude/block-pwsh-in-bash.ps1` | PreToolUse(Bash) hook that denies PowerShell mis-sent to the Bash tool, pointing at the PowerShell tool |
 | `lint-powershell.ps1` | `~/.claude/lint-powershell.ps1` | PostToolUse(Edit\|Write) hook that runs PSScriptAnalyzer on edited `.ps1/.psm1/.psd1` and feeds findings back |
@@ -32,8 +33,8 @@ Verify with `claude doctor` (install method = native) and `Get-Command claude`
 | `agents/<name>.md` | `~/.claude/agents/<name>.md` | User-scope subagents (whole dir junctioned/symlinked) |
 
 **Install method.** `settings.json`, `CLAUDE.md`, `AGENTS.md`,
-`statusline-command.sh`, `no-claude-session-trailer.sh`, and the three pwsh hook scripts
-(`block-destructive-vcs.ps1`, `block-pwsh-in-bash.ps1`, `lint-powershell.ps1`) are
+`statusline-command.sh`, `no-claude-session-trailer.sh`, and the four pwsh hook scripts
+(`inject-handoff.ps1`, `block-destructive-vcs.ps1`, `block-pwsh-in-bash.ps1`, `lint-powershell.ps1`) are
 **symlinked** into `~/.claude`, and each skill directory is
 **junctioned** (Windows) / symlinked (Linux). Windows file symlinks require **Developer
 Mode** (Settings → For developers) — junctions don't need it but can't link files. Because
@@ -51,19 +52,20 @@ old copy-based install + planned live→repo sync.)
 | `editorMode` | `vim` | Vim keybindings in the prompt input |
 | `agentPushNotifEnabled` | `true` | Mobile push notifications (cloud/background agents — not local CLI) |
 | `preferredNotifChannel` | `terminal_bell` | Built-in bell on the **needs-input** notification → marks the Zellij tab |
-| `hooks` | PreToolUse, PostToolUse, Stop, Notification | PreToolUse: blocks the AI session-URL commit trailer, denies destructive git, and denies PowerShell mis-sent to the Bash tool. PostToolUse: PSScriptAnalyzer lint-on-edit. Stop/Notification: local completion alert — see Hooks and Notifications |
+| `hooks` | SessionStart, PreToolUse, PostToolUse, Stop, Notification | SessionStart: injects a pending `.claude/handoff.md`. PreToolUse: blocks the AI session-URL commit trailer, denies destructive git, and denies PowerShell mis-sent to the Bash tool. PostToolUse: PSScriptAnalyzer lint-on-edit. Stop/Notification: local completion alert — see Hooks and Notifications |
 | `statusLine` | command | Runs `statusline-command.sh` |
 
 ## Hooks
 
-Beyond the notification beeps, `settings.json` wires deterministic guardrails and a lint
-pass. The three pwsh hooks read the tool-call JSON on stdin and are invoked through `bash`
-(so `~` expands) as `pwsh -NoProfile -File ~/.claude/<script>.ps1`; they need **pwsh** on
-PATH, and the lint hook additionally needs the **PSScriptAnalyzer** module (it self-skips if
-absent). All allow silently and only emit JSON when they act.
+Beyond the notification beeps, `settings.json` wires a handoff injector, deterministic
+guardrails, and a lint pass. The four pwsh hooks read the hook JSON on stdin and are invoked
+through `bash` (so `~` expands) as `pwsh -NoProfile -File ~/.claude/<script>.ps1`; they need
+**pwsh** on PATH, and the lint hook additionally needs the **PSScriptAnalyzer** module (it
+self-skips if absent). All allow silently and only emit JSON when they act.
 
 | Event / matcher | Script | Behaviour |
 |---|---|---|
+| `SessionStart` | `inject-handoff.ps1` | On a fresh session (`startup`/`clear`), injects the workspace's `.claude/handoff.md` (written by the `handoff` skill) via `additionalContext` so the next agent reads it first, then archives it to `handoff-<timestamp>.consumed.md` so it is delivered once (not replayed into every later session). No-ops if the file is absent or the session was resumed/compacted |
 | `PreToolUse` (Bash\|PowerShell) | `no-claude-session-trailer.sh` | Denies a `git commit` carrying the `Claude-Session:` trailer |
 | `PreToolUse` (Bash\|PowerShell) | `block-destructive-vcs.ps1` | Denies destructive **git** — `push --force` (allows `--force-with-lease`), `reset --hard`, `clean -f`, `branch -D`. jj is left ungated (its op-log makes rewrites recoverable). The git-guardrails *skill* only advises; this hook is non-bypassable |
 | `PreToolUse` (Bash) | `block-pwsh-in-bash.ps1` | Denies PowerShell sent to the Bash tool (a segment that *starts* with `pwsh`/`powershell`, `$env:`, or a `Verb-Noun` cmdlet), pointing at the PowerShell tool. Command-position only, so a cmdlet quoted as a search string is allowed |

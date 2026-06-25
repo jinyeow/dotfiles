@@ -4,7 +4,9 @@ description: Compact the current conversation into a handoff document for anothe
 argument-hint: "What will the next session be used for?"
 ---
 
-Write a handoff document summarising the current conversation so a fresh agent can continue the work. Save to the temporary directory of the user's OS - not the current workspace.
+Write a handoff document summarising the current conversation so a fresh agent can continue the work. Save it to `.claude/handoff.md` in the current workspace (create the `.claude/` directory if it does not exist), so it persists across reboots and the next session can find it by convention.
+
+Keep the handoff out of version control so it is never committed into the workspace's repo. If the workspace is a git repo (`git rev-parse --is-inside-work-tree` succeeds) and `git check-ignore -q .claude/handoff.md` reports it is *not* already ignored, append a line `/.claude/handoff*.md` to the local exclude file at the path returned by `git rev-parse --git-path info/exclude` (creating it if absent). This is worktree-safe, never committed, idempotent, and the glob also covers the `handoff-<timestamp>.consumed.md` archives the SessionStart hook leaves behind. Skip this step silently when not inside a git repo.
 
 Include a "suggested skills" section in the document, which suggests skills that the agent should invoke.
 

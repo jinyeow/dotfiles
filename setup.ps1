@@ -536,6 +536,8 @@ function Install-Claude {
     New-FileSymlink -Link (Join-Path $claudeDir 'block-destructive-vcs.ps1') -Target (Join-Path $Dotfiles 'claude\block-destructive-vcs.ps1')
     New-FileSymlink -Link (Join-Path $claudeDir 'block-pwsh-in-bash.ps1') -Target (Join-Path $Dotfiles 'claude\block-pwsh-in-bash.ps1')
     New-FileSymlink -Link (Join-Path $claudeDir 'lint-powershell.ps1') -Target (Join-Path $Dotfiles 'claude\lint-powershell.ps1')
+    # SessionStart hook: inject a pending .claude/handoff.md (from the handoff skill) into a fresh session.
+    New-FileSymlink -Link (Join-Path $claudeDir 'inject-handoff.ps1') -Target (Join-Path $Dotfiles 'claude\inject-handoff.ps1')
 
     # Skills — junction each subdirectory into ~/.claude/skills/
     $skillsSrc = Join-Path $Dotfiles 'claude\skills'

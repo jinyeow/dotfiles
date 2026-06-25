@@ -6,6 +6,17 @@
   },
   "model": "opus",
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File ~/.claude/inject-handoff.ps1",
+            "shell": "bash"
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Bash|PowerShell",
@@ -80,7 +91,7 @@
     }
   },
   "effortLevel": "high",
-  "tui": "fullscreen",
+  "tui": "default",
   "theme": "dark-ansi",
   "editorMode": "vim",
   "preferredNotifChannel": "terminal_bell",
