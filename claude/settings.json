@@ -12,13 +12,13 @@
         "hooks": [
           {
             "type": "command",
-            "shell": "bash",
-            "command": "bash ~/.claude/no-claude-session-trailer.sh"
+            "command": "bash ~/.claude/no-claude-session-trailer.sh",
+            "shell": "bash"
           },
           {
             "type": "command",
-            "shell": "bash",
-            "command": "pwsh -NoProfile -File ~/.claude/block-destructive-vcs.ps1"
+            "command": "pwsh -NoProfile -File ~/.claude/block-destructive-vcs.ps1",
+            "shell": "bash"
           }
         ]
       },
@@ -27,8 +27,8 @@
         "hooks": [
           {
             "type": "command",
-            "shell": "bash",
-            "command": "pwsh -NoProfile -File ~/.claude/block-pwsh-in-bash.ps1"
+            "command": "pwsh -NoProfile -File ~/.claude/block-pwsh-in-bash.ps1",
+            "shell": "bash"
           }
         ]
       }
@@ -39,9 +39,9 @@
         "hooks": [
           {
             "type": "command",
+            "command": "pwsh -NoProfile -File ~/.claude/lint-powershell.ps1",
             "shell": "bash",
-            "timeout": 60,
-            "command": "pwsh -NoProfile -File ~/.claude/lint-powershell.ps1"
+            "timeout": 60
           }
         ]
       }
@@ -80,6 +80,7 @@
     }
   },
   "effortLevel": "high",
+  "tui": "fullscreen",
   "theme": "dark-ansi",
   "editorMode": "vim",
   "preferredNotifChannel": "terminal_bell",
