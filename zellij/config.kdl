@@ -107,6 +107,11 @@ keybinds clear-defaults=true {
         bind "3" { GoToTab 3; SwitchToMode "locked"; }
         bind "4" { GoToTab 4; SwitchToMode "locked"; }
         bind "5" { GoToTab 5; SwitchToMode "locked"; }
+        bind "6" { GoToTab 6; SwitchToMode "locked"; }
+        bind "7" { GoToTab 7; SwitchToMode "locked"; }
+        bind "8" { GoToTab 8; SwitchToMode "locked"; }
+        bind "9" { GoToTab 9; SwitchToMode "locked"; }
+        bind "0" { GoToTab 10; SwitchToMode "locked"; }
 
         // Sub-modes (stay in mode for repeated use; Ctrl+g or Esc to return)
         bind "s" { SwitchToMode "scroll"; }

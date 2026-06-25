@@ -79,7 +79,8 @@ automatically. Press **Ctrl+g** or **Esc** again to exit back to locked.
 | `H` | Move current tab left |
 | `L` | Move current tab right |
 | `R` | Rename current tab |
-| `1`–`5` | Jump to tab N |
+| `1`–`9` | Jump to tab N |
+| `0` | Jump to tab 10 |
 
 #### Sub-modes
 
