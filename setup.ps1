@@ -9,7 +9,7 @@
     before being replaced.
 
 .PARAMETER Module
-    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, zellij, yazi, curl, claude, codex, serena, context7, lazygit, windowsterminal, bat, vscode, winget, all.
+    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, zellij, yazi, curl, claude, codex, serena, context7, fastmail, lazygit, windowsterminal, bat, vscode, winget, all.
     Optional when -CleanBackups is specified.
 
 .PARAMETER DryRun
@@ -60,7 +60,7 @@ $Dotfiles = $PSScriptRoot
 
 # Expand 'all'
 if ($Module -contains 'all') {
-    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'yazi', 'curl', 'claude', 'codex', 'serena', 'context7', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget')
+    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'yazi', 'curl', 'claude', 'codex', 'serena', 'context7', 'fastmail', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget')
 }
 $Module = $Module | Select-Object -Unique
 
@@ -729,6 +729,46 @@ function Install-Context7 {
     }
 }
 
+function Install-Fastmail {
+    Write-Host ''
+    Write-Info '=== Fastmail (official email/calendar/contacts MCP for Claude Code) ==='
+
+    # Fastmail's official MCP server is hosted — nothing to install locally. Register it as a user-scope
+    # remote HTTP MCP in Claude Code (~/.claude.json, not a tracked file), mirroring the context7/serena
+    # registrations. Unlike context7 (API-key header), Fastmail authenticates via OAuth 2.0, so this
+    # registers the endpoint only — the browser consent is a separate one-time `claude mcp login fastmail`
+    # step (like `codex login`). Read-only vs write vs send is an access tier chosen on Fastmail's consent
+    # screen; it is not a pin-able OAuth scope, so the CLI cannot enforce it. Idempotent: remove-then-add
+    # rewrites only the config entry — OAuth credentials are managed separately via login/logout, so
+    # re-running never silently revokes auth.
+    if ($Backup) {
+        Write-Info 'Backup mode — skipping MCP registration.'
+        return
+    }
+    if (-not (Get-Command -Name claude -ErrorAction Ignore)) {
+        Write-Warn 'claude CLI not found — skipping MCP registration. Install the claude module first.'
+        return
+    }
+
+    $endpoint = 'https://api.fastmail.com/mcp'
+
+    if ($DryRun) {
+        Write-Info "[DRY RUN] would register user-scope MCP: claude mcp add --scope user --transport http fastmail $endpoint"
+        return
+    }
+
+    # Native command: a non-zero exit when no prior entry exists is benign and does not throw.
+    & claude mcp remove --scope user fastmail 2>$null | Out-Null
+    & claude mcp add --scope user --transport http fastmail $endpoint
+    if ($LASTEXITCODE -ne 0) {
+        Write-Fail "claude mcp add failed (exit $LASTEXITCODE)."
+        return
+    }
+    Write-Ok 'Registered Fastmail MCP (user scope).'
+    Write-Info 'Next: run `claude mcp login fastmail`, complete the browser OAuth, and choose Read-only on the consent screen.'
+    Write-Info 'Then start a new session to load it. Verify with `claude mcp get fastmail`; reset auth with `claude mcp logout fastmail`.'
+}
+
 function Remove-OldBackups {
     Write-Host ''
     Write-Info '=== Cleaning backups ==='
@@ -819,6 +859,7 @@ foreach ($m in $Module) {
         'codex'      { Install-Codex      }
         'serena'     { Install-Serena     }
         'context7'   { Install-Context7   }
+        'fastmail'   { Install-Fastmail   }
         'lazygit'        { Install-Lazygit        }
         'windowsterminal' { Install-WindowsTerminal }
         default          { Write-Warn "Unknown module '$m' — skipping." }

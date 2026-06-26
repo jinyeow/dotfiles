@@ -23,7 +23,7 @@ The PowerShell profile (`powershell/Microsoft.PowerShell_profile.ps1`) is a sing
 
 | Script | Target | Notes |
 |---|---|---|
-| `setup.ps1` | Windows | Module-based installer. `-Module neovim,vim,powershell,git,bash,tig,tmux,zellij,yazi,curl,claude,codex,lazygit,windowsterminal,bat,vscode,winget` or `-Module all`. Supports `-DryRun`. |
+| `setup.ps1` | Windows | Module-based installer. `-Module neovim,vim,powershell,git,bash,tig,tmux,zellij,yazi,curl,claude,codex,serena,context7,fastmail,lazygit,windowsterminal,bat,vscode,winget` or `-Module all`. Supports `-DryRun`. |
 | `setup.sh` | Linux / WSL | Module-based installer. `-m neovim,vim,powershell,git,bash,tig,tmux,zellij,curl,claude,lazygit,windowsterminal` or `-m all`. Supports `--dry-run`. (No `codex` module yet — Windows only.) |
 
 ## PowerShell profile architecture
@@ -95,6 +95,17 @@ The `.serena/` dir is created per-project on first activation. Commit the whole 
 - **Registration**: `setup.ps1 -Module context7` registers it as a **remote HTTP** MCP at **user scope** in `~/.claude.json` (`claude mcp add --scope user --transport http context7 https://mcp.context7.com/mcp`) — same registration model as codex/serena, but HTTP transport (like the other hosted connectors) instead of a local stdio command, so there is **nothing to install** and no Node/`uv` dependency. The MCP loads at session start, so a new session is needed after registering.
 - **API key (optional)**: basic use is anonymous and rate-limited. Set `$env:CONTEXT7_API_KEY` (free key from `context7.com/dashboard`) **before** running the module to raise limits — it is passed as a request `CONTEXT7_API_KEY` header and stored only in `~/.claude.json` (untracked), never committed. Re-run the module to apply.
 - **Windows-only**, like the codex/serena modules: `setup.sh` does not register MCP servers.
+
+## Fastmail MCP (`fastmail`)
+
+Fastmail's **official** hosted MCP server gives Claude Code read access to email, calendar, and contacts — used for inbox summaries, surfacing important mail, and listing upcoming events/deadlines (all read-only; it never sets flags or sends).
+
+- **Registration**: `setup.ps1 -Module fastmail` registers it as a **remote HTTP** MCP at **user scope** in `~/.claude.json` (`claude mcp add --scope user --transport http fastmail https://api.fastmail.com/mcp`) — same model as context7/codex/serena, nothing to install. The MCP loads at session start, so a new session is needed after registering.
+- **Auth is a separate one-time step** (unlike context7's API-key header): Fastmail uses **OAuth 2.0**, so the module registers the endpoint only. Run `claude mcp login fastmail` (needs Claude Code ≥ 2.1.186; on older builds use the `/mcp` command in a session instead), complete the browser consent, and **choose Read-only** on Fastmail's consent screen. This mirrors the `codex login` pattern — the OAuth flow is interactive and can't be done from the installer.
+- **Read-only is a consent-screen choice, not a CLI flag.** Fastmail's advertised OAuth scopes are domain-based (`…:mail`, `…:contacts`, `…:calendars`); the read/write/send *access tier* is picked at consent and can't be pinned by `claude mcp add`. So reproducibility stops at endpoint registration — the access level is set (and revoked) by you, in Fastmail (Settings → Privacy & Security → Connected apps, or `claude mcp logout fastmail`).
+- **Idempotency**: the module does `remove`-then-`add`, which rewrites only the `~/.claude.json` entry. OAuth credentials are managed separately via `login`/`logout`, so re-running `setup.ps1` never silently revokes auth.
+- **Why the official server over community JMAP servers**: the community Fastmail/JMAP MCPs (Jordonh18, doronkatz, MadLlama25, wyattjoh) are **email-only** — JMAP calendar is still an IETF draft and isn't exposed to API tokens, so they can't surface calendar events. The official server isn't limited to the public JMAP token surface, so it has calendar + contacts.
+- **Verify**: `claude mcp get fastmail`. **Windows-only**, like the other MCP modules: `setup.sh` does not register MCP servers.
 
 ## Subagents (`claude/agents/`)
 
