@@ -1,15 +1,15 @@
 # nvim
 
-Modular Neovim configuration targeting Neovim 0.11+ using the built-in package
-manager and native LSP API (`vim.lsp.config` / `vim.lsp.enable`).
+Modular Neovim configuration targeting Neovim 0.12+ using the built-in package
+manager (`vim.pack`) and native LSP API (`vim.lsp.config` / `vim.lsp.enable`).
 
 ## Prerequisites
 
 | Tool | Purpose | Install |
 |---|---|---|
-| Neovim 0.11+ | Editor | `winget install Neovim.Neovim` / system package manager |
+| Neovim 0.12+ | Editor | `winget install Neovim.Neovim` / system package manager |
 | Git | Plugin auto-install | — |
-| [ripgrep](https://github.com/BurntSushi/ripgrep) | FZF live grep | `winget install BurntSushi.ripgrep.MSVC` |
+| [ripgrep](https://github.com/BurntSushi/ripgrep) | fzf-lua live grep | `winget install BurntSushi.ripgrep.GNU` |
 | A [Nerd Font](https://www.nerdfonts.com/) | Diagnostic and gitsigns icons | — |
 | [Zig](https://ziglang.org/) | C compiler for building Treesitter parsers (used as `zig cc`) | `winget install zig.zig` |
 | .NET SDK + roslyn-language-server | C# LSP (optional, only if editing C#) | `dotnet tool install -g roslyn-language-server --prerelease` |
@@ -116,15 +116,15 @@ Falls back to sunrise/sunset window if detection fails.
 |---|---|
 | nvim-treesitter | Syntax highlighting and text objects (pinned to `master`; needs Zig to build parsers) |
 | nvim-treesitter-textobjects | Function/class text objects (pinned to `master`) |
-| fzf + fzf.vim | Fuzzy finding (files, grep, buffers) |
+| fzf + fzf-lua | Fuzzy finding (files, grep, buffers, LSP symbols) |
 | vim-fugitive | Git command wrapper |
-| vim-commentary | Commenting (`gcc`) |
-| vim-repeat | Better `.` repeat |
+| nvim-surround | Surround text objects |
+| oil.nvim | File explorer (edit the filesystem like a buffer; replaces netrw) |
+| oil-git-status.nvim | Per-file git status in oil's sign columns |
+| aerial.nvim | Symbol outline / code navigation |
 | catppuccin | Colour scheme |
-| mini.surround | Surround text objects |
 | nvim-lspconfig | LSP server definitions |
 | roslyn.nvim | C# / .NET LSP (Roslyn; needs `dotnet` on PATH) |
-| oil-git-status.nvim | Per-file git status in oil's sign columns |
 | schemastore.nvim | JSON/YAML schema catalogue |
 | gitsigns.nvim | In-buffer git signs and hunk actions |
 | render-markdown.nvim | In-buffer markdown rendering |
@@ -158,7 +158,7 @@ The `azure-pipelines` filetype has no Treesitter grammar of its own, so `autocmd
 
 | Key | Action |
 |---|---|
-| `<C-S-e>` | File explorer (netrw) |
+| `-` | File explorer (oil; `-` again goes up a dir) |
 | `<Esc>` | Clear search highlight |
 | `<C-h/j/k/l>` | Window navigation |
 | `<S-h>` / `<S-l>` | Previous / next buffer |
@@ -181,7 +181,7 @@ The `azure-pipelines` filetype has no Treesitter grammar of its own, so `autocmd
 | `#!!` (insert abbrev) | Expand to `#!/usr/bin/env <filetype>` |
 | `:h <topic>` | Help in vertical split |
 
-### FZF (full profile only)
+### fzf-lua (full profile only)
 
 | Key | Action |
 |---|---|
@@ -190,6 +190,9 @@ The `azure-pipelines` filetype has no Treesitter grammar of its own, so `autocmd
 | `<leader>fb` | Find buffers |
 | `<leader>fc` | Find commands |
 | `<leader>fl` | Find lines |
+| `<leader>fs` | Find LSP symbols (document) |
+| `<leader>fS` | Find LSP symbols (workspace) |
+| `<leader>a` | Toggle symbol outline (aerial) |
 
 ### LSP (when attached)
 
@@ -197,13 +200,15 @@ The `azure-pipelines` filetype has no Treesitter grammar of its own, so `autocmd
 |---|---|
 | `gd` | Go to definition |
 | `gD` | Go to declaration |
-| `gr` | Go to references |
-| `gi` | Go to implementation |
-| `K` | Hover docs |
-| `<leader>rn` | Rename symbol |
-| `<leader>ca` | Code action |
+| `grr` | Go to references (0.11 built-in) |
+| `gri` | Go to implementation (0.11 built-in) |
+| `grn` | Rename symbol (0.11 built-in) |
+| `gra` | Code action (0.11 built-in) |
+| `K` | Hover docs (0.11 built-in) |
+| `<leader>rn` | Rename symbol (alias) |
+| `<leader>ca` | Code action (alias) |
 | `<leader>d` | Diagnostics float |
-| `[d` / `]d` | Previous / next diagnostic |
+| `[d` / `]d` | Previous / next diagnostic (0.11 built-in) |
 
 ### C# / .NET (in `.cs` buffers)
 
@@ -242,12 +247,12 @@ The `azure-pipelines` filetype has no Treesitter grammar of its own, so `autocmd
 | `<leader>hd` | Diff this |
 | `ih` | Hunk text object |
 
-### mini.surround
+### nvim-surround (default keymaps)
 
 | Key | Action |
 |---|---|
-| `sa` | Add surrounding |
-| `sd` | Delete surrounding |
-| `sr` | Replace surrounding |
-| `sf` / `sF` | Find surrounding right / left |
-| `sh` | Highlight surrounding |
+| `ys{motion}{char}` | Add surrounding around motion |
+| `yss{char}` | Add surrounding around the line |
+| `ds{char}` | Delete surrounding |
+| `cs{target}{replacement}` | Change surrounding |
+| `S{char}` (visual) | Add surrounding around selection |
