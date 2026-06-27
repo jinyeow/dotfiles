@@ -56,36 +56,47 @@ function OnViModeChange {
     }
 }
 
-Set-PSReadLineOption -EditMode Vi `
-    -PredictionSource History `
-    -PredictionViewStyle ListView `
-    -ShowToolTips `
-    -HistoryNoDuplicates `
-    -HistorySearchCursorMovesToEnd `
-    -HistorySaveStyle SaveIncrementally `
-    -ViModeIndicator Script `
-    -ViModeChangeHandler $Function:OnViModeChange `
-    -Colors @{
-        Command          = 'Yellow'
-        Parameter        = 'Green'
-        String           = 'DarkCyan'
-        InlinePrediction = 'DarkGray'
-    }
+# Only configure PSReadLine on an interactive, VT-capable host with a live (non-redirected)
+# console. Under a redirected/non-interactive load (e.g. `pwsh -Command ...` with output piped,
+# or a hook host), -PredictionSource/-PredictionViewStyle emit "predictive suggestions require a
+# console that supports virtual terminal" errors. $Host.UI.SupportsVirtualTerminal alone is
+# insufficient — it stays true when stdout is captured — so also require a non-redirected stdout.
+# The flag is reused to gate the Phase 2a HistoryAndPlugin upgrade.
+$global:ProfileInteractiveConsole = [Environment]::UserInteractive -and
+    -not [Console]::IsOutputRedirected -and
+    ($Host.UI.SupportsVirtualTerminal -eq $true)
+if ($global:ProfileInteractiveConsole) {
+    Set-PSReadLineOption -EditMode Vi `
+        -PredictionSource History `
+        -PredictionViewStyle ListView `
+        -ShowToolTips `
+        -HistoryNoDuplicates `
+        -HistorySearchCursorMovesToEnd `
+        -HistorySaveStyle SaveIncrementally `
+        -ViModeIndicator Script `
+        -ViModeChangeHandler $Function:OnViModeChange `
+        -Colors @{
+            Command          = 'Yellow'
+            Parameter        = 'Green'
+            String           = 'DarkCyan'
+            InlinePrediction = 'DarkGray'
+        }
 
-Set-PSReadLineKeyHandler -Key Ctrl+r -Function ReverseSearchHistory
-Set-PSReadLineKeyHandler -Key Ctrl+Spacebar -Function MenuComplete
-Set-PSReadLineKeyHandler -Key Tab -Function Complete
-Set-PSReadLineKeyHandler -Chord Ctrl+Oem4 -Function ViCommandMode
-Set-PSReadLineKeyHandler -Chord Shift+Tab -Function MenuComplete
-Set-PSReadLineKeyHandler -Chord Ctrl+b -Function BackwardChar
-Set-PSReadLineKeyHandler -Chord Ctrl+f -Function ForwardChar
-Set-PSReadLineKeyHandler -Chord Ctrl+p -Function PreviousHistory
-Set-PSReadLineKeyHandler -Chord Ctrl+n -Function NextHistory
-Set-PSReadLineKeyHandler -Chord Ctrl+a -Function BeginningOfLine
-Set-PSReadLineKeyHandler -Chord Ctrl+e -Function EndOfLine
-Set-PSReadLineKeyHandler -Chord Ctrl+w -Function BackwardDeleteWord
-Set-PSReadLineKeyHandler -Chord Ctrl+u -Function BackwardDeleteLine
-Set-PSReadLineKeyHandler -Chord 'Ctrl+?' -ScriptBlock { Show-Hotkeys | Out-Null; [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt() }
+    Set-PSReadLineKeyHandler -Key Ctrl+r -Function ReverseSearchHistory
+    Set-PSReadLineKeyHandler -Key Ctrl+Spacebar -Function MenuComplete
+    Set-PSReadLineKeyHandler -Key Tab -Function Complete
+    Set-PSReadLineKeyHandler -Chord Ctrl+Oem4 -Function ViCommandMode
+    Set-PSReadLineKeyHandler -Chord Shift+Tab -Function MenuComplete
+    Set-PSReadLineKeyHandler -Chord Ctrl+b -Function BackwardChar
+    Set-PSReadLineKeyHandler -Chord Ctrl+f -Function ForwardChar
+    Set-PSReadLineKeyHandler -Chord Ctrl+p -Function PreviousHistory
+    Set-PSReadLineKeyHandler -Chord Ctrl+n -Function NextHistory
+    Set-PSReadLineKeyHandler -Chord Ctrl+a -Function BeginningOfLine
+    Set-PSReadLineKeyHandler -Chord Ctrl+e -Function EndOfLine
+    Set-PSReadLineKeyHandler -Chord Ctrl+w -Function BackwardDeleteWord
+    Set-PSReadLineKeyHandler -Chord Ctrl+u -Function BackwardDeleteLine
+    Set-PSReadLineKeyHandler -Chord 'Ctrl+?' -ScriptBlock { Show-Hotkeys | Out-Null; [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt() }
+}
 
 # --- Prompt -----------------------------------------------------------------
 . "$(Split-Path -Path $PROFILE)/Profile/Set-Prompt.ps1"
@@ -397,8 +408,9 @@ function Initialize-DeferredProfile {
     # Defined in Set-Prompt.ps1, dot-sourced in Phase 1; self-guards on Az.Accounts.
     Initialize-AzTimer
 
-    # Upgrade prediction source to include Az.Tools.Predictor plugin (~650ms)
-    if ($global:ProfileModules['Az.Tools.Predictor']) {
+    # Upgrade prediction source to include Az.Tools.Predictor plugin (~650ms).
+    # Gated on the same interactive/VT-capable check as the Phase 1 PSReadLine setup.
+    if ($global:ProfileInteractiveConsole -and $global:ProfileModules['Az.Tools.Predictor']) {
         Set-PSReadLineOption -PredictionSource HistoryAndPlugin
     }
 
