@@ -62,7 +62,10 @@ $Dotfiles = $PSScriptRoot
 if ($Module -contains 'all') {
     $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'yazi', 'curl', 'claude', 'codex', 'serena', 'context7', 'fastmail', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget')
 }
-$Module = $Module | Select-Object -Unique
+# @() wrapper: `Select-Object -Unique` over an empty array yields $null (and a
+# single value yields a scalar), so without it the `$Module.Count` guard below
+# throws under StrictMode when no -Module is passed.
+$Module = @($Module | Select-Object -Unique)
 
 # ── Output helpers ────────────────────────────────────────────────────────────
 

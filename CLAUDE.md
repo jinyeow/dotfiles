@@ -26,6 +26,8 @@ The PowerShell profile (`powershell/Microsoft.PowerShell_profile.ps1`) is a sing
 | `setup.ps1` | Windows | Module-based installer. `-Module neovim,vim,powershell,git,bash,tig,tmux,zellij,yazi,curl,claude,codex,serena,context7,fastmail,lazygit,windowsterminal,bat,vscode,winget` or `-Module all`. Supports `-DryRun`. |
 | `setup.sh` | Linux / WSL | Module-based installer. `-m neovim,vim,powershell,git,bash,tig,tmux,zellij,curl,claude,lazygit,windowsterminal` or `-m all`. Supports `--dry-run`. (No `codex` module yet — Windows only.) |
 
+`setup.ps1` argument handling has Pester tests in `tests/setup.Tests.ps1` (run `Invoke-Pester -Path tests`); they invoke the installer in `-DryRun` so nothing is mutated.
+
 ## PowerShell profile architecture
 
 `Microsoft.PowerShell_profile.ps1` is structured as **three phases** to keep startup fast:
