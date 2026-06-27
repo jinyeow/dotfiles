@@ -50,14 +50,12 @@ the Catppuccin Mocha scheme rather than by a query Zellij breaks.
 ```
 
 This is set in the repo's tracked **`claude/settings.json`**, which
-`setup.ps1 -Module claude` **copies** (not symlinks) to
-`~/.claude/settings.json`. Because it's a copy:
+`setup.ps1 -Module claude` **symlinks** to `~/.claude/settings.json`. Because
+it's a symlink, the live file and the repo file are one and the same:
 
-- Edit the **repo** file (`claude/settings.json`) and re-run
-  `setup.ps1 -Module claude` to apply — editing only `~/.claude/settings.json`
-  works until the next installer run, which overwrites it.
-- Claude Code also writes to the live `~/.claude/settings.json` itself, so the
-  two can drift; the repo file is the source of truth.
+- Edit either path — changes are immediately live, no installer re-run needed.
+- Claude Code writes settings to the live file itself, and because it's a
+  symlink those edits land straight in the repo (commit them from there).
 
 Use `/theme` inside Claude Code for a live preview of alternatives (`dark`,
 `dark-daltonized`, …).

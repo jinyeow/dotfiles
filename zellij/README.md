@@ -132,9 +132,12 @@ zellij action toggle-theme
 
 ## Default shell
 
-`default_shell "pwsh"` — new panes open PowerShell 7. Known limitation: new
-panes open at `$HOME` rather than the current pane's directory (upstream Zellij
-bug with pwsh CWD inheritance, no workaround in config).
+`default_shell "pwsh"` — new panes open PowerShell 7. Zellij opens new panes in
+the focused pane's process CWD, which pwsh's `Set-Location` does not update (only
+its provider location moves), so panes would open at `$HOME`. Worked around in the
+PowerShell profile: `Set-Prompt.ps1` sets `[System.Environment]::CurrentDirectory`
+on each prompt render (see upstream [zellij#5052](https://github.com/zellij-org/zellij/issues/5052)).
+Not fixable in Zellij's own config.
 
 ## Neovim integration
 
