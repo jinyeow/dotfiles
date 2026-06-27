@@ -117,5 +117,9 @@ behaviour (work git identity, Azure subscription) is handled at other layers:
 ./setup.ps1 -Module powershell
 ```
 
-Stubs the profile into PS7, PS5, and VSCode locations. Junctions
-`~/Documents/PowerShell/Profile` → `powershell/Profile/`.
+Stubs the profile into the pwsh 7 and VSCode profile locations (both under
+`~/Documents/PowerShell/`) and junctions `~/Documents/PowerShell/Profile` →
+`powershell/Profile/`. Windows PowerShell 5.1 is **not** targeted — the shared
+profile is `#Requires -Version 7`. The installer warns about (but never deletes)
+orphaned PS5 stubs under `~/Documents/WindowsPowerShell/` from older runs so you
+can remove them manually.
