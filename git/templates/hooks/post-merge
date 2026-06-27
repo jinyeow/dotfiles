@@ -1,2 +1,7 @@
 #!/bin/sh
-.git/hooks/ctags >/dev/null 2>&1 &
+# Resolve ctags next to this hook script. core.hooksPath points hooks at
+# ~/.git_templates/hooks (not .git/hooks), and in worktrees .git is a file —
+# so a literal .git/hooks/ctags path is wrong. Script-dir resolution is safe
+# under both.
+DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+"$DIR/ctags" >/dev/null 2>&1 &

@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# Resolve sibling hooks next to this script — .git/hooks is not the active hook
+# dir under core.hooksPath, and .git is a file in worktrees.
+DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 case "$1" in
-  rebase) exec .git/hooks/post-merge ;;
+  rebase) exec "$DIR/post-merge" ;;
 esac
