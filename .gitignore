@@ -29,6 +29,7 @@ claude/skills/azure-boards-organiser/config.json
 
 # Claude Code session working-state (handoff notes + deferred plans; local-only, not for the public remote)
 .claude/handoff.md
+.claude/handoff-*.consumed.md
 .claude/plans/
 
 # Generated artifacts from the font-comparison tools (powershell/Scripts/New-Font*.ps1)
