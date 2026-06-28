@@ -4,7 +4,7 @@
     "pr": "",
     "sessionUrl": false
   },
-  "model": "opus",
+  "model": "sonnet",
   "hooks": {
     "SessionStart": [
       {
@@ -91,7 +91,8 @@
     }
   },
   "effortLevel": "high",
-  "tui": "default",
+  "advisorModel": "opus",
+  "tui": "fullscreen",
   "theme": "dark-ansi",
   "editorMode": "vim",
   "preferredNotifChannel": "terminal_bell",
