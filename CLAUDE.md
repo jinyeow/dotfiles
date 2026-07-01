@@ -70,6 +70,7 @@ Codex CLI is wired in as a **read-only second-opinion reviewer** for Claude Code
 - **Two postures, one config**: `codex/config.toml` sets the **standalone** posture (`workspace-write` + `on-request`) for when you run `codex` directly; the MCP registration overrides to **read-only/never** for the reviewer path.
 - **Shared conventions**: `claude/AGENTS.md` installs to both `~/.claude/AGENTS.md` (imported by `CLAUDE.md`) and `~/.codex/AGENTS.md`, so both tools obey the same rules. Codex also concatenates a repo's own `AGENTS.md` on top — that's the layering point for work overlays (`codex/templates/work-AGENTS.md`).
 - **Trigger**: review is **on-demand only** — the `/codex-review` skill, or Claude *offers* a second opinion after a change but never calls Codex or applies findings without approval (see `claude/CLAUDE.md` → "Codex second opinion"). Auth is `codex login` (interactive, run once).
+- **Skills**: `codex/skills/` holds global custom skills in Codex's own format (`SKILL.md` + optional `agents/openai.yaml`), junctioned per-subdirectory into `~/.codex/skills/` by `setup.ps1 -Module codex` — the same pattern the claude module uses for `claude/skills/`. Codex has no separate top-level "agents" dir like Claude; an "agent" there is just an `agents/openai.yaml` nested inside a skill folder, so the skills junction covers both. Codex's own built-in skills live alongside at `~/.codex/skills/.system/` and are untouched.
 
 ## Claude Code hooks (`claude/`)
 

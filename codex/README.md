@@ -33,16 +33,32 @@ conventions in `claude/AGENTS.md` only; re-run the installer to push the copy.
 |---|---|---|
 | `config.toml` | `~/.codex/config.toml` | Model + standalone permissions |
 | `claude/AGENTS.md` (shared) | `~/.codex/AGENTS.md` | Personal conventions (sourced from the claude module) |
+| `skills/<name>/` | `~/.codex/skills/<name>/` | Global custom skills |
 | `templates/work-AGENTS.md` | — (manual copy) | Drop into an Azure work repo root as `AGENTS.md` |
 
 `config.toml` and the shared `AGENTS.md` are **copied** on Windows (like the claude module),
 so the live `~/.codex` copies can drift — re-run `setup.ps1 -Module codex` to push repo → live.
 
+## Skills
+
+`codex/skills/` holds global custom skills, in Codex's own skill format (a `SKILL.md`
+per skill, optionally with an `agents/openai.yaml`). The installer junctions each
+subdirectory into `~/.codex/skills/`, mirroring how the claude module junctions
+`claude/skills/`. Codex's own built-in skills live alongside at
+`~/.codex/skills/.system/` and are never touched by this installer.
+
+Unlike Claude, Codex has no separate top-level "agents" concept — an "agent" is just an
+`agents/openai.yaml` file nested inside a skill folder, so there's no separate agents
+junction to wire up; the skills junction covers both.
+
+`codex/skills/` is empty for now — add a skill by creating `codex/skills/<name>/SKILL.md`
+and re-running `setup.ps1 -Module codex`.
+
 ## Install
 
 1. `setup.ps1 -Module codex` — installs the Codex CLI (native installer), copies
-   `config.toml` + `AGENTS.md` into `~/.codex/`, and registers the read-only MCP reviewer
-   at user scope in Claude Code.
+   `config.toml` + `AGENTS.md` into `~/.codex/`, junctions any `codex/skills/` into
+   `~/.codex/skills/`, and registers the read-only MCP reviewer at user scope in Claude Code.
 2. `codex login` — interactive ChatGPT-account OAuth (run this yourself; one-time).
 
 Verify:

@@ -652,6 +652,22 @@ function Install-Codex {
         }
     }
 
+    # 5. Skills — junction each subdirectory into ~/.codex/skills/, mirroring the claude module's
+    #    per-subdir skill junctions. Codex ships its own built-in skills under
+    #    ~/.codex/skills/.system/ — untouched, since we only ever write sibling <name> dirs here.
+    #    Codex's "agents" are per-skill (an agents/openai.yaml inside each skill folder), not a
+    #    separate top-level dir like Claude's, so there is no separate agents junction to wire up.
+    $codexSkillsSrc = Join-Path $Dotfiles 'codex\skills'
+    $codexSkillsDst = Join-Path $codexDir 'skills'
+    $codexSkills = Get-ChildItem -Path $codexSkillsSrc -Directory -ErrorAction SilentlyContinue
+    if ($codexSkills) {
+        foreach ($skill in $codexSkills) {
+            New-Junction -Link (Join-Path $codexSkillsDst $skill.Name) -Target $skill.FullName
+        }
+    } else {
+        Write-Info 'No skills to install (codex/skills/ is empty).'
+    }
+
     Write-Info 'Next: run `codex login` (interactive ChatGPT-account OAuth) to authenticate.'
 }
 
