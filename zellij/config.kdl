@@ -19,6 +19,7 @@ simplified_ui false          // keep arrow-font decorations in tab/status bars
 
 // --- Behaviour --------------------------------------------------------------
 mouse_mode true
+stacked_resize true         // resize collapses neighbours into a stack, not squish
 copy_on_select true
 copy_clipboard "system"
 scroll_buffer_size 10000
@@ -85,6 +86,7 @@ keybinds clear-defaults=true {
         bind "f"     { ToggleFloatingPanes;     SwitchToMode "locked"; }
         bind "Space" { TogglePaneEmbedOrFloating; SwitchToMode "locked"; }
         bind "p"     { TogglePanePinned;        SwitchToMode "locked"; }
+        bind "F"     { TogglePaneFrames;        SwitchToMode "locked"; }
 
         // Break pane out of current tab
         bind "b" { BreakPane;      SwitchToMode "locked"; }
@@ -99,6 +101,7 @@ keybinds clear-defaults=true {
         bind "X"         { CloseTab;        SwitchToMode "locked"; }
         bind "Tab"       { GoToNextTab;     SwitchToMode "locked"; }
         bind "Shift Tab" { GoToPreviousTab; SwitchToMode "locked"; }
+        bind "t"         { ToggleTab;       SwitchToMode "locked"; }  // jump to last-used tab
         bind "H"         { MoveTab "Left";  SwitchToMode "locked"; }
         bind "L"         { MoveTab "Right"; SwitchToMode "locked"; }
         bind "R"         { SwitchToMode "RenameTab"; TabNameInput 0; }
@@ -155,6 +158,9 @@ keybinds clear-defaults=true {
         bind "l" "Right" { MovePane "right"; }
         bind "n"         { MovePane; }
         bind "p"         { MovePaneBackwards; }
+        // Push the focused pane to an adjacent tab (focus follows it there)
+        bind "[" { BreakPaneLeft; }
+        bind "]" { BreakPaneRight; }
     }
 
     // ── Scroll ───────────────────────────────────────────────────────────────
