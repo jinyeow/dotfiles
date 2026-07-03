@@ -4,7 +4,7 @@
     "pr": "",
     "sessionUrl": false
   },
-  "model": "sonnet",
+  "model": "opus[1m]",
   "hooks": {
     "SessionStart": [
       {
@@ -42,6 +42,16 @@
             "shell": "bash"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File ~/.claude/warn-legacy-files.ps1",
+            "shell": "bash"
+          }
+        ]
       }
     ],
     "PostToolUse": [
@@ -53,6 +63,11 @@
             "command": "pwsh -NoProfile -File ~/.claude/lint-powershell.ps1",
             "shell": "bash",
             "timeout": 60
+          },
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File ~/.claude/warn-hardcoded-secrets.ps1",
+            "shell": "bash"
           }
         ]
       }
@@ -82,6 +97,17 @@
     "type": "command",
     "command": "bash ~/.claude/statusline-command.sh"
   },
+  "enabledPlugins": {
+    "claude-code-setup@claude-plugins-official": true,
+    "agent-sdk-dev@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true,
+    "commit-commands@claude-plugins-official": true,
+    "pr-review-toolkit@claude-plugins-official": true,
+    "project-artifact@claude-plugins-official": true,
+    "skill-creator@claude-plugins-official": true,
+    "hookify@claude-plugins-official": false
+  },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
       "source": {
@@ -96,5 +122,6 @@
   "theme": "dark-ansi",
   "editorMode": "vim",
   "preferredNotifChannel": "terminal_bell",
+  "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true
 }

@@ -29,12 +29,15 @@ Verify with `claude doctor` (install method = native) and `Get-Command claude`
 | `block-destructive-vcs.ps1` | `~/.claude/block-destructive-vcs.ps1` | PreToolUse(Bash\|PowerShell) hook that denies destructive git (`push --force`, `reset --hard`, `clean -f`, `branch -D`) |
 | `block-pwsh-in-bash.ps1` | `~/.claude/block-pwsh-in-bash.ps1` | PreToolUse(Bash) hook that denies PowerShell mis-sent to the Bash tool, pointing at the PowerShell tool |
 | `lint-powershell.ps1` | `~/.claude/lint-powershell.ps1` | PostToolUse(Edit\|Write) hook that runs PSScriptAnalyzer on edited `.ps1/.psm1/.psd1` and feeds findings back |
+| `warn-legacy-files.ps1` | `~/.claude/warn-legacy-files.ps1` | PreToolUse(Edit\|Write) hook that asks to confirm before editing legacy/do-not-touch dotfiles (scoped to `$env:DOTFILES`) |
+| `warn-hardcoded-secrets.ps1` | `~/.claude/warn-hardcoded-secrets.ps1` | PostToolUse(Edit\|Write) hook that warns when written content looks like a hardcoded secret |
 | `skills/<name>/` | `~/.claude/skills/<name>/` | Global custom skills |
 | `agents/<name>.md` | `~/.claude/agents/<name>.md` | User-scope subagents (whole dir junctioned/symlinked) |
 
 **Install method.** `settings.json`, `CLAUDE.md`, `AGENTS.md`,
-`statusline-command.sh`, `no-claude-session-trailer.sh`, and the four pwsh hook scripts
-(`inject-handoff.ps1`, `block-destructive-vcs.ps1`, `block-pwsh-in-bash.ps1`, `lint-powershell.ps1`) are
+`statusline-command.sh`, `no-claude-session-trailer.sh`, and the six pwsh hook scripts
+(`inject-handoff.ps1`, `block-destructive-vcs.ps1`, `block-pwsh-in-bash.ps1`, `lint-powershell.ps1`,
+`warn-legacy-files.ps1`, `warn-hardcoded-secrets.ps1`) are
 **symlinked** into `~/.claude`, and each skill directory is
 **junctioned** (Windows) / symlinked (Linux). Windows file symlinks require **Developer
 Mode** (Settings → For developers) — junctions don't need it but can't link files. Because
@@ -52,13 +55,13 @@ old copy-based install + planned live→repo sync.)
 | `editorMode` | `vim` | Vim keybindings in the prompt input |
 | `agentPushNotifEnabled` | `true` | Mobile push notifications (cloud/background agents — not local CLI) |
 | `preferredNotifChannel` | `terminal_bell` | Built-in bell on the **needs-input** notification → marks the Zellij tab |
-| `hooks` | SessionStart, PreToolUse, PostToolUse, Stop, Notification | SessionStart: injects a pending `.claude/handoff.md`. PreToolUse: blocks the AI session-URL commit trailer, denies destructive git, and denies PowerShell mis-sent to the Bash tool. PostToolUse: PSScriptAnalyzer lint-on-edit. Stop/Notification: local completion alert — see Hooks and Notifications |
+| `hooks` | SessionStart, PreToolUse, PostToolUse, Stop, Notification | SessionStart: injects a pending `.claude/handoff.md`. PreToolUse: blocks the AI session-URL commit trailer, denies destructive git, denies PowerShell mis-sent to the Bash tool, and asks to confirm edits to legacy dotfiles. PostToolUse: PSScriptAnalyzer lint-on-edit and hardcoded-secret warn. Stop/Notification: local completion alert — see Hooks and Notifications |
 | `statusLine` | command | Runs `statusline-command.sh` |
 
 ## Hooks
 
 Beyond the notification beeps, `settings.json` wires a handoff injector, deterministic
-guardrails, and a lint pass. The four pwsh hooks read the hook JSON on stdin and are invoked
+guardrails, and a lint pass. The six pwsh hooks read the hook JSON on stdin and are invoked
 through `bash` (so `~` expands) as `pwsh -NoProfile -File ~/.claude/<script>.ps1`; they need
 **pwsh** on PATH, and the lint hook additionally needs the **PSScriptAnalyzer** module (it
 self-skips if absent). All allow silently and only emit JSON when they act.
@@ -69,7 +72,9 @@ self-skips if absent). All allow silently and only emit JSON when they act.
 | `PreToolUse` (Bash\|PowerShell) | `no-claude-session-trailer.sh` | Denies a `git commit` carrying the `Claude-Session:` trailer |
 | `PreToolUse` (Bash\|PowerShell) | `block-destructive-vcs.ps1` | Denies destructive **git** — `push --force` (allows `--force-with-lease`), `reset --hard`, `clean -f`, `branch -D`. jj is left ungated (its op-log makes rewrites recoverable). The git-guardrails *skill* only advises; this hook is non-bypassable |
 | `PreToolUse` (Bash) | `block-pwsh-in-bash.ps1` | Denies PowerShell sent to the Bash tool (a segment that *starts* with `pwsh`/`powershell`, `$env:`, or a `Verb-Noun` cmdlet), pointing at the PowerShell tool. Command-position only, so a cmdlet quoted as a search string is allowed |
+| `PreToolUse` (Edit\|Write) | `warn-legacy-files.ps1` | Emits an `ask` decision (pause-and-confirm) before editing a legacy/do-not-touch dotfile — root `pwsh_profile.ps1`, `bootstrap.sh`, `Makefile`, `config/bspwm\|sxhkd/`. Scoped to `$env:DOTFILES` so it never fires on same-named files in other repos; no-ops if `$env:DOTFILES` is unset |
 | `PostToolUse` (Edit\|Write) | `lint-powershell.ps1` | Runs PSScriptAnalyzer on an edited `.ps1/.psm1/.psd1` (using the nearest `.vscode/PSScriptAnalyzerSettings.psd1` when present) and feeds findings back via `additionalContext` |
+| `PostToolUse` (Edit\|Write) | `warn-hardcoded-secrets.ps1` | Scans written content (Write `content` / Edit `new_string`) for secret-shaped assignments (api-key/secret/token/password with a quoted literal, private-key blocks, AWS access-key ids) and warns via `additionalContext`. Global (secrets are bad anywhere); reports only rule names, never values |
 
 **Lint caveat:** the PostToolUse hook lints only the *single edited file* — it is a fast
 inner-loop nudge, **not** a substitute for the full `-Recurse` run CI does over the whole
