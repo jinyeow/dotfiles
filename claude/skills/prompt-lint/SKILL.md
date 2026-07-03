@@ -16,7 +16,7 @@ score needs it.
    directly. If neither, ask which prompt to lint.
 2. **Score.** Walk all 12 levers from `references/levers.md`. For each: `hit`, `miss`, or `n/a`,
    with a one-line evidence quote or paraphrase from the prompt. Flag lever 5 (reasoning
-   extraction) as **HIGH** severity on any miss — it risks a silent Fable→Opus fallback, not just
+   extraction) as **HIGH** severity on any miss — it risks a Fable→Opus fallback (Claude Code shows a transcript notice), not just
    weaker output.
 3. **Rewrite.** Produce a corrected prompt that closes every `miss`, keeps every `hit`, and
    shortens padded sections (lever 6) — restated procedure, redundant caveats, filler. Do not add

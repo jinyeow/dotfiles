@@ -1,7 +1,7 @@
 #Requires -Version 7
 # UserPromptSubmit + PreToolUse(Edit|Write) hook: detect reasoning-extraction phrasing
 # ("explain your reasoning step by step", "show your chain of thought", ...) that can trip
-# Claude Fable 5's `reasoning_extraction` refusal and cause a silent fallback to Opus (see
+# Claude Fable 5's `reasoning_extraction` refusal and cause a fallback to Opus (see
 # claude/AGENTS.md -> "Prompting downstream models", lever 5). Dispatches on hook_event_name:
 #   - UserPromptSubmit: advisory only - emits `additionalContext` asking Claude to interpret the
 #     phrasing as a request for short rationale + assumptions + evidence, and to mention it to the
@@ -62,7 +62,7 @@ if ($call.hook_event_name -eq 'UserPromptSubmit') {
   @{
     hookSpecificOutput = @{
       hookEventName     = 'UserPromptSubmit'
-      additionalContext = "This prompt asks for step-by-step reasoning / chain-of-thought / thinking out loud. That phrasing can trip Claude Fable 5's reasoning_extraction refusal and cause a silent fallback to Opus. Interpret it as a request for a short rationale plus assumptions and evidence, and mention this to the user."
+      additionalContext = "This prompt asks for step-by-step reasoning / chain-of-thought / thinking out loud. That phrasing can trip Claude Fable 5's reasoning_extraction refusal and cause a fallback to Opus. Interpret it as a request for a short rationale plus assumptions and evidence, and mention this to the user."
     }
   } | ConvertTo-Json -Depth 5 -Compress
   exit 0

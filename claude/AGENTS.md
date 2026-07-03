@@ -26,10 +26,14 @@ Applies to every prompt you author for a downstream model — subagent prompts, 
 
 - **Lead with the *why***. One line of purpose, audience, and what the output enables, before any instructions.
 - **Bound scope both ways**. Pair every "don't touch X" with the positive deliverable, or it drifts.
+- **Set the inertia**. Tell it to act decisively once it has enough, but to return a short plan *first* on high-ambiguity or high-risk work.
 - **Name the output format** and a length cap — not just "be concise."
+- **Show an example when format is load-bearing**. Give 1–2 input→output pairs (few-shot) when the exact shape matters; skip it for simple prompts.
 - **State acceptance criteria** — what "good" looks like and how it will be judged.
+- **Make it prove it**. Require evidence before "done" — cite file:line or command output rather than asserting completion. Cuts fabricated status on long runs (hygiene, not a guarantee).
 - **Set provenance rules for research prompts**. Cite sources, quote evidence, say "unknown" when unsupported.
-- **Never demand the model's private step-by-step reasoning or chain-of-thought**. A prompt like `'explain your reasoning step by step'` can trip Claude Fable 5's `reasoning_extraction` refusal and silently fall back to Opus. Ask for a short rationale + assumptions + evidence instead.
+- **Iterate, don't one-shot**. For artifact-producing prompts (drafts, docs, designs), ask for draft → self-critique → revise, not a single pass.
+- **Never demand the model's private step-by-step reasoning or chain-of-thought**. A prompt like `'explain your reasoning step by step'` can trip Claude Fable 5's `reasoning_extraction` refusal and fall back to Opus (Claude Code shows a transcript notice; the raw API returns `stop_reason: refusal`). Ask for a short rationale + assumptions + evidence instead.
 
 ## Surgical changes
 
