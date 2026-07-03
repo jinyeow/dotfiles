@@ -563,6 +563,8 @@ function Install-Claude {
     # PreToolUse ask-to-confirm on edits to legacy/do-not-touch dotfiles; PostToolUse hardcoded-secret warn.
     New-FileSymlink -Link (Join-Path $claudeDir 'warn-legacy-files.ps1') -Target (Join-Path $Dotfiles 'claude\warn-legacy-files.ps1')
     New-FileSymlink -Link (Join-Path $claudeDir 'warn-hardcoded-secrets.ps1') -Target (Join-Path $Dotfiles 'claude\warn-hardcoded-secrets.ps1')
+    # UserPromptSubmit advisory + PreToolUse ask on reasoning-extraction phrasing (Fable fallback risk).
+    New-FileSymlink -Link (Join-Path $claudeDir 'warn-reasoning-extraction.ps1') -Target (Join-Path $Dotfiles 'claude\warn-reasoning-extraction.ps1')
     # SessionStart hook: inject a pending .claude/handoff.md (from the handoff skill) into a fresh session.
     New-FileSymlink -Link (Join-Path $claudeDir 'inject-handoff.ps1') -Target (Join-Path $Dotfiles 'claude\inject-handoff.ps1')
 

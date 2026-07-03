@@ -227,6 +227,8 @@ install_claude() {
     # PreToolUse ask-to-confirm on edits to legacy/do-not-touch dotfiles; PostToolUse hardcoded-secret warn.
     make_symlink "$DOTFILES/claude/warn-legacy-files.ps1" "$HOME/.claude/warn-legacy-files.ps1"
     make_symlink "$DOTFILES/claude/warn-hardcoded-secrets.ps1" "$HOME/.claude/warn-hardcoded-secrets.ps1"
+    # UserPromptSubmit advisory + PreToolUse ask on reasoning-extraction phrasing (Fable fallback risk).
+    make_symlink "$DOTFILES/claude/warn-reasoning-extraction.ps1" "$HOME/.claude/warn-reasoning-extraction.ps1"
     # SessionStart hook: inject a pending .claude/handoff.md (from the handoff skill) into a fresh session.
     make_symlink "$DOTFILES/claude/inject-handoff.ps1" "$HOME/.claude/inject-handoff.ps1"
 

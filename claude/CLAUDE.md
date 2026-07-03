@@ -17,7 +17,8 @@ Codex CLI follow the same rules. Everything below is Claude-specific.
 ## Subagent Orchestration
 
 - **Parallel by default**. Decompose independent work across subagents in one message; relay their conclusions, not their file dumps.
-- **Model to task**. Opus for judgement (design, debugging, review), Sonnet for mechanical (renames, scaffolding, single-file edits). In `ultracode`, never let Sonnet leak onto judgement stages (find/verify/design/synthesize).
+- **Model to task**. Opus remains the pinned default (`settings.json`) for judgement work (design, debugging, review). Reach for Fable per-task via `/model` on routine/fast work, and Sonnet for mechanical work (renames, scaffolding, single-file edits); keep Opus for security/CTF/biology — those domains are fallback-prone. Prefer per-task `/effort` over a model downgrade for routine work. In `ultracode`, never let Sonnet or Fable leak onto judgement stages (find/verify/design/synthesize).
+- **Fable subagents**. Subagents often run Fable even under this pinned Opus main loop, so lever-5 prompting hygiene applies to the prompts you write for them — never demand their private step-by-step reasoning (a standing 'explain your reasoning step by step' trips Fable's `reasoning_extraction` → Opus fallback); ask for short rationale + assumptions + evidence instead. See `AGENTS.md` → "Prompting downstream models" for the full lever set.
 - **Lock the contract first**. Fix shared schemas/signatures and assign non-overlapping files before fanning out.
 - **Orchestrator stays lean**. Don't redo an agent's work — integrate and verify once at the end.
 - **No writes to shared files without a merge step**.

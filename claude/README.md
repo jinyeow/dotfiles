@@ -31,13 +31,14 @@ Verify with `claude doctor` (install method = native) and `Get-Command claude`
 | `lint-powershell.ps1` | `~/.claude/lint-powershell.ps1` | PostToolUse(Edit\|Write) hook that runs PSScriptAnalyzer on edited `.ps1/.psm1/.psd1` and feeds findings back |
 | `warn-legacy-files.ps1` | `~/.claude/warn-legacy-files.ps1` | PreToolUse(Edit\|Write) hook that asks to confirm before editing legacy/do-not-touch dotfiles (scoped to `$env:DOTFILES`) |
 | `warn-hardcoded-secrets.ps1` | `~/.claude/warn-hardcoded-secrets.ps1` | PostToolUse(Edit\|Write) hook that warns when written content looks like a hardcoded secret |
+| `warn-reasoning-extraction.ps1` | `~/.claude/warn-reasoning-extraction.ps1` | UserPromptSubmit + PreToolUse(Edit\|Write) hook that flags reasoning-extraction phrasing that trips Fable-5's `reasoning_extraction` → Opus fallback |
 | `skills/<name>/` | `~/.claude/skills/<name>/` | Global custom skills |
 | `agents/<name>.md` | `~/.claude/agents/<name>.md` | User-scope subagents (whole dir junctioned/symlinked) |
 
 **Install method.** `settings.json`, `CLAUDE.md`, `AGENTS.md`,
-`statusline-command.sh`, `no-claude-session-trailer.sh`, and the six pwsh hook scripts
+`statusline-command.sh`, `no-claude-session-trailer.sh`, and the seven pwsh hook scripts
 (`inject-handoff.ps1`, `block-destructive-vcs.ps1`, `block-pwsh-in-bash.ps1`, `lint-powershell.ps1`,
-`warn-legacy-files.ps1`, `warn-hardcoded-secrets.ps1`) are
+`warn-legacy-files.ps1`, `warn-hardcoded-secrets.ps1`, `warn-reasoning-extraction.ps1`) are
 **symlinked** into `~/.claude`, and each skill directory is
 **junctioned** (Windows) / symlinked (Linux). Windows file symlinks require **Developer
 Mode** (Settings → For developers) — junctions don't need it but can't link files. Because
@@ -55,13 +56,13 @@ old copy-based install + planned live→repo sync.)
 | `editorMode` | `vim` | Vim keybindings in the prompt input |
 | `agentPushNotifEnabled` | `true` | Mobile push notifications (cloud/background agents — not local CLI) |
 | `preferredNotifChannel` | `terminal_bell` | Built-in bell on the **needs-input** notification → marks the Zellij tab |
-| `hooks` | SessionStart, PreToolUse, PostToolUse, Stop, Notification | SessionStart: injects a pending `.claude/handoff.md`. PreToolUse: blocks the AI session-URL commit trailer, denies destructive git, denies PowerShell mis-sent to the Bash tool, and asks to confirm edits to legacy dotfiles. PostToolUse: PSScriptAnalyzer lint-on-edit and hardcoded-secret warn. Stop/Notification: local completion alert — see Hooks and Notifications |
+| `hooks` | SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop, Notification | SessionStart: injects a pending `.claude/handoff.md`. UserPromptSubmit: warns on reasoning-extraction phrasing (Fable-5 fallback). PreToolUse: blocks the AI session-URL commit trailer, denies destructive git, denies PowerShell mis-sent to the Bash tool, asks to confirm edits to legacy dotfiles, and asks before writing a reasoning-extraction phrase into config. PostToolUse: PSScriptAnalyzer lint-on-edit and hardcoded-secret warn. Stop/Notification: local completion alert — see Hooks and Notifications |
 | `statusLine` | command | Runs `statusline-command.sh` |
 
 ## Hooks
 
 Beyond the notification beeps, `settings.json` wires a handoff injector, deterministic
-guardrails, and a lint pass. The six pwsh hooks read the hook JSON on stdin and are invoked
+guardrails, and a lint pass. The seven pwsh hooks read the hook JSON on stdin and are invoked
 through `bash` (so `~` expands) as `pwsh -NoProfile -File ~/.claude/<script>.ps1`; they need
 **pwsh** on PATH, and the lint hook additionally needs the **PSScriptAnalyzer** module (it
 self-skips if absent). All allow silently and only emit JSON when they act.
@@ -75,6 +76,8 @@ self-skips if absent). All allow silently and only emit JSON when they act.
 | `PreToolUse` (Edit\|Write) | `warn-legacy-files.ps1` | Emits an `ask` decision (pause-and-confirm) before editing a legacy/do-not-touch dotfile — root `pwsh_profile.ps1`, `bootstrap.sh`, `Makefile`, `config/bspwm\|sxhkd/`. Scoped to `$env:DOTFILES` so it never fires on same-named files in other repos; no-ops if `$env:DOTFILES` is unset |
 | `PostToolUse` (Edit\|Write) | `lint-powershell.ps1` | Runs PSScriptAnalyzer on an edited `.ps1/.psm1/.psd1` (using the nearest `.vscode/PSScriptAnalyzerSettings.psd1` when present) and feeds findings back via `additionalContext` |
 | `PostToolUse` (Edit\|Write) | `warn-hardcoded-secrets.ps1` | Scans written content (Write `content` / Edit `new_string`) for secret-shaped assignments (api-key/secret/token/password with a quoted literal, private-key blocks, AWS access-key ids) and warns via `additionalContext`. Global (secrets are bad anywhere); reports only rule names, never values |
+| `UserPromptSubmit` | `warn-reasoning-extraction.ps1` | Warns via `additionalContext` (never denies) when the submitted prompt asks for step-by-step reasoning / chain-of-thought — phrasing that can trip Claude Fable 5's `reasoning_extraction` refusal → silent Opus fallback. Nudges Claude to read it as a request for short rationale + assumptions + evidence |
+| `PreToolUse` (Edit\|Write) | `warn-reasoning-extraction.ps1` | Same script, config-write guard: emits an `ask` only when a reasoning-extraction phrase is being written into a config/prompt-bearing file (`CLAUDE.md`, `AGENTS.md`, `*SKILL.md`, `agents/*.md`, `codex/**`) — a *standing* instruction persisted into config. Strips quoted substrings before matching (so docs that quote the phrase to ban it don't self-trigger) plus a negation guard; reports rule names only |
 
 **Lint caveat:** the PostToolUse hook lints only the *single edited file* — it is a fast
 inner-loop nudge, **not** a substitute for the full `-Recurse` run CI does over the whole
