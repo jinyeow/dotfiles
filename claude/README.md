@@ -217,6 +217,18 @@ Seeded agents:
   Owns the skeleton (layout, `.psd1`/`.psm1` manifest, public/private split, `src`/`tests`
   structure) and module-health reviews; delegates behaviour (function bodies + Pester tests)
   to `pwsh-implementer`. No `skills:` preload; `model: inherit`.
+- **`csharp-implementer`** — TDD specialist/implementer for C# / .NET 8+ (xUnit first,
+  dotnet CLI, nullable reference types, structured `ILogger` logging; Microsoft/xUnit
+  `src`/`tests/<Proj>.Tests` layout so `<leader>A` resolves counterparts). Preloads the
+  `tdd` skill; `model: inherit`.
+- **`bicep-implementer`** — Azure Bicep IaC specialist. Preloads the `bicep-tdd` skill and
+  runs its full offline gate (build/lint/PSRule/snapshot compare/Pester golden fixtures);
+  hard boundary: never authenticates to a tenant, no `what-if`, no deploy. `model: inherit`.
+- **`chief-orchestrator`** — coordination-only agent for large/multi-domain tasks: scouts,
+  locks the shared contract (schemas, signatures, non-overlapping file ownership),
+  dispatches the specialists above in parallel via the `Agent` tool (nesting depth 1 → 2),
+  integrates, and verifies once at the end. Deliberately has **no Write/Edit tools** — every
+  file change flows through a dispatched worker. `model: inherit`.
 
 ## Install
 
