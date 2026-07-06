@@ -81,7 +81,7 @@ end
 
 -- fzf-lua: 'fzf-vim' profile recreates :Files/:Rg/:Buffers/:Commands/:Lines
 local fzf_ok, fzf_lua = pcall(require, 'fzf-lua')
-if fzf_ok then fzf_lua.setup({ 'fzf-vim' }) end
+if fzf_ok then fzf_lua.setup({ 'fzf-vim', oldfiles = { include_current_session = true } }) end
 
 -- nvim-surround: ys{motion}{char} add, ds{char} delete, cs{old}{new} change
 local surround_ok, surround = pcall(require, 'nvim-surround')

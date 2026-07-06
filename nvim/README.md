@@ -192,6 +192,8 @@ The `azure-pipelines` filetype has no Treesitter grammar of its own, so `autocmd
 | `<leader>fl` | Find lines |
 | `<leader>fs` | Find LSP symbols (document) |
 | `<leader>fS` | Find LSP symbols (workspace) |
+| `<leader>fr` | Find recent files (MRU) |
+| `<leader>fR` | Find recent files (cwd only) |
 | `<leader>a` | Toggle symbol outline (aerial) |
 
 ### LSP (when attached)

@@ -84,6 +84,8 @@ if _G.user_config.profile ~= 'minimal' then
   map('n', '<leader>fl', '<cmd>FzfLua lines<CR>',             { desc = 'Find lines' })
   map('n', '<leader>fs', '<cmd>FzfLua lsp_document_symbols<CR>',  { desc = 'Find symbols (file)' })
   map('n', '<leader>fS', '<cmd>FzfLua lsp_workspace_symbols<CR>', { desc = 'Find symbols (workspace)' })
+  map('n', '<leader>fr', '<cmd>FzfLua oldfiles<CR>',             { desc = 'Find recent files (MRU)' })
+  map('n', '<leader>fR', "<cmd>lua require('fzf-lua').oldfiles({ cwd_only = true })<CR>", { desc = 'Find recent files (cwd)' })
 
   -- Aerial
   map('n', '<leader>a', '<cmd>AerialToggle<CR>', { desc = 'Toggle symbol outline' })
