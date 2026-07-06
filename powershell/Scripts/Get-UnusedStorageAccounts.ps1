@@ -25,7 +25,7 @@ foreach ($storageAccount in $storageAccounts) {
   # Get the usage metrics for the storage account
   $metrics = Get-AzMetric -ResourceId $storageAccount.ResourceId -Metric "Transactions", "Ingress", "Egress" -DetailedOutput -StartTime $startTime -EndTime $now
   # Check if the usage metrics are empty
-  if ($metrics.Data -eq $null) {
+  if ($null -eq $metrics.Data) {
     # If the usage metrics are empty, add the storage account to the unused storage accounts array
     $unusedStorageAccounts += $storageAccount
   }
