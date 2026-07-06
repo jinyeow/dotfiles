@@ -173,7 +173,10 @@ routed by artifact type — `code`/`business`/`plan`/`doc`, plus cross-cutting
 `contrarian`/`completeness`) critiques blind in parallel, rebuts each other with
 new-evidence discipline, and a `council-chair` issues a verdict with dissent preserved.
 Codex joins as a cross-model seat under the same standing-consent exception as
-`deep-review`. For branch diffs/PRs use `deep-review`, not `council`.
+`deep-review`. Four thin aliases — `council-code`, `council-business`, `council-plan`,
+`council-doc` — pin their panel and delegate to the same engine (better auto-trigger
+surface per domain; the pipeline is defined once in `council`). For branch diffs/PRs use
+`deep-review`, not `council`.
 
 The review→fix skills compose around `_shared/` contracts: **`deep-review`** fans out parallel
 per-dimension reviewers + Codex over a branch diff/PR, adversarially verifies the findings, and

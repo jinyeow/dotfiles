@@ -24,6 +24,8 @@ The two agents are `council-critic` (one per seat) and `council-chair` (synthesi
 ```
 
 - `panel` — `code` | `business` | `plan` | `doc`. Omit to auto-detect from the artifact.
+  (The thin alias skills `council-code` / `council-business` / `council-plan` /
+  `council-doc` pin the panel and delegate here — same engine, no auto-detection.)
 - `target` — file path(s), a PR/issue/doc reference, or inline text after a colon
   (`/council business: subscription box for hot sauce`).
 - `+seat` / `-seat` — add or drop seats by registry name (`+contrarian -compliance-privacy`).
