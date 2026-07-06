@@ -1,0 +1,28 @@
+#!/bin/sh
+# Secret scan on staged changes. Blocks a commit whose staged diff looks like a
+# secret (gitleaks). Global hook via core.hooksPath = ~/.git_templates/hooks.
+#
+# Single POSIX-sh file on purpose: unlike prepare-commit-msg (which has real
+# pwsh-native logic + an sh fallback), this only shells out to the one
+# cross-platform gitleaks binary, so a .ps1/.sh split would duplicate identical
+# logic. git runs hooks through sh on every platform, so sh is universal here.
+#
+# Fails OPEN when gitleaks is absent (warn, allow) so a machine without the
+# binary is never blocked — the gitleaks CI job is the backstop.
+# Bypass one commit:  SKIP_GITLEAKS=1 git commit ...
+
+[ "$SKIP_GITLEAKS" = "1" ] && exit 0
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+    echo "gitleaks not on PATH — skipping local secret scan (install: winget install gitleaks.gitleaks)." >&2
+    exit 0
+fi
+
+gitleaks git --pre-commit --redact --staged --no-banner
+status=$?
+if [ "$status" -ne 0 ]; then
+    echo "" >&2
+    echo "gitleaks blocked this commit: a staged change looks like a secret (values redacted above)." >&2
+    echo "Fix it, or bypass this one commit with:  SKIP_GITLEAKS=1 git commit ..." >&2
+fi
+exit "$status"

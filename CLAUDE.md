@@ -55,6 +55,7 @@ When adding to the profile, classify by cost first — anything that loads .NET 
 Files live under `git/`: `gitconfig` (base), `gitconfig-work` (work overrides), `gitignore`, `gitmessage`, `templates/hooks/`.
 
 - `core.hooksPath = ~/.git_templates/hooks` — global hook directory, so `prepare-commit-msg` runs on every repo. Branches like `feature/PROJ-123-foo` get `[PROJ-123]-` prepended to commit messages; the skip list (`master`, `develop`, `staging`, deploy/*) is in the hook.
+- `pre-commit` (in `templates/hooks/`) runs **gitleaks** on the staged diff and blocks a commit that looks like it contains a secret. Single POSIX-sh file (git invokes hooks via sh on every platform; no pwsh-specific logic to warrant the `prepare-commit-msg` shim split). **Fails open** if `gitleaks` isn't on PATH (warns, allows) — the `gitleaks` CI job is the backstop. Bypass one commit with `SKIP_GITLEAKS=1 git commit …`. Global via `core.hooksPath`, so it guards every repo, not just this one. `gitleaks.gitleaks` is in `winget/packages.json`.
 - `init.templatedir = ~/.git_templates` — new repos inherit the hooks too.
 - `init.defaultBranch = main`, `pull.ff = only`, `push.autoSetupRemote = true`, `rebase.autoStash = true`, `rebase.updateRefs = true` (stacked branches), `rerere.enabled = true`.
 - Pager and diff filter are **delta** (`core.pager = delta`, `interactive.diffFilter = delta --color-only`).
