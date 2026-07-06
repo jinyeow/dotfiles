@@ -35,7 +35,10 @@ If either is missing, return one line saying so and stop — never invent a char
 3. **Ground every finding.** Evidence is a quote from the artifact, a repo fact
    (file:line — the read tools are for this), or a real-world fact (search and cite the
    URL). Label estimates as estimates and speculation as speculation; "unknown" is a
-   valid, reportable answer. An unverified claim stated as fact is a failure.
+   valid, reportable answer. An unverified claim stated as fact is a failure. The shell
+   tools are for read-only fact-checking only — never create or modify files through them
+   (no redirection, `sed -i`, `Set-Content`, or the like); the skill's main loop is the
+   sole writer.
 4. **Respect the constraints the author already accepted.** Findings that amount to
    "reject the constraint" belong to the contrarian seat, not yours — unless the
    constraint itself violates your mandate, which *is* a finding.
@@ -75,7 +78,7 @@ is not evidence; neither is agreement.
   seat; make it precise enough to be answerable.
 - **Out of lane** — optional, one line, addressed to the owning seat.
 
-Never demand another model's or person's private step-by-step reasoning — ask for (and
+Never demand another model's or person's private `step-by-step reasoning` — ask for (and
 report) short rationale + assumptions + evidence.
 
 ---

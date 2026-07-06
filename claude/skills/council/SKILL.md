@@ -55,6 +55,10 @@ lens, no single charter) — invoking `/council` is standing consent for this, t
 documented exception as `deep-review` (see `claude/CLAUDE.md`); name its inclusion in the
 report. If absent, omit it cleanly.
 
+The ≤7 cap counts **charter seats only** (codex is extra). When default-seating
+`contrarian` would push a panel past the cap, swap out the least decision-relevant default
+seat and say so in the panel line.
+
 **Done when:** panel list is fixed and stated to the user (one line), before any dispatch.
 
 ### 2 — BRIEF
@@ -77,8 +81,14 @@ for. Don't ask about anything else.
 Dispatch **all seats in a single message**: one `council-critic` per seat, each prompt
 containing (in order) the brief, that seat's charter **verbatim** from
 `references/perspectives.md`, and the reminder that its Return shape and line cap apply.
-Never include another seat's output, and never ask a seat for step-by-step reasoning —
+Never include another seat's output, and never ask a seat for `step-by-step reasoning` —
 short rationale + assumptions + evidence only (Fable `reasoning_extraction` guard).
+
+The **codex seat** is not a `council-critic` dispatch: call its MCP tool directly with the
+brief and the critic's Return shape as the requested output format, over the full panel's
+lens. It is **round-1 only** — it does not join DEBATE (rebuttal duty binds
+`council-critic` seats); its findings still enter the digest so charter seats can rebut
+them, and the chair scores it like any seat.
 
 A seat that errors or returns nothing is recorded in the report's run notes — never
 silently dropped, never invented for.
@@ -88,8 +98,10 @@ silently dropped, never invented for.
 ### 4 — DEBATE (skip on `--quick`)
 
 Compile a findings digest: per seat — its verdict + top findings (id, claim, severity ×
-likelihood, one-line evidence). Send the digest back to **each** critic (same charter,
-same brief) with its rebuttal duty: attack or endorse **at least two** findings from other
+likelihood, one-line evidence). Send back to **each** charter critic (same charter, same
+brief): the digest of the *other* seats plus that seat's **own complete round-1 output**
+(a rebuttal is a fresh context — the seat must see its full self, digest-form is only for
+others), with its rebuttal duty: attack or endorse **at least two** findings from other
 seats with *new* evidence; revising its own verdict requires stating the evidence that
 moved it. Dispatch all rebuttals in a single message (parallel).
 
@@ -109,8 +121,10 @@ chair with the inconsistency named, once).
 ### 6 — REPORT
 
 1. Write the chair's report verbatim to `.claude/council/<artifact-slug>-<yyyymmdd>.md`
-   in the workspace. Keep it out of version control the same way the `handoff` skill does
-   (`.git/info/exclude`, not the repo's `.gitignore`) unless the user asks to commit it.
+   in the workspace (if that path already exists — a same-day re-run — append `-2`, `-3`,
+   …). Keep it out of version control the same way the `handoff` skill does (via
+   `git rev-parse --git-path info/exclude`, worktree-safe; skip silently outside a git
+   repo) unless the user asks to commit it.
 2. Relay in chat: the verdict card (verdict, confidence, one-line rationale), the
    blockers/majors count by seat, the kill-shot questions, and the dissent section —
    plus the report path. Do not re-paste the whole report into chat.

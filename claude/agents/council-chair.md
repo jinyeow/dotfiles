@@ -73,7 +73,7 @@ this report.
 7. **Run notes** — panel composition, debate on/off, sycophancy/unanimity flags, evidence
    spot-checks that failed.
 
-Never demand a seat's private step-by-step reasoning; judge the rationale + assumptions +
+Never demand a seat's private `step-by-step reasoning`; judge the rationale + assumptions +
 evidence they returned.
 
 ---
