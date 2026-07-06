@@ -4,9 +4,10 @@ description: >-
   PowerShell module architecture specialist — designs module layout
   (public/private separation, .psd1/.psm1 manifest + SemVer versioning,
   src/tests structure), reviews module health, and scaffolds skeletons. Use for
-  module DESIGN decisions and structure REVIEWS. Delegates behaviour
-  implementation (function bodies + Pester tests) to the pwsh-implementer agent.
-  NOT for writing function bodies or one-off scripts.
+  module DESIGN decisions and structure REVIEWS. Designs the slot for any
+  behaviour (function bodies + Pester tests) and reports it for the caller to
+  dispatch to the pwsh-implementer agent. NOT for writing function bodies or
+  one-off scripts.
 model: inherit
 color: cyan
 tools: Read, Write, Edit, Bash, PowerShell, Glob, Grep

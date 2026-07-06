@@ -13,7 +13,8 @@ description: >-
   powershell-module-architect).
 model: inherit
 color: blue
-skills: tdd
+skills:
+  - tdd
 tools: Read, Write, Edit, Bash, PowerShell, Glob, Grep
 ---
 

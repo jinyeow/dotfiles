@@ -215,8 +215,9 @@ Seeded agents:
   `model: inherit`.
 - **`powershell-module-architect`** — module *design/review* companion to `pwsh-implementer`.
   Owns the skeleton (layout, `.psd1`/`.psm1` manifest, public/private split, `src`/`tests`
-  structure) and module-health reviews; delegates behaviour (function bodies + Pester tests)
-  to `pwsh-implementer`. No `skills:` preload; `model: inherit`.
+  structure) and module-health reviews; reports unwritten behaviour (function bodies +
+  Pester tests) for the caller to dispatch to `pwsh-implementer`. No `skills:` preload;
+  `model: inherit`.
 - **`csharp-implementer`** — TDD specialist/implementer for C# / .NET 8+ (xUnit first,
   dotnet CLI, nullable reference types, structured `ILogger` logging; Microsoft/xUnit
   `src`/`tests/<Proj>.Tests` layout so `<leader>A` resolves counterparts). Preloads the
