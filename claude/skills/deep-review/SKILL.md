@@ -1,6 +1,6 @@
 ---
 name: deep-review
-description: Multi-dimension cross-model code review of a branch diff or PR. Fans out parallel reviewers (correctness, security, performance, structural, architecture, conventions, tests) plus Codex, adversarially verifies the findings, and writes them to a findings store for fixing. Use when asked to "deep review", "review the branch/PR thoroughly", "multi-dimension review", "find all the issues", or before running a fix loop. Reach for it from review-fix-loop.
+description: Multi-dimension cross-model code review of a branch diff or PR. Fans out parallel reviewers (correctness, security, performance, structural, architecture, conventions, tests) plus Codex, adversarially verifies the findings, and writes them to a findings store for fixing. Use when asked to "deep review", "review the branch/PR thoroughly", "multi-dimension review", "find all the issues", or before running a fix loop. Reach for it from review-fix-loop. NOT for non-diff artifacts (ideas, designs-as-docs, plans, presentations) — use the council skill for those.
 ---
 
 # Deep Review

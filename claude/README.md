@@ -166,6 +166,15 @@ on the machine: the **Bicep CLI** on PATH and the **PSRule.Rules.Azure** module
 (`Install-Module PSRule.Rules.Azure -Scope CurrentUser`). It deliberately stops at compiled
 ARM — no `what-if`/deploy, so it never authenticates to a tenant.
 
+`council` runs an adversarial multi-perspective review of a **non-diff artifact** (idea,
+business case, technical design/ADR, project plan, presentation): a panel of
+`council-critic` seats (registry + charters in `council/references/perspectives.md`,
+routed by artifact type — `code`/`business`/`plan`/`doc`, plus cross-cutting
+`contrarian`/`completeness`) critiques blind in parallel, rebuts each other with
+new-evidence discipline, and a `council-chair` issues a verdict with dissent preserved.
+Codex joins as a cross-model seat under the same standing-consent exception as
+`deep-review`. For branch diffs/PRs use `deep-review`, not `council`.
+
 The review→fix skills compose around `_shared/` contracts: **`deep-review`** fans out parallel
 per-dimension reviewers + Codex over a branch diff/PR, adversarially verifies the findings, and
 emits them to a findings store; **`fix-findings`** consumes that store and applies fixes (parallel,
@@ -230,6 +239,11 @@ Seeded agents:
   dispatches the specialists above in parallel via the `Agent` tool (nesting depth 1 → 2),
   integrates, and verifies once at the end. Deliberately has **no Write/Edit tools** — every
   file change flows through a dispatched worker. `model: inherit`.
+- **`council-critic`** / **`council-chair`** — the seats and judge of the `council` skill's
+  adversarial review panels. One generic critic agent, parameterized by a perspective
+  charter from `skills/council/references/perspectives.md` (charters are data — add a
+  perspective there, not a new agent); the chair synthesizes, adjudicates on evidence
+  weight, and preserves dissent. Dispatched by `/council`, not ad hoc. `model: inherit`.
 
 ## Install
 
