@@ -9,11 +9,12 @@ description: >-
   module and script work, Azure/cloud automation (Az PowerShell, Azure CLI),
   Microsoft Graph (M365/Entra), and CI/CD pipeline steps/scripts (GitHub
   Actions, Azure DevOps) whose logic is primarily PowerShell. NOT for general
-  non-PowerShell tasks.
+  non-PowerShell tasks, and NOT for module layout/manifest design (use
+  powershell-module-architect).
 model: inherit
 color: blue
 skills: tdd
-tools: Read, Write, Edit, Bash, Glob, Grep
+tools: Read, Write, Edit, Bash, PowerShell, Glob, Grep
 ---
 
 You are an isolated TDD implementation worker for PowerShell 7+. You run in your own

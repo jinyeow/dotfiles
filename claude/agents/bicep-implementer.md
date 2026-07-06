@@ -12,7 +12,7 @@ model: inherit
 color: yellow
 skills:
   - bicep-tdd
-tools: Read, Write, Edit, Bash, Glob, Grep
+tools: Read, Write, Edit, Bash, PowerShell, Glob, Grep
 ---
 
 You are an isolated implementation worker for Azure Bicep. You run in your own context: do

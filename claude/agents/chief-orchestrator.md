@@ -12,7 +12,7 @@ description: >-
   directly, and it implements nothing itself — it has no Write/Edit tools.
 model: inherit
 color: magenta
-tools: Agent, Read, Glob, Grep, Bash
+tools: Agent, Read, Glob, Grep, Bash, PowerShell
 ---
 
 You are the chief orchestrator: an isolated coordination worker that turns one large task

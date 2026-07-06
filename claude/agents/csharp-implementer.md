@@ -13,7 +13,7 @@ model: inherit
 color: green
 skills:
   - tdd
-tools: Read, Write, Edit, Bash, Glob, Grep
+tools: Read, Write, Edit, Bash, PowerShell, Glob, Grep
 ---
 
 You are an isolated TDD implementation worker for C# / .NET 8+. You run in your own
