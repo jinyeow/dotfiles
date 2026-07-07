@@ -24,9 +24,11 @@ autocmd('BufReadPost', {
   end,
 })
 
--- Azure Pipelines filetype detection
+-- Azure Pipelines filetype detection. Covers both the `*.azure-pipelines.yml`
+-- convention and the Azure DevOps default filename `azure-pipelines.yml` at repo
+-- root, so azure_pipelines_ls (not yamlls) attaches to both. See lsp.lua.
 autocmd({ 'BufNewFile', 'BufRead' }, {
-  pattern = { '*.azure-pipelines.yml', '*.azure-pipelines.yaml' },
+  pattern = { '*.azure-pipelines.yml', '*.azure-pipelines.yaml', 'azure-pipelines.yml', 'azure-pipelines.yaml' },
   callback = function()
     vim.bo.filetype = 'azure-pipelines'
   end,
