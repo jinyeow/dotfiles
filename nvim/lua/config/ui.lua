@@ -6,18 +6,26 @@ local function detect_theme()
 
   if uname.sysname == 'Windows_NT' then
     -- AppsUseLightTheme: 0x0 = dark, 0x1 = light
-    out = vim.fn.system({ 'reg', 'query',
+    out = vim.fn.system({
+      'reg',
+      'query',
       'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize',
-      '/v', 'AppsUseLightTheme' })
-    if out:find('0x0') then return 'dark' end
-    if out:find('0x1') then return 'light' end
-
+      '/v',
+      'AppsUseLightTheme',
+    })
+    if out:find('0x0') then
+      return 'dark'
+    end
+    if out:find('0x1') then
+      return 'light'
+    end
   elseif uname.sysname == 'Darwin' then
     -- Key absent (exit 1) means light mode
     out = vim.fn.system({ 'defaults', 'read', '-g', 'AppleInterfaceStyle' })
-    if out:find('Dark') then return 'dark' end
+    if out:find('Dark') then
+      return 'dark'
+    end
     return 'light'
-
   else
     -- GNOME
     out = vim.fn.system({ 'gsettings', 'get', 'org.gnome.desktop.interface', 'color-scheme' })
@@ -32,9 +40,9 @@ local function detect_theme()
   end
 
   -- Sunrise/sunset fallback
-  local hour    = tonumber(os.date('%H'))
+  local hour = tonumber(os.date('%H'))
   local sunrise = _G.user_config.sunrise_hour
-  local sunset  = _G.user_config.sunset_hour
+  local sunset = _G.user_config.sunset_hour
   return (hour >= sunset or hour < sunrise) and 'dark' or 'light'
 end
 
@@ -56,9 +64,9 @@ if cat_ok then
     transparent_background = false,
     integrations = {
       treesitter = true,
-      gitsigns   = true,
+      gitsigns = true,
       native_lsp = { enabled = true },
-      aerial     = true,
+      aerial = true,
     },
   })
   vim.cmd.colorscheme('catppuccin')
@@ -70,22 +78,26 @@ end
 local rm_ok, render_md = pcall(require, 'render-markdown')
 if rm_ok then
   render_md.setup({
-    file_types   = { 'markdown' },
+    file_types = { 'markdown' },
     render_modes = { 'n', 'v' },
-    heading      = { enabled = true },
-    code         = { enabled = true },
-    bullet       = { enabled = true },
-    quote        = { enabled = true },
+    heading = { enabled = true },
+    code = { enabled = true },
+    bullet = { enabled = true },
+    quote = { enabled = true },
   })
 end
 
 -- fzf-lua: 'fzf-vim' profile recreates :Files/:Rg/:Buffers/:Commands/:Lines
 local fzf_ok, fzf_lua = pcall(require, 'fzf-lua')
-if fzf_ok then fzf_lua.setup({ 'fzf-vim', oldfiles = { include_current_session = true } }) end
+if fzf_ok then
+  fzf_lua.setup({ 'fzf-vim', oldfiles = { include_current_session = true } })
+end
 
 -- nvim-surround: ys{motion}{char} add, ds{char} delete, cs{old}{new} change
 local surround_ok, surround = pcall(require, 'nvim-surround')
-if surround_ok then surround.setup() end
+if surround_ok then
+  surround.setup()
+end
 
 -- oil.nvim: edit the filesystem like a buffer; replaces netrw
 local oil_ok, oil = pcall(require, 'oil')
@@ -100,7 +112,9 @@ end
 
 -- oil-git-status: per-file git status in oil's sign columns (left = index, right = working tree)
 local ogs_ok, oil_git_status = pcall(require, 'oil-git-status')
-if ogs_ok then oil_git_status.setup() end
+if ogs_ok then
+  oil_git_status.setup()
+end
 
 -- aerial.nvim: code outline sidebar + symbol navigation
 local aerial_ok, aerial = pcall(require, 'aerial')

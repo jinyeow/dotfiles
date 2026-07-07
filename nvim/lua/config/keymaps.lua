@@ -24,10 +24,18 @@ local function navigate(dir)
 end
 
 if vim.env.ZELLIJ or vim.env.TMUX then
-  map('n', '<C-h>', function() navigate('h') end, { silent = true })
-  map('n', '<C-j>', function() navigate('j') end, { silent = true })
-  map('n', '<C-k>', function() navigate('k') end, { silent = true })
-  map('n', '<C-l>', function() navigate('l') end, { silent = true })
+  map('n', '<C-h>', function()
+    navigate('h')
+  end, { silent = true })
+  map('n', '<C-j>', function()
+    navigate('j')
+  end, { silent = true })
+  map('n', '<C-k>', function()
+    navigate('k')
+  end, { silent = true })
+  map('n', '<C-l>', function()
+    navigate('l')
+  end, { silent = true })
 else
   map('n', '<C-h>', '<C-w>h')
   map('n', '<C-j>', '<C-w>j')
@@ -36,13 +44,13 @@ else
 end
 
 -- Resize windows
-map('n', '<C-Up>',    ':resize +2<CR>')
-map('n', '<C-Down>',  ':resize -2<CR>')
-map('n', '<C-Left>',  ':vertical resize -2<CR>')
+map('n', '<C-Up>', ':resize +2<CR>')
+map('n', '<C-Down>', ':resize -2<CR>')
+map('n', '<C-Left>', ':vertical resize -2<CR>')
 map('n', '<C-Right>', ':vertical resize +2<CR>')
 
 -- Editing
-map('n', '0',   '^')    -- 0 goes to first non-blank (^ is hard to reach)
+map('n', '0', '^') -- 0 goes to first non-blank (^ is hard to reach)
 -- Move selected lines
 map('v', 'J', ":m '>+1<CR>gv=gv")
 map('v', 'K', ":m '<-2<CR>gv=gv")
@@ -55,15 +63,15 @@ map('v', '>', '>gv')
 map('v', 'p', '"_dP')
 
 -- Explicit system clipboard access (clipboard is not set to unnamedplus)
-map({'n', 'v'}, '<leader>y', '"+y', { desc = 'Yank to clipboard' })
-map('n',        '<leader>Y', '"+Y', { desc = 'Yank line to clipboard' })
-map({'n', 'v'}, '<leader>p', '"+p', { desc = 'Paste from clipboard' })
+map({ 'n', 'v' }, '<leader>y', '"+y', { desc = 'Yank to clipboard' })
+map('n', '<leader>Y', '"+Y', { desc = 'Yank line to clipboard' })
+map({ 'n', 'v' }, '<leader>p', '"+p', { desc = 'Paste from clipboard' })
 
 -- Centred scrolling
 map('n', '<C-d>', '<C-d>zz')
 map('n', '<C-u>', '<C-u>zz')
-map('n', 'n',     'nzzzv')
-map('n', 'N',     'Nzzzv')
+map('n', 'n', 'nzzzv')
+map('n', 'N', 'Nzzzv')
 
 -- File explorer: open oil in current file's directory; '-' inside oil goes up
 map('n', '-', '<cmd>Oil<CR>', { desc = 'Open file explorer' })
@@ -77,24 +85,29 @@ vim.cmd([[inoreabbrev <expr> #!! "#!/usr/bin/env" . (empty(&filetype) ? '' : ' '
 -- Plugin keymaps: skipped in minimal profile (plugins not loaded)
 if _G.user_config.profile ~= 'minimal' then
   -- fzf-lua
-  map('n', '<leader>ff', '<cmd>FzfLua files<CR>',             { desc = 'Find files' })
-  map('n', '<leader>fg', '<cmd>FzfLua live_grep<CR>',         { desc = 'Find in files' })
-  map('n', '<leader>fb', '<cmd>FzfLua buffers<CR>',           { desc = 'Find buffers' })
-  map('n', '<leader>fc', '<cmd>FzfLua commands<CR>',          { desc = 'Find commands' })
-  map('n', '<leader>fl', '<cmd>FzfLua lines<CR>',             { desc = 'Find lines' })
-  map('n', '<leader>fs', '<cmd>FzfLua lsp_document_symbols<CR>',  { desc = 'Find symbols (file)' })
+  map('n', '<leader>ff', '<cmd>FzfLua files<CR>', { desc = 'Find files' })
+  map('n', '<leader>fg', '<cmd>FzfLua live_grep<CR>', { desc = 'Find in files' })
+  map('n', '<leader>fb', '<cmd>FzfLua buffers<CR>', { desc = 'Find buffers' })
+  map('n', '<leader>fc', '<cmd>FzfLua commands<CR>', { desc = 'Find commands' })
+  map('n', '<leader>fl', '<cmd>FzfLua lines<CR>', { desc = 'Find lines' })
+  map('n', '<leader>fs', '<cmd>FzfLua lsp_document_symbols<CR>', { desc = 'Find symbols (file)' })
   map('n', '<leader>fS', '<cmd>FzfLua lsp_workspace_symbols<CR>', { desc = 'Find symbols (workspace)' })
-  map('n', '<leader>fr', '<cmd>FzfLua oldfiles<CR>',             { desc = 'Find recent files (MRU)' })
-  map('n', '<leader>fR', "<cmd>lua require('fzf-lua').oldfiles({ cwd_only = true })<CR>", { desc = 'Find recent files (cwd)' })
+  map('n', '<leader>fr', '<cmd>FzfLua oldfiles<CR>', { desc = 'Find recent files (MRU)' })
+  map(
+    'n',
+    '<leader>fR',
+    "<cmd>lua require('fzf-lua').oldfiles({ cwd_only = true })<CR>",
+    { desc = 'Find recent files (cwd)' }
+  )
 
   -- Aerial
   map('n', '<leader>a', '<cmd>AerialToggle<CR>', { desc = 'Toggle symbol outline' })
 
   -- Fugitive
-  map('n', '<leader>gs', '<cmd>Git<CR>',        { desc = 'Git status' })
+  map('n', '<leader>gs', '<cmd>Git<CR>', { desc = 'Git status' })
   map('n', '<leader>gc', '<cmd>Git commit<CR>', { desc = 'Git commit' })
-  map('n', '<leader>gp', '<cmd>Git push<CR>',   { desc = 'Git push' })
-  map('n', '<leader>gl', '<cmd>Git log<CR>',    { desc = 'Git log' })
+  map('n', '<leader>gp', '<cmd>Git push<CR>', { desc = 'Git push' })
+  map('n', '<leader>gl', '<cmd>Git log<CR>', { desc = 'Git log' })
   map('n', '<leader>gd', '<cmd>Gdiffsplit<CR>', { desc = 'Git diff' })
-  map('n', '<leader>gb', '<cmd>Git blame<CR>',  { desc = 'Git blame' })
+  map('n', '<leader>gb', '<cmd>Git blame<CR>', { desc = 'Git blame' })
 end

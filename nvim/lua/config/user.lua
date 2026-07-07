@@ -6,8 +6,12 @@
 local function find_pwsh_bundle()
   local matches = vim.fn.glob(
     vim.fn.expand('~') .. '/.vscode/extensions/ms-vscode.powershell-*/modules/PowerShellEditorServices',
-    false, true)
-  table.sort(matches, function(a, b) return a > b end)
+    false,
+    true
+  )
+  table.sort(matches, function(a, b)
+    return a > b
+  end)
   -- bundle_path must be the parent of the PowerShellEditorServices folder
   return matches[1] and vim.fn.fnamemodify(matches[1], ':h') or ''
 end
@@ -18,11 +22,11 @@ _G.user_config = {
   profile = vim.env.NVIM_PROFILE or 'full',
 
   -- LSP tool paths (full profile only; silently skipped when empty)
-  bicep_lsp_path   = '', -- e.g. 'C:/tools/bicep-langserver/Bicep.LangServer.dll'
+  bicep_lsp_path = '', -- e.g. 'C:/tools/bicep-langserver/Bicep.LangServer.dll'
   pwsh_bundle_path = find_pwsh_bundle(),
 
   -- Sunrise/sunset hours used as fallback when OS dark-mode detection fails.
   -- Dark mode applies from sunset_hour until sunrise_hour the next morning.
   sunrise_hour = 6,
-  sunset_hour  = 18,
+  sunset_hour = 18,
 }
