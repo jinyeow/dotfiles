@@ -83,6 +83,8 @@ for. Don't ask about anything else.
 Dispatch **all seats in a single message**: one `council-critic` per seat, each prompt
 containing (in order) the brief, that seat's charter **verbatim** from
 `references/perspectives.md`, and the reminder that its Return shape and line cap apply.
+Seats run on **Opus or Sonnet, not Fable** — the council is the thorough-review arm of the
+plan→implement→review loop (`claude/CLAUDE.md` → Subagent Orchestration).
 Never include another seat's output, and never ask a seat for `step-by-step reasoning` —
 short rationale + assumptions + evidence only (Fable `reasoning_extraction` guard).
 

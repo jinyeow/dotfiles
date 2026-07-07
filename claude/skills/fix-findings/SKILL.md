@@ -116,6 +116,8 @@ store reflects reality.
 ## Notes
 
 - **Introduced only.** Pre-existing findings are reported by `deep-review`, never auto-fixed here.
+- **Model.** Fixers apply code (the implement arm of the loop) — dispatch on **Opus or Sonnet, never
+  Fable** unless the user explicitly asks.
 - **Sole writer + committer.** Fixers return results; you write the store and commit — this is what
   makes parallel fixers safe (findings-schema.md).
 - **Conflict-set, not raw file count** — a finding may span files; partition on what each fix touches.
