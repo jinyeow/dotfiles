@@ -32,6 +32,9 @@ claude/skills/azure-boards-organiser/config.json
 .claude/handoff-*.consumed.md
 .claude/plans/
 
+# Pester test output (Invoke-Pester -OutputFile)
+testResults.xml
+
 # Generated artifacts from the font-comparison tools (powershell/Scripts/New-Font*.ps1)
 .font-samples.html
 .font-samples.png

@@ -110,6 +110,8 @@ and the summary is printed.
 ## Notes
 
 - **Emit, don't fix.** Applying fixes is `fix-findings`. Running both in a loop is `review-fix-loop`.
+- **Model.** Standalone, reviewers may run on Fable for a light pass. Invoked from `review-fix-loop`,
+  they inherit its constraint — **Opus or Sonnet, never Fable** unless the user explicitly asks.
 - **Sole writer.** Subagents return findings; you write the store. This is what makes parallel
   reviewers safe without locks (findings-schema.md).
 - **Floor affects verify + reporting, not what's stored.** Below-floor findings are still recorded.

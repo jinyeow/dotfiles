@@ -78,6 +78,10 @@ Floor and cap are scoping inputs (which findings gate / how many cycles), not lo
 
 ## Notes
 
+- **Model.** This loop and its `deep-review` / `fix-findings` children run on **Opus or Sonnet — never
+  Fable** unless the user explicitly asks. (Fable is fine for a standalone light review or the plan
+  stage, but not for this automated find-and-commit loop.) Dispatch subagents with the `model` param set
+  accordingly.
 - **Thin.** Reviewing is `deep-review`; fixing is `fix-findings`. This skill sequences them, owns the
   store's state transitions across cycles, and decides stop-vs-go. Don't reimplement review or fix here.
 - **Frozen base.** Capture `base_sha` once on cycle 1; every later cycle re-reviews against it so
