@@ -36,42 +36,57 @@ $global:PromptConst = @{
 }
 
 # --- Az context async infrastructure ---------------------------------------
-$global:PromptCache = @{
-    AzContext       = $null       # cached result hashtable
-    AzRunspace      = $null       # runspace info hashtable
-    AzTimerDisposed = $false
+# Guarded so `. $PROFILE` reuses the live long-lived runspace/timer instead of
+# orphaning them (a fresh hashtable would strand the open runspace and its Az
+# import, not just the timer).
+if (-not $global:PromptCache) {
+    $global:PromptCache = @{
+        AzContext       = $null   # cached result hashtable
+        AzRunspace      = $null   # persistent [runspace], opened once and reused
+        AzInvocation    = $null   # per-tick @{ PowerShell; Handle } on that runspace
+        AzTimerDisposed = $false  # pre-existing, currently unreferenced
+    }
 }
 
 function Start-AzContextRefresh {
     <#
     .SYNOPSIS
-    Fires a background runspace to fetch Get-AzContext. Non-blocking.
-    Safe to call repeatedly — disposes previous runspace if still running.
+    Fires a background invocation to fetch Get-AzContext on a long-lived runspace.
+    Non-blocking. Safe to call repeatedly: the runspace and its Az.Accounts import
+    are paid once, so a per-tick refresh runs only Get-AzContext.
     #>
 
     # Bail if Az.Accounts isn't available
     if (-not $global:ProfileModules['Az.Accounts']) { return }
 
-    # Clean up previous if exists
-    if ($global:PromptCache.AzRunspace) {
-        try {
-            $global:PromptCache.AzRunspace.PowerShell.Stop()
-            $global:PromptCache.AzRunspace.PowerShell.Dispose()
-            $global:PromptCache.AzRunspace.Runspace.Dispose()
-        } catch {}
-        $global:PromptCache.AzRunspace = $null
+    # Concurrency guard: a runspace runs only ONE pipeline at a time. If the previous
+    # invocation is still running, skip this tick (starting a second pipeline on the
+    # busy runspace throws "runspace is already in use"). If it finished, dispose it.
+    if ($global:PromptCache.AzInvocation) {
+        if (-not $global:PromptCache.AzInvocation.Handle.IsCompleted) { return }
+        try { $global:PromptCache.AzInvocation.PowerShell.Dispose() } catch {}
+        $global:PromptCache.AzInvocation = $null
     }
 
-    $runspace = [runspacefactory]::CreateRunspace()
-    $runspace.Open()
+    # Ensure the persistent runspace exists and is usable; recreate only when it is
+    # absent or broken. A bare runspace opens in ~10ms; the Az.Accounts import is done
+    # once by the priming invocation below (kept off the main thread — see $created).
+    $runspace = $global:PromptCache.AzRunspace
+    $created  = $false
+    if (-not $runspace -or $runspace.RunspaceStateInfo.State -eq 'Broken') {
+        if ($runspace) { try { $runspace.Dispose() } catch {} }
+        $runspace = [runspacefactory]::CreateRunspace()
+        $runspace.Open()
+        $global:PromptCache.AzRunspace = $runspace
+        $created = $true
+    }
 
     $ps = [powershell]::Create()
     $ps.Runspace = $runspace
 
-    # UseLocalScope = $true to prevent variable scope creep
-    $null = $ps.AddScript({
+    # Per-tick script: module already loaded in the runspace's session state.
+    $tick = {
         try {
-            Import-Module Az.Accounts -ErrorAction Stop
             $ctx = Get-AzContext -ErrorAction Stop
             if ($ctx) {
                 @{
@@ -85,13 +100,43 @@ function Start-AzContextRefresh {
         } catch {
             $null
         }
-    }, $true)
+    }
+
+    # One-time priming invocation on a freshly (re)created runspace: import the module
+    # once, then read the context. Import stays async here (never on the main thread);
+    # it persists in the runspace's session state for every later Get-AzContext tick.
+    $prime = {
+        try {
+            Import-Module Az.Accounts -ErrorAction Stop
+        } catch {
+            # Signal an import failure distinctly: the caller drops this runspace so
+            # the next refresh recreates and re-primes it, rather than ticking forever
+            # on a healthy-but-unprimed session where every Get-AzContext would fail.
+            return @{ PrimeFailed = $true }
+        }
+        try {
+            $ctx = Get-AzContext -ErrorAction Stop
+            if ($ctx) {
+                @{
+                    Account      = $ctx.Account.Id
+                    Subscription = $ctx.Subscription.Name
+                    TenantId     = $ctx.Tenant.Id
+                    Environment  = $ctx.Environment.Name
+                    Timestamp    = [datetime]::Now
+                }
+            }
+        } catch {
+            $null
+        }
+    }
+
+    # UseLocalScope = $true to prevent variable scope creep
+    $null = $ps.AddScript($(if ($created) { $prime } else { $tick }), $true)
 
     $handle = $ps.BeginInvoke()
 
-    $global:PromptCache.AzRunspace = @{
+    $global:PromptCache.AzInvocation = @{
         PowerShell = $ps
-        Runspace   = $runspace
         Handle     = $handle
     }
 }
@@ -110,21 +155,24 @@ function Get-AzAsyncResult {
     .SYNOPSIS
     Non-blocking check for Az context result. Returns cached value if not ready.
     #>
-    $info = $global:PromptCache.AzRunspace
+    $info = $global:PromptCache.AzInvocation
     if (-not $info) { return $global:PromptCache.AzContext }
 
     if ($info.Handle.IsCompleted) {
         try {
             $result = $info.PowerShell.EndInvoke($info.Handle)
-            if ($result) {
+            if ($result -and $result.PrimeFailed) {
+                # Priming import failed — drop the runspace so the next refresh
+                # recreates and re-primes it instead of ticking on a dead session.
+                try { $global:PromptCache.AzRunspace.Dispose() } catch {}
+                $global:PromptCache.AzRunspace = $null
+            } elseif ($result) {
                 $global:PromptCache.AzContext = $result
             }
         } catch {} finally {
-            try {
-                $info.PowerShell.Dispose()
-                $info.Runspace.Dispose()
-            } catch {}
-            $global:PromptCache.AzRunspace = $null
+            # Dispose only the per-tick PowerShell; the runspace is long-lived.
+            try { $info.PowerShell.Dispose() } catch {}
+            $global:PromptCache.AzInvocation = $null
         }
     }
 
@@ -162,12 +210,14 @@ function Initialize-AzTimer {
             $global:PromptCache.AzTimer.Stop()
             $global:PromptCache.AzTimer.Dispose()
         }
-        if ($global:PromptCache.AzRunspace) {
+        if ($global:PromptCache.AzInvocation) {
             try {
-                $global:PromptCache.AzRunspace.PowerShell.Stop()
-                $global:PromptCache.AzRunspace.PowerShell.Dispose()
-                $global:PromptCache.AzRunspace.Runspace.Dispose()
+                $global:PromptCache.AzInvocation.PowerShell.Stop()
+                $global:PromptCache.AzInvocation.PowerShell.Dispose()
             } catch {}
+        }
+        if ($global:PromptCache.AzRunspace) {
+            try { $global:PromptCache.AzRunspace.Dispose() } catch {}
         }
     } -SupportEvent | Out-Null
 
