@@ -78,7 +78,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # full history so the scan covers every commit, not just the tip
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # No GITLEAKS_LICENSE needed: free for personal-account repositories.

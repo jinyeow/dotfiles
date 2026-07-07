@@ -84,7 +84,7 @@ vim.lsp.config('yamlls', {
     yaml = {
       schemaStore = { enable = false, url = '' },
       schemas = ss_ok and schemastore.yaml.schemas({
-        select = { 'Azure Pipelines', 'docker-compose.yml' },
+        select = { 'docker-compose.yml' },
       }) or {},
       validate = true,
       completion = true,
@@ -94,8 +94,19 @@ vim.lsp.config('yamlls', {
 })
 vim.lsp.enable('yamlls')
 
--- Azure Pipelines
-vim.lsp.config('azure_pipelines_ls', {})
+-- Azure Pipelines — attach only to the dedicated `azure-pipelines` filetype (set
+-- in autocmds.lua), not to every `yaml` buffer as the server's default would. The
+-- schema glob still covers the on-disk `*.y*l` names so validation/completion work.
+vim.lsp.config('azure_pipelines_ls', {
+  filetypes = { 'azure-pipelines' },
+  settings = {
+    yaml = {
+      schemas = {
+        ['https://raw.githubusercontent.com/microsoft/azure-pipelines-vscode/master/service-schema.json'] = { '*.y*l' },
+      },
+    },
+  },
+})
 vim.lsp.enable('azure_pipelines_ls')
 
 -- Markdown (only if installed)
@@ -112,6 +123,22 @@ if vim.fn.executable('dotnet') == 1 then
       ['csharp|background_analysis'] = { dotnet_analyzer_diagnostics_scope = 'openFiles' },
     },
   })
+end
+
+-- Lua (only if lua-language-server is installed) — the repo's most-edited code
+-- is this Neovim config, so wire up gd/hover/diagnostics for it.
+if vim.fn.executable('lua-language-server') == 1 then
+  vim.lsp.config('lua_ls', {
+    settings = {
+      Lua = {
+        runtime = { version = 'LuaJIT' },
+        -- `vim` is the editor global; without this every config buffer flags it as undefined
+        diagnostics = { globals = { 'vim' } },
+        workspace = { library = { vim.env.VIMRUNTIME } },
+      },
+    },
+  })
+  vim.lsp.enable('lua_ls')
 end
 
 -- Bicep (only if path is set)
