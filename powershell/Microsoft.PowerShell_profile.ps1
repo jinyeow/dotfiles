@@ -497,9 +497,20 @@ function Initialize-DeferredProfileSecondary {
 
         Register-ArgumentCompleter -Native -CommandName psmux, pmux, tmux -ScriptBlock {
             param($wordToComplete, $commandAst, $cursorPosition)
-            $sessionCmds = 'attach', 'attach-session', 'a', 'kill-session', 'switch-client', 'switchc', 'has-session'
             $elements = $commandAst.CommandElements
-            if ($elements.Count -ge 2 -and $elements[1].Value -in $sessionCmds) {
+            # Completing the subcommand itself (`psmux <TAB>` / `psmux a<TAB>`): offer command
+            # names + aliases from list-commands (works without a running server).
+            if ($elements.Count -eq 1 -or ($elements.Count -eq 2 -and $wordToComplete)) {
+                psmux list-commands 2>$null |
+                    ForEach-Object { if ($_ -match '^\s+(\S+)(?:\s+\(([^)]+)\))?') { $Matches[1]; if ($Matches[2]) { $Matches[2] } } } |
+                    Where-Object { $_ -like "$wordToComplete*" } |
+                    Sort-Object -Unique |
+                    ForEach-Object { [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) }
+                return
+            }
+            # Completing an argument after a session-targeting subcommand: offer session names.
+            $sessionCmds = 'attach', 'attach-session', 'a', 'kill-session', 'switch-client', 'switchc', 'has-session'
+            if ($elements[1].Value -in $sessionCmds) {
                 psmux list-sessions -F '#{session_name}' 2>$null |
                     Where-Object { $_ -like "$wordToComplete*" } |
                     ForEach-Object {
