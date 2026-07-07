@@ -125,6 +125,22 @@ if vim.fn.executable('dotnet') == 1 then
   })
 end
 
+-- Lua (only if lua-language-server is installed) — the repo's most-edited code
+-- is this Neovim config, so wire up gd/hover/diagnostics for it.
+if vim.fn.executable('lua-language-server') == 1 then
+  vim.lsp.config('lua_ls', {
+    settings = {
+      Lua = {
+        runtime = { version = 'LuaJIT' },
+        -- `vim` is the editor global; without this every config buffer flags it as undefined
+        diagnostics = { globals = { 'vim' } },
+        workspace = { library = { vim.env.VIMRUNTIME } },
+      },
+    },
+  })
+  vim.lsp.enable('lua_ls')
+end
+
 -- Bicep (only if path is set)
 if _G.user_config.bicep_lsp_path ~= '' then
   vim.api.nvim_create_autocmd({ 'BufNewFile', 'BufRead' }, {
