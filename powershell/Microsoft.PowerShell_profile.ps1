@@ -351,6 +351,19 @@ $env:TIGRC_USER = Join-Path $_dotfiles $(if ($_isDark) { 'tig\tigrc-mocha' } els
 # flavour lives in its own dir; point at the mocha or latte one to match the rest.
 $env:EZA_CONFIG_DIR = Join-Path $_dotfiles $(if ($_isDark) { 'eza\themes\mocha' } else { 'eza\themes\latte' })
 
+$env:EDITOR = if (Get-Command nvim -ErrorAction Ignore) {
+    'nvim'
+} elseif (Get-Command vim -ErrorAction Ignore) {
+    'vim'
+} elseif (Get-Command code -ErrorAction Ignore) {
+    'code'
+} elseif ($IsWindows) {
+    'notepad'
+} else {
+    'vi'
+}
+$env:VISUAL = $env:EDITOR
+
 Remove-Variable _dotfiles, _isDark
 
 # --- Deferred loading (Phase 2a + 2b) --------------------------------------
