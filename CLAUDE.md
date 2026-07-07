@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository scope
 
-Personal dotfiles spanning Windows (PowerShell 7) and Linux/WSL (bash, Neovim, tmux, i3/bspwm). Active development is on the **Windows side**: the PowerShell profile under `powershell/`, the prompt in `powershell/Profile/Set-Prompt.ps1`, the Neovim Lua config under `nvim/`, the Zellij config under `zellij/`, the Yazi config under `yazi/`, and the git config under `git/`. Configs are organized into per-tool directories: `git/`, `nvim/`, `vim/`, `bash/`, `powershell/`, `tig/`, `tmux/`, `zellij/`, `yazi/`, `fzf/`, `curl/`, `claude/`, `codex/`, `windowsterminal/`. The Linux setup (`bootstrap.sh`, `Makefile`, `pwsh_profile.ps1`, the Arch package lists in the `install:` target, `config/bspwm`, `config/sxhkd`, etc.) is a legacy snapshot — touch only when explicitly asked.
+Personal dotfiles spanning Windows (PowerShell 7) and Linux/WSL (bash, Neovim, tmux, i3/bspwm). Active development is on the **Windows side**: the PowerShell profile under `powershell/`, the prompt in `powershell/Profile/Set-Prompt.ps1`, the Neovim Lua config under `nvim/`, the Zellij config under `zellij/`, the Yazi config under `yazi/`, and the git config under `git/`. Configs are organized into per-tool directories: `git/`, `nvim/`, `vim/`, `bash/`, `powershell/`, `tig/`, `tmux/`, `zellij/`, `psmux/`, `yazi/`, `fzf/`, `curl/`, `claude/`, `codex/`, `windowsterminal/`. The Linux setup (`bootstrap.sh`, `Makefile`, `pwsh_profile.ps1`, the Arch package lists in the `install:` target, `config/bspwm`, `config/sxhkd`, etc.) is a legacy snapshot — touch only when explicitly asked.
 
 `pwsh_profile.ps1` at the repo root is the **old** profile and is superseded by `powershell/Microsoft.PowerShell_profile.*.ps1`. Edit the per-machine file under `powershell/`, not the root one.
 
@@ -23,7 +23,7 @@ The PowerShell profile (`powershell/Microsoft.PowerShell_profile.ps1`) is a sing
 
 | Script | Target | Notes |
 |---|---|---|
-| `setup.ps1` | Windows | Module-based installer. `-Module neovim,vim,powershell,git,bash,tig,tmux,zellij,yazi,curl,claude,codex,serena,context7,fastmail,lazygit,windowsterminal,bat,vscode,winget` or `-Module all`. Supports `-DryRun`. |
+| `setup.ps1` | Windows | Module-based installer. `-Module neovim,vim,powershell,git,bash,tig,tmux,zellij,psmux,yazi,curl,claude,codex,serena,context7,fastmail,lazygit,windowsterminal,bat,vscode,winget` or `-Module all`. Supports `-DryRun`. |
 | `setup.sh` | Linux / WSL | Module-based installer. `-m neovim,vim,powershell,git,bash,tig,tmux,zellij,curl,claude,lazygit,windowsterminal` or `-m all`. Supports `--dry-run`. (No `codex` module yet — Windows only.) |
 
 `setup.ps1` argument handling has Pester tests in `tests/setup.Tests.ps1` (run `Invoke-Pester -Path tests`); they invoke the installer in `-DryRun` so nothing is mutated.
@@ -169,6 +169,24 @@ Single KDL config file at `zellij/config.kdl`. Installed via `setup.ps1 -Module 
 - **Color under Windows Terminal**: Zellij mishandles terminal color negotiation (truecolor fallback + OSC 11 background queries), which breaks diff/TUI colors in tools running inside it. Two workarounds are in place — `COLORTERM=truecolor` in the PowerShell profile and pinning Claude Code to a `*-ansi` theme. See `docs/zellij-windows-terminal-colors.md`.
 - **Pane navigation**: `Alt+hjkl` in locked mode moves between Zellij panes (`MoveFocusOrTab` on left/right). Inside nvim, use `Ctrl+w hjkl` for window splits; at the window edge nvim falls back to `zellij action move-focus` via CLI (see `keymaps.lua`). vim-zellij-navigator and zellij-nav.nvim have been removed.
 - **No layout files yet**: single `config.kdl` only. Add layouts to `zellij/layouts/` if needed.
+
+## psmux (`psmux/`)
+
+Single config file `psmux/psmux.conf`, symlinked to `~/.psmux.conf` via `setup.ps1 -Module psmux` (Windows only — file symlink, needs Developer Mode). [psmux](https://github.com/psmux/psmux) is a **native-Windows tmux clone** (`winget install marlocarlo.psmux`; aliases `psmux`/`pmux`/`tmux`), adopted for one-key pane **equalize** (`select-layout tiled`) — the thing Zellij has no native action for. **Zellij is kept installed as a fallback** during the transition; do not remove the `zellij` module yet. Full docs in `psmux/README.md`.
+
+### Key decisions (do not reverse without asking)
+
+- **Config path is `~/.psmux.conf`, NOT `~/.tmux.conf`** — verified empirically: psmux auto-loads `.psmux.conf` and it wins when both exist. The setup module symlinks there.
+- **No trailing inline comments on `set` lines** — psmux parses the comment as part of the value (`set -g @auto_grid on # x` sets `@auto_grid` to `on # x`, silently breaking the auto-grid gate). Keep comments on their own line. This bit us once; the config has a NOTE banner.
+- **Auto-grid via toggled hook, not an in-hook condition**: `after-split-window 'select-layout tiled'` re-tiles every new pane to an even grid (2×2 at 4 panes). psmux **freezes an in-hook `#{@option}` condition at set time**, so the hook is set/unset directly; `@auto_grid` tracks state for the `Prefix+g` live toggle and the config-load `if-shell`. Default on; flip `@auto_grid off` to default-disable.
+- **Prefix stays default `Ctrl+b`**. Only two intentional default overrides: `Prefix+s` (fzf popup replaces `choose-session`) and the copy-mode-vi mouse binding. `Prefix+=`/`choose-buffer` left intact (native `Prefix+Alt+5` equalizes).
+- **Unified `Ctrl-hjkl` nav needs NO nvim change**: psmux sets `$TMUX` (standard format — `show-environment` just doesn't list it), so `nvim/lua/config/keymaps.lua`'s existing `vim.env.TMUX` branch (`tmux select-pane` at the edge) already works. psmux side uses `if-shell -F '#{m:*nvim*,#{pane_current_command}}'` (no `ps`/`grep`). Trade-off: `Ctrl-l` etc. are swallowed in non-nvim panes; clear-screen is recovered on `Prefix+Ctrl-l`.
+- **Move-mode was dropped** (dead weight — auto-grid owns pane structure). No sticky move mode.
+- **Plugins are VENDORED + SHA-pinned in-repo** (`psmux/plugins/`: `psmux-resurrect`, `psmux-continuum`), **copied** (not junctioned) to `~/.psmux/plugins/` by `setup.ps1`, and loaded via `source-file` — **PPM is bypassed entirely** (not even vendored). Rationale: PPM's resolver clones `@plugin 'psmux-plugins/<name>'` from the **unclaimed `psmux-plugins` GitHub org (HTTP 404, attacker-registrable) first** → namespace-hijack RCE via `run ppm.ps1`. Each plugin ships a `plugin.conf` (its "source-file compatible" static form: keybinds + hooks) + pre-generated `scripts/`, so `source-file '~/.psmux/plugins/<name>/plugin.conf'` loads them with **no resolver, no `@plugin`, no `run`, no network, no `Prefix+I/U/M`**. (An earlier `@plugin`+`run ppm.ps1` approach was abandoned: `run` is async, so PPM's `I/U/M` binds landed after config parse and couldn't be unbound.) Copied not junctioned because `psmux-continuum` rewrites its own `scripts/` at load. Update = re-clone at a new SHA, re-copy, bump `psmux/plugins/README.md`, review diff. `psmux/plugins/` is excluded from the CI PSScriptAnalyzer gate (vendored third-party). **Theme (catppuccin mocha), sensible defaults, and the prefix indicator are inlined as native `set` lines** in `psmux.conf`, not plugins.
+- **Reboot-persistence** = `psmux-resurrect` + `psmux-continuum` (`@continuum-restore on`); continuum auto-saves via a background job and restores on server start. A Windows Scheduled Task is registered only under `@continuum-boot on` (not set). The bare server survives detach but not reboot without these.
+- **Zellij retirement trigger (A1):** zellij is kept installed as a fallback. **Retire it — remove the `zellij` module from `-Module all`, drop the `$ZELLIJ` branch in `keymaps.lua`, and remove the zellij Phase-2b completer — once psmux has run as the daily driver for 4 weeks with a verified reboot→restore.** Until then, dual-multiplexer is intentional, not drift.
+- **Session fzf helpers** (`Enter-/Remove-/Get-PsmuxSession` + native tab-completer) live in the PowerShell profile **Phase 2b**, beside the zellij/az completers.
+- **`config parse test`**: `tests/psmux.Tests.ps1` loads `psmux.conf` via `psmux -f` on a private socket + throwaway HOME and asserts no parse warning — guards the trailing-comment class of bug. Skips when psmux is absent (CI has none).
 
 ## Yazi (`yazi/`)
 

@@ -33,8 +33,9 @@ jobs:
       - name: PSScriptAnalyzer (whole tree, repo settings)
         run: |
           $results = Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
-          # Legacy snapshot files are explicitly out of scope per CLAUDE.md - do not gate on them.
-          $legacy = '(^|[\\/])pwsh_profile\.ps1$'
+          # Legacy snapshot files and vendored third-party plugins are out of scope per CLAUDE.md
+          # (psmux/plugins/ is upstream code pinned by SHA, not ours to lint) - do not gate on them.
+          $legacy = '(^|[\\/])pwsh_profile\.ps1$|[\\/]psmux[\\/]plugins[\\/]'
           $gated = $results | Where-Object { $_.ScriptPath -notmatch $legacy }
           if ($gated) {
             $gated | Format-Table RuleName, Severity, ScriptName, Line, Message -AutoSize | Out-String -Width 200 | Write-Host
