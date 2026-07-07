@@ -1,0 +1,10 @@
+version: 2
+updates:
+  # Keep the CI workflow's action versions (checkout, stylua-action, gitleaks-action)
+  # patched. Dependabot scans .github/workflows for the github-actions ecosystem.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"

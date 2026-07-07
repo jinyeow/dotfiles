@@ -25,6 +25,7 @@
         { "PackageIdentifier": "GermanCoding.SyncTrayzor" },
         { "PackageIdentifier": "Git.Git" },
         { "PackageIdentifier": "GitHub.cli" },
+        { "PackageIdentifier": "gitleaks.gitleaks" },
         { "PackageIdentifier": "GitTools.GitVersion" },
         { "PackageIdentifier": "Gleam.Gleam" },
         { "PackageIdentifier": "GoLang.Go" },

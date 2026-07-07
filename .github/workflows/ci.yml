@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  powershell:
+    name: PSScriptAnalyzer + Pester (Windows)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PSScriptAnalyzer and Pester
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+          Install-Module -Name Pester -MinimumVersion 5.5.0 -Force -Scope CurrentUser -SkipPublisherCheck
+          Get-Module -ListAvailable PSScriptAnalyzer, Pester | Select-Object Name, Version
+
+      - name: PSScriptAnalyzer (whole tree, repo settings)
+        run: |
+          $results = Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
+          # Legacy snapshot files are explicitly out of scope per CLAUDE.md - do not gate on them.
+          $legacy = '(^|[\\/])pwsh_profile\.ps1$'
+          $gated = $results | Where-Object { $_.ScriptPath -notmatch $legacy }
+          if ($gated) {
+            $gated | Format-Table RuleName, Severity, ScriptName, Line, Message -AutoSize | Out-String -Width 200 | Write-Host
+            throw "PSScriptAnalyzer found $($gated.Count) issue(s)."
+          }
+          Write-Host "PSScriptAnalyzer: clean."
+
+      - name: Pester (tests/)
+        run: |
+          $config = New-PesterConfiguration
+          $config.Run.Path = 'tests'
+          $config.Run.Exit = $true
+          $config.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $config
+
+  stylua:
+    name: stylua --check (nvim)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: JohnnyMorganz/stylua-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Pinned (not "latest") so a future stylua release can't reformat and
+          # red this now-required check without a deliberate bump + reformat.
+          version: 2.5.2
+          args: --check nvim/
+
+  shellcheck:
+    name: shellcheck (setup.sh)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck setup.sh
+
+  gitleaks:
+    name: gitleaks (secret scan)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so the scan covers every commit, not just the tip
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No GITLEAKS_LICENSE needed: free for personal-account repositories.

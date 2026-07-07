@@ -1,7 +1,9 @@
-vim.g.mapleader      = ' '
+vim.g.mapleader = ' '
 vim.g.maplocalleader = '\\'
 
-if _G.user_config.profile == 'minimal' then return end
+if _G.user_config.profile == 'minimal' then
+  return
+end
 
 local specs = {
   -- Pinned to master: the main branch is a from-scratch rewrite that drops the

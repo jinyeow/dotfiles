@@ -5,8 +5,8 @@ local map = function(lhs, cmd, desc)
   vim.keymap.set('n', lhs, cmd, { buffer = true, desc = desc })
 end
 
-map('<leader>nt', '<cmd>botright split | terminal dotnet test<cr>',  '.NET test')
-map('<leader>nr', '<cmd>botright split | terminal dotnet run<cr>',   '.NET run')
+map('<leader>nt', '<cmd>botright split | terminal dotnet test<cr>', '.NET test')
+map('<leader>nr', '<cmd>botright split | terminal dotnet run<cr>', '.NET run')
 map('<leader>nb', '<cmd>botright split | terminal dotnet build<cr>', '.NET build')
 
 -- Inlay hints are off by default (no autocmd cost); toggle on demand.

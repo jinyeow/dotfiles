@@ -2,19 +2,21 @@ local autocmd = vim.api.nvim_create_autocmd
 
 -- Highlight on yank
 autocmd('TextYankPost', {
-  callback = function() vim.highlight.on_yank({ timeout = 200 }) end,
+  callback = function()
+    vim.highlight.on_yank({ timeout = 200 })
+  end,
 })
 
 -- Remove trailing whitespace on save
 autocmd('BufWritePre', {
-  pattern  = '*',
-  command  = '%s/\\s\\+$//e',
+  pattern = '*',
+  command = '%s/\\s\\+$//e',
 })
 
 -- Return to last edit position
 autocmd('BufReadPost', {
   callback = function()
-    local mark   = vim.api.nvim_buf_get_mark(0, '"')
+    local mark = vim.api.nvim_buf_get_mark(0, '"')
     local lcount = vim.api.nvim_buf_line_count(0)
     if mark[1] > 0 and mark[1] <= lcount then
       pcall(vim.api.nvim_win_set_cursor, 0, mark)
@@ -24,8 +26,10 @@ autocmd('BufReadPost', {
 
 -- Azure Pipelines filetype detection
 autocmd({ 'BufNewFile', 'BufRead' }, {
-  pattern  = { '*.azure-pipelines.yml', '*.azure-pipelines.yaml' },
-  callback = function() vim.bo.filetype = 'azure-pipelines' end,
+  pattern = { '*.azure-pipelines.yml', '*.azure-pipelines.yaml' },
+  callback = function()
+    vim.bo.filetype = 'azure-pipelines'
+  end,
 })
 
 -- The azure-pipelines filetype has no Treesitter grammar of its own; map it to
@@ -37,44 +41,56 @@ vim.treesitter.language.register('yaml', 'azure-pipelines')
 -- checktime is needed to actually trigger it in terminal workflows)
 autocmd({ 'FocusGained', 'BufEnter' }, {
   callback = function()
-    if vim.fn.mode() ~= 'c' then vim.cmd('checktime') end
+    if vim.fn.mode() ~= 'c' then
+      vim.cmd('checktime')
+    end
   end,
 })
 
 -- Save all modified buffers when Neovim loses focus
 autocmd('FocusLost', {
-  callback = function() vim.cmd('silent! wall') end,
+  callback = function()
+    vim.cmd('silent! wall')
+  end,
 })
 
 -- Equalise window sizes when the terminal is resized
 autocmd('VimResized', {
-  callback = function() vim.cmd('wincmd =') end,
+  callback = function()
+    vim.cmd('wincmd =')
+  end,
 })
 
 -- Show absolute line numbers in insert mode, relative in normal mode
 autocmd('InsertEnter', {
   callback = function()
-    if vim.wo.number then vim.wo.relativenumber = false end
+    if vim.wo.number then
+      vim.wo.relativenumber = false
+    end
   end,
 })
 autocmd('InsertLeave', {
   callback = function()
-    if vim.wo.number then vim.wo.relativenumber = true end
+    if vim.wo.number then
+      vim.wo.relativenumber = true
+    end
   end,
 })
 
 -- Disable automatic comment leader continuation on Enter
 autocmd('FileType', {
-  pattern  = '*',
-  callback = function() vim.opt_local.formatoptions:remove({ 'r', 'o', 'c' }) end,
+  pattern = '*',
+  callback = function()
+    vim.opt_local.formatoptions:remove({ 'r', 'o', 'c' })
+  end,
 })
 
 -- Markdown-specific settings
 autocmd('FileType', {
-  pattern  = 'markdown',
+  pattern = 'markdown',
   callback = function()
-    vim.opt_local.wrap      = true
-    vim.opt_local.spell     = true
+    vim.opt_local.wrap = true
+    vim.opt_local.spell = true
     vim.opt_local.linebreak = true
   end,
 })
@@ -103,8 +119,8 @@ local function alternate_test_file()
   end
 
   local to_test = segs[1] == 'src'
-  local is_cs   = vim.bo.filetype == 'cs'
-  segs[1]       = to_test and 'tests' or 'src'
+  local is_cs = vim.bo.filetype == 'cs'
+  segs[1] = to_test and 'tests' or 'src'
 
   -- C# only: the project folder (segment after src/tests) gains/loses the .Tests
   -- suffix; #segs > 2 means such a folder exists (segs[2] is not the file itself).
@@ -116,7 +132,7 @@ local function alternate_test_file()
   local name = segs[#segs]
   if is_cs then
     name = to_test and name:gsub('%.cs$', 'Tests.cs') or name:gsub('Tests%.cs$', '.cs')
-  else  -- ps1
+  else -- ps1
     name = to_test and name:gsub('%.ps1$', '.Tests.ps1') or name:gsub('%.Tests%.ps1$', '.ps1')
   end
   segs[#segs] = name
@@ -125,17 +141,19 @@ local function alternate_test_file()
   vim.cmd.edit(vim.fn.fnameescape(target))
   if vim.fn.filereadable(target) == 0 then
     vim.api.nvim_create_autocmd('BufWritePre', {
-      buffer = 0, once = true,
-      callback = function(ev) vim.fn.mkdir(vim.fn.fnamemodify(ev.match, ':h'), 'p') end,
+      buffer = 0,
+      once = true,
+      callback = function(ev)
+        vim.fn.mkdir(vim.fn.fnamemodify(ev.match, ':h'), 'p')
+      end,
     })
   end
 end
 
 -- Lazy-bind the alternate-file keymap only in C#/PowerShell buffers
 autocmd('FileType', {
-  pattern  = { 'cs', 'ps1' },
+  pattern = { 'cs', 'ps1' },
   callback = function(ev)
-    vim.keymap.set('n', '<leader>A', alternate_test_file,
-      { buffer = ev.buf, desc = 'Alternate source/test file' })
+    vim.keymap.set('n', '<leader>A', alternate_test_file, { buffer = ev.buf, desc = 'Alternate source/test file' })
   end,
 })

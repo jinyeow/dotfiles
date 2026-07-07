@@ -166,6 +166,18 @@ on the machine: the **Bicep CLI** on PATH and the **PSRule.Rules.Azure** module
 (`Install-Module PSRule.Rules.Azure -Scope CurrentUser`). It deliberately stops at compiled
 ARM — no `what-if`/deploy, so it never authenticates to a tenant.
 
+`council` runs an adversarial multi-perspective review of a **non-diff artifact** (idea,
+business case, technical design/ADR, project plan, presentation): a panel of
+`council-critic` seats (registry + charters in `council/references/perspectives.md`,
+routed by artifact type — `code`/`business`/`plan`/`doc`, plus cross-cutting
+`contrarian`/`completeness`) critiques blind in parallel, rebuts each other with
+new-evidence discipline, and a `council-chair` issues a verdict with dissent preserved.
+Codex joins as a cross-model seat under the same standing-consent exception as
+`deep-review`. Four thin aliases — `council-code`, `council-business`, `council-plan`,
+`council-doc` — pin their panel and delegate to the same engine (better auto-trigger
+surface per domain; the pipeline is defined once in `council`). For branch diffs/PRs use
+`deep-review`, not `council`.
+
 The review→fix skills compose around `_shared/` contracts: **`deep-review`** fans out parallel
 per-dimension reviewers + Codex over a branch diff/PR, adversarially verifies the findings, and
 emits them to a findings store; **`fix-findings`** consumes that store and applies fixes (parallel,
@@ -215,8 +227,26 @@ Seeded agents:
   `model: inherit`.
 - **`powershell-module-architect`** — module *design/review* companion to `pwsh-implementer`.
   Owns the skeleton (layout, `.psd1`/`.psm1` manifest, public/private split, `src`/`tests`
-  structure) and module-health reviews; delegates behaviour (function bodies + Pester tests)
-  to `pwsh-implementer`. No `skills:` preload; `model: inherit`.
+  structure) and module-health reviews; reports unwritten behaviour (function bodies +
+  Pester tests) for the caller to dispatch to `pwsh-implementer`. No `skills:` preload;
+  `model: inherit`.
+- **`csharp-implementer`** — TDD specialist/implementer for C# / .NET 8+ (xUnit first,
+  dotnet CLI, nullable reference types, structured `ILogger` logging; Microsoft/xUnit
+  `src`/`tests/<Proj>.Tests` layout so `<leader>A` resolves counterparts). Preloads the
+  `tdd` skill; `model: inherit`.
+- **`bicep-implementer`** — Azure Bicep IaC specialist. Preloads the `bicep-tdd` skill and
+  runs its full offline gate (build/lint/PSRule/snapshot compare/Pester golden fixtures);
+  hard boundary: never authenticates to a tenant, no `what-if`, no deploy. `model: inherit`.
+- **`chief-orchestrator`** — coordination-only agent for large/multi-domain tasks: scouts,
+  locks the shared contract (schemas, signatures, non-overlapping file ownership),
+  dispatches the specialists above in parallel via the `Agent` tool (nesting depth 1 → 2),
+  integrates, and verifies once at the end. Deliberately has **no Write/Edit tools** — every
+  file change flows through a dispatched worker. `model: inherit`.
+- **`council-critic`** / **`council-chair`** — the seats and judge of the `council` skill's
+  adversarial review panels. One generic critic agent, parameterized by a perspective
+  charter from `skills/council/references/perspectives.md` (charters are data — add a
+  perspective there, not a new agent); the chair synthesizes, adjudicates on evidence
+  weight, and preserves dissent. Dispatched by `/council`, not ad hoc. `model: inherit`.
 
 ## Install
 
