@@ -501,6 +501,10 @@ function prompt {
         }
         # Windows Terminal CWD tracking (OSC 9;9)
         $null = $out.Append("$($c.ESC)]9;9;`"$($loc.ProviderPath)`"$($c.ESC)\")
+        # psmux CWD tracking (OSC 7) — psmux updates pane_current_path from OSC 7, not OSC 9;9,
+        # so new panes open in the focused pane's directory. [uri] renders the Windows path as a
+        # file:// URL (spaces → %20). Harmless in Windows Terminal, which ignores OSC 7.
+        $null = $out.Append("$($c.ESC)]7;$(([uri]$loc.ProviderPath).AbsoluteUri)$($c.ESC)\")
 
         # Record the directory in zoxide. zoxide is initialised with --hook none
         # (see profile), so it doesn't wrap the prompt — that wrapper detaches on
