@@ -47,7 +47,12 @@ resolver; see `psmux/plugins/README.md`).
 **Auto-grid** (`@auto_grid on` by default) re-tiles to an even grid on *every* new pane —
 2 panes = columns, 4 = 2×2 quadrants, etc. It is implemented by setting/unsetting the
 `after-split-window` hook (psmux freezes an *in-hook* option condition at set time, so the
-hook is toggled directly). Set `@auto_grid off` at the top of `psmux.conf` to default-disable.
+hook is toggled directly). The `Prefix+g` toggle reads `@auto_grid` via a **runtime sh**
+`if-shell` — an `if-shell -F` format is frozen at parse time in a bind too, so it can't gate the
+toggle. Set `@auto_grid off` at the top of `psmux.conf` to default-disable.
+
+> **Known issue:** the live `Prefix+g` toggle does not yet re-enable (WIP); auto-grid default-on
+> is unaffected.
 
 ## Navigation — unified `Ctrl-hjkl` (panes + nvim)
 
@@ -61,19 +66,16 @@ matching `nvim` — no `ps`/`grep`, no `$TMUX` shim.
 - **Trade-off:** `Ctrl-l`/`Ctrl-h`/etc. are swallowed for navigation in non-nvim panes.
   `Ctrl-l` (clear screen) is recovered on **`Prefix + Ctrl-l`**.
 
-## Sticky modes (zellij-style)
+## Resize & reload
 
-| Enter | Mode | Keys |
-|---|---|---|
-| `Prefix + r` | resize | `h/j/k/l` resize · `=` equalize · `Esc`/`q` exit |
-| `Prefix + m` | move | `j`/`k` swap next/prev · `Space` rotate · `Esc`/`q` exit |
-
-Move-mode is swap/rotate, **not** zellij's spatial directional move — psmux has no
-`{left-of}`/`{right-of}` pane targets. With auto-grid on, the grid owns the structure and
-move-mode just reorders which pane sits in which slot.
-
-Native resize also works without a mode: `Prefix + Ctrl-arrows` (1 cell),
+Resize the focused pane with the **native** keys (no mode): `Prefix + Ctrl-arrows` (1 cell),
 `Prefix + Alt-arrows` (5 cells), `Prefix + z` zoom.
+
+Sticky `Prefix+r` resize-mode and `Prefix+m` move-mode were **dropped** — sticky modes need a
+custom key-table (`switch-client -T <name>`), which psmux does not support (only built-in tables
+like `copy-mode-vi` work). With auto-grid owning pane structure, the native keys cover the gap.
+
+`Prefix + r` now **reloads** `~/.psmux.conf` (`source-file` + a confirmation message).
 
 ## Rename
 
@@ -81,7 +83,7 @@ Native resize also works without a mode: `Prefix + Ctrl-arrows` (1 cell),
 |---|---|
 | Session | `Prefix + $` |
 | Window (tab) | `Prefix + ,` |
-| Pane | `Prefix + T` — sets the pane *title* (psmux has no `rename-pane`); shown in the pane border |
+| Pane | `Prefix + T` — sets the pane *title* (psmux has no `rename-pane`); shown in the status bar |
 
 ## Sessions (fzf)
 

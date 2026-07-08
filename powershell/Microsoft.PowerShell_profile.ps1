@@ -480,17 +480,18 @@ function Initialize-DeferredProfileSecondary {
     # psmux (native-Windows tmux) — fzf session pickers + name completion. psmux aliases as
     # psmux/pmux/tmux; only wire this up when it is actually installed.
     if (Get-Command -Name psmux -ErrorAction Ignore) {
-        function Get-PsmuxSession { psmux list-sessions -F '#{session_name}' 2>$null }
+        # global: — a bare `function` here would be local to Initialize-DeferredProfileSecondary.
+        function global:Get-PsmuxSession { psmux list-sessions -F '#{session_name}' 2>$null }
 
         # Attach to an fzf-picked session — switch-client if already inside psmux (attach can't nest).
-        function Enter-PsmuxSession {
+        function global:Enter-PsmuxSession {
             $target = Get-PsmuxSession | fzf --prompt 'psmux attach> ' --height 40% --reverse
             if (-not $target) { return }
             if ($env:PSMUX_TARGET_SESSION) { psmux switch-client -t $target } else { psmux attach -t $target }
         }
 
         # Kill one or more fzf-picked sessions (multi-select with Tab).
-        function Remove-PsmuxSession {
+        function global:Remove-PsmuxSession {
             Get-PsmuxSession | fzf --prompt 'psmux kill> ' --height 40% --reverse --multi |
                 ForEach-Object { psmux kill-session -t $_ }
         }
