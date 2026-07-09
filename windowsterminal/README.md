@@ -14,7 +14,13 @@ Windows Terminal settings.
   dark/light setting — consistent with fzf, nvim, and lazygit
 - **Font**: CommitMono Nerd Font Mono 13pt (must be installed separately)
 - **Keybindings**: vi-style pane focus (`alt+h/j/k/l`), `ctrl+c` copy,
-  `ctrl+shift+v` paste, `ctrl+shift+f` find
+  `ctrl+shift+v` paste, `ctrl+shift+f` find, and `ctrl+backspace` →
+  `sendInput "\u0017"` (Ctrl+W). WT delivers Ctrl+Backspace as a native key
+  event with a modifier that a terminal multiplexer (psmux/Zellij) drops when
+  it forwards keys as a byte stream, so the shell can't distinguish it from
+  plain Backspace. Emitting the bare `\u0017` byte instead — the same byte
+  Ctrl+W produces — survives any multiplexer and lands on the shell's
+  backward-delete-word (readline/PSReadLine/fzf all bind Ctrl+W to it)
 - **Window restore**: `firstWindowPreference: persistedWindowLayout` — WT restores
   the previous session's tab/pane layout on launch; falls back to the default
   profile on a fresh install with no saved layout

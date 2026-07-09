@@ -65,6 +65,13 @@
         {
             "id": "Terminal.MoveFocusLeft",
             "keys": "alt+h"
+        },
+        {
+            "command": {
+                "action": "sendInput",
+                "input": "\u0017"
+            },
+            "keys": "ctrl+backspace"
         }
     ],
     "newTabMenu": 
