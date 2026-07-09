@@ -524,6 +524,11 @@ function prompt {
 
     # --- Line 1: user path git az ---
 
+    # Cursor to column 0 — hardens the prompt against a dirty cursor left mid-row
+    # by fzf's Windows renderer on abort (DISABLE_NEWLINE_AUTO_RETURN stuck), so
+    # the prompt renders at the left margin. No-op when the cursor is already there.
+    $null = $out.Append("$($c.ESC)[G")
+
     # Username
     if ($c.ShowUsername) {
         $null = $out.Append("$($c.Blue)$([Environment]::UserName)$($c.Reset) ")
@@ -625,12 +630,17 @@ function prompt {
     }
 
     if ($contextLine.Length -gt 0) {
-        $null = $out.Append("`n")
+        # CR+LF+clear-to-EOL — hardens against a dirty console left by fzf's Windows
+        # renderer (newline-auto-return stuck) so each line starts at column 0. No-op
+        # when the cursor is already there.
+        $null = $out.Append("`r`n$($c.ESC)[K")
         $null = $out.Append($contextLine.ToString())
     }
 
     # --- Final line: duration status promptchar ---
-    $null = $out.Append("`n")
+    # CR+LF+clear-to-EOL — see the note above; keeps the command line at column 0
+    # even when fzf leaves the console with newline-auto-return disabled.
+    $null = $out.Append("`r`n$($c.ESC)[K")
 
     # Last command duration
     $lastCmd = Get-History -Count 1
