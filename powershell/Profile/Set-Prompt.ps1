@@ -501,6 +501,10 @@ function prompt {
         }
         # Windows Terminal CWD tracking (OSC 9;9)
         $null = $out.Append("$($c.ESC)]9;9;`"$($loc.ProviderPath)`"$($c.ESC)\")
+        # psmux CWD tracking (OSC 7) — psmux updates pane_current_path from OSC 7, not OSC 9;9,
+        # so new panes open in the focused pane's directory. [uri] renders the Windows path as a
+        # file:// URL (spaces → %20). Harmless in Windows Terminal, which ignores OSC 7.
+        $null = $out.Append("$($c.ESC)]7;$(([uri]$loc.ProviderPath).AbsoluteUri)$($c.ESC)\")
 
         # Record the directory in zoxide. zoxide is initialised with --hook none
         # (see profile), so it doesn't wrap the prompt — that wrapper detaches on
@@ -519,6 +523,11 @@ function prompt {
     }
 
     # --- Line 1: user path git az ---
+
+    # Cursor to column 0 — hardens the prompt against a dirty cursor left mid-row
+    # by fzf's Windows renderer on abort (DISABLE_NEWLINE_AUTO_RETURN stuck), so
+    # the prompt renders at the left margin. No-op when the cursor is already there.
+    $null = $out.Append("$($c.ESC)[G")
 
     # Username
     if ($c.ShowUsername) {
@@ -621,12 +630,17 @@ function prompt {
     }
 
     if ($contextLine.Length -gt 0) {
-        $null = $out.Append("`n")
+        # CR+LF+clear-to-EOL — hardens against a dirty console left by fzf's Windows
+        # renderer (newline-auto-return stuck) so each line starts at column 0. No-op
+        # when the cursor is already there.
+        $null = $out.Append("`r`n$($c.ESC)[K")
         $null = $out.Append($contextLine.ToString())
     }
 
     # --- Final line: duration status promptchar ---
-    $null = $out.Append("`n")
+    # CR+LF+clear-to-EOL — see the note above; keeps the command line at column 0
+    # even when fzf leaves the console with newline-auto-return disabled.
+    $null = $out.Append("`r`n$($c.ESC)[K")
 
     # Last command duration
     $lastCmd = Get-History -Count 1

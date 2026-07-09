@@ -9,7 +9,7 @@
     before being replaced.
 
 .PARAMETER Module
-    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, zellij, yazi, curl, claude, codex, serena, context7, fastmail, lazygit, windowsterminal, bat, vscode, winget, all.
+    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, zellij, psmux, yazi, curl, claude, codex, serena, context7, fastmail, lazygit, windowsterminal, bat, vscode, winget, all.
     Optional when -CleanBackups is specified.
 
 .PARAMETER DryRun
@@ -60,7 +60,7 @@ $Dotfiles = $PSScriptRoot
 
 # Expand 'all'
 if ($Module -contains 'all') {
-    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'yazi', 'curl', 'claude', 'codex', 'serena', 'context7', 'fastmail', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget')
+    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'psmux', 'yazi', 'curl', 'claude', 'codex', 'serena', 'context7', 'fastmail', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget')
 }
 # @() wrapper: `Select-Object -Unique` over an empty array yields $null (and a
 # single value yields a scalar), so without it the `$Module.Count` guard below
@@ -436,6 +436,42 @@ function Install-Zellij {
         Target = Join-Path $Dotfiles 'zellij'
     }
     New-Junction @params
+}
+
+function Install-Psmux {
+    Write-Host ''
+    Write-Info '=== psmux (native-Windows tmux) ==='
+    # psmux auto-loads ~/.psmux.conf (verified: it wins over ~/.tmux.conf). Symlink so edits
+    # flow both ways with the repo; needs Developer Mode (see New-FileSymlink).
+    New-FileSymlink -Link (Join-Path $env:USERPROFILE '.psmux.conf') -Target (Join-Path $Dotfiles 'psmux\psmux.conf')
+
+    if (-not (Get-Command -Name psmux -ErrorAction Ignore)) {
+        Write-Warn 'psmux not found. Install with: winget install marlocarlo.psmux'
+    } else {
+        Write-Ok 'psmux is installed.'
+    }
+
+    # Plugins (resurrect/continuum) are vendored + SHA-pinned in the repo (psmux/plugins/ — see its
+    # README) and COPIED into ~/.psmux/plugins/. psmux.conf `source-file`s each plugin.conf directly
+    # (no PPM, no network, no namespace-hijack surface). Copied, NOT junctioned: psmux-continuum
+    # rewrites its own scripts/ dir at load, so a junction would mutate the committed repo.
+    $pluginsSrc = Join-Path $Dotfiles 'psmux\plugins'
+    $pluginsDst = Join-Path $env:USERPROFILE '.psmux\plugins'
+    if (-not (Test-Path $pluginsDst)) {
+        if (-not $DryRun) { New-Item -ItemType Directory -Path $pluginsDst -Force | Out-Null }
+        Write-Info "Created:    $pluginsDst"
+    }
+    $plugins = Get-ChildItem -Path $pluginsSrc -Directory -ErrorAction SilentlyContinue
+    if ($plugins) {
+        foreach ($plugin in $plugins) {
+            $dest = Join-Path $pluginsDst $plugin.Name
+            if ($DryRun) { Write-Info "[DRY RUN] copy plugin $($plugin.Name) -> $dest"; continue }
+            Copy-Item -Path $plugin.FullName -Destination $pluginsDst -Recurse -Force
+            Write-Ok "Plugin:     $dest (vendored, pinned)"
+        }
+    } else {
+        Write-Info 'No vendored plugins found (psmux/plugins/ is empty).'
+    }
 }
 
 function Install-Yazi {
@@ -895,6 +931,7 @@ foreach ($m in $Module) {
         'tig'        { Install-Tig        }
         'tmux'       { Install-Tmux       }
         'zellij'     { Install-Zellij     }
+        'psmux'      { Install-Psmux      }
         'yazi'       { Install-Yazi       }
         'curl'       { Install-Curl       }
         'winget'     { Install-Winget     }

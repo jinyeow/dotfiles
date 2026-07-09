@@ -32,6 +32,29 @@ Describe 'Start-AzContextRefresh persistent runspace' {
     }
 }
 
+Describe 'prompt column-0 hardening against a dirty fzf console' {
+    # fzf's Windows renderer can leave DISABLE_NEWLINE_AUTO_RETURN set with the
+    # cursor mid-row on abort, staircasing the multi-line prompt. The prompt must
+    # render from column 0 regardless: a leading ESC[G before the first visible
+    # segment, and CR+LF+ESC[K (not a bare LF) at every internal line break.
+    BeforeAll {
+        $script:ESC = [char]27
+        $script:rendered = prompt
+    }
+
+    It 'starts its visible content with a cursor-to-column-0 (ESC[G)' {
+        # Strip the non-visible OSC 9;9 / OSC 7 control sequences (ESC ] ... ESC \)
+        $visible = $script:rendered -replace "$ESC\][^$ESC]*$ESC\\", ''
+        $visible | Should -Match "^$([regex]::Escape($ESC))\[G"
+    }
+
+    It 'breaks internal lines with CR+LF+ESC[K, not a bare LF' {
+        $script:rendered | Should -Match "\r\n$([regex]::Escape($ESC))\[K"
+        # No LF that is not preceded by CR (would staircase on a stuck console)
+        $script:rendered | Should -Not -Match "(?<!\r)\n"
+    }
+}
+
 AfterAll {
     if ($global:PromptCache.AzInvocation) {
         try { $global:PromptCache.AzInvocation.PowerShell.Dispose() } catch {}

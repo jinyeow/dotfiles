@@ -150,7 +150,10 @@ if ($global:ProfileModules['PSFzf']) {
         $branches = git branch -vv | Select-String ': gone]' -NotMatch | ForEach-Object {
             ($_.ToString().Substring(2) -split '\s+')[0]
         }
-        $branch = $branches | Sort-Object | Invoke-Fzf -Prompt 'branch> ' -Height 10
+        # Bare fzf (native pipeline), NOT PSFzf's Invoke-Fzf: its redirected-stdout
+        # System.Diagnostics.Process launcher desyncs under psmux's ConPTY. Fullscreen
+        # (no -Height 10 box) is the deliberate, reversible trade for correct rendering.
+        $branch = $branches | Sort-Object | fzf --prompt 'branch> '
         if (-not [String]::IsNullOrEmpty($branch)) {
             Set-Location "$(git rev-parse --show-toplevel)"
             git switch $branch
@@ -174,7 +177,10 @@ if ($global:ProfileModules['PSFzf']) {
                 }
             }
         }
-        $selected = $worktrees.Keys | Sort-Object | Invoke-Fzf -Prompt 'worktree> ' -Height 10
+        # Bare fzf (native pipeline), NOT PSFzf's Invoke-Fzf: its redirected-stdout
+        # System.Diagnostics.Process launcher desyncs under psmux's ConPTY. Fullscreen
+        # (no -Height 10 box) is the deliberate, reversible trade for correct rendering.
+        $selected = $worktrees.Keys | Sort-Object | fzf --prompt 'worktree> '
         if (-not [String]::IsNullOrEmpty($selected)) {
             Set-Location $worktrees[$selected]
         }
@@ -382,6 +388,97 @@ function Initialize-DeferredProfile {
     if ($global:ProfileModules['PSFzf']) {
         Import-Module PSFzf
 
+        # Ctrl+t / Ctrl+r run BARE `fzf` via pwsh's native pipeline, NOT PSFzf's Invoke-Fzf.
+        # PSFzf launches fzf through a redirected-stdout System.Diagnostics.Process from inside
+        # a PSReadLine handler; under psmux's ConPTY that desyncs fzf's screen/cursor state
+        # (doubled UI, corrupt Ctrl+t input, staircased Tab). Bare fullscreen fzf is unaffected.
+        function global:Format-FzfPickInsertion {
+            [OutputType([string])]
+            param([string[]]$Picks)
+            # pwsh-quote any pick with whitespace (single-quote, doubling embedded '); join with spaces.
+            ($Picks | ForEach-Object {
+                if ($_ -match '\s') { "'" + ($_ -replace "'", "''") + "'" } else { $_ }
+            }) -join ' '
+        }
+
+        function global:Get-FzfDedupedHistory {
+            [OutputType([string[]])]
+            param([string[]]$Lines)
+            # File order is oldest-first; walk backwards for newest-first, keep first sight of each.
+            $seen = [System.Collections.Generic.HashSet[string]]::new()
+            $result = [System.Collections.Generic.List[string]]::new()
+            for ($i = $Lines.Count - 1; $i -ge 0; $i--) {
+                if ($seen.Add($Lines[$i])) { $result.Add($Lines[$i]) }
+            }
+            $result.ToArray()
+        }
+
+        function global:Invoke-FzfFilePicker {
+            # Ctrl+t: bare fullscreen fzf; insert the pick(s) at the cursor. fzf SELF-POPULATES from
+            # its own command — we do NOT pipe a producer in (`fd | fzf`): piping into fzf from a
+            # PSReadLine handler renders a doubled UI under psmux, whereas letting fzf spawn the
+            # walker itself (like the clean Alt+f picker) is fine. FZF_CTRL_T_COMMAND ==
+            # FZF_DEFAULT_COMMAND here, so plain `fzf` uses the fd file-walker.
+            $picks = fzf --multi
+            if (-not $picks) { return }   # cancel leaves the buffer unchanged
+            [Microsoft.PowerShell.PSConsoleReadLine]::Insert((Format-FzfPickInsertion -Picks @($picks)))
+        }
+
+        function global:Invoke-FzfHistoryPicker {
+            # Ctrl+r: bare fullscreen fzf over PSReadLine history; replace the whole line. fzf must
+            # OWN the tty for both its list AND its interaction: piping history in (`$entries | fzf`)
+            # from a PSReadLine handler leaves fzf with a piped stdin and no interactive terminal, so
+            # it renders NOTHING (and an external-process pipe doubles under psmux). History cannot be
+            # walked like files, so stage it to a temp file and let fzf SELF-POPULATE from it via a
+            # temporary FZF_DEFAULT_COMMAND override (cmd `type` — the shell fzf uses on Windows).
+            $line = ''
+            $cursor = 0
+            [Microsoft.PowerShell.PSConsoleReadLine]::GetBufferState([ref]$line, [ref]$cursor)
+            $line = [string]$line   # GetBufferState yields '' for an empty buffer; keep it a string
+            $historyPath = (Get-PSReadLineOption).HistorySavePath
+            # Each file line is treated as one entry; backtick-continued multi-line history
+            # entries are a known limitation (handled as separate lines, not stitched).
+            $entries = if ($historyPath -and (Test-Path -LiteralPath $historyPath)) {
+                Get-FzfDedupedHistory -Lines @(Get-Content -LiteralPath $historyPath)
+            } else {
+                @()
+            }
+            if (-not $entries) { return }   # no history to search
+            $tmp = [System.IO.Path]::GetTempFileName()
+            $prev = $env:FZF_DEFAULT_COMMAND
+            try {
+                Set-Content -LiteralPath $tmp -Value $entries   # newest-first, one entry per line
+                $env:FZF_DEFAULT_COMMAND = "type `"$tmp`""
+                # Literal args, NOT a splat. `$x = if (…) { @('--no-sort') }` returns a single-element
+                # array that PowerShell unwraps to the scalar string '--no-sort'; `fzf @x` then splats a
+                # *string* character-by-character, so fzf sees a bare '-' → "unknown option: -" (exit 2,
+                # no UI). Only the empty-buffer branch broke — the 3-element --query branch stays an array.
+                # Omit --query on an empty buffer (the common Ctrl+r case): fzf treats it as no filter anyway.
+                $pick = if ($line) { fzf --no-sort --query $line } else { fzf --no-sort }
+            } finally {
+                $env:FZF_DEFAULT_COMMAND = $prev
+                Remove-Item -LiteralPath $tmp -ErrorAction Ignore
+            }
+            if (-not $pick) { return }   # cancel leaves the buffer unchanged
+            [Microsoft.PowerShell.PSConsoleReadLine]::Replace(0, $line.Length, $pick)
+        }
+
+        function global:Invoke-FzfSetLocationPicker {
+            # Alt+c: bare fullscreen fzf directory picker; cd to the pick. fzf SELF-POPULATES via a
+            # temporary FZF_DEFAULT_COMMAND override (the fd dir-walker) — we do NOT pipe (`fd | fzf`),
+            # which renders a doubled UI from a PSReadLine handler under psmux (see Invoke-FzfFilePicker).
+            # Cancel just redraws (models PSFzf's AltCCommand: Set-Location then InvokePrompt).
+            $prev = $env:FZF_DEFAULT_COMMAND
+            try {
+                if ($env:FZF_ALT_C_COMMAND) { $env:FZF_DEFAULT_COMMAND = $env:FZF_ALT_C_COMMAND }
+                $pick = fzf
+            } finally {
+                $env:FZF_DEFAULT_COMMAND = $prev
+            }
+            if ($pick) { Set-Location $pick }
+            [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt()
+        }
+
         Set-Alias -Name rfv -Value Invoke-FzfRipgrep -Scope Global
         Set-Alias -Name frg -Value Invoke-FzfRipgrep -Scope Global
 
@@ -390,23 +487,41 @@ function Initialize-DeferredProfile {
         Set-PSReadLineKeyHandler -Chord 'alt+b' -ScriptBlock { switch_git_branch }
         Set-PSReadLineKeyHandler -Chord 'alt+g' -ScriptBlock { cd_git_worktree }
 
+        # Empty chords tell Set-PsFzfOption not to (re)bind PSFzf's own Ctrl+t / Ctrl+r /
+        # Alt+c handlers (SetPsReadlineShortcut skips an empty chord — PSFzf.Base.ps1:881).
         Set-PsFzfOption `
+            -PSReadlineChordProvider '' `
+            -PSReadlineChordReverseHistory '' `
+            -PSReadlineChordSetLocation '' `
             -AltCCommand ([ScriptBlock] { param($Location) Set-Location $Location; [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt() }) `
             -EnableAliasFuzzyEdit `
             -EnableAliasFuzzyGitStatus `
             -EnableAliasFuzzyHistory `
             -EnableAliasFuzzyKillProcess `
-            -EnableAliasFuzzySetLocation `
-            -PSReadlineChordProvider 'Ctrl+t' `
-            -PSReadlineChordReverseHistory 'Ctrl+r'
+            -EnableAliasFuzzySetLocation
+
+        # Bind our bare-fzf handlers AFTER Set-PsFzfOption so they win last-write: PSFzf
+        # binds Ctrl+t / Ctrl+r / Alt+c to its redirected-stdout handlers at Import-Module
+        # (defaults, PSFzf.Base.ps1:2-4), which desync under psmux's ConPTY. Ctrl+r is bound in
+        # BOTH Vi key-tables: EditMode is Vi, so a plain (no -ViMode) bind lands only in the Insert
+        # table, leaving Command-mode Ctrl+r on the Phase-1 ReverseSearchHistory bind (line ~85) — a
+        # split behaviour plus a duplicate row in Get-PSReadLineKeyHandler. Insert is what fires
+        # while typing, so overriding both tables makes Ctrl+r = fzf history in either Vi mode.
+        Set-PSReadLineKeyHandler -Chord 'Ctrl+t' -ScriptBlock { Invoke-FzfFilePicker }
+        Set-PSReadLineKeyHandler -Chord 'Ctrl+r' -ViMode Insert  -BriefDescription FzfHistory -ScriptBlock { Invoke-FzfHistoryPicker }
+        Set-PSReadLineKeyHandler -Chord 'Ctrl+r' -ViMode Command -BriefDescription FzfHistory -ScriptBlock { Invoke-FzfHistoryPicker }
+        Set-PSReadLineKeyHandler -Chord 'Alt+c' -ScriptBlock { Invoke-FzfSetLocationPicker }
     }
 
     # fd-backed fzf pickers (moved off Phase 1). PSFzf and bare fzf read these at
     # invocation, so setting them on first idle is in time for the first picker.
     if (Get-Command -Name fd -CommandType Application -ErrorAction Ignore) {
-        $env:FZF_DEFAULT_COMMAND = 'fd --type f --hidden --exclude .git'
+        # --exclude AppData/node_modules: from ~ the walk is dominated by AppData (100k+ dirs on
+        # Windows) and node_modules; excluding them keeps Ctrl+t/Alt+c fast. fd already honours
+        # .gitignore, so node_modules inside a repo is skipped anyway — this covers the non-repo case.
+        $env:FZF_DEFAULT_COMMAND = 'fd --type f --hidden --exclude .git --exclude node_modules --exclude AppData'
         $env:FZF_CTRL_T_COMMAND  = $env:FZF_DEFAULT_COMMAND
-        $env:FZF_ALT_C_COMMAND   = 'fd --type d --hidden --exclude .git'
+        $env:FZF_ALT_C_COMMAND   = 'fd --type d --hidden --exclude .git --exclude node_modules --exclude AppData'
     }
 
     # eza listing helpers (moved off Phase 1). Defined global: so they reach the
@@ -469,6 +584,50 @@ function Initialize-DeferredProfileSecondary {
             if ($elements.Count -ge 2 -and $elements[1].Value -in $sessionCmds) {
                 zellij list-sessions --no-formatting 2>$null |
                     ForEach-Object { ($_ -split '\s+')[0] } |
+                    Where-Object { $_ -like "$wordToComplete*" } |
+                    ForEach-Object {
+                        [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+                    }
+            }
+        }
+    }
+
+    # psmux (native-Windows tmux) — fzf session pickers + name completion. psmux aliases as
+    # psmux/pmux/tmux; only wire this up when it is actually installed.
+    if (Get-Command -Name psmux -ErrorAction Ignore) {
+        # global: — a bare `function` here would be local to Initialize-DeferredProfileSecondary.
+        function global:Get-PsmuxSession { psmux list-sessions -F '#{session_name}' 2>$null }
+
+        # Attach to an fzf-picked session — switch-client if already inside psmux (attach can't nest).
+        function global:Enter-PsmuxSession {
+            $target = Get-PsmuxSession | fzf --prompt 'psmux attach> ' --height 40% --reverse
+            if (-not $target) { return }
+            if ($env:PSMUX_TARGET_SESSION) { psmux switch-client -t $target } else { psmux attach -t $target }
+        }
+
+        # Kill one or more fzf-picked sessions (multi-select with Tab).
+        function global:Remove-PsmuxSession {
+            Get-PsmuxSession | fzf --prompt 'psmux kill> ' --height 40% --reverse --multi |
+                ForEach-Object { psmux kill-session -t $_ }
+        }
+
+        Register-ArgumentCompleter -Native -CommandName psmux, pmux, tmux -ScriptBlock {
+            param($wordToComplete, $commandAst, $cursorPosition)
+            $elements = $commandAst.CommandElements
+            # Completing the subcommand itself (`psmux <TAB>` / `psmux a<TAB>`): offer command
+            # names + aliases from list-commands (works without a running server).
+            if ($elements.Count -eq 1 -or ($elements.Count -eq 2 -and $wordToComplete)) {
+                psmux list-commands 2>$null |
+                    ForEach-Object { if ($_ -match '^\s+(\S+)(?:\s+\(([^)]+)\))?') { $Matches[1]; if ($Matches[2]) { $Matches[2] } } } |
+                    Where-Object { $_ -like "$wordToComplete*" } |
+                    Sort-Object -Unique |
+                    ForEach-Object { [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_) }
+                return
+            }
+            # Completing an argument after a session-targeting subcommand: offer session names.
+            $sessionCmds = 'attach', 'attach-session', 'a', 'kill-session', 'switch-client', 'switchc', 'has-session'
+            if ($elements[1].Value -in $sessionCmds) {
+                psmux list-sessions -F '#{session_name}' 2>$null |
                     Where-Object { $_ -like "$wordToComplete*" } |
                     ForEach-Object {
                         [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)

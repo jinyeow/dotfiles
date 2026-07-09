@@ -9,6 +9,11 @@
 // --- Startup ----------------------------------------------------------------
 default_mode "locked"
 default_shell "pwsh"
+// auto_layout off: new panes stay exactly where they are split — no swap-layout reflow that
+// resizes/moves existing panes. (An even-grid swap layout was tried and abandoned: Zellij 0.44.3
+// did not reliably auto-tile new panes into an even grid, and Alt+] snap-to-grid never rendered
+// a clean 2x2. See the Zellij section in CLAUDE.md.)
+auto_layout false
 show_startup_tips false
 show_release_notes false
 
@@ -60,6 +65,9 @@ keybinds clear-defaults=true {
         // Quick actions without entering normal mode
         bind "Alt s" { SwitchToMode "scroll"; }
         bind "Alt n" { NewPane; }
+        // Targeted splits (auto-grid re-tiles on the next pane; use for a deliberate arrangement)
+        bind "Alt -"  { NewPane "down"; }
+        bind "Alt \\" { NewPane "right"; }
         bind "Alt z" { ToggleFocusFullscreen; }
     }
 

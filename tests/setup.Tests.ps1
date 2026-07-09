@@ -16,3 +16,12 @@ Describe 'setup.ps1 argument validation' {
         $output | Should -Not -Match "property 'Count' cannot be found"
     }
 }
+
+Describe 'setup.ps1 psmux module' {
+    It 'runs the psmux module in -DryRun without error and prints its section header' {
+        $output = & pwsh -NoProfile -File $script:SetupScript -Module psmux -DryRun 2>&1 | Out-String
+        $LASTEXITCODE | Should -Be 0
+        $output | Should -Match '=== psmux'
+        $output | Should -Not -Match "Unknown module 'psmux'"
+    }
+}
