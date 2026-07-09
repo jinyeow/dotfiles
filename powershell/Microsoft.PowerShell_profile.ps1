@@ -449,10 +449,12 @@ function Initialize-DeferredProfile {
             try {
                 Set-Content -LiteralPath $tmp -Value $entries   # newest-first, one entry per line
                 $env:FZF_DEFAULT_COMMAND = "type `"$tmp`""
-                # Omit --query on an empty buffer (the common Ctrl+r case): an empty native arg is
-                # unreliable, and fzf treats it as no filter anyway.
-                $fzfArgs = if ($line) { @('--no-sort', '--query', $line) } else { @('--no-sort') }
-                $pick = fzf @fzfArgs
+                # Literal args, NOT a splat. `$x = if (…) { @('--no-sort') }` returns a single-element
+                # array that PowerShell unwraps to the scalar string '--no-sort'; `fzf @x` then splats a
+                # *string* character-by-character, so fzf sees a bare '-' → "unknown option: -" (exit 2,
+                # no UI). Only the empty-buffer branch broke — the 3-element --query branch stays an array.
+                # Omit --query on an empty buffer (the common Ctrl+r case): fzf treats it as no filter anyway.
+                $pick = if ($line) { fzf --no-sort --query $line } else { fzf --no-sort }
             } finally {
                 $env:FZF_DEFAULT_COMMAND = $prev
                 Remove-Item -LiteralPath $tmp -ErrorAction Ignore
@@ -500,10 +502,14 @@ function Initialize-DeferredProfile {
 
         # Bind our bare-fzf handlers AFTER Set-PsFzfOption so they win last-write: PSFzf
         # binds Ctrl+t / Ctrl+r / Alt+c to its redirected-stdout handlers at Import-Module
-        # (defaults, PSFzf.Base.ps1:2-4), which desync under psmux's ConPTY. Ctrl+r also
-        # overrides the Phase-1 ReverseSearchHistory bind.
+        # (defaults, PSFzf.Base.ps1:2-4), which desync under psmux's ConPTY. Ctrl+r is bound in
+        # BOTH Vi key-tables: EditMode is Vi, so a plain (no -ViMode) bind lands only in the Insert
+        # table, leaving Command-mode Ctrl+r on the Phase-1 ReverseSearchHistory bind (line ~85) — a
+        # split behaviour plus a duplicate row in Get-PSReadLineKeyHandler. Insert is what fires
+        # while typing, so overriding both tables makes Ctrl+r = fzf history in either Vi mode.
         Set-PSReadLineKeyHandler -Chord 'Ctrl+t' -ScriptBlock { Invoke-FzfFilePicker }
-        Set-PSReadLineKeyHandler -Chord 'Ctrl+r' -ScriptBlock { Invoke-FzfHistoryPicker }
+        Set-PSReadLineKeyHandler -Chord 'Ctrl+r' -ViMode Insert  -BriefDescription FzfHistory -ScriptBlock { Invoke-FzfHistoryPicker }
+        Set-PSReadLineKeyHandler -Chord 'Ctrl+r' -ViMode Command -BriefDescription FzfHistory -ScriptBlock { Invoke-FzfHistoryPicker }
         Set-PSReadLineKeyHandler -Chord 'Alt+c' -ScriptBlock { Invoke-FzfSetLocationPicker }
     }
 
