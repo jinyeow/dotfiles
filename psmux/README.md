@@ -44,15 +44,16 @@ resolver; see `psmux/plugins/README.md`).
 | `Prefix + Alt+1..4` | even-horizontal / even-vertical / main-horizontal / main-vertical |
 | `Prefix + g` | Toggle **auto-grid** live (status bar shows `auto-grid: ON/OFF`) |
 
-**Auto-grid** (`@auto_grid on` by default) re-tiles to an even grid on *every* new pane —
+**Auto-grid** (`@auto_grid off` by default) re-tiles to an even grid on *every* new pane —
 2 panes = columns, 4 = 2×2 quadrants, etc. It is implemented by setting/unsetting the
 `after-split-window` hook (psmux freezes an *in-hook* option condition at set time, so the
 hook is toggled directly). The `Prefix+g` toggle uses **`run-shell`**, not `if-shell`: psmux's
 `if-shell` in a bind always runs the true branch (it can't gate a toggle — both an `if-shell -F`
 format and a runtime-sh `if-shell` failed the same way). `run-shell` moves the decision out of
 psmux entirely — the script reads `@auto_grid` and drives the psmux CLI. Note `run-shell` runs its
-argument as **PowerShell** (unlike `if-shell`, which uses POSIX sh). Set `@auto_grid off` at the
-top of `psmux.conf` to default-disable.
+argument as **PowerShell** (unlike `if-shell`, which uses POSIX sh). Default is **off** because the
+`select-layout tiled` hook steals focus from the just-created pane; set `@auto_grid on` at the top of
+`psmux.conf` to default-enable (accepting the focus jump), or arm it live with `Prefix+g`.
 
 ## Navigation — unified `Ctrl-hjkl` (panes + nvim)
 
