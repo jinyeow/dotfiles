@@ -78,10 +78,15 @@ pane's directory. Two pieces make this work:
 - The three binds pass `-c "#{pane_current_path}"` — psmux's default split/new-window binds do
   **not** inherit it.
 
+**Mnemonic split aliases** (from `psmux-pain-control`): `Prefix + |` / `\` split side-by-side,
+`Prefix + -` / `_` split top/bottom — same `-c` cwd inheritance, alongside the default `"`/`%`.
+
 ## Resize & reload
 
 Resize the focused pane with the **native** keys (no mode): `Prefix + Ctrl-arrows` (1 cell),
-`Prefix + Alt-arrows` (5 cells), `Prefix + z` zoom.
+`Prefix + Alt-arrows` (5 cells), `Prefix + z` zoom. Vim-key resize (from `psmux-pain-control`):
+`Prefix + Alt+h/j/k/l` (5 cells, **repeatable** within repeat-time). Reorder the current window
+with `Prefix + <` / `>` (repeatable).
 
 Sticky `Prefix+r` resize-mode and `Prefix+m` move-mode were **dropped** — sticky modes need a
 custom key-table (`switch-client -T <name>`), which psmux does not support (only built-in tables
@@ -116,18 +121,20 @@ Inside psmux, **`Prefix + s`** opens an fzf session-switcher popup (overrides th
 ## Plugins
 
 **Vendored + SHA-pinned** in `psmux/plugins/` (not fetched at runtime — see that dir's README).
-Only the stateful persistence plugins are carried; theme + sensible defaults are inlined as native
-`set` lines in `psmux.conf` instead of plugins.
+Theme + sensible defaults are inlined as native `set` lines in `psmux.conf` instead of plugins.
 
 | Plugin | Purpose |
 |---|---|
 | `psmux-resurrect` | Save/restore sessions (`Prefix + Ctrl-s` / `Ctrl-r`) |
 | `psmux-continuum` | Auto-save (every 15m, on client-attach) + auto-restore on server start (`@continuum-restore on`; a Windows Scheduled Task is used only if `@continuum-boot on`) |
+| `psmux-sidebar` | `Prefix + Tab` toggles a directory-tree pane (`tree /F /A`); `Prefix + Shift+Tab` toggles it focused. Stateless — static `scripts/`, PPM loader not run. Overlaps yazi (`y`) / eza (`lt`). |
 
 Loaded via `source-file` in `psmux.conf` — no PPM. `ppm` itself is not vendored.
 
 Theme (catppuccin mocha), `sensible` defaults, and the prefix indicator are **inlined** in
-`psmux.conf` — no plugin. The status bar shows `[grid]` when auto-grid is armed.
+`psmux.conf` — no plugin. Selected **`psmux-pain-control`** binds (vim-key resize, `Prefix + </>`
+window reorder, `|`/`-` split aliases) are likewise **inlined** rather than vendored — that plugin
+ships only keybindings, no scripts. The status bar shows `[grid]` when auto-grid is armed.
 
 ## Gotchas
 
