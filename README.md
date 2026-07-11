@@ -100,7 +100,7 @@ Global skills live in `claude/skills/` and are junctioned into `~/.claude/skills
 | `to-prd` | mattpocock/skills | Turn conversation into a PRD on the issue tracker |
 | `to-issues` | mattpocock/skills | Break a plan into independently-grabbable issues |
 | `triage` | mattpocock/skills | State-machine issue triage |
-| `grill-me` | mattpocock/skills | Relentless interview to stress-test a plan or design |
+| `grilling` | mattpocock/skills | Relentless interview to stress-test a plan or design |
 | `grill-with-docs` | mattpocock/skills | Grilling against existing domain model and ADRs |
 | `write-a-skill` | mattpocock/skills | Create new skills with proper structure |
 | `handoff` | local | Compact conversation into a handoff doc for a fresh agent |
