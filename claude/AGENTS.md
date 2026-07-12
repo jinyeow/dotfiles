@@ -20,6 +20,15 @@ Codex reads this file directly as `~/.codex/AGENTS.md`.
 - **No false certainty**. Validate all reasoning and findings before presenting — unsubstantiated claims are a failure. Say "I'm not sure" when you aren't; mark speculation; flag memory versus a file you just read. Report findings as a short rationale + assumptions + evidence (file:line), not a reasoning narrative.
 - **Verify state before asserting it**. Before stating any repo/file/system/config fact — or offering it as a selectable option — run the one cheap command that confirms it (`git status`, `git check-ignore`, `test -f`, `git config --get`). Costs one tool call; prevents presenting a guess as fact or as a real choice. If you haven't run the check, label the claim an assumption rather than dressing it as verified.
 
+## Project brain
+
+Durable cross-repo initiative knowledge (per-initiative `core.md` plus volatile `STATUS.md`, and ADRs/research) lives in a git "brain" repo outside any code repo. Claude Code auto-loads it via a SessionStart hook; Codex has no such hook, so resolve-and-read it manually whenever the session cwd sits in a tracked initiative:
+1. If an ancestor of cwd has `.claude/brain/core.md`, that is the brain (self-contained). Otherwise read `~/.claude/project-brain/brains.json` and pick the entry whose `scope` is the longest ancestor of cwd.
+2. Read that brain's `registry.json`, find the initiative whose `dirs` glob matches cwd, and read its `core.md` and `STATUS.md` (read `research/`, `adr/`, `reports/` only on demand).
+3. If `STATUS.md`'s `updated:` is more than 7 days old, flag that before trusting it.
+
+The full contract (record decisions as ADRs, file research/reports, refresh STATUS, append to the brain log on session close) is in `~/.claude/skills/project-brain/SKILL.md`.
+
 ## Prompting downstream models
 
 Applies to every prompt you author for a downstream model — subagent prompts, skill/agent bodies, LLM prompts embedded in code.
