@@ -104,4 +104,5 @@ Global skills live in `claude/skills/` and are junctioned into `~/.claude/skills
 | `grill-with-docs` | mattpocock/skills | Grilling against existing domain model and ADRs |
 | `write-a-skill` | mattpocock/skills | Create new skills with proper structure |
 | `handoff` | local | Compact conversation into a handoff doc for a fresh agent |
+| `project-brain` | local | Durable cross-repo initiative knowledge (core/STATUS/ADRs) in a git repo outside any code repo; SessionStart hook auto-loads it |
 | `caveman` | mattpocock/skills | ~75% token reduction mode |
