@@ -1,6 +1,11 @@
-# Language
+---
+name: codebase-design
+description: Shared vocabulary for designing deep modules — module, interface, depth, seam, adapter, leverage, locality. Use when designing or improving a module's interface, finding deepening opportunities, deciding where a seam goes, making code more testable or AI-navigable, or when another skill needs the deep-module vocabulary.
+---
 
-Shared vocabulary for every suggestion this skill makes. Use these terms exactly — don't substitute "component," "service," "API," or "boundary." Consistent language is the whole point.
+# Codebase Design
+
+Precise, shared vocabulary for **deep modules**: a lot of behaviour behind a small interface, sitting at a clean seam, verified through the public surface. Depth buys **leverage** for callers, **locality** for maintainers, and testability for both. Use these terms exactly — don't substitute "component," "service," "API," or "boundary." Consistent language is the whole point.
 
 ## Terms
 
@@ -38,6 +43,12 @@ What maintainers get from depth. Change, bugs, knowledge, and verification conce
 - **The interface is the test surface.** Callers and tests cross the same seam. If you want to test *past* the interface, the module is probably the wrong shape.
 - **One adapter means a hypothetical seam. Two adapters means a real one.** Don't introduce a seam unless something actually varies across it.
 
+## Designing for testability
+
+- **Inject dependencies; don't construct them inside.** A dependency created internally can't be swapped at the seam.
+- **Return computed results rather than mutating hidden state.** Observable outcomes are testable through the interface; hidden mutation is not.
+- **Minimise interface surface.** Fewer things to learn, fewer things to test, more depth.
+
 ## Relationships
 
 - A **Module** has exactly one **Interface** (the surface it presents to callers and tests).
@@ -51,3 +62,8 @@ What maintainers get from depth. Change, bugs, knowledge, and verification conce
 - **Depth as ratio of implementation-lines to interface-lines** (Ousterhout): rewards padding the implementation. We use depth-as-leverage instead.
 - **"Interface" as the TypeScript `interface` keyword or a class's public methods**: too narrow — interface here includes every fact a caller must know.
 - **"Boundary"**: overloaded with DDD's bounded context. Say **seam** or **interface**.
+
+## When deepening
+
+- Classify a candidate's dependencies to decide how it's tested across its seam — see [DEEPENING.md](DEEPENING.md).
+- To explore several radically different interfaces for a chosen candidate, use the parallel "design it twice" pattern — see [DESIGN-IT-TWICE.md](DESIGN-IT-TWICE.md).
