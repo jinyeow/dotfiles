@@ -235,6 +235,7 @@ The `azure-pipelines` filetype has no Treesitter grammar of its own, so `autocmd
 | `<S-F5>` | Terminate |
 | `<leader>b` / `<leader>B` | Toggle / conditional breakpoint |
 | `<leader>nr` | Toggle DAP REPL |
+| `<leader>e` | Evaluate expression under cursor / selection (built-in float) |
 
 ### Fugitive (full profile only)
 

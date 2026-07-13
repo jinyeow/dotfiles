@@ -24,3 +24,9 @@ map('<leader>B', function()
   dap.set_breakpoint(vim.fn.input('Breakpoint condition: '))
 end, 'Debug: conditional breakpoint')
 map('<leader>nr', dap.repl.toggle, 'Debug: toggle REPL')
+
+-- Inspect state without a UI plugin: nvim-dap's built-in float shows the value
+-- of the expression under the cursor (normal) or the visual selection (visual).
+vim.keymap.set({ 'n', 'x' }, '<leader>e', function()
+  require('dap.ui.widgets').hover()
+end, { buffer = true, desc = 'Debug: evaluate under cursor' })
