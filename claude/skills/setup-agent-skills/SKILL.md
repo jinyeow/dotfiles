@@ -1,6 +1,6 @@
 ---
 name: setup-agent-skills
-description: Configure the agent-skill workflow for this repo — where specs/designs/tickets land, whether an issue tracker is used and its label vocabulary, and the domain-doc layout. Run once per repo before to-spec / to-hld / to-tickets / triage.
+description: Configure the agent-skill workflow for this repo — where specs/designs/tickets land, whether an issue tracker is used and its label vocabulary, the domain-doc layout, and how the tracker expresses wayfinding operations. Run once per repo before to-spec / to-hld / to-tickets / triage / wayfinder.
 disable-model-invocation: true
 ---
 
@@ -41,6 +41,16 @@ Confirm how domain knowledge is arranged so skills use the right vocabulary and 
 - **Single-context** — one root `CONTEXT.md` + `docs/adr/`
 - **Multi-context** — a `CONTEXT-MAP.md` pointing at per-area docs (monorepo)
 
+## 5. Wayfinding operations (tracker path only — local markdown works out of the box)
+
+`wayfinder` charts a map of investigation tickets on the tracker. Record how *this* tracker expresses them, so `wayfinder` can consult it:
+
+- **Map issue** — labelled `wayfinder:map`; its tickets are its **child issues**.
+- **Ticket type labels** — `wayfinder:research` / `wayfinder:prototype` / `wayfinder:grilling` / `wayfinder:task`.
+- **Blocking** — the tracker's **native** dependency link (GitHub "blocked by", Azure Boards Predecessor/Successor). Only a tracker without one falls back to a body convention.
+- **Frontier query** — how to list the open, unblocked, unclaimed children (the takeable edge).
+- **Claim** — assign the ticket to the driving dev before any work.
+
 ## Write the config
 
-Write an `## Agent skills` block into `CLAUDE.md`/`AGENTS.md` capturing the four sections. Downstream skills (`to-spec`, `to-hld`, `to-tickets`, `triage`) read this block; absent it, they fall back to the bold defaults.
+Write an `## Agent skills` block into `CLAUDE.md`/`AGENTS.md` capturing the five sections. Downstream skills (`to-spec`, `to-hld`, `to-tickets`, `triage`, `wayfinder`) read this block; absent it, they fall back to the bold defaults (and `wayfinder` to the local-markdown tracker).
