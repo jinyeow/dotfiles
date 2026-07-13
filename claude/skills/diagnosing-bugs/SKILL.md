@@ -9,6 +9,32 @@ A discipline for hard bugs. Skip phases only when explicitly justified.
 
 When exploring the codebase, read `CONTEXT.md` (if it exists) to get a clear mental model of the relevant modules, and check ADRs in the area you're touching.
 
+## Hard stops
+
+Hard bugs are lost by rationalising instead of testing. Treat each of these as a signal to stop and do the disciplined thing:
+
+- **"I'll just try this"** — you have no hypothesis. Write a falsifiable one first (Phase 3); don't poke at code.
+- **"I'm confident it's X"** — confidence isn't evidence. Run an instrument that would prove it (Phase 4).
+- **"Probably the same issue as before"** — re-read the execution path from scratch; a carried-over assumption is how you fix the wrong thing.
+- **"One more restart / re-run"** — read the last error verbatim first. Never restart more than twice without new evidence.
+
+**Same symptom after a fix is a hard stop.** The hypothesis was unfinished and the fix missed the cause. Don't stack another patch on a disproven hypothesis — re-read the path from scratch before touching code again.
+
+**After three failed hypotheses, stop.** Generating 3–5 candidates up front (Phase 3) is anti-anchoring insurance; but once your three best *tested* hypotheses are ruled out, the mental model is wrong, not your luck — grinding through lower-ranked guesses from the same model rarely pays. Hand off instead:
+
+```
+Symptom:            [one sentence]
+Hypotheses tested:  1. <hypothesis> → <how tested> → ruled out because <why>
+                    2. …
+                    3. …
+Evidence:           [logs / traces / repro steps / env: versions, config]
+Ruled out:          [causes eliminated]
+Unknowns:           [what's still unclear or missing]
+Next steps:         [directions to try; access or artifacts needed]
+```
+
+Then ask the user how to proceed.
+
 ## Phase 1 — Build a feedback loop
 
 **This is the skill.** Everything else is mechanical. If you have a **tight** pass/fail signal for the bug — one that goes red on _this_ bug — you will find the cause; bisection, hypothesis-testing, and instrumentation all just consume it. If you don't have one, no amount of staring at code will save you.
@@ -123,10 +149,20 @@ If a correct seam exists:
 
 ## Phase 6 — Cleanup + post-mortem
 
+### Sibling sweep
+
+A root cause usually has a **shape** — a specific function, API call, regex, missing guard, or skipped validation — and that shape often recurs elsewhere. One local fix that ignores the siblings leaves N−1 of the same bug in the tree.
+
+1. Name the pattern signature: the exact call / regex / missing check that produced the bug.
+2. `grep` the shape across the repo (exclude generated, build, and vendored dirs). For a class-of-bug ("any handler missing the lock"), grep the surrounding shape, not just the literal text.
+3. For every match, decide **in writing**: same bug (fix it), safe (say why), or unsure (ask the user). Don't silently skip a match.
+4. If the sweep surfaces unrelated bugs, list them but don't fix them in this change unless the user agrees — scope creep is its own anti-pattern.
+
 Required before declaring done:
 
 - [ ] Original repro no longer reproduces (re-run the Phase 1 loop)
 - [ ] Regression test passes (or absence of seam is documented)
+- [ ] Sibling sweep done — same-shape sites checked (fixed / safe / asked), unrelated finds listed
 - [ ] All `[DEBUG-...]` instrumentation removed (`grep` the prefix)
 - [ ] Throwaway prototypes deleted (or moved to a clearly-marked debug location)
 - [ ] The hypothesis that turned out correct is stated in the commit / PR message — so the next debugger learns

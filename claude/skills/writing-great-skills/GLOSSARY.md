@@ -179,3 +179,9 @@ An instruction that changes nothing because the model already does it by default
 A leading word is a *technique*; No-Op is a *verdict* on a line — and they cross. A leading word too weak to beat the default is a no-op (_be thorough_ when the agent is already thorough-ish), and the fix is a stronger word that passes the verdict (_relentless_), not a different technique. So the No-Op test — does it change behaviour versus the default? — is also how you grade whether a leading word is earning its repetitions. This is model-relative, not reader-relative: two people disagreeing over whether a line is a no-op disagree about the default, and settle it by running the skill, not by debate.
 
 _Avoid_: redundant instruction, restating the obvious, belaboring
+
+### Negation
+
+Steering the agent by prohibition — "don't do X" — which backfires: naming the unwanted behaviour makes it *more* available, not less (say _don't think of an elephant_ and the elephant is all the agent holds). The fix is to prompt the positive: state the target behaviour so the banned one is never spoken. Keep a bare prohibition only as a hard guardrail you cannot phrase positively, and even then pair it with the positive deliverable — what the agent should produce instead — so the instruction does not drift once the prohibition is forgotten. Distinct from a **no-op**: a negation can change behaviour (often the wrong way), where a no-op changes nothing.
+
+_Avoid_: prohibition, negative prompting, don't-list

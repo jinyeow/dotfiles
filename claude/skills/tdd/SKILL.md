@@ -27,6 +27,18 @@ Reserve invocation verification for behaviour that **cannot** be observed in the
 
 Even then, never **both** return a value from a mock **and** assert its invocation for the _same_ behaviour — assert the result instead. Useful trick: have the mock **echo its inputs into its return value**, so a result assertion proves the right data was wired through without spying.
 
+## Seams — where tests go
+
+A **seam** is the public boundary you test at: the interface where you observe behavior without reaching inside. Tests live at seams, never against internals.
+
+**Test only at pre-agreed seams.** Before writing any test, name the seams under test and confirm them with the user — no test is written at an unconfirmed seam. You can't test everything; agreeing the seams up front is how testing effort lands on the critical paths and complex logic instead of every edge case.
+
+Ask: "What's the public interface, and which seams should we test?"
+
+## Anti-Pattern: Tautological Assertions
+
+An assertion that recomputes the expected value the way the code does — `expect(add(a, b)).toBe(a + b)`, a snapshot derived by hand the same way, a constant asserted equal to itself — passes by construction and can never disagree with the code. Expected values must come from an independent source of truth: a known-good literal, a worked example, or the spec.
+
 ## Anti-Pattern: Horizontal Slices
 
 **DO NOT write all tests first, then all implementation.** This is "horizontal slicing" - treating RED as "write all tests" and GREEN as "write all code."
@@ -98,17 +110,13 @@ Rules:
 - Don't anticipate future tests
 - Keep tests focused on observable behavior
 
-### 4. Refactor
+### 4. Refactor (tactical)
 
-After all tests pass, look for [refactor candidates](refactoring.md):
-
-- [ ] Extract duplication
-- [ ] Deepen modules (move complexity behind simple interfaces)
-- [ ] Apply SOLID principles where natural
-- [ ] Consider what new code reveals about existing code
-- [ ] Run tests after each refactor step
+While green, clean up what you just wrote — extract duplication, rename for clarity, tidy local structure. See [refactor candidates](refactoring.md). Run tests after each step.
 
 **Never refactor while RED.** Get to GREEN first.
+
+Structural refactoring — deepening modules, interface redesign, applying SOLID, or acting on what the new code reveals about *existing* code — is **not** part of the loop. Defer it to the review stage: `/simplify`, `/code-review`, or `/improve-codebase-architecture`.
 
 ## Checklist Per Cycle
 

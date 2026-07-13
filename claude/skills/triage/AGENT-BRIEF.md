@@ -1,6 +1,6 @@
 # Writing Agent Briefs
 
-An agent brief is a structured comment posted on a GitHub issue or PR when it moves to `ready-for-agent`. It is the authoritative specification that an AFK agent will work from. The original body and discussion are context — the agent brief is the contract.
+An agent brief is a structured comment posted on a GitHub issue or PR when it moves to `ready`. It is the authoritative specification that an AFK agent will work from. The original body and discussion are context — the agent brief is the contract.
 
 The brief states **what the agent should do**, which stretches to both surfaces: for an issue, that's building the change from nothing; for a PR, it's what's left to do *to the existing diff* — finish it, close gaps, address review points. Same principles either way; the PR example below shows the difference.
 
@@ -8,7 +8,7 @@ The brief states **what the agent should do**, which stretches to both surfaces:
 
 ### Durability over precision
 
-The issue may sit in `ready-for-agent` for days or weeks. The codebase will change in the meantime. Write the brief so it stays useful even as files are renamed, moved, or refactored.
+The issue may sit in `ready` for days or weeks. The codebase will change in the meantime. Write the brief so it stays useful even as files are renamed, moved, or refactored.
 
 - **Do** describe interfaces, types, and behavioral contracts
 - **Do** name specific types, function signatures, or config shapes that the agent should look for or modify
@@ -29,7 +29,7 @@ Describe **what** the system should do, not **how** to implement it. The agent w
 
 The agent needs to know when it's done. Every agent brief must have concrete, testable acceptance criteria. Each criterion should be independently verifiable.
 
-- **Good:** "Running `gh issue list --label needs-triage` returns issues that have been through initial classification"
+- **Good:** "Running `gh issue list --label triaged` returns issues that have been through initial classification"
 - **Bad:** "Triage should work correctly"
 
 ### Explicit scope boundaries

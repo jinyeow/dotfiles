@@ -80,6 +80,25 @@ direct. Prefer deleting complexity over rearranging it.
    whether it should run in parallel. If related updates can leave state half-applied, push for a
    more atomic structure. Don't over-index on micro-optimizations.
 
+### Named smell baseline (Fowler, *Refactoring* ch.3)
+
+A supplement to the code-judo moves above — named smells to match against the diff. Two rules bind
+them: a **documented repo standard always overrides**, and each is a **judgement call** ("possible
+Feature Envy"), never a hard violation. **Skip anything tooling already enforces.**
+
+- **Mysterious Name** — a name that doesn't reveal what it does or holds → rename; if no honest name comes, the design's murky.
+- **Duplicated Code** — the same logic shape in more than one hunk or file → extract it, call from both.
+- **Feature Envy** — a method reaching into another object's data more than its own → move it onto the data it envies.
+- **Data Clumps** — the same few fields or params always travelling together → bundle them into one type.
+- **Primitive Obsession** — a primitive or string standing in for a domain concept → give the concept its own small type.
+- **Repeated Switches** — the same `switch`/`if`-cascade on one type recurring across the change → polymorphism, or one shared map.
+- **Shotgun Surgery** — one logical change forcing scattered edits across many files → gather what changes together.
+- **Divergent Change** — one module edited for several unrelated reasons → split so each changes for one reason.
+- **Speculative Generality** — abstraction, params, or hooks for needs the spec doesn't have → delete it, inline back.
+- **Message Chains** — long `a.b().c().d()` navigation the caller shouldn't depend on → hide the walk behind one method.
+- **Middle Man** — a class or function that mostly just delegates onward → cut it, call the target direct.
+- **Refused Bequest** — a subclass ignoring or overriding most of what it inherits → drop the inheritance, use composition.
+
 ---
 
 ## Severity scale
