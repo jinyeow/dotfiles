@@ -77,10 +77,25 @@ function Write-Fail    ($Msg) { Write-Host "[ERROR] $Msg" -ForegroundColor Red  
 # ── Core helpers ──────────────────────────────────────────────────────────────
 
 function Backup-Existing ([string]$Path) {
-    if (-not (Test-Path $Path)) { return }
+    # Test-Path resolves reparse points, so a symlink/junction whose target no longer exists
+    # (e.g. after the dotfiles repo is moved to another drive) reads as "not present" — yet the
+    # link entry still occupies the name and makes a later New-Item throw "already exists". Probe
+    # with Get-Item -Force, which returns the reparse point WITHOUT following it, so re-running
+    # setup.ps1 clears a stale/dangling link and self-heals a moved repo.
+    $item = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+    if (-not $item) { return }
     $ts     = Get-Date -Format 'yyyyMMdd_HHmmss'
     $backup = "${Path}.bak.${ts}"
-    if (-not $DryRun) { Move-Item -Path $Path -Destination $backup }
+    # A dangling link has no content to preserve — remove it; otherwise rename to a timestamped .bak.
+    if (-not $DryRun) {
+        $isReparse = $item.Attributes -band [IO.FileAttributes]::ReparsePoint
+        if ($isReparse -and -not (Test-Path -LiteralPath $Path)) {
+            Remove-Item -LiteralPath $Path -Force
+            Write-Warn "Removed dangling link:  $Path"
+            return
+        }
+        Move-Item -LiteralPath $Path -Destination $backup
+    }
     Write-Warn "Backed up:  $Path"
     Write-Warn "        ->  $backup"
 }
