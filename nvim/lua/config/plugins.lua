@@ -28,6 +28,10 @@ local specs = {
   'https://github.com/b0o/schemastore.nvim',
   'https://github.com/lewis6991/gitsigns.nvim',
   'https://github.com/MeanderingProgrammer/render-markdown.nvim',
+  -- DAP client only. The PowerShell adapter (config/dap.lua) drives PowerShell
+  -- Editor Services in -DebugServiceOnly mode over a named pipe — no debugger
+  -- plugin needed, PSES *is* the debug server (same one VS Code uses).
+  'https://github.com/mfussenegger/nvim-dap',
 }
 
 -- load=true: sources plugin/ and ftdetect/ files immediately so subsequent
