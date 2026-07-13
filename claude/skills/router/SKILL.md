@@ -48,7 +48,7 @@ Not feature work — upkeep.
 - **`/improve-codebase-architecture`** — run in a spare moment to keep the codebase good for agents to operate in. It surfaces **deepening opportunities**; picking one *generates an idea* you take into the main flow at `/grill-with-docs`. The survey that finds candidates.
 - **`/codebase-design`** — the deep-module vocabulary (module, interface, depth, seam, adapter, leverage, locality) for designing a module's *shape*. The bench you design a chosen candidate on. `/tdd` and `/improve-codebase-architecture` both speak it.
 
-*Gap: there's no domain-modeling skill in this roster — `/grill-with-docs` (for `CONTEXT.md` glossary work) and `/codebase-design` (for module shape) carry that vocabulary between them.*
+*Domain modeling has no separate skill because `/grill-with-docs` carries the full active discipline — challenging terms, keeping `CONTEXT.md` a clean glossary, recording ADRs, with its own `CONTEXT-FORMAT.md` / `ADR-FORMAT.md`. `/codebase-design` owns module shape. Between them the vocabulary is covered.*
 
 ## Reviewing & verifying — a ladder by target
 
@@ -94,8 +94,11 @@ Key forks: `azure-resource-manager` is *knowledge*, `bicep-tdd` is the *authorin
 
 ## Research
 
+Three weights, lightest first:
+
+- **`/quick-research`** — delegate reading legwork to a **background agent**: it investigates a question against primary sources and leaves a short cited Markdown file in the repo, so you keep working while it reads.
+- **`/deep-research`** (built-in) — fan-out web searches, adversarially verify, synthesize a cited **Markdown** report. The general research harness.
 - **`/storm-research`** — a multi-perspective, citation-verified **HTML briefing** (five expert lenses → contradiction map → synthesis → adversarial verification). For topics where viewpoints and fact-checking matter.
-- **`/deep-research`** (built-in) — fan-out web searches, adversarially verify, synthesize a cited **Markdown** report. The lighter, general research harness.
 
 Research feeds the main flow — take its output *into* `/grill-with-docs`; it doesn't replace the thinking.
 
