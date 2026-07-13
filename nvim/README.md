@@ -23,7 +23,8 @@ nvim/
 ├── install.ps1        # standalone Windows installer (legacy)
 ├── install.py         # standalone cross-platform installer (legacy)
 ├── after/ftplugin/
-│   └── cs.lua         # buffer-local C# test/run/build + inlay-hint toggle
+│   ├── cs.lua         # buffer-local C# test/run/build + inlay-hint toggle
+│   └── ps1.lua        # buffer-local PowerShell debug keymaps (nvim-dap)
 └── lua/config/
     ├── performance.lua
     ├── user.lua
@@ -33,12 +34,13 @@ nvim/
     ├── autocmds.lua
     ├── treesitter.lua
     ├── lsp.lua
+    ├── dap.lua        # PowerShell debugging via PSES (DebugServiceOnly + pipe)
     ├── gitsigns.lua
     └── ui.lua
 ```
 
 Load order: `performance` → `user` → `plugins` → `options` → `keymaps` →
-`autocmds` → `treesitter` → `lsp` → `gitsigns` → `ui`
+`autocmds` → `treesitter` → `lsp` → `dap` → `gitsigns` → `ui`
 
 ## Install
 
@@ -128,6 +130,7 @@ Falls back to sunrise/sunset window if detection fails.
 | schemastore.nvim | JSON/YAML schema catalogue |
 | gitsigns.nvim | In-buffer git signs and hunk actions |
 | render-markdown.nvim | In-buffer markdown rendering |
+| nvim-dap | Debug client; PowerShell adapter via PSES (needs `pwsh_bundle_path` in user.lua) |
 
 ## LSP servers
 
@@ -221,6 +224,17 @@ The `azure-pipelines` filetype has no Treesitter grammar of its own, so `autocmd
 | `<leader>nb` | `dotnet build` in a terminal split |
 | `<leader>th` | Toggle LSP inlay hints |
 | `<leader>A` | Alternate source ⇄ test file (also in `.ps1` buffers) |
+
+### PowerShell debug (in `.ps1` buffers, needs `pwsh_bundle_path`)
+
+| Key | Action |
+|---|---|
+| `<F5>` | Start / continue |
+| `<F10>` | Step over |
+| `<F11>` / `<S-F11>` | Step into / out |
+| `<S-F5>` | Terminate |
+| `<leader>b` / `<leader>B` | Toggle / conditional breakpoint |
+| `<leader>nr` | Toggle DAP REPL |
 
 ### Fugitive (full profile only)
 
