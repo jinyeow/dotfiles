@@ -50,31 +50,28 @@ parts=()
 
 if [ -n "$used" ] && [ -n "$total" ]; then
   used_fmt=$(fmt_tokens "$used")
-  total_fmt=$(fmt_tokens "$total")
   pct=$(awk "BEGIN { printf \"%.0f\", $used / $total * 100 }")
-  parts+=("${used_fmt} / ${total_fmt} tokens (${pct}%)")
+  parts+=("${used_fmt} (${pct}%)")
 fi
 
-# Only show rate limit when pressure is meaningful (>= 50%)
+# Always show 5-hour window usage (percentage used, plus time until it resets)
 if [ -n "$rate_5h" ]; then
   rate_pct=$(printf "%.0f" "$rate_5h")
-  if [ "$rate_pct" -ge 50 ]; then
-    rate_seg="rate ${rate_pct}%"
-    # Append time until the 5h window resets (resets_at is Unix epoch seconds)
-    if [[ "$rate_5h_reset" =~ ^[0-9]+$ ]]; then
-      remain=$(( rate_5h_reset - $(date +%s) ))
-      if [ "$remain" -gt 0 ]; then
-        rh=$((remain / 3600))
-        rm=$(((remain % 3600) / 60))
-        if [ "$rh" -gt 0 ]; then
-          rate_seg+=" (resets ${rh}h${rm}m)"
-        else
-          rate_seg+=" (resets ${rm}m)"
-        fi
+  rate_seg="5h ${rate_pct}%"
+  # Append time until the 5h window resets (resets_at is Unix epoch seconds)
+  if [[ "$rate_5h_reset" =~ ^[0-9]+$ ]]; then
+    remain=$(( rate_5h_reset - $(date +%s) ))
+    if [ "$remain" -gt 0 ]; then
+      rh=$((remain / 3600))
+      rm=$(((remain % 3600) / 60))
+      if [ "$rh" -gt 0 ]; then
+        rate_seg+=" (resets ${rh}h${rm}m)"
+      else
+        rate_seg+=" (resets ${rm}m)"
       fi
     fi
-    parts+=("$rate_seg")
   fi
+  parts+=("$rate_seg")
 fi
 
 # Git segment: branch, upstream ahead/behind, per-category file counts (colored)
