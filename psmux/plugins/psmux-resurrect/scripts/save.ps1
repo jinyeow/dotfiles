@@ -47,11 +47,15 @@ $env_data = @{
     sessions  = @()
 }
 
-# Get all session names using format flag for clean parsing (retry on empty)
+# Get all session names using format flag for clean parsing (retry on empty). Guard on the exit
+# code: `list-sessions 2>&1` merges stderr, so a "no server running" error would otherwise be
+# parsed as a bogus session name below and slip past the zero-session guard. Discard the output
+# whenever psmux exits non-zero, so only real session names survive.
 $sessionLines = ''
 for ($retry = 0; $retry -lt 5; $retry++) {
     $sessionLines = (& $PSMUX list-sessions -F '#{session_name}' 2>&1) | Out-String
-    if ($sessionLines.Trim()) { break }
+    if ($LASTEXITCODE -eq 0 -and $sessionLines.Trim()) { break }
+    $sessionLines = ''
     Start-Sleep -Milliseconds 500
 }
 foreach ($line in ($sessionLines -split "`n")) {
@@ -128,6 +132,16 @@ foreach ($line in ($sessionLines -split "`n")) {
     }
 
     $env_data.sessions += $sessionData
+}
+
+# Empty-state guard: never overwrite a good snapshot (or repoint `last`) with a zero-session
+# capture. The 15-min auto-save loop can fire while the server has no sessions (e.g. it exited
+# after the last client detached), and without this guard that empty capture clobbers the last
+# real save, so restore-on-start brings back nothing. Keep the previous snapshot intact instead.
+if ($env_data.sessions.Count -eq 0) {
+    & $PSMUX display-message "No sessions to save, keeping previous snapshot." 2>&1 | Out-Null
+    Write-Host "psmux-resurrect: 0 sessions captured, skipped (kept previous save)." -ForegroundColor DarkGray
+    return
 }
 
 # Save to JSON
