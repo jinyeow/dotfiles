@@ -30,11 +30,27 @@ as native `set` lines in `psmux.conf`. Likewise `psmux-pain-control` is **not** 
 keybindings, so its useful binds (vim-key resize, `Prefix+</>` window reorder, `|`/`-` split aliases) are
 inlined into `psmux.conf`. Only the stateful persistence plugins + the sidebar carry vendored PowerShell.
 
+## Local patches
+
+One deliberate divergence from upstream, kept in-repo:
+
+- **`psmux-resurrect/scripts/save.ps1`** — a zero-session guard: if a save captures no
+  sessions it skips writing and keeps the previous `last` snapshot, and the `list-sessions`
+  retry discards output on a non-zero psmux exit so a "no server running" stderr line can't be
+  parsed as a bogus session. Without this, the 15-min auto-save loop firing against a server
+  with no sessions clobbers the last good snapshot, so restore-on-server-start brings back
+  nothing. Covered by `tests/psmux.Tests.ps1` (empty-output + psmux-error cases).
+
+A re-copy during an update (below) overwrites this — **re-apply the guard after step 2** and
+confirm `tests/psmux.Tests.ps1` passes.
+
 ## Updating
 
 Deliberate, reviewed bumps only:
 1. `git clone https://github.com/psmux/psmux-plugins.git` at the new revision.
 2. Re-copy `psmux-resurrect`, `psmux-continuum`, `psmux-sidebar` over these dirs.
-3. Update the pinned commit above and review the diff (`git diff`) before committing.
+3. Re-apply the local patch above and run `tests/psmux.Tests.ps1`.
+4. Update the pinned commit above and review the diff (`git diff`) before committing.
 
-Do **not** edit these files in place — they are upstream code.
+Otherwise do **not** edit these files in place — they are upstream code, save for the
+documented patch above.

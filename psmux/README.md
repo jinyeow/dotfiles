@@ -160,3 +160,7 @@ ships only keybindings, no scripts. The status bar shows `[grid]` when auto-grid
 - **Config is `~/.psmux.conf`**, not `~/.tmux.conf`.
 - Persistence across a full reboot needs `psmux-resurrect` + `psmux-continuum`; the bare
   server survives detach/terminal-crash but not reboot.
+- **Auto-save won't clobber a good snapshot with an empty one** — `save.ps1` skips writing
+  (and keeps the previous `last`) when it captures zero sessions, so the 15-min loop firing
+  against an idle/exited server no longer wipes what restore-on-start brings back. This is a
+  local patch to the vendored plugin; see `plugins/README.md`.

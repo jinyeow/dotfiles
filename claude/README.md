@@ -110,14 +110,16 @@ the `Notification` hook still beeps unless you swap it too.
 
 `statusline-command.sh` reads the JSON context piped by Claude Code and outputs
 a statusline of the form
-`Opus | 12.4k / 1M tokens (1%) | rate 70% (resets 2h14m) | ±main ↑2 *3 ?1 | PR#1234 ✓`.
+`Opus | 12.4k (1%) | 5h 70% (resets 2h14m) | ±main ↑2 *3 ?1 | PR#1234 ✓`.
 Requires `jq` and `git`.
 
-The percentage is computed from `used / context_window_size` — the denominator
-comes straight from the JSON's `context_window.context_window_size` (200000, or
-1000000 for extended-context models). The JSON's own `used_percentage` is
-**not** used: it reflects Claude Code's internal compaction threshold rather than
-the model's actual context limit.
+The context segment shows the used-token count and a percentage
+(`12.4k (1%)`) — no context-window size or `tokens` label. The percentage is
+computed from `used / context_window_size`, the denominator taken straight from
+the JSON's `context_window.context_window_size` (200000, or 1000000 for
+extended-context models). The JSON's own `used_percentage` is **not** used here:
+it reflects Claude Code's internal compaction threshold rather than the model's
+actual context limit.
 
 The git segment (from `.workspace.current_dir`) mirrors the PowerShell prompt's
 colors: `±branch` red when dirty / yellow when clean (`wt:` prefix in a worktree),
@@ -126,10 +128,10 @@ counts `+N` staged (green), `*N` modified (yellow), `?N` untracked (magenta),
 `!N` conflicts (red). Each count is omitted when zero; the whole segment is
 absent outside a git repo.
 
-The rate segment shows only when the 5-hour window is ≥50% consumed
-(`rate_limits.five_hour`); when shown, it appends a countdown to the window reset
-(`resets 2h14m`, or `resets 14m` under an hour) derived from `resets_at`. The
-7-day window is not shown.
+The `5h` segment always shows the 5-hour window usage
+(`rate_limits.five_hour.used_percentage`) and appends a countdown to the window
+reset (`resets 2h14m`, or `resets 14m` under an hour) derived from `resets_at`.
+The 7-day window is not shown.
 
 The PR segment appears only while an open PR exists for the branch (`.pr`):
 `PR#N` plus a review-state glyph — `✓` approved (green), `✗` changes_requested
