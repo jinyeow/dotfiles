@@ -89,6 +89,12 @@ if ($global:ProfileInteractiveConsole) {
     Set-PSReadLineKeyHandler -Chord Shift+Tab -Function MenuComplete
     Set-PSReadLineKeyHandler -Chord Ctrl+b -Function BackwardChar
     Set-PSReadLineKeyHandler -Chord Ctrl+f -Function ForwardChar
+    # Inline-prediction acceptance (the grey ghost text). RightArrow/End accept the WHOLE
+    # suggestion (PSReadLine default, unchanged); ForwardChar (Ctrl+f, above) walks one char.
+    # Bind Alt+RightArrow to ForwardWord so, at end-of-line, it accepts the next WORD of the
+    # suggestion — and elsewhere it is an ordinary word-forward motion. Tab never accepts a
+    # prediction: it is a separate subsystem and discards the suggestion to run completion.
+    Set-PSReadLineKeyHandler -Chord Alt+RightArrow -Function ForwardWord
     Set-PSReadLineKeyHandler -Chord Ctrl+p -Function PreviousHistory
     Set-PSReadLineKeyHandler -Chord Ctrl+n -Function NextHistory
     Set-PSReadLineKeyHandler -Chord Ctrl+a -Function BeginningOfLine
