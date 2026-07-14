@@ -180,6 +180,15 @@ Codex joins as a cross-model seat under the same standing-consent exception as
 surface per domain; the pipeline is defined once in `council`). For branch diffs/PRs use
 `deep-review`, not `council`.
 
+`walkthrough` is the post-`implement` mentoring stage of the main flow: it walks the user through
+a diff like a senior pairing with a junior (checkpoint tour / overview-then-Q&A / socratic, chosen
+at start or via `--mode`), chunked into narrative beats and framed against the driving spec/ticket
+when one can be found. It explains rather than judges — findings stay with `code-review` /
+`spec-review`. It keeps a two-grain **learner profile** seeded into every tour and updated at
+close-out (delta shown for veto): general-skill observations in `~/.claude/learner-profile.md`
+(untracked, created on first use), domain-specific ones in the resolved project-brain's
+`learner.md`.
+
 The review→fix skills compose around `_shared/` contracts: **`deep-review`** fans out parallel
 per-dimension reviewers + Codex over a branch diff/PR, adversarially verifies the findings, and
 emits them to a findings store; **`fix-findings`** consumes that store and applies fixes (parallel,
