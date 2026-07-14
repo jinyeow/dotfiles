@@ -27,6 +27,8 @@ The route most feature work travels. You have an idea and want it built.
 
    Either way, **`/implement`** builds each piece by driving **`/tdd`** internally — one red-green slice at a time — then closes out by running **`/code-review`** (built-in) on the diff before committing. Reach for **`/tdd`** on its own to build a concrete behaviour test-first without a full spec. After implementing from a spec or ticket, **`/spec-review`** checks the diff against what was *asked for* (missing requirements, scope creep) — the conformance axis that `/code-review`'s quality axis doesn't cover.
 
+4. **Understand what was built** — once the reviews have run, **`/walkthrough`** walks *you* through the diff like a senior pairing with a junior: chunked into narrative beats, framed against the driving spec/ticket, in your choice of checkpoint tour / overview / socratic mode. It explains rather than judges, and it remembers what you know across sessions via the learner profile (global + project-brain).
+
 **Precondition — `/setup-agent-skills`.** Run once per repo before your first `to-spec` / `to-hld` / `to-tickets` / `triage`: it records where specs/designs/tickets land, whether a tracker is used and its labels, and the doc layout the flow assumes.
 
 ### Context hygiene
@@ -61,6 +63,8 @@ Pick by **what you're reviewing** and **how hard**. Each rung escalates.
 - **`/council`** — adversarial panel for **non-diff artifacts**: an idea, a design doc or ADR, a plan, a presentation. It auto-picks the panel by type; name **`/council-code`** / **`/council-business`** / **`/council-plan`** / **`/council-doc`** directly only when you already know the type. **Not for diffs** — that's `/deep-review`.
 - **`/security-review`** (built-in) — a security-focused pass over the pending changes. **`/verify`** (built-in) — drive the change end-to-end and observe behaviour, not just tests.
 
+*Not a rung: to have a diff **explained to you** rather than judged, use **`/walkthrough`** (see Writing & docs) — it tours the change like a senior pairing with a junior and emits no findings.*
+
 ## Prompting
 
 Two halves of the 12-lever prompting checklist.
@@ -91,6 +95,7 @@ Key forks: `azure-resource-manager` is *knowledge*, `bicep-tdd` is the *authorin
 - **`/write`** — de-AI and polish English prose: drafts, READMEs, release notes, long-form. Not code comments or commit messages.
 - **`/teach`** — learn a concept over multiple sessions, using the current directory as a stateful workspace.
 - **`/zoom-out`** — ask for broader context or a higher-level perspective when you're unfamiliar with a section of code or how it fits the whole.
+- **`/walkthrough`** — have a **diff** explained to you like a senior pairing with a junior: checkpoint tour, overview, or socratic mode, framed against the driving spec/ticket. The diff-scoped sibling of `/zoom-out` (which maps static code) and the post-`/implement` stage of the main flow. Tracks what you know in a learner profile — general skills in `~/.claude/learner-profile.md`, domain knowledge in the project-brain's `learner.md`.
 
 ## Research
 

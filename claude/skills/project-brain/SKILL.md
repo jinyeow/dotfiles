@@ -20,7 +20,9 @@ and regenerate-able; the brain's truth source is the work. Design rationale: `<b
 - Global map: `~/.claude/project-brain/brains.json` - `[{ scope, path }]`, one per area. The SessionStart
   hook (`~/.claude/skills/project-brain/scripts/session-start.ps1`) reads it.
 - A brain repo per area: `index.md`, `log.md`, `registry.json`, `adr/`, `templates/`, `reports/`,
-  `initiatives/<id>/`.
+  `initiatives/<id>/`, and optionally `learner.md` — the `/walkthrough` skill's area-level learner
+  profile (domain knowledge the user has demonstrated; written by walkthrough close-out, read to
+  pitch tour depth). Area-level, not per-initiative, because the user's knowledge spans initiatives.
 - An initiative: `core.md` (stable, auto-loaded), `STATUS.md` (volatile, auto-loaded), `adr/`,
   `research/` (+ `index.md`), `reports/`, `spikes/`.
 - Single-directory work uses the same schema in the repo's gitignored `.claude/brain/` instead.
