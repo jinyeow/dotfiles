@@ -20,6 +20,8 @@ readarray -t F < <(echo "$input" | jq -r '
 used=${F[0]}
 total=${F[1]}
 model_name=${F[2]}
+# Strip the trailing " (… context)" annotation Claude Code appends to 1M-context models
+model_name=${model_name% (*context)}
 rate_5h=${F[3]}
 rate_5h_reset=${F[4]}
 dir=${F[5]}
