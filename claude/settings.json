@@ -143,6 +143,7 @@
   },
   "effortLevel": "high",
   "advisorModel": "opus",
+  "teammateMode": "in-process",
   "tui": "fullscreen",
   "theme": "dark-ansi",
   "editorMode": "vim",
