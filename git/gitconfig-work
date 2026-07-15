@@ -25,11 +25,26 @@
 # own pre-commit (gitleaks) still runs LAST. Inspect with:  git hook list pre-commit
 # Opt out without deleting:  enabled = false
 #
-# The path is deliberately unquoted — git runs `command` through sh, which expands
-# the leading ~; quoting it would defeat that. Keep the path free of spaces.
+# The `test -x` guard is load-bearing: git does NOT fail open on a missing command —
+# it errors "cannot spawn <path>" and BLOCKS the commit. ~/.gitconfig-work [include]s
+# the repo copy, so this stanza goes live the moment a clone pulls, while
+# ~/.git_work_hooks only appears once `setup.ps1/setup.sh -Module git` re-runs. Without
+# the guard every work-repo commit fails in that window. The guard covers only an
+# ABSENT dispatcher; a present one that exits non-zero still blocks, as it should.
+# Both directions are pinned by tests/git-work-hooks.Tests.ps1 — don't hand-edit this
+# value without running them.
+#
+# THE SURROUNDING DOUBLE QUOTES ARE REQUIRED. `;` starts a comment in git config, so
+# unquoted this silently truncates to `test -x ... || exit 0` — the policy never runs
+# and the hook enforces nothing while still listing in `git hook list`. Git strips
+# these quotes before handing the value to sh, so ~ still expands (the path must stay
+# space-free: sh word-splits it). `test -x ... && exec ...` avoids the `;` but is
+# WRONG — with the dispatcher absent, test exits 1 and that becomes the hook's status,
+# blocking the commit. The explicit `|| exit 0` is what makes it fail open.
+#
 # NOTE: Git 2.55 has no config key for parallel hooks — `parallel = true` is
 # silently ignored. Only `git hook run --jobs=N` parallelizes, and git does not use
 # it on the commit path. See git/README.md.
 [hook "work-policy"]
     event = pre-commit
-    command = ~/.git_work_hooks/policy
+    command = "test -x ~/.git_work_hooks/policy || exit 0; exec ~/.git_work_hooks/policy"

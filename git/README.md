@@ -93,8 +93,25 @@ conditions as everything else in `gitconfig-work`:
 ```ini
 [hook "work-policy"]
     event = pre-commit
-    command = ~/.git_work_hooks/policy
+    command = "test -x ~/.git_work_hooks/policy || exit 0; exec ~/.git_work_hooks/policy"
 ```
+
+Two things about that value are load-bearing, both pinned by
+`tests/git-work-hooks.Tests.ps1`:
+
+- **The guard makes it fail open when the dispatcher isn't installed.** Git does
+  *not* fail open on a missing command — it errors `cannot spawn <path>` and
+  **blocks the commit**. `~/.gitconfig-work` includes the repo copy, so the stanza
+  goes live the moment a clone pulls, while `~/.git_work_hooks` only appears once
+  `setup.ps1 -Module git` re-runs; without the guard every work commit fails in
+  that window. A dispatcher that *is* present and exits non-zero still blocks.
+- **The double quotes are required.** `;` starts a comment in git config, so
+  unquoted the value silently truncates to `test -x ... || exit 0` — the policy
+  never runs and the hook enforces nothing while still appearing in
+  `git hook list`. Git strips the quotes before handing the value to sh, so `~`
+  still expands. (`test -x ... && exec ...` dodges the `;` but is wrong: with the
+  dispatcher absent, `test` exits 1 and that becomes the hook's status, blocking
+  the commit. The explicit `|| exit 0` is what fails open.)
 
 `policy` is a POSIX-sh dispatcher that execs `policy.ps1` (pwsh) or `policy.sh`
 (fallback) — the same shim pattern as `prepare-commit-msg`. It is an **example
