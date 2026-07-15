@@ -36,6 +36,13 @@ while ($dir) {
     Where-Object { Test-Path -LiteralPath $_ } |
     Select-Object -First 1
   if ($candidate) { $analyzerArgs['Settings'] = $candidate; break }
+  # Stop at the project boundary. A ruleset further up belongs to another project - or to
+  # the user's home, where one stray file would silently govern linting in every repo on
+  # the machine. Checked AFTER the ruleset so a ruleset sitting AT the root still wins.
+  # `.jj` as well as `.git` because a non-colocated Jujutsu repo has no `.git` (same
+  # reason nvim/lua/config/autocmds.lua roots on both); no -PathType, since `.git` is a
+  # file rather than a directory in a worktree.
+  if ((Test-Path -LiteralPath (Join-Path $dir '.git')) -or (Test-Path -LiteralPath (Join-Path $dir '.jj'))) { break }
   $parent = Split-Path -Parent $dir
   if ($parent -eq $dir) { break }
   $dir = $parent

@@ -46,6 +46,16 @@ BeforeAll {
             -Value $script:Settings -Encoding UTF8
     }
 
+    # Marks $Dir as a project boundary. Every test sets one: without it the walk-up escapes
+    # into $env:TEMP's ancestors and the result depends on whether the machine happens to
+    # have a stray ruleset in a parent dir - so these tests would pass or fail on
+    # environment, not behaviour.
+    function Add-VcsRoot {
+        param([string] $Dir)
+
+        New-Item -ItemType Directory -Path (Join-Path $Dir '.git') -Force | Out-Null
+    }
+
     # Drives the hook exactly as Claude Code does: tool-call JSON on stdin.
     function Invoke-LintHook {
         param([string] $FilePath)
@@ -68,6 +78,7 @@ Describe 'claude/lint-powershell.ps1 ruleset discovery' -Skip:(-not $script:HasP
         $root = New-TempRoot
         try {
             $edited = New-LintTree -Root $root
+            Add-VcsRoot -Dir $root
             $out = Invoke-LintHook -FilePath $edited
 
             $out | Should -Match 'PSAvoidUsingWriteHost' -Because 'PSSA defaults flag Write-Host, so the fixture is a real violation'
@@ -80,6 +91,7 @@ Describe 'claude/lint-powershell.ps1 ruleset discovery' -Skip:(-not $script:HasP
         $root = New-TempRoot
         try {
             $edited = New-LintTree -Root $root
+            Add-VcsRoot -Dir $root
             Add-Ruleset -Dir (Join-Path $root '.vscode')
             $out = Invoke-LintHook -FilePath $edited
 
@@ -98,10 +110,51 @@ Describe 'claude/lint-powershell.ps1 ruleset discovery' -Skip:(-not $script:HasP
         $root = New-TempRoot
         try {
             $edited = New-LintTree -Root $root
+            Add-VcsRoot -Dir $root
             Add-Ruleset -Dir $root
             $out = Invoke-LintHook -FilePath $edited
 
             $out.Trim() | Should -BeNullOrEmpty -Because 'a root ruleset is what CI uses and the hook must match it'
+        } finally {
+            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'ignores a ruleset above the project root' {
+        # The walk must stop at the project boundary. A ruleset further up belongs to some
+        # other project - or to the user's home dir, where a stray file would silently
+        # govern the linting of every repo on the machine. Checking the ruleset BEFORE the
+        # boundary is what still allows a ruleset sitting AT the root (the case above).
+        $root = New-TempRoot
+        try {
+            $project = Join-Path $root 'project'
+            $edited = New-LintTree -Root $project
+            Add-VcsRoot -Dir $project
+            Add-Ruleset -Dir $root   # outside the project
+            $out = Invoke-LintHook -FilePath $edited
+
+            $out | Should -Match 'PSAvoidUsingWriteHost' -Because 'a ruleset outside the project must not silently apply to it'
+        } finally {
+            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'treats a worktree .git FILE as the project boundary' {
+        # THIS repo's own layout (bare repo + one worktree per branch): `.git` is a hidden
+        # POINTER FILE, not a directory. A `-PathType Container` check would miss it and the
+        # walk would escape the project, so pin the file form - it is the form that actually
+        # ships here, and the failure would be silent.
+        $root = New-TempRoot
+        try {
+            $project = Join-Path $root 'project'
+            $edited = New-LintTree -Root $project
+            Set-Content -LiteralPath (Join-Path $project '.git') `
+                -Value 'gitdir: /elsewhere/.bare/worktrees/project' -Encoding UTF8
+            Add-Ruleset -Dir $root   # outside the project
+
+            $out = Invoke-LintHook -FilePath $edited
+
+            $out | Should -Match 'PSAvoidUsingWriteHost' -Because 'a worktree .git is a file and must still bound the walk'
         } finally {
             Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
         }
