@@ -15,3 +15,21 @@
 
 [submodule]
     recurse = true
+
+# Work-only pre-commit policy hook. Config-based hooks need Git >= 2.54; on older
+# git the stanza is silently ignored and nothing is enforced (setup.ps1/setup.sh
+# warn at install time). It is work-scoped purely by living in this file —
+# gitconfig's [includeIf] conditions are what limit it.
+#
+# ADDITIVE, not a replacement: configured hooks run FIRST, then core.hooksPath's
+# own pre-commit (gitleaks) still runs LAST. Inspect with:  git hook list pre-commit
+# Opt out without deleting:  enabled = false
+#
+# The path is deliberately unquoted — git runs `command` through sh, which expands
+# the leading ~; quoting it would defeat that. Keep the path free of spaces.
+# NOTE: Git 2.55 has no config key for parallel hooks — `parallel = true` is
+# silently ignored. Only `git hook run --jobs=N` parallelizes, and git does not use
+# it on the commit path. See git/README.md.
+[hook "work-policy"]
+    event = pre-commit
+    command = ~/.git_work_hooks/policy

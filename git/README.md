@@ -19,6 +19,7 @@ Git configuration, global ignore rules, commit template, and hook templates.
 | `gitignore` | `~/.gitignore` | Global ignore rules |
 | `gitmessage` | `~/.gitmessage` | Commit message template |
 | `templates/` | `~/.git_templates/` | Hook templates copied into every new repo |
+| `work-hooks/` | `~/.git_work_hooks/` | Work-only hooks, wired via `[hook]` in `gitconfig-work`. **Not** under `~/.git_templates/` — see below |
 
 ## Key settings
 
@@ -83,6 +84,92 @@ git config hooks.skipBranches "main,release/*,hotfix/*"
 Auto-regenerate ctags after relevant git operations. Reads `~/.ctags` for
 tag configuration. Create a `.notags` file in any repo to disable.
 
+## Work-only hooks (`work-hooks/`)
+
+`core.hooksPath` is global — it cannot scope a hook to work repos. Git 2.54's
+**config-based hooks** can, because a `[hook]` stanza obeys the same `[includeIf]`
+conditions as everything else in `gitconfig-work`:
+
+```ini
+[hook "work-policy"]
+    event = pre-commit
+    command = ~/.git_work_hooks/policy
+```
+
+`policy` is a POSIX-sh dispatcher that execs `policy.ps1` (pwsh) or `policy.sh`
+(fallback) — the same shim pattern as `prepare-commit-msg`. It is an **example
+placeholder**: it looks for a generic `work-policy-scan` tool, and when absent
+warns and allows the commit (fails **open**, like the gitleaks hook). Override
+the tool name with `WORK_POLICY_TOOL`; bypass one commit with
+`SKIP_WORK_POLICY=1 git commit ...`.
+
+### Ordering is additive — existing hooks still run
+
+Configured hooks run **first** (system → global → local, in file order), then the
+`core.hooksPath` script runs **last**. The gitleaks `pre-commit` and the
+`prepare-commit-msg` ticket trailer are untouched. Verify:
+
+```console
+$ git hook list pre-commit          # in a work repo
+work-policy
+hook from hookdir                   # <- the gitleaks pre-commit, still last
+
+$ git hook list pre-commit          # in a personal repo
+hook from hookdir                   # work-policy absent: [includeIf] did not match
+```
+
+`git hook list --show-scope pre-commit` adds where each came from (`global`,
+`local`). Opt out without deleting the stanza:
+
+```sh
+git config hook.work-policy.enabled false   # -> "disabled  work-policy"
+```
+
+### Why not `~/.git_templates/work-hooks`?
+
+`init.templatedir` copies the template directory's **contents** into every new
+repo's `.git/`, so nesting the work hooks there would put a `.git/work-hooks/` in
+every personal repo. `~/.git_work_hooks` is a sibling path, outside templatedir.
+
+The `command` path is deliberately **unquoted**: git runs it through `sh`, which
+expands the leading `~`. Quoting would defeat that, so the path must stay free of
+spaces (`sh` word-splits an unquoted path).
+
+### Requires Git >= 2.54
+
+```sh
+git --version
+```
+
+Below 2.54 the `[hook]` stanza is **ignored silently** — no error, the hook simply
+never runs, and `git hook list` does not exist. For a *policy* hook that is a trap,
+so `setup.ps1`/`setup.sh -Module git` check the version and warn at install time.
+Verified on 2.55.0.windows.2; Debian bookworm ships 2.39.2, so WSL needs a newer
+git before the stanza does anything there.
+
+**No config key enables parallel hooks.** `hook.<name>.parallel = true` is silently
+ignored (unknown hook keys always are) — measured identical serial timing with and
+without it on 2.55. Only `git hook run --jobs=N` runs same-event hooks
+concurrently, and git does not use it on the commit path, so `git commit` is
+serial regardless.
+
+## fsmonitor
+
+`core.fsmonitor = true` and `core.untrackedCache = true` are set in the **base**
+`gitconfig`, so they apply everywhere, not just work repos. They speed up the
+status-heavy PowerShell prompt (`Set-Prompt.ps1` shells out to
+`git status --porcelain` on every prompt) by having a daemon watch the filesystem
+instead of rescanning it.
+
+Caveats:
+
+- Spawns a per-repo background daemon (`git fsmonitor--daemon`), so tiny repos pay
+  startup cost for little gain. Disable per-repo with
+  `git config core.fsmonitor false`.
+- Windows has a native daemon; **Linux needs Git >= 2.55** for the inotify backend.
+  On older Linux git the setting is inert.
+- `untrackedCache` needs a filesystem with reliable mtimes; git probes on enable.
+
 ## Install
 
 ```sh
@@ -92,4 +179,5 @@ tag configuration. Create a `.notags` file in any repo to disable.
 
 Installs `~/.gitconfig` and `~/.gitconfig-work` as `[include]` stubs pointing
 to the repo files (changes are live immediately, works cross-volume).
-Junctions/symlinks `~/.git_templates` → `git/templates/`.
+Junctions/symlinks `~/.git_templates` → `git/templates/` and `~/.git_work_hooks`
+→ `git/work-hooks/`, then warns if git is older than 2.54.
