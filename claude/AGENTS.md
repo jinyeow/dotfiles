@@ -88,7 +88,7 @@ Applies to every prompt you author for a downstream model — subagent prompts, 
 ## Linting
 
 - Run PSScriptAnalyzer with `-Recurse` over the whole source tree (e.g. `<Module>/src`), not per changed file — CI does, so a per-file run can pass while CI fails on a pre-existing violation in an untouched file.
-- Always pass the project's settings file (`-Settings .vscode/PSScriptAnalyzerSettings.psd1`) so the local ruleset matches CI exactly. Never assume the local ruleset; verify against the file CI uses.
+- Always pass the project's settings file (`-Settings <path>`) so the local ruleset matches CI exactly. **Locate it, never assume it** — the path differs per repo (`.vscode/PSScriptAnalyzerSettings.psd1` and a bare `PSScriptAnalyzerSettings.psd1` at the root are both common), so read the CI workflow and pass the file it passes. Linting with the wrong ruleset — or none — silently reports rules the repo deliberately excludes, and every one of those is a false positive that costs a real fix.
 
 ## Terminal Usage
 

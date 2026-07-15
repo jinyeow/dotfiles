@@ -41,6 +41,7 @@
         { "PackageIdentifier": "jqlang.jq" },
         { "PackageIdentifier": "junegunn.fzf" },
         { "PackageIdentifier": "k3d.k3d" },
+        { "PackageIdentifier": "koalaman.shellcheck" },
         { "PackageIdentifier": "Kubernetes.kind" },
         { "PackageIdentifier": "Kubernetes.kubectl" },
         { "PackageIdentifier": "Kubernetes.minikube" },

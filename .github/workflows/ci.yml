@@ -65,12 +65,32 @@ jobs:
           args: --check nvim/
 
   shellcheck:
-    name: shellcheck (setup.sh)
+    name: shellcheck (active shell)
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v7
-      - run: shellcheck setup.sh
+
+      # An explicit list, not a glob: most of the repo's shell is out of scope, so the
+      # exclusions would outnumber the inclusions and read worse. Deliberately NOT covered
+      # (each carries pre-existing findings in code that works - the same carve-out the
+      # PSScriptAnalyzer job makes for legacy/vendored files):
+      #   - the legacy Linux snapshot per CLAUDE.md: scripts/, config/, nvim/install.sh
+      #   - bash/*.sh: sourced fragments with no shebang, never executed as scripts
+      #   - claude/skills/**: vendored skill payloads, not ours to lint
+      #   - git/templates/hooks/{ctags,post-*}: the upstream git-ctags recipe. Its SC1007 is
+      #     a false positive (`CDPATH= cd --` is a valid env-var prefix, not a botched
+      #     assignment), so gating on it would mean suppressing, not fixing.
+      # Add new first-party shell files here - nothing else picks them up.
+      - run: |
+          shellcheck \
+            setup.sh \
+            claude/no-claude-session-trailer.sh \
+            claude/statusline-command.sh \
+            git/templates/hooks/pre-commit \
+            git/templates/hooks/prepare-commit-msg \
+            git/templates/hooks/prepare-commit-msg.sh \
+            git/work-hooks/policy \
+            git/work-hooks/policy.sh
 
   gitleaks:
     name: gitleaks (secret scan)

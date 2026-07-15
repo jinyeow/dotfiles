@@ -21,12 +21,28 @@ if (-not (Get-Module -ListAvailable -Name PSScriptAnalyzer)) { exit 0 }
 Import-Module PSScriptAnalyzer -ErrorAction Stop
 
 # Use the project's ruleset when present (mirrors CI) by walking up from the edited file
-# to the nearest `.vscode/PSScriptAnalyzerSettings.psd1`; fall back to PSSA defaults.
+# to the nearest settings file; fall back to PSSA defaults.
+#
+# Both layouts are checked at each level: repos differ on where the ruleset lives, and
+# THIS repo keeps it at the root - which is the file CI passes (`-Settings
+# ./PSScriptAnalyzerSettings.psd1`). Looking only under `.vscode/` meant falling back to
+# defaults here, reporting rules the repo deliberately excludes, so every finding was a
+# false positive.
 $analyzerArgs = @{ Path = $filePath }
 $dir = Split-Path -Parent (Resolve-Path -LiteralPath $filePath)
 while ($dir) {
-  $candidate = Join-Path $dir '.vscode/PSScriptAnalyzerSettings.psd1'
-  if (Test-Path -LiteralPath $candidate) { $analyzerArgs['Settings'] = $candidate; break }
+  $candidate = '.vscode/PSScriptAnalyzerSettings.psd1', 'PSScriptAnalyzerSettings.psd1' |
+    ForEach-Object { Join-Path $dir $_ } |
+    Where-Object { Test-Path -LiteralPath $_ } |
+    Select-Object -First 1
+  if ($candidate) { $analyzerArgs['Settings'] = $candidate; break }
+  # Stop at the project boundary. A ruleset further up belongs to another project - or to
+  # the user's home, where one stray file would silently govern linting in every repo on
+  # the machine. Checked AFTER the ruleset so a ruleset sitting AT the root still wins.
+  # `.jj` as well as `.git` because a non-colocated Jujutsu repo has no `.git` (same
+  # reason nvim/lua/config/autocmds.lua roots on both); no -PathType, since `.git` is a
+  # file rather than a directory in a worktree.
+  if ((Test-Path -LiteralPath (Join-Path $dir '.git')) -or (Test-Path -LiteralPath (Join-Path $dir '.jj'))) { break }
   $parent = Split-Path -Parent $dir
   if ($parent -eq $dir) { break }
   $dir = $parent

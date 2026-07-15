@@ -106,8 +106,10 @@ if [ -n "$dir" ] && git -C "$dir" rev-parse --git-dir >/dev/null 2>&1; then
     git_seg="${branch_color}±${branch}${RESET}"
   fi
 
-  # Ahead/behind vs upstream (left=behind, right=ahead)
-  if ab=$(git -C "$dir" rev-list --left-right --count @{u}...HEAD 2>/dev/null); then
+  # Ahead/behind vs upstream (left=behind, right=ahead).
+  # `@{u}` is quoted because the braces are literal (git's upstream shorthand, not a
+  # brace expansion) — unquoted it trips shellcheck SC1083.
+  if ab=$(git -C "$dir" rev-list --left-right --count "@{u}...HEAD" 2>/dev/null); then
     behind=$(echo "$ab" | awk '{print $1}')
     ahead=$(echo "$ab" | awk '{print $2}')
     if [ "${ahead:-0}" -gt 0 ] && [ "${behind:-0}" -gt 0 ]; then
