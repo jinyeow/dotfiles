@@ -93,10 +93,10 @@ conditions as everything else in `gitconfig-work`:
 ```ini
 [hook "work-policy"]
     event = pre-commit
-    command = "test -x ~/.git_work_hooks/policy || exit 0; exec ~/.git_work_hooks/policy"
+    command = "test -f ~/.git_work_hooks/policy || exit 0; exec ~/.git_work_hooks/policy"
 ```
 
-Two things about that value are load-bearing, both pinned by
+Three things about that value are load-bearing, all pinned by
 `tests/git-work-hooks.Tests.ps1`:
 
 - **The guard makes it fail open when the dispatcher isn't installed.** Git does
@@ -105,6 +105,12 @@ Two things about that value are load-bearing, both pinned by
   goes live the moment a clone pulls, while `~/.git_work_hooks` only appears once
   `setup.ps1 -Module git` re-runs; without the guard every work commit fails in
   that window. A dispatcher that *is* present and exits non-zero still blocks.
+- **`-f` (exists), not `-x` (executable).** Fail-open is meant to cover "not
+  installed yet", never "installed but broken". With `-x`, a present-but-non-
+  executable dispatcher — an install that dropped the exec bit — makes the guard
+  exit 0 and the policy is **silently skipped**; with `-f` it reaches `exec` and
+  fails loudly (126). The difference is only visible on Linux: Windows reports
+  every file executable and `chmod` is a no-op there.
 - **The double quotes are required.** `;` starts a comment in git config, so
   unquoted the value silently truncates to `test -x ... || exit 0` — the policy
   never runs and the hook enforces nothing while still appearing in

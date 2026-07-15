@@ -25,14 +25,20 @@
 # own pre-commit (gitleaks) still runs LAST. Inspect with:  git hook list pre-commit
 # Opt out without deleting:  enabled = false
 #
-# The `test -x` guard is load-bearing: git does NOT fail open on a missing command —
+# The `test -f` guard is load-bearing: git does NOT fail open on a missing command —
 # it errors "cannot spawn <path>" and BLOCKS the commit. ~/.gitconfig-work [include]s
 # the repo copy, so this stanza goes live the moment a clone pulls, while
 # ~/.git_work_hooks only appears once `setup.ps1/setup.sh -Module git` re-runs. Without
-# the guard every work-repo commit fails in that window. The guard covers only an
-# ABSENT dispatcher; a present one that exits non-zero still blocks, as it should.
-# Both directions are pinned by tests/git-work-hooks.Tests.ps1 — don't hand-edit this
-# value without running them.
+# the guard every work-repo commit fails in that window.
+#
+# `-f` (exists), NOT `-x` (executable), and the difference only shows on Linux: with
+# `-x`, a present-but-non-executable dispatcher — a half-broken install, e.g. a copy
+# that dropped the exec bit — makes the guard exit 0 and the policy is SILENTLY
+# skipped. With `-f` it reaches exec and fails loudly (126). Fail-open is meant to
+# cover "not installed yet", never "installed but broken". Windows can't tell the two
+# apart (MSYS reports every file executable and chmod is a no-op there), so this must
+# be reasoned about on Linux. Pinned by tests/git-work-hooks.Tests.ps1 — don't
+# hand-edit this value without running them.
 #
 # THE SURROUNDING DOUBLE QUOTES ARE REQUIRED. `;` starts a comment in git config, so
 # unquoted this silently truncates to `test -x ... || exit 0` — the policy never runs
@@ -47,4 +53,4 @@
 # it on the commit path. See git/README.md.
 [hook "work-policy"]
     event = pre-commit
-    command = "test -x ~/.git_work_hooks/policy || exit 0; exec ~/.git_work_hooks/policy"
+    command = "test -f ~/.git_work_hooks/policy || exit 0; exec ~/.git_work_hooks/policy"

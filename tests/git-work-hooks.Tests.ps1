@@ -65,21 +65,65 @@ Describe 'git/gitconfig-work work-policy hook' -Skip:(-not $script:HasConfigHook
 
     It 'still blocks a commit when the installed dispatcher fails' {
         # The guard must not turn the hook into a no-op: an installed policy that exits
-        # non-zero has to keep blocking.
+        # non-zero has to keep blocking. Asserting only on the commit count is not enough —
+        # a commit blocked by a config parse error, a spawn failure, or a non-executable
+        # dispatcher (exit 126) would pass for the wrong reason. The output assertions are
+        # what prove the policy itself ran and did the blocking.
         $root = Join-Path ([IO.Path]::GetTempPath()) ('workhook-' + [guid]::NewGuid())
         $repo = New-WorkRepo -Root $root
         $hookDir = Join-Path $root 'home/.git_work_hooks'
         New-Item -ItemType Directory -Path $hookDir -Force | Out-Null
-        Set-Content -Path (Join-Path $hookDir 'policy') -Value "#!/bin/sh`necho 'POLICY VIOLATION'`nexit 1" -Encoding ASCII -NoNewline
+        $policy = Join-Path $hookDir 'policy'
+        Set-Content -Path $policy -Value "#!/bin/sh`necho 'POLICY VIOLATION'`nexit 1" -Encoding ASCII -NoNewline
+        # Needed on Linux, where the exec bit is real; a no-op on Windows (MSYS reports
+        # every file executable). If chmod is unavailable the output assertion below fails
+        # loudly rather than passing on a 126.
+        if (Get-Command chmod -ErrorAction SilentlyContinue) { & chmod +x $policy }
 
         $origHome, $origProfile = $env:HOME, $env:USERPROFILE
         try {
             $env:HOME = $env:USERPROFILE = (Join-Path $root 'home')
             Set-Content -Path (Join-Path $repo 'f.txt') -Value 'x'
             & git -C $repo add f.txt
-            & git -C $repo -c hook.gitleaks.enabled=false commit -m 'test' 2>&1 | Out-Null
+            $out = (& git -C $repo commit -m 'test' 2>&1 | Out-String)
 
             (& git -C $repo log --oneline 2>$null | Measure-Object).Count | Should -Be 0 -Because 'a failing policy must still block the commit'
+            $out | Should -Match 'POLICY VIOLATION' -Because 'the policy must be what blocked it, not a spawn or parse error'
+            $out | Should -Not -Match 'cannot spawn'
+        } finally {
+            $env:HOME, $env:USERPROFILE = $origHome, $origProfile
+            Remove-Item -Path $root -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'blocks loudly when the dispatcher is present but not executable' {
+        # Fail-open covers "not installed yet", never "installed but broken". The guard is
+        # `-f` (exists) rather than `-x` (executable) precisely so a half-broken install
+        # reaches exec and fails (126) instead of silently skipping the policy. Only Linux
+        # can observe this: on Windows MSYS reports every file executable and chmod is a
+        # no-op, so the case is unreachable there and the test self-skips.
+        if (-not (Get-Command chmod -ErrorAction SilentlyContinue)) { Set-ItResult -Skipped -Because 'chmod unavailable'; return }
+
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('workhook-' + [guid]::NewGuid())
+        $repo = New-WorkRepo -Root $root
+        $hookDir = Join-Path $root 'home/.git_work_hooks'
+        New-Item -ItemType Directory -Path $hookDir -Force | Out-Null
+        $policy = Join-Path $hookDir 'policy'
+        Set-Content -Path $policy -Value "#!/bin/sh`nexit 1" -Encoding ASCII -NoNewline
+        & chmod -x $policy
+        if ((& sh -c "test -x '$($policy -replace '\\', '/')' && echo x") -eq 'x') {
+            Set-ItResult -Skipped -Because 'filesystem does not honour the exec bit (NTFS/MSYS)'
+            return
+        }
+
+        $origHome, $origProfile = $env:HOME, $env:USERPROFILE
+        try {
+            $env:HOME = $env:USERPROFILE = (Join-Path $root 'home')
+            Set-Content -Path (Join-Path $repo 'f.txt') -Value 'x'
+            & git -C $repo add f.txt
+            & git -C $repo commit -m 'test' 2>&1 | Out-Null
+
+            (& git -C $repo log --oneline 2>$null | Measure-Object).Count | Should -Be 0 -Because 'a broken install must fail closed, not skip the policy silently'
         } finally {
             $env:HOME, $env:USERPROFILE = $origHome, $origProfile
             Remove-Item -Path $root -Recurse -Force -ErrorAction SilentlyContinue
