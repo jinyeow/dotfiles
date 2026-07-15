@@ -271,13 +271,17 @@ The `azure-pipelines` filetype has no Treesitter grammar of its own, so `autocmd
 Files live in `~/org/` — `inbox.org` (default notes), `work.org`, `journal.org`;
 the agenda globs `~/org/**/*` (top-level *and* nested; non-org files are ignored).
 
+The keys below are what this config's setup adds up to; for the full default keymap
+(clock, dates, links, structure, agenda, text objects) see
+[`docs/orgmode-cheatsheet.md`](https://github.com/jinyeow/dotfiles/blob/main/docs/orgmode-cheatsheet.md).
+
 | Key | Action |
 |---|---|
 | `<leader>oa` | Open agenda |
 | `<leader>oc` | Capture (then pick a template) |
 | `<C-c>` | Finalise the capture (in the capture buffer) |
 | `<leader>ok` | Abort the capture |
-| `g?` | Capture-buffer help |
+| `g?` | Help popup — context-aware (org buffer, agenda, capture, src edit) |
 
 | Template | Key | Lands in |
 |---|---|---|
