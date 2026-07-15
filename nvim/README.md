@@ -11,7 +11,7 @@ manager (`vim.pack`) and native LSP API (`vim.lsp.config` / `vim.lsp.enable`).
 | Git | Plugin auto-install | — |
 | [ripgrep](https://github.com/BurntSushi/ripgrep) | fzf-lua live grep | `winget install BurntSushi.ripgrep.GNU` |
 | A [Nerd Font](https://www.nerdfonts.com/) | Diagnostic and gitsigns icons | — |
-| [Zig](https://ziglang.org/) | C compiler for building Treesitter parsers (used as `zig cc`) | `winget install zig.zig` |
+| [Zig](https://ziglang.org/) | C compiler for building Treesitter parsers (as `zig cc`) and orgmode's org grammar | `winget install zig.zig` |
 | .NET SDK + roslyn-language-server | C# LSP (optional, only if editing C#) | `dotnet tool install -g roslyn-language-server --prerelease` |
 
 ## Structure
@@ -19,6 +19,7 @@ manager (`vim.pack`) and native LSP API (`vim.lsp.config` / `vim.lsp.enable`).
 ```
 nvim/
 ├── init.lua
+├── Install-PluginsOffline.ps1  # provision without github.com (see Offline install)
 ├── install.sh         # standalone Linux installer (legacy)
 ├── install.ps1        # standalone Windows installer (legacy)
 ├── install.py         # standalone cross-platform installer (legacy)
@@ -33,6 +34,7 @@ nvim/
     ├── keymaps.lua
     ├── autocmds.lua
     ├── treesitter.lua
+    ├── orgmode.lua    # agenda + capture templates (task / PBI / journal)
     ├── lsp.lua
     ├── dap.lua        # PowerShell debugging via PSES (DebugServiceOnly + pipe)
     ├── gitsigns.lua
@@ -40,7 +42,7 @@ nvim/
 ```
 
 Load order: `performance` → `user` → `plugins` → `options` → `keymaps` →
-`autocmds` → `treesitter` → `lsp` → `dap` → `gitsigns` → `ui`
+`autocmds` → `treesitter` → `orgmode` → `lsp` → `dap` → `gitsigns` → `ui`
 
 ## Install
 
@@ -54,6 +56,32 @@ Load order: `performance` → `user` → `plugins` → `options` → `keymaps` �
 
 The standalone scripts (`install.sh`, `install.ps1`, `install.py`) in this
 directory are kept for backward compatibility.
+
+### Offline install (`github.com` blocked)
+
+`vim.pack` installs plugins by cloning from `github.com`. Where that host is
+blocked but `codeload.github.com` (the ZIP host) is reachable, run this **on the
+blocked machine**, after the dotfiles are present:
+
+```powershell
+.\Install-PluginsOffline.ps1          # add -Verbose for per-item progress
+```
+
+It provisions three things without ever touching `github.com`:
+
+| | Source of truth | Fetched from |
+|---|---|---|
+| Plugins | `nvim-pack-lock.json` (pinned revs) | codeload ZIP → `<data>/site/pack/core/opt/<name>` |
+| Treesitter parsers | `treesitter.lua`'s `ensure_installed` + nvim-treesitter's `lockfile.json` | codeload → compiled locally |
+| Org grammar | the version pinned in orgmode's own `install.lua` | codeload → compiled by orgmode from the local path |
+
+The org grammar is a separate step because orgmode bypasses nvim-treesitter and
+clones its own grammar — the parser step doesn't cover it.
+
+Rev-aware and idempotent: re-run after a lockfile change to update; anything
+already current is skipped. Needs a C compiler (`winget install zig.zig`); the
+Treesitter-parser step additionally needs the `git` **executable** on PATH
+(nvim-treesitter refuses to install without it, though no network is used).
 
 ### Backup behaviour
 
@@ -130,6 +158,7 @@ Falls back to sunrise/sunset window if detection fails.
 | schemastore.nvim | JSON/YAML schema catalogue |
 | gitsigns.nvim | In-buffer git signs and hunk actions |
 | render-markdown.nvim | In-buffer markdown rendering |
+| orgmode | Org-mode: agenda + capture. Compiles its **own** `tree-sitter-org` grammar (needs Zig) — independent of nvim-treesitter, so `org` must stay out of its `ensure_installed` |
 | nvim-dap | Debug client; PowerShell adapter via PSES (needs `pwsh_bundle_path` in user.lua) |
 
 ## LSP servers
@@ -236,6 +265,32 @@ The `azure-pipelines` filetype has no Treesitter grammar of its own, so `autocmd
 | `<leader>b` / `<leader>B` | Toggle / conditional breakpoint |
 | `<leader>nr` | Toggle DAP REPL |
 | `<leader>e` | Evaluate expression under cursor / selection (built-in float) |
+
+### Org (full profile only)
+
+Files live in `~/org/` — `inbox.org` (default notes), `work.org`, `journal.org`;
+the agenda globs `~/org/**/*` (top-level *and* nested; non-org files are ignored).
+
+| Key | Action |
+|---|---|
+| `<leader>oa` | Open agenda |
+| `<leader>oc` | Capture (then pick a template) |
+| `<C-c>` | Finalise the capture (in the capture buffer) |
+| `<leader>ok` | Abort the capture |
+| `g?` | Capture-buffer help |
+
+| Template | Key | Lands in |
+|---|---|---|
+| Task | `t` | `~/org/inbox.org` |
+| PBI — prompts for id + title, seeds `Read acceptance criteria` / `Implement` / `PR + review` child TODOs | `p` | `~/org/work.org`, under a `* PBIs` headline |
+| Journal | `j` | `~/org/journal.org`, in a year → month → day datetree |
+
+TODO keywords are `TODO` / `NEXT` / `WAIT` → `DONE`, and `DONE` is timestamped
+(`org_log_done = 'time'`).
+
+**Setup:** `~/org/` must exist, and `work.org` must already contain a top-level
+`* PBIs` headline — orgmode errors (`Refile headline "PBIs" does not exist`)
+rather than creating a missing refile target.
 
 ### Fugitive (full profile only)
 

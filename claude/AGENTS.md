@@ -110,7 +110,7 @@ Applies when the repo uses the **bare-worktree layout**: the parent directory ho
 
 - **A new branch means a new worktree. Never `git checkout -b` inside the `main` worktree.** From the parent dir: `git worktree add ../<branch-dir> -b <branch>` (flatten any `/` in the branch name for the directory), then change the working directory to that worktree and do the work there.
 - **Why:** the point of the layout is that every worktree is a stable, always-available checkout of its branch. `main` must stay on `main` so it remains browsable and buildable while feature work happens elsewhere — and so anything pointing at that path (tooling, another session, a live config) keeps seeing main.
-- **After the PR is merged:** change back to the main worktree → `git pull` → then remove all three: the merged branch, its worktree registration (`git worktree remove <dir>`), and the worktree directory.
+- **After the PR is merged:** change back to the main worktree → `git pull` → `git worktree remove <dir>` (drops the registration *and* the directory) → **then** delete the branch. That order is forced: git refuses to delete a branch while a worktree still holds it, so the worktree always goes first.
 - **Squash-merged PRs need `-D`, not `-d`.** GitHub's squash-merge rewrites the branch's commits, so `git branch -d` refuses with "not fully merged" even though every change landed. Verify nothing is lost with `git diff main <branch> --stat` (empty ⇒ safe), then force-delete. `git branch -D` is denied by a Claude Code deny hook, so ask me to run that one.
 
 ## Commits
