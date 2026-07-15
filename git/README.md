@@ -103,6 +103,19 @@ warns and allows the commit (fails **open**, like the gitleaks hook). Override
 the tool name with `WORK_POLICY_TOOL`; bypass one commit with
 `SKIP_WORK_POLICY=1 git commit ...`.
 
+### Why this splits when `pre-commit` doesn't
+
+The gitleaks `pre-commit` is one sh file, and documents that a `.ps1`/`.sh` split
+is only warranted for real pwsh-native logic. This hook splits anyway, for a
+reason that rule doesn't cover: **sh and pwsh resolve PATH differently.**
+`command -v` follows Unix semantics and does not find a Windows `.cmd`/`.bat`/
+`.ps1` — only `.exe` — while pwsh's `Get-Command` honours `PATHEXT` and does.
+gitleaks is unaffected because it ships as a `.exe`. A policy scanner shipping as
+a `.cmd` wrapper would be invisible to sh, and this hook fails **open**, so an
+sh-only version would silently enforce nothing on Windows — the same trap as
+running it on git < 2.54. Collapse to a single sh file only once the scanner is
+guaranteed to be a `.exe`.
+
 ### Ordering is additive — existing hooks still run
 
 Configured hooks run **first** (system → global → local, in file order), then the
