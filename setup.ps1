@@ -308,6 +308,42 @@ function Install-Git {
         Target = Join-Path $Dotfiles 'git\templates'
     }
     New-Junction @params
+
+    # ~/.git_work_hooks — work-only policy hooks, referenced by [hook "work-policy"]
+    # in gitconfig-work. Deliberately NOT nested under ~/.git_templates: templatedir
+    # copies that directory's contents into every new repo's .git/, which would put
+    # the work hooks inside personal repos too.
+    $params = @{
+        Link = Join-Path $env:USERPROFILE '.git_work_hooks'
+        Target = Join-Path $Dotfiles 'git\work-hooks'
+    }
+    New-Junction @params
+
+    Test-GitHookSupport
+}
+
+# Config-based hooks ([hook "work-policy"] in gitconfig-work) need Git >= 2.54.
+# Older git ignores the stanza SILENTLY — no error, the hook simply never runs — so
+# warn at install time rather than let a policy hook quietly enforce nothing.
+function Test-GitHookSupport {
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+        Write-Warn 'git not on PATH — cannot verify config-based hook support (needs >= 2.54).'
+        return
+    }
+
+    [string] $raw = (& git --version) -replace '^git version\s*', ''
+    if ($raw -notmatch '^(\d+)\.(\d+)') {
+        Write-Warn "Could not parse git version '$raw' — config-based hooks need >= 2.54."
+        return
+    }
+
+    [version] $found = [version]::new([int]$Matches[1], [int]$Matches[2])
+    if ($found -lt [version]'2.54') {
+        Write-Warn "git $raw is older than 2.54 — the work-policy hook in gitconfig-work is IGNORED SILENTLY."
+        Write-Warn '  Upgrade git, or move the check into git/templates/hooks/pre-commit to enforce it on this machine.'
+    } else {
+        Write-Ok "git $raw supports config-based hooks (>= 2.54)."
+    }
 }
 
 function Install-Neovim {

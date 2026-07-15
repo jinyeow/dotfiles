@@ -111,6 +111,33 @@ make_symlink() {
 
 # ── Modules ───────────────────────────────────────────────────────────────────
 
+# Config-based hooks ([hook "work-policy"] in gitconfig-work) need Git >= 2.54.
+# Older git ignores the stanza SILENTLY — no error, the hook simply never runs — so
+# warn at install time rather than let a policy hook quietly enforce nothing.
+check_git_hook_support() {
+    if ! command -v git >/dev/null 2>&1; then
+        warn 'git not on PATH — cannot verify config-based hook support (needs >= 2.54).'
+        return
+    fi
+
+    raw=$(git --version | sed 's/^git version //')
+    major=$(echo "$raw" | cut -d. -f1)
+    minor=$(echo "$raw" | cut -d. -f2)
+    case "$major$minor" in
+        *[!0-9]*|'')
+            warn "Could not parse git version '$raw' — config-based hooks need >= 2.54."
+            return
+            ;;
+    esac
+
+    if [ "$major" -lt 2 ] || { [ "$major" -eq 2 ] && [ "$minor" -lt 54 ]; }; then
+        warn "git $raw is older than 2.54 — the work-policy hook in gitconfig-work is IGNORED SILENTLY."
+        warn '  Upgrade git, or move the check into git/templates/hooks/pre-commit to enforce it on this machine.'
+    else
+        ok "git $raw supports config-based hooks (>= 2.54)."
+    fi
+}
+
 install_git() {
     echo ''
     info '=== Git ==='
@@ -120,6 +147,10 @@ install_git() {
     make_symlink "$DOTFILES/git/gitignore-work" "$HOME/.gitignore-work"
     make_symlink "$DOTFILES/git/gitmessage"     "$HOME/.gitmessage"
     make_symlink "$DOTFILES/git/templates"      "$HOME/.git_templates"
+    # Not under ~/.git_templates: init.templatedir copies that directory's contents
+    # into every new repo's .git/, which would put work hooks inside personal repos.
+    make_symlink "$DOTFILES/git/work-hooks"     "$HOME/.git_work_hooks"
+    check_git_hook_support
 }
 
 install_neovim() {

@@ -1,0 +1,19 @@
+#!/bin/sh
+# Dispatcher: exec the pwsh variant when available, else the POSIX one. Same shim
+# pattern as prepare-commit-msg.
+#
+# The sibling gitleaks pre-commit is deliberately a SINGLE sh file and says a
+# .ps1/.sh split is only worth it for real pwsh-native logic. This hook splits
+# anyway, for a reason that rule doesn't cover: sh and pwsh resolve PATH
+# differently. `command -v` follows Unix semantics and does NOT find a Windows
+# .cmd/.bat/.ps1 (only .exe), while pwsh's Get-Command honours PATHEXT and does.
+# gitleaks is unaffected because it ships as a .exe; a policy scanner shipping as
+# a .cmd wrapper would be invisible to sh, and this hook fails OPEN — so an sh-only
+# version would silently enforce nothing on Windows. Collapse to one sh file only
+# if the scanner is guaranteed to be a .exe.
+DIR="$(cd "$(dirname "$0")" && pwd)"
+if command -v pwsh >/dev/null 2>&1; then
+    exec pwsh -NoProfile -File "$DIR/policy.ps1" "$@"
+else
+    exec sh "$DIR/policy.sh" "$@"
+fi
