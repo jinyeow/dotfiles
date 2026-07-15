@@ -28,6 +28,11 @@ local specs = {
   'https://github.com/b0o/schemastore.nvim',
   'https://github.com/lewis6991/gitsigns.nvim',
   'https://github.com/MeanderingProgrammer/render-markdown.nvim',
+  -- orgmode compiles its own pinned tree-sitter-org grammar into its own plugin
+  -- dir on setup(), independent of nvim-treesitter. Do NOT add 'org' to
+  -- treesitter.lua's ensure_installed — two parser/org.so on the runtimepath make
+  -- orgmode disown the parser and stop managing its version.
+  'https://github.com/nvim-orgmode/orgmode',
   -- DAP client only. The PowerShell adapter (config/dap.lua) drives PowerShell
   -- Editor Services in -DebugServiceOnly mode over a named pipe — no debugger
   -- plugin needed, PSES *is* the debug server (same one VS Code uses).

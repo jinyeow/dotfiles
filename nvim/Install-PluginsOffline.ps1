@@ -21,6 +21,11 @@
        from a local directory skips git (nvim-treesitter `install.lua`), and `zig` is used as
        the C/C++ compiler.
 
+    3. The org grammar - nvim-orgmode does NOT use nvim-treesitter. It clones its own
+       `tree-sitter-org` from github.com on first `setup()` and compiles it into its own
+       plugin dir, so the blocked network breaks it independently of step 2. The pinned
+       source is staged from codeload and orgmode compiles it from that local path.
+
     Every `nvim` invocation runs WITHOUT the user config (`-u NONE` for path resolution, a
     minimal `-u <init>` that only `packadd`s nvim-treesitter for the parser step). This is
     essential: loading the normal config would run `vim.pack.add`, which would try to clone
@@ -36,6 +41,9 @@
     `cc`/`gcc`/`clang`/`cl` also work) and the `git` executable on PATH. nvim-treesitter
     refuses its install command without `git` present, but it makes NO network calls here -
     grammar sources come from codeload and compile from a local path. Both are pre-checked.
+
+    The org grammar step needs only the compiler - orgmode shells out to git solely to
+    clone, which is exactly what staging from codeload replaces.
 
 .EXAMPLE
     ./Install-PluginsOffline.ps1
@@ -84,6 +92,20 @@ function Get-OwnerRepo {
 function Get-ShortRev {
     param([Parameter(Mandatory)][string]$Rev)
     return $Rev.Substring(0, [Math]::Min(7, $Rev.Length))
+}
+
+function Get-OrgLockVersion {
+    # orgmode records the grammar version it installed in its own lock file, inside its
+    # plugin dir. Returns $null when absent or unreadable so a corrupt lock is treated as
+    # "needs provisioning" rather than failing the whole run.
+    param([Parameter(Mandatory)][string]$Path)
+    if (-not (Test-Path $Path)) { return $null }
+    try {
+        return (Get-Content $Path -Raw | ConvertFrom-Json).version
+    }
+    catch {
+        return $null
+    }
 }
 
 function Install-CodeloadArchive {
@@ -156,6 +178,12 @@ $tsLock = Join-Path $tsDir 'lockfile.json'
 $tsConfig = Join-Path $PSScriptRoot 'lua/config/treesitter.lua'
 $parserErrors = @()
 
+# Shared by the parser step and the org-grammar step below - both compile C from a
+# locally staged source tree.
+$compiler = @('zig', 'cc', 'gcc', 'clang', 'cl') |
+    ForEach-Object { Get-Command $_ -ErrorAction SilentlyContinue } |
+    Select-Object -First 1
+
 if (-not (Test-Path $tsLock)) {
     Write-Warning "nvim-treesitter not present ($tsLock missing) - skipping parser step."
 }
@@ -164,9 +192,6 @@ else {
     # install command refuses to run without `git` present, even though no network is used
     # here (sources are local). Missing prerequisites are recorded and the step is skipped,
     # so the final summary still reports any plugin failures collected above.
-    $compiler = @('zig', 'cc', 'gcc', 'clang', 'cl') |
-        ForEach-Object { Get-Command $_ -ErrorAction SilentlyContinue } |
-        Select-Object -First 1
     $hasGit = [bool](Get-Command git -ErrorAction SilentlyContinue)
     if (-not $compiler) {
         $parserErrors += "Treesitter parsers skipped: no C compiler on PATH (install e.g. 'winget install zig.zig')."
@@ -321,9 +346,110 @@ vim.cmd('TSInstallSync! ' .. table.concat(langs, ' '))
     }
 }
 
+# --- Step 3: the org grammar -------------------------------------------------
+
+# nvim-orgmode does NOT go through nvim-treesitter: on first setup() it clones
+# nvim-orgmode/tree-sitter-org from github.com into stdpath('cache') and compiles it into
+# its OWN plugin dir, so step 2 does not cover it and the blocked network breaks it.
+# Stage the pinned source from codeload and let orgmode compile it from that local path -
+# the same approach as step 2, and it keeps orgmode's own compiler args, install path and
+# lock-file format as the single source of truth rather than duplicating them here.
+#
+# ORDER MATTERS: parser/org.so and .org-ts-lock.json both live INSIDE the plugin dir, so
+# this must run AFTER step 1 - re-extracting the plugin wipes them. That also makes
+# orgmode's own lock file a self-correcting marker (wiped with the plugin, so a plugin
+# update re-triggers this step), which is why there is no .codeload-rev here.
+
+$orgErrors = @()
+$orgDir = Join-Path $optDir 'orgmode'
+$orgInstallLua = Join-Path $orgDir 'lua/orgmode/utils/treesitter/install.lua'
+
+if (-not (Test-Path $orgDir)) {
+    Write-Verbose 'orgmode not installed - skipping org grammar step.'
+}
+elseif (-not (Test-Path $orgInstallLua)) {
+    $orgErrors += "orgmode is present but '$orgInstallLua' is missing - cannot determine the required grammar version."
+}
+else {
+    # orgmode pins the grammar version in its installer; read it rather than hardcode,
+    # mirroring how step 2 reads ensure_installed from treesitter.lua.
+    $versionMatch = [regex]::Match((Get-Content $orgInstallLua -Raw), "required_version\s*=\s*'([^']+)'")
+    if (-not $versionMatch.Success) {
+        $orgErrors += "Could not find 'required_version' in $orgInstallLua - the pinned org grammar version is unknown."
+    }
+    else {
+        $orgVersion = $versionMatch.Groups[1].Value
+        $orgParser = Join-Path $orgDir 'parser/org.so'
+        $orgLock = Join-Path $orgDir '.org-ts-lock.json'
+
+        if ((Test-Path $orgParser) -and (Get-OrgLockVersion -Path $orgLock) -eq $orgVersion) {
+            Write-Host "==> org grammar: up to date ($orgVersion)" -ForegroundColor Cyan
+        }
+        elseif (-not $compiler) {
+            $orgErrors += "org grammar skipped: no C compiler on PATH (install e.g. 'winget install zig.zig')."
+        }
+        else {
+            Write-Host "==> Provisioning org grammar (compiler: $($compiler.Name))" -ForegroundColor Cyan
+            $orgStaging = Join-Path ([IO.Path]::GetTempPath()) ("nvimorg_" + [guid]::NewGuid().ToString('N'))
+            try {
+                $orgSrc = Join-Path $orgStaging 'tree-sitter-org'
+                Write-Host "    + tree-sitter-org (nvim-orgmode/tree-sitter-org@$orgVersion)"
+                Install-CodeloadArchive -Owner 'nvim-orgmode' -Repo 'tree-sitter-org' -Rev $orgVersion -Dest $orgSrc
+
+                # orgmode moves the compiled parser into <plugin>/parser/ but never creates
+                # that directory - it ships it (holding only a .gitignore). Recreate it so the
+                # natural "delete the parser and re-run to rebuild" recovery works, instead of
+                # failing with an opaque "cannot find the path specified" out of the move.
+                New-Item -ItemType Directory -Force -Path (Split-Path $orgParser -Parent) | Out-Null
+
+                # orgmode's installer resolves a local directory instead of cloning, but the
+                # github URL is hardcoded inside run(), so that branch is unreachable from
+                # config. Override get_path to hand it the staged copy. Path crosses the
+                # PS<->Lua boundary via an env var - no interpolation into Lua.
+                $env:NVIMOFF_ORGSRC = $orgSrc
+                $orgInit = Join-Path $orgStaging 'orginstall.lua'
+                Set-Content -Path $orgInit -Encoding utf8 -Value @'
+vim.cmd('packadd orgmode')
+local install = require('orgmode.utils.treesitter.install')
+local Promise = require('orgmode.utils.promise')
+install.get_path = function()
+  return Promise.resolve(vim.env.NVIMOFF_ORGSRC)
+end
+local ok, err = pcall(function()
+  return install.run('install')
+end)
+if not ok then
+  io.stderr:write('org grammar install failed: ' .. tostring(err) .. '\n')
+  vim.cmd('cq')
+end
+'@
+                $orgOut = nvim --headless -u $orgInit -c 'qa!' 2>&1 | Out-String
+                $orgExit = $LASTEXITCODE
+                Write-Verbose $orgOut
+
+                # Trust orgmode's own lock file over the exit code: the grammar counts as
+                # provisioned only if the parser exists AND the recorded version matches.
+                if ($orgExit -ne 0 -or -not (Test-Path $orgParser) -or (Get-OrgLockVersion -Path $orgLock) -ne $orgVersion) {
+                    $orgErrors += "org grammar: build failed (nvim exit $orgExit). Output: $orgOut"
+                }
+                else {
+                    Write-Host "    org grammar: provisioned ($orgVersion)"
+                }
+            }
+            catch {
+                $orgErrors += "org grammar: $($_.Exception.Message)"
+            }
+            finally {
+                Remove-Item $orgStaging -Recurse -Force -ErrorAction SilentlyContinue
+                Remove-Item Env:NVIMOFF_ORGSRC -ErrorAction SilentlyContinue
+            }
+        }
+    }
+}
+
 # --- Summary -----------------------------------------------------------------
 
-$allErrors = @($pluginErrors) + @($parserErrors) | Where-Object { $_ }
+$allErrors = @($pluginErrors) + @($parserErrors) + @($orgErrors) | Where-Object { $_ }
 if ($allErrors.Count -gt 0) {
     Write-Host ""
     Write-Warning "Completed with $($allErrors.Count) failure(s):"
