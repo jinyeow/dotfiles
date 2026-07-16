@@ -48,7 +48,14 @@ while ($dir) {
   $dir = $parent
 }
 
-$violations = Invoke-ScriptAnalyzer @analyzerArgs
+# Fail open silently if analysis throws (e.g. a malformed/unparseable ruleset file): this
+# hook is an advisory nudge, never a gate, so a broken settings file must not surface an
+# error - it just goes quiet, mirroring the PSSA-absent no-op above.
+try {
+  $violations = Invoke-ScriptAnalyzer @analyzerArgs
+} catch {
+  exit 0
+}
 if (-not $violations) { exit 0 }
 
 $lines = $violations | ForEach-Object {

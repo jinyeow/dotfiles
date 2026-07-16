@@ -19,13 +19,18 @@ try { $call = $payload | ConvertFrom-Json } catch { exit 0 }
 $cmd = $call.tool_input.command
 if (-not $cmd) { exit 0 }
 
-# Drop quoted substrings first so a `|`/`;` inside a quoted argument (e.g. rg "Get-Content|x")
-# is not treated as a command separator, then split into segments on shell separators.
-$scrubbed = $cmd -replace '"[^"]*"', '' -replace "'[^']*'", ''
-$segments = $scrubbed -split '(\||;|&&|\|\||\n)'
+# Drop quoted substrings first so a `|`/`;`/`&` inside a quoted argument (e.g. rg "Get-Content|x")
+# is not treated as a command separator, then split into segments on shell separators. The
+# double-quote pattern is escape-aware ("(?:\\.|[^"\\])*") so an escaped quote does not
+# terminate the string early and re-expose a token at apparent command position.
+$scrubbed = $cmd -replace '"(?:\\.|[^"\\])*"', '' -replace "'[^']*'", ''
+# Separators include a lone `&` (background/chain): `sleep 1 & Get-Job` must not hide the
+# cmdlet in the second segment. `&&` is listed before `&` so it wins the alternation.
+$segments = $scrubbed -split '(\||;|&&|\|\||&|\n)'
 $verbs = 'Get|Set|New|Remove|Test|Select|Where|ForEach|Out|Write|Read|Import|Export|' +
   'ConvertTo|ConvertFrom|Invoke|Start|Stop|Join|Split|Add|Clear|Copy|Move|Rename|' +
-  'Push|Pop|Format|Measure|Sort|Group|Compare|Resolve|Wait|Enable|Disable|Register|Unregister'
+  'Push|Pop|Format|Measure|Sort|Group|Compare|Resolve|Wait|Enable|Disable|Register|Unregister|' +
+  'Install|Uninstall|Update|Save|Find|Show|Send|Restart|Compress|Expand|Publish|Restore'
 
 foreach ($segment in $segments) {
   $head = $segment.TrimStart().TrimStart('(', '{', '$', '&').TrimStart()
