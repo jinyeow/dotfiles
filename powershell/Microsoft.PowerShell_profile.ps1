@@ -112,13 +112,12 @@ if ($global:ProfileInteractiveConsole) {
 # so registering them at load just delayed the first prompt.
 
 # --- Aliases ----------------------------------------------------------------
-if ($PSVersionTable.PSVersion.Major -eq 5) {
-    Remove-Item alias:wget -ErrorAction SilentlyContinue
-    Remove-Item alias:curl -ErrorAction SilentlyContinue
-}
 Set-Alias c clear -Force
 Set-Alias -Name g -Value git
-Set-Alias gcif Get-ChildItem -Force
+# A function, not `Set-Alias gcif Get-ChildItem -Force`: -Force there binds to
+# Set-Alias (allow-overwrite), NOT to gci, so the alias silently never showed
+# hidden files. The wrapper actually forwards -Force (and any extra args) to gci.
+function gcif { Get-ChildItem -Force @args }
 
 # --- Functions --------------------------------------------------------------
 function Get-IsDarkMode {
@@ -144,11 +143,13 @@ Set-Alias -Name su -Value Start-AdminSession
 function y {
     $tmp = (New-TemporaryFile).FullName
     yazi.exe @args --cwd-file="$tmp"
-    $cwd = Get-Content -Path $tmp -Encoding UTF8
+    # Coerce to a single string (first line): a multi-line cwd-file would make $cwd an
+    # array, and Set-Location/Test-Path -LiteralPath on an array throws.
+    $cwd = [string](Get-Content -Path $tmp -Encoding UTF8 -TotalCount 1)
     if ($cwd -and $cwd -ne $PWD.Path -and (Test-Path -LiteralPath $cwd -PathType Container)) {
         Set-Location -LiteralPath (Resolve-Path -LiteralPath $cwd).Path
     }
-    Remove-Item -Path $tmp
+    Remove-Item -Path $tmp -ErrorAction Ignore
 }
 
 if ($global:ProfileModules['PSFzf']) {
@@ -246,8 +247,8 @@ Set-Alias -Name bat -Value Invoke-Bat -Force
 # --- Hotkey cheatsheet ------------------------------------------------------
 function Show-Hotkeys {
     $entries = @(
-        '[fzf]    Ctrl+a          select all matches'
-        '[fzf]    ?               toggle preview pane'
+        '[fzf]    alt-a / alt-d   select-all / deselect-all (live rg picker)'
+        '[fzf]    ctrl-/          toggle preview pane (live rg picker)'
         '[shell]  Ctrl+r          fuzzy reverse history search'
         '[shell]  Ctrl+t          fuzzy file picker — insert path at cursor'
         '[shell]  Tab             fuzzy tab completion'
@@ -294,10 +295,14 @@ function Show-Hotkeys {
         '[git]    git wtr          worktree remove'
         '[git]    git aliases      list all git aliases'
     )
-    if (Get-Command Invoke-Fzf -ErrorAction Ignore) {
-        $entries | Invoke-Fzf -Prompt 'keys> ' -Height 15
-    } elseif (Get-Command fzf -ErrorAction Ignore) {
+    # Prefer the bare `fzf` binary over PSFzf's Invoke-Fzf: this runs from a PSReadLine
+    # handler (Ctrl+?), and Invoke-Fzf's redirected-stdout System.Diagnostics.Process
+    # launcher desyncs under psmux's ConPTY (the doubled-UI path documented throughout
+    # this file). Invoke-Fzf is only the fallback for when the bare binary is absent.
+    if (Get-Command fzf -ErrorAction Ignore) {
         $entries | fzf --prompt 'keys> ' --height=15 --no-preview
+    } elseif (Get-Command Invoke-Fzf -ErrorAction Ignore) {
+        $entries | Invoke-Fzf -Prompt 'keys> ' -Height 15
     } else {
         $entries | Out-Host
     }
@@ -305,7 +310,9 @@ function Show-Hotkeys {
 Set-Alias -Name keys -Value Show-Hotkeys
 
 # --- Environment variables --------------------------------------------------
-$env:XDG_CONFIG_HOME = "$HOME/.config"
+# Guard like the COLORTERM/TERM guards above — don't clobber a value the user (or a
+# parent shell) already set; only provide the default when it is unset.
+if (-not $env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME = "$HOME/.config" }
 
 # Tool config files — paths relative to this repo so they survive repo moves
 $_dotfiles = Split-Path $PSScriptRoot
@@ -320,11 +327,9 @@ $env:FZF_DEFAULT_OPTS_FILE = Join-Path $_dotfiles 'fzf\fzfrc'
 # Zoxide — store resolved paths so junctions don't produce duplicate entries
 $env:_ZO_RESOLVE_SYMLINKS = '1'
 
-# Theme detection — catppuccin mocha (dark) / latte (light), shared by fzf + lazygit
-# AppsUseLightTheme: 0 = dark, 1 = light. .NET registry read avoids a reg.exe spawn.
-$_isDark = [Microsoft.Win32.Registry]::GetValue(
-    'HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize',
-    'AppsUseLightTheme', 1) -eq 0
+# Theme detection — catppuccin mocha (dark) / latte (light), shared by fzf + lazygit.
+# Reuse Get-IsDarkMode (defined above) rather than duplicating the registry read.
+$_isDark = Get-IsDarkMode
 
 $env:FZF_DEFAULT_OPTS = if ($_isDark) {
     '--color=bg+:#313244,bg:#1E1E2E,spinner:#F5E0DC,hl:#F38BA8 ' +
@@ -667,5 +672,11 @@ Register-EngineEvent -SourceIdentifier PowerShell.OnIdle -Action {
         Initialize-DeferredProfile
     } elseif (-not $global:ProfileDeferredSecondaryDone) {
         Initialize-DeferredProfileSecondary
+    } else {
+        # Both phases done — OnIdle fires ~2x/sec forever otherwise, running this
+        # no-op indefinitely. Self-unregister once there is nothing left to do.
+        # $EventSubscriber is the automatic var for the currently-firing subscriber;
+        # the reload-idempotency unregister above still covers `. $PROFILE`.
+        Unregister-Event -SubscriptionId $EventSubscriber.SubscriptionId -ErrorAction Ignore
     }
 } | Out-Null

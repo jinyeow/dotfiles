@@ -8,6 +8,31 @@ BeforeAll {
     $global:ProfileModules = @{ 'Az.Accounts' = $true }
     $global:PromptCache = $null   # force the guarded init to build a clean cache
     . (Join-Path (Split-Path $PSScriptRoot -Parent) 'powershell' 'Profile' 'Set-Prompt.ps1')
+
+    # --- Hermetic git env so the git-backed tests below never touch the user's
+    # --- global/system config, identity, or hooks (gitleaks/prepare-commit-msg).
+    $script:gitEnvKeys = @(
+        'GIT_CONFIG_GLOBAL', 'GIT_CONFIG_SYSTEM', 'GIT_CONFIG_NOSYSTEM',
+        'GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL'
+    )
+    $script:gitEnvSaved = @{}
+    foreach ($k in $script:gitEnvKeys) { $script:gitEnvSaved[$k] = [Environment]::GetEnvironmentVariable($k) }
+    $script:emptyGitConfig = Join-Path ([System.IO.Path]::GetTempPath()) ("promptgit_empty_" + [guid]::NewGuid().ToString('N') + '.cfg')
+    Set-Content -LiteralPath $script:emptyGitConfig -Value ''
+    $env:GIT_CONFIG_GLOBAL   = $script:emptyGitConfig
+    $env:GIT_CONFIG_SYSTEM   = $script:emptyGitConfig
+    $env:GIT_CONFIG_NOSYSTEM = '1'
+    $env:GIT_AUTHOR_NAME     = 'Test';            $env:GIT_COMMITTER_NAME  = 'Test'
+    $env:GIT_AUTHOR_EMAIL    = 'test@example.com'; $env:GIT_COMMITTER_EMAIL = 'test@example.com'
+
+    $script:tempRepos = [System.Collections.Generic.List[string]]::new()
+    function script:New-TempGitRepo {
+        $dir = Join-Path ([System.IO.Path]::GetTempPath()) ("promptgit_" + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $dir | Out-Null
+        git init -q -b main $dir 2>$null
+        $script:tempRepos.Add($dir)
+        return $dir
+    }
 }
 
 Describe 'Start-AzContextRefresh persistent runspace' {
@@ -55,11 +80,108 @@ Describe 'prompt column-0 hardening against a dirty fzf console' {
     }
 }
 
+Describe 'Get-GitPromptInfo — unborn (commitless) repo' {
+    # A freshly `git init`ed repo has an unborn branch; `rev-parse --abbrev-ref HEAD`
+    # exits 128 there, which used to wipe the whole git segment. The gate must instead
+    # rely on `rev-parse --git-dir` (succeeds on unborn) + `branch --show-current`.
+    It 'returns repo info with the branch name before the first commit' {
+        $repo = New-TempGitRepo
+        Push-Location $repo
+        try { $info = Get-GitPromptInfo } finally { Pop-Location }
+        $info | Should -Not -BeNullOrEmpty          # IsRepo signal: non-null == in a repo
+        $info.Branch | Should -Be 'main'
+    }
+}
+
+Describe 'Get-GitPromptInfo — unmerged/conflict counting' {
+    It 'does not count an AD (staged add, deleted in worktree) pair as a conflict' {
+        $repo = New-TempGitRepo
+        Push-Location $repo
+        try {
+            Set-Content -LiteralPath (Join-Path $repo 'newfile') -Value 'hi'
+            git add newfile 2>$null
+            Remove-Item -LiteralPath (Join-Path $repo 'newfile')   # -> "AD newfile"
+            $info = Get-GitPromptInfo
+        } finally { Pop-Location }
+        $info.Conflicts | Should -Be 0
+        $info.Staged    | Should -Be 1   # the 'A' still counts as staged
+        $info.Deleted   | Should -Be 1   # the worktree 'D' still counts as deleted
+    }
+
+    It 'counts a real merge conflict (UU) as a conflict' {
+        $repo = New-TempGitRepo
+        Push-Location $repo
+        try {
+            Set-Content -LiteralPath (Join-Path $repo 'f.txt') -Value 'base'
+            git add f.txt 2>$null; git commit -q -m base 2>$null
+            git checkout -q -b other 2>$null
+            Set-Content -LiteralPath (Join-Path $repo 'f.txt') -Value 'other'
+            git commit -q -am other 2>$null
+            git checkout -q main 2>$null
+            Set-Content -LiteralPath (Join-Path $repo 'f.txt') -Value 'main'
+            git commit -q -am main 2>$null
+            git merge -q other 2>$null   # fails -> "UU f.txt"
+            $info = Get-GitPromptInfo
+        } finally { Pop-Location }
+        $info.Conflicts | Should -BeGreaterThan 0
+    }
+}
+
+Describe 'Get-GitPromptInfo — copied (C) index status counts as staged' {
+    # `git status --porcelain` v1 emits a C code for a copy-detected index entry, but
+    # it is impractical to force deterministically from real git, so shadow `git` with
+    # a function that returns a canned porcelain including a C row. Cross-platform:
+    # a PowerShell function shadows the native executable in command resolution.
+    It 'increments Staged for a C (copied) index entry' {
+        function global:git {
+            $a = $args -join ' '
+            $global:LASTEXITCODE = 0
+            if ($a -like 'rev-parse*')            { return @('/repo', '/repo/.git', '/repo/.git') }
+            if ($a -like 'branch --show-current*') { return 'main' }
+            if ($a -like 'rev-list*')             { $global:LASTEXITCODE = 1; return }
+            if ($a -like 'status --porcelain*')   { return @('C  copied.txt', 'A  added.txt') }
+            return
+        }
+        try { $info = Get-GitPromptInfo } finally { Remove-Item function:global:git }
+        $info.Staged | Should -Be 2   # both the C (copied) and the A (added)
+    }
+}
+
+Describe 'prompt skips VCS helpers on non-FileSystem providers' {
+    It 'does not invoke git/jj helpers under a non-FileSystem provider (Env:)' {
+        Mock Get-GitPromptInfo { $null }
+        Mock Get-JjPromptInfo  { $null }
+        Push-Location Env:
+        try { $null = prompt } finally { Pop-Location }
+        Should -Invoke Get-GitPromptInfo -Times 0
+        Should -Invoke Get-JjPromptInfo  -Times 0
+    }
+
+    It 'does invoke the VCS helpers under a FileSystem provider (positive control)' {
+        Mock Get-GitPromptInfo { $null }
+        Mock Get-JjPromptInfo  { $null }
+        $repo = New-TempGitRepo
+        Push-Location $repo
+        try { $null = prompt } finally { Pop-Location }
+        Should -Invoke Get-JjPromptInfo  -Times 1
+        Should -Invoke Get-GitPromptInfo -Times 1
+    }
+}
+
 AfterAll {
     if ($global:PromptCache.AzInvocation) {
         try { $global:PromptCache.AzInvocation.PowerShell.Dispose() } catch {}
     }
     if ($global:PromptCache.AzRunspace) {
         try { $global:PromptCache.AzRunspace.Dispose() } catch {}
+    }
+    # Restore git env and clean up temp repos.
+    foreach ($k in $script:gitEnvKeys) {
+        if ($null -eq $script:gitEnvSaved[$k]) { Remove-Item "Env:\$k" -ErrorAction Ignore }
+        else { Set-Item "Env:\$k" $script:gitEnvSaved[$k] }
+    }
+    if (Test-Path -LiteralPath $script:emptyGitConfig) { Remove-Item -LiteralPath $script:emptyGitConfig -ErrorAction Ignore }
+    foreach ($r in $script:tempRepos) {
+        if (Test-Path -LiteralPath $r) { Remove-Item -LiteralPath $r -Recurse -Force -ErrorAction Ignore }
     }
 }
