@@ -31,7 +31,7 @@ IFS="$OLD_IFS"
 # Detect ticket ID from branch name:
 #   JIRA: feature/PROJ-123-description  →  Refs: PROJ-123
 #   ADO:  feature/1234-description      →  Refs: AB#1234
-TICKET=$(printf '%s' "$BRANCH" | sed -n 's|.*/\([A-Z][A-Z]*-[0-9][0-9]*\).*|\1|p')
+TICKET=$(printf '%s' "$BRANCH" | sed -n 's|.*/\([A-Z][A-Z][A-Z]*-[0-9][0-9]*\).*|\1|p')
 if [ -n "$TICKET" ]; then
     TRAILER="Refs: $TICKET"
 else

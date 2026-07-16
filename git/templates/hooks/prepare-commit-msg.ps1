@@ -28,9 +28,9 @@ foreach ($pattern in $skipList) {
 #   JIRA: feature/PROJ-123-description  →  Refs: PROJ-123
 #   ADO:  feature/1234-description      →  Refs: AB#1234
 $trailer = $null
-if ($branchName -match '.*/(?<ticket>[A-Z][A-Z]+-\d+)') {
+if ($branchName -cmatch '.*/(?<ticket>[A-Z][A-Z]+-\d+)') {
     $trailer = "Refs: $($Matches.ticket)"
-} elseif ($branchName -match '.*/(?<id>\d+)-') {
+} elseif ($branchName -cmatch '.*/(?<id>\d+)-') {
     $trailer = "Refs: AB#$($Matches.id)"
 } else {
     exit 0

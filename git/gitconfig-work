@@ -41,7 +41,7 @@
 # hand-edit this value without running them.
 #
 # THE SURROUNDING DOUBLE QUOTES ARE REQUIRED. `;` starts a comment in git config, so
-# unquoted this silently truncates to `test -x ... || exit 0` — the policy never runs
+# unquoted this silently truncates to `test -f ... || exit 0` — the policy never runs
 # and the hook enforces nothing while still listing in `git hook list`. Git strips
 # these quotes before handing the value to sh, so ~ still expands (the path must stay
 # space-free: sh word-splits it). `test -x ... && exec ...` avoids the `;` but is

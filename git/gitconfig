@@ -12,9 +12,9 @@
     f = fetch --all --prune
     fetchtags = fetch --tags -f
     filediff = diff --name-status
-    fix = "!f() { ${EDITOR} `git diff --name-only`; }; f"
+    fix = "!f() { \"${EDITOR:-nvim}\" $(git diff --name-only); }; f"
     graph = log --graph -50 --branches --remotes --tags  --format=format:'%Cgreen%h %Creset• %<(75,trunc)%s (%cN, %cr) %Cred%d' --date-order
-    ignore = '!gi() { curl -L -s https://www.toptal.com/developers/gitignore/api/$@ ;}; gi'
+    ignore = "!gi() { curl -L -s https://www.toptal.com/developers/gitignore/api/$@ ;}; gi"
     last = log -1 HEAD --format=format:"%Cred%H"
     lg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative
     remotes = remote -v
@@ -109,9 +109,6 @@
 [interactive]
     diffFilter = delta --color-only
 
-[i18n]
-    filesEncoding = utf-8
-
 [log]
     date = iso
     decorate = full
@@ -177,6 +174,10 @@
 # Requires Git 2.36+. For local-only work repos without a remote yet, run:
 #   git config user.email justin.puah@hollard.com.au
 [includeIf "hasconfig:remote.*.url:https://HollardInsuranceRetail@dev.azure.com/**"]
+    path = ~/.gitconfig-work
+[includeIf "hasconfig:remote.*.url:git@ssh.dev.azure.com:v3/HollardInsuranceRetail/**"]
+    path = ~/.gitconfig-work
+[includeIf "hasconfig:remote.*.url:https://dev.azure.com/HollardInsuranceRetail/**"]
     path = ~/.gitconfig-work
 [includeIf "gitdir/i:E:/HollardInsuranceRetail/"]
     path = ~/.gitconfig-work

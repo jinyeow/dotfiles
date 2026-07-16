@@ -40,7 +40,9 @@ Git configuration, global ignore rules, commit template, and hook templates.
 ## Work identity (`[includeIf]`)
 
 Work email and `diff.tool = delta` are applied automatically for any repo whose
-remote URL matches the work domain. Requires Git 2.36+.
+remote URL matches the work domain. Requires Git 2.36+. Three `hasconfig:remote.*.url`
+stanzas cover HTTPS (with and without embedded userinfo) and SSH clones of the same
+Azure DevOps org, plus a `gitdir/i` fallback for a fixed local work path.
 
 For local-only work repos without a remote yet:
 ```sh
@@ -112,7 +114,7 @@ Three things about that value are load-bearing, all pinned by
   fails loudly (126). The difference is only visible on Linux: Windows reports
   every file executable and `chmod` is a no-op there.
 - **The double quotes are required.** `;` starts a comment in git config, so
-  unquoted the value silently truncates to `test -x ... || exit 0` — the policy
+  unquoted the value silently truncates to `test -f ... || exit 0` — the policy
   never runs and the hook enforces nothing while still appearing in
   `git hook list`. Git strips the quotes before handing the value to sh, so `~`
   still expands. (`test -x ... && exec ...` dodges the `;` but is wrong: with the
