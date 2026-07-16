@@ -116,14 +116,17 @@ Shell helpers (PowerShell profile, Phase 2b — need `fzf`):
 Tab-completion of session names is registered for `psmux`/`pmux`/`tmux` after
 `attach`/`kill-session`/`switch-client`/`has-session`.
 
-Inside psmux, three fzf popups (each parses psmux's **default** list output — no `#{}` in the
+Inside psmux, two fzf popups (each parses psmux's **default** list output — no `#{}` in the
 popup string, which psmux would expand at bind time):
 
 | Key | Action |
 |---|---|
-| `Prefix + s` | Switch **session** (overrides the default `choose-session`) |
 | `Prefix + W` | Switch to any **window across all sessions** (`list-windows -a`) |
 | `Prefix + b` | Pick a **paste-buffer** and paste it into the active pane |
+
+`Prefix + s` is deliberately **not** an fzf popup — it was reverted to the native
+`choose-session`: every psmux popup forces a fresh terminal-size probe that is laggy (~600ms
+warm), and with few sessions fuzzy-matching over them isn't worth that floor.
 
 Plus a **lazygit** popup:
 

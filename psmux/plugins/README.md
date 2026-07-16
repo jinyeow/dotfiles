@@ -32,7 +32,7 @@ inlined into `psmux.conf`. Only the stateful persistence plugins + the sidebar c
 
 ## Local patches
 
-One deliberate divergence from upstream, kept in-repo:
+Two deliberate divergences from upstream, kept in-repo:
 
 - **`psmux-resurrect/scripts/save.ps1`** — a zero-session guard: if a save captures no
   sessions it skips writing and keeps the previous `last` snapshot, and the `list-sessions`
@@ -40,8 +40,15 @@ One deliberate divergence from upstream, kept in-repo:
   parsed as a bogus session. Without this, the 15-min auto-save loop firing against a server
   with no sessions clobbers the last good snapshot, so restore-on-server-start brings back
   nothing. Covered by `tests/psmux.Tests.ps1` (empty-output + psmux-error cases).
+- **`psmux-sidebar/plugin.conf`** — the `Prefix+Tab`/`Prefix+BTab` binds resolve the plugin's
+  own script path via `$env:USERPROFILE` instead of a literal `~`. `run-shell` runs its
+  argument as PowerShell, so `$env:USERPROFILE` is expanded by the outer pwsh before the inner
+  `pwsh -File` ever sees it; `pwsh -File` itself does **not** tilde-expand, so a literal `~`
+  would fail to find the script and the bind would silently no-op (psmux's own `~` handling is
+  also unreliable — see `psmux/psmux.conf`). The rationale is inlined as a comment above the
+  binds in `plugin.conf` itself.
 
-A re-copy during an update (below) overwrites this — **re-apply the guard after step 2** and
+A re-copy during an update (below) overwrites both — **re-apply both patches after step 2** and
 confirm `tests/psmux.Tests.ps1` passes.
 
 ## Updating
@@ -49,8 +56,9 @@ confirm `tests/psmux.Tests.ps1` passes.
 Deliberate, reviewed bumps only:
 1. `git clone https://github.com/psmux/psmux-plugins.git` at the new revision.
 2. Re-copy `psmux-resurrect`, `psmux-continuum`, `psmux-sidebar` over these dirs.
-3. Re-apply the local patch above and run `tests/psmux.Tests.ps1`.
+3. Re-apply **both** local patches above (`save.ps1`'s zero-session guard, and
+   `psmux-sidebar/plugin.conf`'s `$env:USERPROFILE` binds) and run `tests/psmux.Tests.ps1`.
 4. Update the pinned commit above and review the diff (`git diff`) before committing.
 
 Otherwise do **not** edit these files in place — they are upstream code, save for the
-documented patch above.
+documented patches above.

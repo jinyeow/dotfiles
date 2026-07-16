@@ -5,7 +5,7 @@
 #   ./setup.sh -m neovim,vim
 #   ./setup.sh -m all --dry-run
 #
-# Modules: neovim, vim, powershell, git, bash, tig, tmux, zellij, curl, claude, all
+# Modules: neovim, vim, powershell, git, bash, tig, tmux, zellij, curl, claude, lazygit, windowsterminal, all
 
 set -euo pipefail
 
@@ -20,7 +20,7 @@ MAX_BACKUP_AGE_DAYS=0
 
 usage() {
     echo "Usage: $0 -m <module[,module,...]> [--dry-run] [--clean-backups [--keep-backups N] [--max-backup-age-days N]]"
-    echo "  Modules: neovim, vim, powershell, git, bash, tig, tmux, zellij, curl, claude, all"
+    echo "  Modules: neovim, vim, powershell, git, bash, tig, tmux, zellij, curl, claude, lazygit, windowsterminal, all"
     echo "  --clean-backups          remove old .bak.TIMESTAMP files from previous runs"
     echo "  --keep-backups N         keep N most recent backups per file (default: 5, 0 = no limit)"
     echo "  --max-backup-age-days N  delete backups older than N days (default: 0 = disabled)"
@@ -266,7 +266,9 @@ install_claude() {
     # Skills — symlink each subdirectory into ~/.claude/skills/
     local skills_src="$DOTFILES/claude/skills"
     local skills_dst="$HOME/.claude/skills"
-    mkdir -p "$skills_dst"
+    if [[ $DRY_RUN -eq 0 ]]; then
+        mkdir -p "$skills_dst"
+    fi
     local skill_dirs=()
     while IFS= read -r -d '' d; do
         skill_dirs+=("$d")
@@ -318,7 +320,7 @@ clean_backups() {
         while IFS= read -r -d '' f; do
             local stem="${f%.bak.[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]}"
             stem_files[$stem]+="$f"$'\n'
-        done < <(find "$dir" -maxdepth 1 \( -f -o -L \) \
+        done < <(find "$dir" -maxdepth 1 \( -type f -o -type l \) \
             -name "*.bak.[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_[0-9][0-9][0-9][0-9][0-9][0-9]" \
             -print0 2>/dev/null)
     done
