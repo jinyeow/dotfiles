@@ -142,7 +142,10 @@ Describe 'Get-GitPromptInfo — copied (C) index status counts as staged' {
             if ($a -like 'status --porcelain*')   { return @('C  copied.txt', 'A  added.txt') }
             return
         }
-        try { $info = Get-GitPromptInfo } finally { Remove-Item function:global:git }
+        # `Remove-Item function:global:git` silently no-ops (the global: qualifier is
+        # not honoured on the function: drive), leaking the shadow into later suites in
+        # the same Pester process. `function:git` removes it for real.
+        try { $info = Get-GitPromptInfo } finally { Remove-Item function:git -ErrorAction Ignore }
         $info.Staged | Should -Be 2   # both the C (copied) and the A (added)
     }
 }
