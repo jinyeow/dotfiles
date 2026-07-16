@@ -4,9 +4,14 @@ end
 
 local ss_ok, schemastore = pcall(require, 'schemastore')
 
+-- Cleared augroup so re-sourcing this module replaces its autocmds (LspAttach
+-- keymaps, bicep filetype) instead of stacking duplicate handlers.
+local augroup = vim.api.nvim_create_augroup('config.lsp', { clear = true })
+
 -- Shared LSP keymaps, attached per buffer on LspAttach
 -- Note: K, [d, ]d, grn, grr, gri, gra are Neovim 0.11 built-in defaults — not remapped here.
 vim.api.nvim_create_autocmd('LspAttach', {
+  group = augroup,
   callback = function(ev)
     local map = function(keys, func, desc)
       vim.keymap.set('n', keys, func, { buffer = ev.buf, desc = desc })
@@ -17,10 +22,13 @@ vim.api.nvim_create_autocmd('LspAttach', {
     map('<leader>ca', vim.lsp.buf.code_action, 'Code action')
     map('<leader>d', vim.diagnostic.open_float, 'Show diagnostics')
 
-    -- Enable native LSP completion (autotrigger: complete as you type)
-    vim.lsp.completion.enable(true, ev.data.client_id, ev.buf, { autotrigger = true })
-
     local client = vim.lsp.get_client_by_id(ev.data.client_id)
+
+    -- Enable native LSP completion (autotrigger: complete as you type), but only
+    -- for servers that advertise it (mirrors the documentHighlight guard below).
+    if client and client:supports_method('textDocument/completion') then
+      vim.lsp.completion.enable(true, ev.data.client_id, ev.buf, { autotrigger = true })
+    end
 
     -- Highlight other references to the symbol under the cursor on CursorHold
     -- (updatetime = 250); cleared on move. Skipped for servers without the capability.
@@ -42,6 +50,11 @@ vim.api.nvim_create_autocmd('LspAttach', {
     if client and client.name == 'powershell_es' and not client._pwsh_indexed then
       client._pwsh_indexed = true
       vim.defer_fn(function()
+        -- The client may have stopped during the 3s wait; requesting on a dead
+        -- client errors, so bail if it's gone.
+        if client:is_stopped() then
+          return
+        end
         client:request('workspace/symbol', { query = '' }, function() end)
       end, 3000)
     end
@@ -144,6 +157,7 @@ end
 -- Bicep (only if path is set)
 if _G.user_config.bicep_lsp_path ~= '' then
   vim.api.nvim_create_autocmd({ 'BufNewFile', 'BufRead' }, {
+    group = augroup,
     pattern = '*.bicep',
     callback = function()
       vim.bo.filetype = 'bicep'
@@ -174,28 +188,23 @@ if _G.user_config.pwsh_bundle_path ~= '' then
     root_dir = function(bufnr, cb)
       local fname = vim.api.nvim_buf_get_name(bufnr)
       local dir = vim.fn.fnamemodify(fname, ':h')
-      local check = dir
-      for _ = 1, 10 do
-        local handle = vim.uv.fs_scandir(check)
-        if handle then
-          while true do
-            local name, ftype = vim.uv.fs_scandir_next(handle)
-            if not name then
-              break
-            end
-            if (ftype == 'file' or ftype == 'link') and (name:match('%.psd1$') or name:match('%.psm1$')) then
-              cb(check)
-              return
-            end
-          end
-        end
-        local parent = vim.fn.fnamemodify(check, ':h')
-        if parent == check then
-          break
-        end
-        check = parent
+      -- Project boundary. `.git`/`.jj` may be a FILE, not a dir (this repo's own
+      -- bare-worktree layout), which vim.fs.root matches either way; `.jj` covers
+      -- non-colocated Jujutsu repos that have no `.git`.
+      local boundary = vim.fs.root(bufnr, { '.git', '.jj' })
+      -- Nearest ancestor holding a PowerShell manifest, searched upward from the
+      -- buffer. Bounded to the project so a stray *.psd1 in $HOME can't hijack the
+      -- root (same escape rationale as the lint hook boundary in CLAUDE.md).
+      -- boundary and manifest lie on the same ancestor chain, so a manifest inside
+      -- the project is a path at least as long as the boundary; a shorter one sits
+      -- above it and is rejected.
+      local manifest = vim.fs.root(bufnr, function(name)
+        return name:match('%.psd1$') ~= nil or name:match('%.psm1$') ~= nil
+      end)
+      if manifest and (not boundary or #manifest >= #boundary) then
+        return cb(manifest)
       end
-      cb(vim.fs.root(bufnr, { '.git' }) or dir)
+      cb(boundary or dir)
     end,
   })
   vim.lsp.enable('powershell_es')

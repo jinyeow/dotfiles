@@ -85,9 +85,12 @@ local function wait_for_session_file(cb)
     if fd then
       local contents = fd:read('*a')
       fd:close()
-      os.remove(session_file)
       local decoded_ok, decoded = pcall(vim.json.decode, contents)
       if decoded_ok and type(decoded) == 'table' and decoded.debugServicePipeName then
+        -- Only delete once we have a valid, complete session file. A poll that
+        -- lands mid-write must leave the file so a later tick can re-read it —
+        -- removing it first guarantees the 30s timeout.
+        os.remove(session_file)
         return finish(decoded)
       end
     end
@@ -101,13 +104,35 @@ local dap_term_buf ---@type integer?
 local dap_term_chan ---@type integer?
 
 dap.adapters.ps1 = function(on_config)
+  -- Remove any session file left by a previous crashed run before starting PSES:
+  -- otherwise the first poll picks up the stale file (connecting to a dead pipe)
+  -- and deletes it, so the fresh PSES's real file is never read.
+  pcall(os.remove, session_file)
+
   local cmd = make_cmd()
   dap_term_buf = api.nvim_create_buf(false, false)
   api.nvim_buf_call(dap_term_buf, function()
     dap_term_chan = vim.fn.jobstart(cmd, { term = true })
   end)
+  -- jobstart returns 0 (invalid args) or -1 (command not executable, e.g. pwsh
+  -- not on PATH); surface that immediately instead of the generic 30s timeout.
+  if not dap_term_chan or dap_term_chan <= 0 then
+    if dap_term_buf and api.nvim_buf_is_valid(dap_term_buf) then
+      api.nvim_buf_delete(dap_term_buf, { force = true })
+    end
+    dap_term_buf, dap_term_chan = nil, nil
+    return vim.notify('powershell dap: failed to start PSES (is pwsh on PATH?)', vim.log.levels.ERROR)
+  end
   wait_for_session_file(function(details, err)
     if err or not details then
+      -- Tear down the orphaned terminal job/buffer left running after a timeout.
+      if dap_term_chan then
+        pcall(vim.fn.jobstop, dap_term_chan)
+      end
+      if dap_term_buf and api.nvim_buf_is_valid(dap_term_buf) then
+        api.nvim_buf_delete(dap_term_buf, { force = true })
+      end
+      dap_term_buf, dap_term_chan = nil, nil
       return vim.notify(err or 'powershell dap: no session details', vim.log.levels.ERROR)
     end
     on_config({

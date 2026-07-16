@@ -43,7 +43,9 @@ gitsigns.setup({
     end, 'Reset hunk')
     map('n', '<leader>hS', gs.stage_buffer, 'Stage buffer')
     map('n', '<leader>hR', gs.reset_buffer, 'Reset buffer')
-    map('n', '<leader>hu', gs.undo_stage_hunk, 'Undo stage hunk')
+    -- gitsigns deprecated undo_stage_hunk; staging an already-staged hunk now
+    -- toggles it back off, so stage_hunk is the modern un-stage on a staged hunk.
+    map('n', '<leader>hu', gs.stage_hunk, 'Undo stage hunk (toggle)')
     map('n', '<leader>hp', gs.preview_hunk, 'Preview hunk')
     map('n', '<leader>hi', gs.preview_hunk_inline, 'Preview hunk inline')
 
