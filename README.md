@@ -7,7 +7,7 @@ Personal dotfiles for Windows (primary) and Linux/WSL.
 | Directory | Tool | Platform |
 |---|---|---|
 | `powershell/` | PowerShell 7 profile + prompt | Windows |
-| `nvim/` | Neovim (Lua, 0.11+) | Windows + Linux |
+| `nvim/` | Neovim (Lua, 0.12+) | Windows + Linux |
 | `git/` | Git config, hooks, ignore | Windows + Linux |
 | `vim/` | Vim config (Linux fallback) | Linux |
 | `bash/` | Bash config + fzf helpers | Linux / WSL |
@@ -16,16 +16,20 @@ Personal dotfiles for Windows (primary) and Linux/WSL.
 | `curl/` | Global curl defaults | Windows + Linux |
 | `ripgrep/` | ripgrep config | Windows + Linux |
 | `lazygit/` | lazygit config + Catppuccin themes | Windows + Linux |
-| `claude/` | Claude Code settings, statusline, global skills | Windows + Linux |
+| `claude/` | Claude Code settings, statusline, hooks, agents, AGENTS.md, global skills | Windows + Linux |
 | `windowsterminal/` | Windows Terminal settings | Windows |
 | `bat/` | bat syntax highlighter config | Windows + Linux |
 | `vscode/` | VSCode settings snapshot | Windows |
 | `winget/` | winget bootstrap script + package list | Windows |
 | `zellij/` | Zellij terminal multiplexer | Windows + Linux |
+| `psmux/` | psmux config (native-Windows tmux clone, daily-driver multiplexer) | Windows |
+| `yazi/` | Yazi terminal file manager config | Windows |
+| `codex/` | Codex CLI config (read-only second-opinion reviewer) | Windows |
+| `eza/` | eza (`ls` replacement) Catppuccin theme | Windows |
 | `tmux/` | tmux config | Linux / WSL |
 | `nix/` | Nix/Home Manager (legacy snapshot) | Linux |
 
-Legacy configs (not actively maintained): `bash/`, `vim/`, `config/bspwm/`, `config/rofi/`, `config/sxhkd/`, `i3/`, `tmux/`, `mpd/`, `ncmpcpp/`, `postgres/`, `ruby/`.
+Legacy configs (not actively maintained): `bash/`, `vim/`, `config/bspwm/`, `config/rofi/`, `config/sxhkd/`, `config/direnv/`, `config/ranger/`, `i3/`, `tmux/`, `mpd/`, `ncmpcpp/`, `postgres/`, `ruby/`, `ctags`, `wgetrc`, `Xresources.d/`, `urxvt/`, `etc/`, `scripts/`.
 
 ## Installation
 
@@ -39,7 +43,7 @@ cd $HOME/dotfiles
 .\setup.ps1 -Module all -DryRun  # preview without changes
 ```
 
-Available modules: `neovim`, `vim`, `powershell`, `git`, `bash`, `tig`, `tmux`, `zellij`, `yazi`, `curl`, `claude`, `codex`, `lazygit`, `windowsterminal`, `bat`, `vscode`, `winget`
+Available modules: `neovim`, `vim`, `powershell`, `git`, `bash`, `tig`, `tmux`, `zellij`, `psmux`, `yazi`, `curl`, `claude`, `codex`, `serena`, `context7`, `fastmail`, `lazygit`, `windowsterminal`, `bat`, `vscode`, `winget`
 
 ### Linux / WSL
 
@@ -74,9 +78,9 @@ Or install individually:
 | [lazygit](https://github.com/jesseduffield/lazygit) | Terminal git UI | `winget install JesseDuffield.lazygit` |
 | [tig](https://jonas.github.io/tig/) | Terminal git browser | `winget install Jonas.Tig` |
 | [jujutsu (jj)](https://github.com/jj-vcs/jj) | Git-compatible VCS (prompt-integrated) | `winget install jj-vcs.jj` |
-| [Neovim](https://neovim.io) 0.11+ | Editor | `winget install Neovim.Neovim` |
+| [Neovim](https://neovim.io) 0.12+ | Editor | `winget install Neovim.Neovim` |
 
-See each tool's `README.md` for full prerequisites and setup notes.
+See `fzf/`, `ripgrep/`, `lazygit/`, `tig/`, and `nvim/` for tool-specific `README.md` prerequisites and setup notes; delta, bat, zoxide, and jj have no dedicated config directory in this repo.
 
 ## Claude Code skills
 
@@ -95,6 +99,7 @@ Not sure which one fits? Run `/router` — a manual index that maps these as flo
 | `implement` | mattpocock/skills | Build from a spec/ticket — TDD at seams, review, commit |
 | `tdd` | mattpocock/skills | Red-green-refactor TDD loop |
 | `spec-review` | local | Review a diff for conformance to its originating spec/ticket |
+| `walkthrough` | local | Walk me through a diff like a senior mentoring a junior — pair-programming style, chunk by chunk, concise, open to questions |
 | `setup-agent-skills` | mattpocock/skills | One-time per-repo config for the spec → tickets → wayfinding flow |
 | `triage` | mattpocock/skills | State-machine triage of issues/PRs you didn't create |
 | `diagnosing-bugs` | mattpocock/skills | Diagnosis loop for hard bugs and regressions |
