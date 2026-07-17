@@ -152,6 +152,17 @@
   "agentPushNotifEnabled": true,
   "skipWorkflowUsageWarning": true,
   "permissions": {
-    "defaultMode": "auto"
-  }
+    "defaultMode": "auto",
+    "deny": [
+      "DesignSync",
+      "EnterPlanMode",
+      "ExitPlanMode",
+      "NotebookEdit",
+      "CronCreate",
+      "CronDelete",
+      "CronList"
+    ]
+  },
+  "disableWorkflows": true,
+  "disableAiConnectors": true
 }
