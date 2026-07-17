@@ -30,7 +30,7 @@ back to its built-in walker. Live `Alt+f` search (`Invoke-FzfRipgrep`) still use
 | `--highlight-line` | Highlight the full current line |
 | `--wrap` | Wrap long lines instead of truncating |
 | `--bind=ctrl-a:select-all` | Select all matches |
-| `--bind=?:toggle-preview` | Toggle preview pane |
+| `--bind=ctrl-/:toggle-preview` | Toggle preview pane |
 
 ## Keybindings
 
@@ -39,7 +39,7 @@ back to its built-in walker. Live `Alt+f` search (`Invoke-FzfRipgrep`) still use
 | Key | Action |
 |---|---|
 | `Ctrl+a` | Select all matches |
-| `?` | Toggle preview pane |
+| `Ctrl+/` | Toggle preview pane |
 
 ### PowerShell shell (PSFzf)
 
