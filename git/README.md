@@ -24,23 +24,32 @@ Git configuration, global ignore rules, commit template, and hook templates.
 ## Key settings
 
 - **Delta** as pager and diff filter — side-by-side view, line numbers, syntax highlighting
+- **`[delta "dark-mode"]` / `[delta "light-mode"]`** — Catppuccin Mocha/Latte syntax-theme feature blocks, selected via `$env:DELTA_FEATURES` (set alongside `BAT_THEME` in the PowerShell profile) so delta's colors track the OS dark/light setting
 - **Histogram diff algorithm** — better diff quality on refactored code
 - **zdiff3 conflict style** — shows common ancestor in conflict markers
 - **`pull.ff = only`** — never creates merge commits on pull
 - **`rebase.updateRefs = true`** — automatic stacked branch ref updates
 - **`rebase.rescheduleFailedExec = true`** — retry failed `exec` steps in interactive rebase
+- **`merge.autoStash = true`** — parallels `rebase.autoStash`: auto-stash/pop local changes around a merge
 - **`rerere.enabled = true`** — remembers and replays conflict resolutions
+- **`rerere.autoUpdate = true`** — stages a rerere-resolved conflict automatically, no manual `git add`
+- **`tag.sort = version:refname`** — `git tag` lists in version order instead of creation-date order
+- **`help.autocorrect = prompt`** — prompts before running a corrected mistyped command, instead of auto-executing it
+- **`fetch.parallel = 0`** — let git pick the parallelism for multi-remote/submodule fetches
 - **`push.autoSetupRemote = true`** — no manual upstream needed on first push
 - **`push.useForceIfIncludes = true`** — safety check: force push only if remote hasn't diverged unexpectedly
 - **`fetch.fsckObjects` + `transfer.fsckObjects`** — integrity check on every fetch/clone
 - **`column.ui = auto`** — columnize `git branch`, `git tag`, and similar list output
 - **`maintenance.strategy = incremental`** — background repo maintenance; activate per-repo with `git maintenance register`
+- **`submodule.fetchJobs = 0`** (work only, `gitconfig-work`) — parallelizes submodule fetches, alongside `submodule.recurse = true`
 - **GitHub SSH rewrite** — both `https://github.com/` and `gh:` resolve to SSH
 
 ## Work identity (`[includeIf]`)
 
 Work email and `diff.tool = delta` are applied automatically for any repo whose
-remote URL matches the work domain. Requires Git 2.36+.
+remote URL matches the work domain. Requires Git 2.36+. Three `hasconfig:remote.*.url`
+stanzas cover HTTPS (with and without embedded userinfo) and SSH clones of the same
+Azure DevOps org, plus a `gitdir/i` fallback for a fixed local work path.
 
 For local-only work repos without a remote yet:
 ```sh
@@ -112,7 +121,7 @@ Three things about that value are load-bearing, all pinned by
   fails loudly (126). The difference is only visible on Linux: Windows reports
   every file executable and `chmod` is a no-op there.
 - **The double quotes are required.** `;` starts a comment in git config, so
-  unquoted the value silently truncates to `test -x ... || exit 0` — the policy
+  unquoted the value silently truncates to `test -f ... || exit 0` — the policy
   never runs and the hook enforces nothing while still appearing in
   `git hook list`. Git strips the quotes before handing the value to sh, so `~`
   still expands. (`test -x ... && exec ...` dodges the `;` but is wrong: with the

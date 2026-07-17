@@ -33,9 +33,9 @@ jobs:
       - name: PSScriptAnalyzer (whole tree, repo settings)
         run: |
           $results = Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
-          # Legacy snapshot files and vendored third-party plugins are out of scope per CLAUDE.md
-          # (psmux/plugins/ is upstream code pinned by SHA, not ours to lint) - do not gate on them.
-          $legacy = '(^|[\\/])pwsh_profile\.ps1$|[\\/]psmux[\\/]plugins[\\/]'
+          # Vendored third-party plugins are out of scope per CLAUDE.md (psmux/plugins/ is
+          # upstream code pinned by SHA, not ours to lint) - do not gate on them.
+          $legacy = '[\\/]psmux[\\/]plugins[\\/]'
           $gated = $results | Where-Object { $_.ScriptPath -notmatch $legacy }
           if ($gated) {
             $gated | Format-Table RuleName, Severity, ScriptName, Line, Message -AutoSize | Out-String -Width 200 | Write-Host
@@ -50,6 +50,71 @@ jobs:
           $config.Run.Exit = $true
           $config.Output.Verbosity = 'Detailed'
           Invoke-Pester -Configuration $config
+
+  linux:
+    name: Pester (Ubuntu) + setup.sh smoke
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Pester
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module -Name Pester -MinimumVersion 5.5.0 -Force -Scope CurrentUser -SkipPublisherCheck
+          Get-Module -ListAvailable Pester | Select-Object Name, Version
+
+      - name: Pester (tests/, platform-agnostic suites)
+        run: |
+          $config = New-PesterConfiguration
+          $config.Run.Path = 'tests'
+          $config.Run.Exit = $true
+          $config.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $config
+
+      # setup.ps1's Windows-only suites (e.g. the -Module all smoke) self-skip on this OS
+      # (-Skip:(-not $IsWindows)) rather than failing, so the run above still needs to exit 0.
+      # setup.sh (the actual Linux/WSL installer) has no Pester coverage of its own beyond
+      # tests/setup-sh.Tests.ps1 (already included above) - these two steps add a real end-to-end
+      # smoke on top of that: a full -m all --dry-run, and a --clean-backups detection pass.
+
+      - name: setup.sh -m all --dry-run smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          scratch_home="$(mktemp -d)"
+          # Invoked via `bash`, not `./setup.sh`: the file is tracked non-executable (100644)
+          # in git, so a fresh checkout would hit "Permission denied" on a direct exec.
+          HOME="$scratch_home" bash setup.sh -m all --dry-run
+          echo "setup.sh -m all --dry-run: exit 0, no changes made to $scratch_home"
+
+      - name: setup.sh --clean-backups smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          scratch_home="$(mktemp -d)"
+          # Two backups of the same file, seeded a second apart, so --keep-backups 1 has a real
+          # older/newer pair to prune between (matches the pattern in
+          # tests/setup-sh.Tests.ps1's "finds and removes .bak.TIMESTAMP files in HOME").
+          touch "$scratch_home/.gitconfig.bak.20200101_010101"
+          sleep 1
+          touch "$scratch_home/.gitconfig.bak.20200101_020202"
+          out="$(HOME="$scratch_home" bash setup.sh --clean-backups --keep-backups 1)"
+          echo "$out"
+          echo "$out" | grep -q 'Removed (count)' || {
+            echo "expected --clean-backups to detect and remove a seeded .bak file"
+            exit 1
+          }
+          [ -f "$scratch_home/.gitconfig.bak.20200101_010101" ] && {
+            echo "older backup should have been removed"
+            exit 1
+          }
+          [ -f "$scratch_home/.gitconfig.bak.20200101_020202" ] || {
+            echo "newer backup should have survived"
+            exit 1
+          }
 
   stylua:
     name: stylua --check (nvim)

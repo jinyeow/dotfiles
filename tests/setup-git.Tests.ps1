@@ -36,7 +36,15 @@ Describe 'setup.ps1 Test-GitHookSupport' {
     ) {
         $shimDir = Join-Path ([IO.Path]::GetTempPath()) ('git-hooktest-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $shimDir -Force | Out-Null
-        Set-Content -Path (Join-Path $shimDir 'git.cmd') -Value "@echo off`r`necho $Version" -Encoding ASCII
+        if ($IsWindows) {
+            Set-Content -Path (Join-Path $shimDir 'git.cmd') -Value "@echo off`r`necho $Version" -Encoding ASCII
+        } else {
+            # No .cmd/PATHEXT resolution off Windows — an extensionless script with a shebang,
+            # made executable, is what `Get-Command git` / `& git` will actually find on PATH.
+            $shimPath = Join-Path $shimDir 'git'
+            Set-Content -Path $shimPath -Value "#!/bin/sh`necho `"$Version`"" -Encoding ASCII
+            chmod +x $shimPath
+        }
 
         $origPath = $env:PATH
         try {

@@ -1,20 +1,36 @@
 local autocmd = vim.api.nvim_create_autocmd
+-- Cleared augroup so re-sourcing this module replaces its autocmds instead of
+-- stacking duplicates (double whitespace-strips, autosaves, etc.).
+local augroup = vim.api.nvim_create_augroup('config.autocmds', { clear = true })
 
 -- Highlight on yank
 autocmd('TextYankPost', {
+  group = augroup,
   callback = function()
-    vim.highlight.on_yank({ timeout = 200 })
+    vim.hl.on_yank({ timeout = 200 })
   end,
 })
 
--- Remove trailing whitespace on save
+-- Remove trailing whitespace on save. Markdown is deliberately excluded: two
+-- trailing spaces are a hard line break in Markdown, so stripping them silently
+-- rewrites the document — and combined with the FocusLost `wall` autosave it
+-- would mangle Markdown on every alt-tab. winsaveview/winrestview + keeppatterns
+-- preserve the cursor/view and the last-search pattern the plain :s would clobber.
 autocmd('BufWritePre', {
-  pattern = '*',
-  command = '%s/\\s\\+$//e',
+  group = augroup,
+  callback = function()
+    if vim.bo.filetype == 'markdown' then
+      return
+    end
+    local view = vim.fn.winsaveview()
+    vim.cmd([[keeppatterns %s/\s\+$//e]])
+    vim.fn.winrestview(view)
+  end,
 })
 
 -- Return to last edit position
 autocmd('BufReadPost', {
+  group = augroup,
   callback = function()
     local mark = vim.api.nvim_buf_get_mark(0, '"')
     local lcount = vim.api.nvim_buf_line_count(0)
@@ -28,6 +44,7 @@ autocmd('BufReadPost', {
 -- convention and the Azure DevOps default filename `azure-pipelines.yml` at repo
 -- root, so azure_pipelines_ls (not yamlls) attaches to both. See lsp.lua.
 autocmd({ 'BufNewFile', 'BufRead' }, {
+  group = augroup,
   pattern = { '*.azure-pipelines.yml', '*.azure-pipelines.yaml', 'azure-pipelines.yml', 'azure-pipelines.yaml' },
   callback = function()
     vim.bo.filetype = 'azure-pipelines'
@@ -42,6 +59,7 @@ vim.treesitter.language.register('yaml', 'azure-pipelines')
 -- Reload buffer when file changes externally (autoread is on by default in Neovim;
 -- checktime is needed to actually trigger it in terminal workflows)
 autocmd({ 'FocusGained', 'BufEnter' }, {
+  group = augroup,
   callback = function()
     if vim.fn.mode() ~= 'c' then
       vim.cmd('checktime')
@@ -51,6 +69,7 @@ autocmd({ 'FocusGained', 'BufEnter' }, {
 
 -- Save all modified buffers when Neovim loses focus
 autocmd('FocusLost', {
+  group = augroup,
   callback = function()
     vim.cmd('silent! wall')
   end,
@@ -58,6 +77,7 @@ autocmd('FocusLost', {
 
 -- Equalise window sizes when the terminal is resized
 autocmd('VimResized', {
+  group = augroup,
   callback = function()
     vim.cmd('wincmd =')
   end,
@@ -65,6 +85,7 @@ autocmd('VimResized', {
 
 -- Show absolute line numbers in insert mode, relative in normal mode
 autocmd('InsertEnter', {
+  group = augroup,
   callback = function()
     if vim.wo.number then
       vim.wo.relativenumber = false
@@ -72,6 +93,7 @@ autocmd('InsertEnter', {
   end,
 })
 autocmd('InsertLeave', {
+  group = augroup,
   callback = function()
     if vim.wo.number then
       vim.wo.relativenumber = true
@@ -81,6 +103,7 @@ autocmd('InsertLeave', {
 
 -- Disable automatic comment leader continuation on Enter
 autocmd('FileType', {
+  group = augroup,
   pattern = '*',
   callback = function()
     vim.opt_local.formatoptions:remove({ 'r', 'o', 'c' })
@@ -89,6 +112,7 @@ autocmd('FileType', {
 
 -- Markdown-specific settings
 autocmd('FileType', {
+  group = augroup,
   pattern = 'markdown',
   callback = function()
     vim.opt_local.wrap = true
@@ -154,6 +178,7 @@ end
 
 -- Lazy-bind the alternate-file keymap only in C#/PowerShell buffers
 autocmd('FileType', {
+  group = augroup,
   pattern = { 'cs', 'ps1' },
   callback = function(ev)
     vim.keymap.set('n', '<leader>A', alternate_test_file, { buffer = ev.buf, desc = 'Alternate source/test file' })

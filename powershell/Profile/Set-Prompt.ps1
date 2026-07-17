@@ -7,9 +7,17 @@
 
 # --- Computed-once constants ------------------------------------------------
 $global:PromptConst = @{
-    IsAdmin = ([System.Security.Principal.WindowsPrincipal](
-        [System.Security.Principal.WindowsIdentity]::GetCurrent()
-    )).IsInRole('Administrators')
+    # WindowsIdentity/WindowsPrincipal throw PlatformNotSupportedException off
+    # Windows, so gate the admin check on $IsWindows. On Linux/macOS root is uid 0.
+    IsAdmin = if ($IsWindows) {
+        ([System.Security.Principal.WindowsPrincipal](
+            [System.Security.Principal.WindowsIdentity]::GetCurrent()
+        )).IsInRole('Administrators')
+    } elseif (Get-Command id -ErrorAction Ignore) {
+        (id -u) -eq '0'
+    } else {
+        $false
+    }
 
     # ANSI escape sequences
     ESC          = [char]27
@@ -44,7 +52,6 @@ if (-not $global:PromptCache) {
         AzContext       = $null   # cached result hashtable
         AzRunspace      = $null   # persistent [runspace], opened once and reused
         AzInvocation    = $null   # per-tick @{ PowerShell; Handle } on that runspace
-        AzTimerDisposed = $false  # pre-existing, currently unreferenced
     }
 }
 
@@ -186,9 +193,13 @@ function Initialize-AzTimer {
     # Az has since become unavailable (the guard would otherwise return early).
     # NOTE: Get-EventSubscriber -SourceIdentifier does NOT support wildcards, so we
     #       filter with Where-Object. -Force finds hidden -SupportEvent subscribers.
+    # The PowerShell.Exiting clause is narrowed to THIS profile's own handler (its
+    # action body references $global:PromptCache.Az*) — an unqualified match would
+    # unregister every module's hidden Exiting handler on a `. $PROFILE` reload.
     Get-EventSubscriber -Force -ErrorAction SilentlyContinue |
         Where-Object { $_.SourceIdentifier -like 'Profile.Az*' -or
-                       ($_.SourceIdentifier -eq 'PowerShell.Exiting' -and $_.SupportEvent) } |
+                       ($_.SourceIdentifier -eq 'PowerShell.Exiting' -and $_.SupportEvent -and
+                        $_.Action -and $_.Action.Command -match 'PromptCache\.Az') } |
         Unregister-Event -Force
 
     # Dispose previous timer object if reloading profile
@@ -249,30 +260,35 @@ function Get-GitPromptInfo {
     .SYNOPSIS
     Returns a hashtable with git status info, or $null if not in a repo.
     All git calls are synchronous — fast enough for interactive prompt.
-    Uses up to 4 git processes: rev-parse (gate), rev-parse (top-level),
-    rev-list, status. The top-level call only runs when the gate passes.
+    Uses 2 git processes: rev-parse (gate + top-level + worktree detection) and
+    one `status --porcelain=v2 --branch` (branch name, ahead/behind, and file
+    status in a single stream). In a bare repo the gate errors on --show-toplevel
+    and retries without it (3 processes), which is the rare path.
     #>
 
-    # Gate: branch + git-dir + git-common-dir. Works in bare repos, so it doubles
-    # as the "are we in a repo" check. --show-toplevel is deliberately NOT here:
-    # it errors in a bare repo and would wipe the whole git segment.
-    $revParts = git rev-parse --abbrev-ref HEAD --git-dir --git-common-dir 2>$null
-    if ($LASTEXITCODE -ne 0 -or -not $revParts) { return $null }
-
-    # rev-parse returns one value per line
-    $revLines = @($revParts)
-    $branch       = $revLines[0]
-    $gitDir       = if ($revLines.Count -gt 1) { $revLines[1] } else { $null }
-    $gitCommonDir = if ($revLines.Count -gt 2) { $revLines[2] } else { $null }
-
-    # Repo top-level for truncate-to-repo. Separate call because --show-toplevel
-    # errors in a bare repo; tolerate that and leave TopLevel null there. Only
-    # runs when the gate passed, so non-repo dirs pay nothing for it.
-    $topLevel = git rev-parse --show-toplevel 2>$null
-    if ($LASTEXITCODE -ne 0) { $topLevel = $null }
+    # Gate + top-level in one rev-parse. --show-toplevel is first so it is line 0.
+    # This whole call errors (exit 128) in a bare repo — no work tree — so on failure
+    # retry without it: a bare repo still registers as a repo and TopLevel stays null.
+    # --show-toplevel/--git-dir succeed on an UNBORN branch (fresh `git init`, no
+    # commit), unlike `rev-parse --abbrev-ref HEAD`, which exits 128 there and used
+    # to wipe the whole git segment exactly when the "new repo" signal is most useful.
+    $revParts = git rev-parse --show-toplevel --git-dir --git-common-dir 2>$null
+    if ($LASTEXITCODE -eq 0 -and $revParts) {
+        $revLines     = @($revParts)
+        $topLevel     = $revLines[0]
+        $gitDir       = if ($revLines.Count -gt 1) { $revLines[1] } else { $null }
+        $gitCommonDir = if ($revLines.Count -gt 2) { $revLines[2] } else { $null }
+    } else {
+        $revParts = git rev-parse --git-dir --git-common-dir 2>$null
+        if ($LASTEXITCODE -ne 0 -or -not $revParts) { return $null }
+        $revLines     = @($revParts)
+        $topLevel     = $null
+        $gitDir       = $revLines[0]
+        $gitCommonDir = if ($revLines.Count -gt 1) { $revLines[1] } else { $null }
+    }
 
     $info = @{
-        Branch     = $branch
+        Branch     = $null
         IsWorktree = $false
         # git emits forward slashes; normalise to the platform separator so the
         # truncate-to-repo prefix match against $PWD.Path works on Windows.
@@ -293,37 +309,59 @@ function Get-GitPromptInfo {
         $info.IsWorktree = $true
     }
 
-    # Ahead/behind
-    $ab = git rev-list --left-right --count '@{upstream}...HEAD' 2>$null
-    if ($LASTEXITCODE -eq 0 -and $ab -match '(\d+)\s+(\d+)') {
-        $info.Behind = [int]$Matches[1]
-        $info.Ahead  = [int]$Matches[2]
-    }
-
-    # Porcelain status parse
-    $status = git status --porcelain 2>$null
+    # Branch name, ahead/behind, and file status in ONE porcelain v2 stream.
+    # `# branch.head` reports the real branch even on an UNBORN branch (fresh
+    # `git init`, no commit) and prints `(detached)` in detached HEAD — where the
+    # old `branch --show-current` produced an empty string; both render as no git
+    # segment, so a null Branch preserves that. `# branch.ab +A -B` is present only
+    # with an upstream (absent = no upstream, ahead/behind stay 0). File records:
+    #   `1 XY …` ordinary / `2 XY …` rename+copy (X=index, Y=worktree; `.` = unchanged)
+    #   `u XY …` unmerged  → an EXACT conflict signal (no XY-pair heuristic needed;
+    #                         the v1 parser had to whitelist DD/AU/…/UU and dodge AD)
+    #   `? …`   untracked
+    # In a bare repo status also errors (exit 128) and yields nothing — Branch stays
+    # null so the bare repo shows no git segment, exactly as before.
+    $status = git status --porcelain=v2 --branch 2>$null
     if ($status) {
-        $info.HasChanges = $true
         foreach ($line in $status) {
-            if ($line.Length -lt 2) { continue }
-            $idx = $line[0]
-            $wt  = $line[1]
+            if ($line.Length -lt 1) { continue }
+            $c0 = $line[0]
 
-            # Untracked
-            if ($idx -eq '?' -and $wt -eq '?') { $info.Untracked++; continue }
+            # Header lines: branch name + ahead/behind.
+            if ($c0 -eq '#') {
+                if ($line.StartsWith('# branch.head ')) {
+                    $name = $line.Substring(14)
+                    # `(detached)` -> leave Branch null (renders no branch, as before).
+                    if ($name -ne '(detached)') { $info.Branch = $name }
+                } elseif ($line.StartsWith('# branch.ab ') -and $line -match '\+(\d+)\s+-(\d+)') {
+                    $info.Ahead  = [int]$Matches[1]   # +A ahead
+                    $info.Behind = [int]$Matches[2]   # -B behind
+                }
+                continue
+            }
 
-            # Conflicts (unmerged)
-            if ($idx -in 'U','A','D' -and $wt -in 'U','A','D') { $info.Conflicts++; continue }
+            # Any non-header record is a change.
+            $info.HasChanges = $true
 
-            # Staged
+            if ($c0 -eq '?') { $info.Untracked++; continue }   # untracked
+            if ($c0 -eq 'u') { $info.Conflicts++; continue }   # unmerged = exact conflict
+
+            # `1`/`2` ordinary or rename/copy: field[1] is the 2-char XY status pair.
+            $fields = $line.Split(' ')
+            if ($fields.Count -lt 2 -or $fields[1].Length -lt 2) { continue }
+            $idx = $fields[1][0]   # index (staged) side
+            $wt  = $fields[1][1]   # working-tree side
+
+            # Staged (index side). Copied (C) counts as staged; renamed (R) is its own.
             switch ($idx) {
                 'M' { $info.Staged++ }
                 'A' { $info.Staged++ }
                 'D' { $info.Staged++ }
+                'C' { $info.Staged++ }   # copied (index copy-detection)
                 'R' { $info.Renamed++ }
             }
 
-            # Working tree
+            # Working tree side.
             switch ($wt) {
                 'M' { $info.Modified++ }
                 'D' { $info.Deleted++ }
@@ -537,8 +575,12 @@ function prompt {
     # VCS (computed before the path so the path can anchor at the repo root).
     # jj takes precedence: in a colocated repo git would show a detached HEAD,
     # so when a jj repo is detected we skip git entirely.
-    $jj  = if ($c.ShowJj) { Get-JjPromptInfo } else { $null }
-    $git = if ($jj) { $null } else { Get-GitPromptInfo }
+    # Only probe VCS on a FileSystem provider (matching the CWD-tracking gate above):
+    # under HKCU:/Cert:/Env: the jj/git helpers would spawn against the last synced
+    # Win32 CWD and render stale repo info from wherever the shell last was.
+    $isFileSystem = $loc.Provider.Name -eq 'FileSystem'
+    $jj  = if ($isFileSystem -and $c.ShowJj) { Get-JjPromptInfo } else { $null }
+    $git = if ($isFileSystem -and -not $jj) { Get-GitPromptInfo } else { $null }
 
     # Path — width-relative budget (~1/3 of the pane), capped, with a sane floor.
     # Anchored at the repo root when inside one (truncate-to-repo).
@@ -653,10 +695,12 @@ function prompt {
             $timeStr = "$($lastCmd.Duration.TotalSeconds.ToString('#.##'))s"
             $timeColor = $c.Red
         } elseif ($ms -ge 250) {
-            $timeStr = "$($ms.ToString('#'))ms"
+            $timeStr = "$($ms.ToString('0'))ms"
             $timeColor = $c.Yellow
         } else {
-            $timeStr = "$($ms.ToString('#'))ms"
+            # '0' not '#': the '#' custom format renders sub-0.5ms as an EMPTY string
+            # (e.g. 0.4 -> ''), yielding a blank "[ms]" segment; '0' always emits a digit.
+            $timeStr = "$($ms.ToString('0'))ms"
             $timeColor = $c.Green
         }
         $null = $out.Append("$($c.DimWhite)[${timeColor}${timeStr}$($c.DimWhite)]$($c.Reset) ")

@@ -23,7 +23,7 @@ if (-not $text.Trim()) { exit 0 }
 # words (=true, =localhost) are skipped while raw .env secrets (KEY=sk-abc123...) are caught.
 $rules = [ordered]@{
   'assigned credential (key/secret/token/password)' =
-  '(?im)(?<![A-Za-z])(?:api[_-]?key|secret|client[_-]?secret|token|password|passwd|access[_-]?key)(?![A-Za-z])["'']?\s*[:=]\s*(?:["''][^"'']{4,}|(?![$\{])(?=[A-Za-z0-9+/=_-]*\d)[A-Za-z0-9+/=_-]{12,})'
+  '(?im)(?<![A-Za-z])(?:api[_-]?key|secret|client[_-]?secret|token|password|passwd|access[_-]?key)(?![A-Za-z])["'']?\s*[:=]\s*(?:["''](?![$\{])[^"'']{4,}|(?![$\{])(?=[A-Za-z0-9+/=_-]*\d)[A-Za-z0-9+/=_-]{12,})'
   'private key block'  = '-----BEGIN (?:RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----'
   'AWS access key id'  = '\bAKIA[0-9A-Z]{16}\b'
 }

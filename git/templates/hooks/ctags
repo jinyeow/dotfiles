@@ -1,9 +1,14 @@
-#!/bin/bash
+#!/bin/sh
 
-if command -v ctags &> /dev/null; then
+if command -v ctags >/dev/null 2>&1; then
   set -e
   PATH="/usr/local/bin:$PATH"
-  dir="`git rev-parse --show-toplevel`"
+  dir="$(git rev-parse --show-toplevel)"
+
+  # Documented opt-out (git/README.md): a .notags file in the repo root disables
+  # tag generation entirely.
+  [ -f "$dir/.notags" ] && exit 0
+
   trap 'rm -f "$dir/$$.tags"' EXIT
 
   # Generate tags

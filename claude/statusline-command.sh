@@ -91,8 +91,8 @@ if [ -n "$dir" ] && git -C "$dir" rev-parse --git-dir >/dev/null 2>&1; then
     elif [ "$x$y" = "AA" ] || [ "$x$y" = "DD" ] || [ "$x" = "U" ] || [ "$y" = "U" ]; then
       conflicts=$((conflicts + 1))
     else
-      case "$x" in [MADRC]) staged=$((staged + 1)) ;; esac
-      [ "$y" = "M" ] && modified=$((modified + 1))
+      case "$x" in [MADRCT]) staged=$((staged + 1)) ;; esac
+      case "$y" in [MDT]) modified=$((modified + 1)) ;; esac
     fi
   done < <(git -C "$dir" status --porcelain 2>/dev/null)
 

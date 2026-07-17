@@ -11,10 +11,10 @@ charset = utf-8
 trim_trailing_whitespace = true
 insert_final_newline = true
 
-[.{,ba}sh*]
+[{*.sh,*.bash*,.sh*,.bash*}]
 indent_size = 4
 
-[.git*,git*]
+[{.git*,git*}]
 indent_size = 4
 
 [*.json{,c}]

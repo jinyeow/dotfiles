@@ -20,7 +20,7 @@ Verify with `claude doctor` (install method = native) and `Get-Command claude`
 
 | File / Directory | Installed to | Notes |
 |---|---|---|
-| `settings.json` | `~/.claude/settings.json` | Theme, effort level, editor mode, hooks, statusline (no `model` pin — chosen per session) |
+| `settings.json` | `~/.claude/settings.json` | Theme, effort level, editor mode, hooks, statusline, pins `model: "opus[1m]"` |
 | `CLAUDE.md` | `~/.claude/CLAUDE.md` | Claude-specific instructions; imports `AGENTS.md` via `@AGENTS.md` |
 | `AGENTS.md` | `~/.claude/AGENTS.md` | Shared coding conventions (single source). The `codex` module installs the same file to `~/.codex/AGENTS.md` so Claude Code and Codex CLI agree. See `../codex/README.md`. |
 | `statusline-command.sh` | `~/.claude/statusline-command.sh` | Token usage statusline script |
@@ -71,12 +71,13 @@ self-skips if absent). All allow silently and only emit JSON when they act.
 | Event / matcher | Script | Behaviour |
 |---|---|---|
 | `SessionStart` | `inject-handoff.ps1` | On a fresh session (`startup`/`clear`), injects the workspace's `.claude/handoff.md` (written by the `handoff` skill) via `additionalContext` so the next agent reads it first, then archives it to `handoff-<timestamp>.consumed.md` so it is delivered once (not replayed into every later session). No-ops if the file is absent or the session was resumed/compacted |
-| `PreToolUse` (Bash\|PowerShell) | `no-claude-session-trailer.sh` | Denies a `git commit` carrying the `Claude-Session:` trailer |
-| `PreToolUse` (Bash\|PowerShell) | `block-destructive-vcs.ps1` | Denies destructive **git** — `push --force` (allows `--force-with-lease`), `reset --hard`, `clean -f`, `branch -D`. jj is left ungated (its op-log makes rewrites recoverable). The git-guardrails *skill* only advises; this hook is non-bypassable |
-| `PreToolUse` (Bash) | `block-pwsh-in-bash.ps1` | Denies PowerShell sent to the Bash tool (a segment that *starts* with `pwsh`/`powershell`, `$env:`, or a `Verb-Noun` cmdlet), pointing at the PowerShell tool. Command-position only, so a cmdlet quoted as a search string is allowed |
-| `PreToolUse` (Edit\|Write) | `warn-legacy-files.ps1` | Emits an `ask` decision (pause-and-confirm) before editing a legacy/do-not-touch dotfile — root `pwsh_profile.ps1`, `bootstrap.sh`, `Makefile`, `config/bspwm\|sxhkd/`. Scoped to `$env:DOTFILES` so it never fires on same-named files in other repos; no-ops if `$env:DOTFILES` is unset |
-| `PostToolUse` (Edit\|Write) | `lint-powershell.ps1` | Runs PSScriptAnalyzer on an edited `.ps1/.psm1/.psd1` (using the nearest ruleset — `.vscode/PSScriptAnalyzerSettings.psd1` or the project root's, whichever it hits first walking up; the walk stops at the project boundary `.git`/`.jj`, so a stray ruleset in `$HOME` can't govern every repo) and feeds findings back via `additionalContext` |
-| `PostToolUse` (Edit\|Write) | `warn-hardcoded-secrets.ps1` | Scans written content (Write `content` / Edit `new_string`) for secret-shaped assignments (api-key/secret/token/password with a quoted literal, private-key blocks, AWS access-key ids) and warns via `additionalContext`. Global (secrets are bad anywhere); reports only rule names, never values |
+| `SessionStart` | `skills/project-brain/scripts/session-start.ps1` | Resolves the session cwd to a project-brain initiative and injects its `core.md` + `STATUS.md` via `additionalContext`. Lives inside the `project-brain` skill directory (junctioned with the skill, not a top-level symlink); fails safe — any error or no match exits 0 with no output |
+| `PreToolUse` (Bash\|PowerShell) | `no-claude-session-trailer.sh` | Denies a `git commit` carrying the `Claude-Session:` trailer. Matches `git … commit` allowing global flags to carry an argument (`git -C <path> commit`), so a flag-plus-value pair can't slip between `git` and `commit` and evade the check |
+| `PreToolUse` (Bash\|PowerShell) | `block-destructive-vcs.ps1` | Denies destructive **git** — `push --force` (allows `--force-with-lease`), `reset --hard`, `clean -f`, `branch -D`. jj is left ungated (its op-log makes rewrites recoverable). The git-guardrails *skill* only advises; this hook is non-bypassable. Strips quoted substrings before matching (escape-aware, so an escaped quote in a message doesn't mangle the match), except flag-shaped quoted content (`"--force"`) which is unquoted in place rather than deleted, so a quoted flag is still denied |
+| `PreToolUse` (Bash) | `block-pwsh-in-bash.ps1` | Denies PowerShell sent to the Bash tool (a segment that *starts* with `pwsh`/`powershell`, `$env:`, or a `Verb-Noun` cmdlet), pointing at the PowerShell tool. Command-position only, so a cmdlet quoted as a search string is allowed. Splits on a lone `&` as well as `&&`/`\|`/`;` (so a backgrounded cmdlet isn't hidden in the second segment) against an extended verb list beyond the common `Get`/`Set`/`New` |
+| `PreToolUse` (Edit\|Write) | `warn-legacy-files.ps1` | Emits an `ask` decision (pause-and-confirm) before editing a legacy/do-not-touch dotfile — `config/bspwm\|sxhkd/`. Scoped to `$env:DOTFILES` so it never fires on same-named files in other repos; no-ops if `$env:DOTFILES` is unset |
+| `PostToolUse` (Edit\|Write) | `lint-powershell.ps1` | Runs PSScriptAnalyzer on an edited `.ps1/.psm1/.psd1` (using the nearest ruleset — `.vscode/PSScriptAnalyzerSettings.psd1` or the project root's, whichever it hits first walking up; the walk stops at the project boundary `.git`/`.jj`, so a stray ruleset in `$HOME` can't govern every repo) and feeds findings back via `additionalContext`. Fails open silently — no output — even when `Invoke-ScriptAnalyzer` itself throws (e.g. a malformed ruleset file), same as the PSSA-absent no-op |
+| `PostToolUse` (Edit\|Write) | `warn-hardcoded-secrets.ps1` | Scans written content (Write `content` / Edit `new_string`) for secret-shaped assignments (api-key/secret/token/password with a quoted literal, private-key blocks, AWS access-key ids) and warns via `additionalContext`. A quoted placeholder value starting with `$` or `{` (e.g. `="$env:X"`, `="{{token}}"`) is excluded, so env-var refs and template placeholders don't false-fire. Global (secrets are bad anywhere); reports only rule names, never values |
 | `UserPromptSubmit` | `warn-reasoning-extraction.ps1` | Warns via `additionalContext` (never denies) when the submitted prompt asks for step-by-step reasoning / chain-of-thought — phrasing that can trip Claude Fable 5's `reasoning_extraction` refusal → Opus fallback (Claude Code shows a transcript notice). Nudges Claude to read it as a request for short rationale + assumptions + evidence |
 | `PreToolUse` (Edit\|Write) | `warn-reasoning-extraction.ps1` | Same script, config-write guard: emits an `ask` only when a reasoning-extraction phrase is being written into a config/prompt-bearing file (`CLAUDE.md`, `AGENTS.md`, `*SKILL.md`, `agents/*.md`, `codex/**`) — a *standing* instruction persisted into config. Strips quoted substrings before matching (so docs that quote the phrase to ban it don't self-trigger) plus a negation guard; reports rule names only |
 
@@ -127,7 +128,9 @@ colors: `±branch` red when dirty / yellow when clean (`wt:` prefix in a worktre
 `↑N` ahead (green) / `↓N` behind (red) / `↕` diverged, and per-category file
 counts `+N` staged (green), `*N` modified (yellow), `?N` untracked (magenta),
 `!N` conflicts (red). Each count is omitted when zero; the whole segment is
-absent outside a git repo.
+absent outside a git repo. The `*N` modified count reads the porcelain worktree
+column, so unstaged deletions and type-changes (`D`/`T`) count as modified/dirty
+too, not just `M`.
 
 The `5h` segment always shows the 5-hour window usage
 (`rate_limits.five_hour.used_percentage`) and appends a countdown to the window
@@ -203,8 +206,10 @@ for `deep-review`), and `findings-schema.md` (the JSONL finding schema, semantic
 store discipline shared by the review→fix skills). It has no `SKILL.md`, so the harness ignores it as
 a skill; it is still junctioned so skills can reference it via `../_shared/<file>`.
 
-Built-in Claude Code skills (`handoff`, `code-review`, etc.) are provided by
-the harness and do not need to be installed.
+Built-in Claude Code skills (`code-review`, `compact`, `deep-research`, `security-review`,
+`verify`, etc.) are provided by the harness and do not need to be installed. `handoff` is
+this repo's own skill (`claude/skills/handoff/`), not a harness built-in — see the Files
+table above.
 
 ## Agents
 

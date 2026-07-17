@@ -146,7 +146,7 @@ Falls back to sunrise/sunset window if detection fails.
 |---|---|
 | nvim-treesitter | Syntax highlighting and text objects (pinned to `master`; needs Zig to build parsers) |
 | nvim-treesitter-textobjects | Function/class text objects (pinned to `master`) |
-| fzf + fzf-lua | Fuzzy finding (files, grep, buffers, LSP symbols) |
+| fzf-lua | Fuzzy finding (files, grep, buffers, LSP symbols); needs the fzf binary on PATH, not a vim plugin |
 | vim-fugitive | Git command wrapper |
 | nvim-surround | Surround text objects |
 | oil.nvim | File explorer (edit the filesystem like a buffer; replaces netrw) |

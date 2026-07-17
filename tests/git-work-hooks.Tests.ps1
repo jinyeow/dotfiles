@@ -48,17 +48,21 @@ Describe 'git/gitconfig-work work-policy hook' -Skip:(-not $script:HasConfigHook
         $repo = New-WorkRepo -Root $root
 
         $origHome, $origProfile = $env:HOME, $env:USERPROFILE
+        $origNoSystem, $origXdgConfig = $env:GIT_CONFIG_NOSYSTEM, $env:XDG_CONFIG_HOME
         try {
             $env:HOME = $env:USERPROFILE = (Join-Path $root 'home')
+            $env:GIT_CONFIG_NOSYSTEM = '1'
+            $env:XDG_CONFIG_HOME = ''
             # No ~/.git_work_hooks here: this is the not-yet-installed state.
             Set-Content -Path (Join-Path $repo 'f.txt') -Value 'x'
             & git -C $repo add f.txt
-            $out = (& git -C $repo -c hook.gitleaks.enabled=false commit -m 'test' 2>&1 | Out-String)
+            $out = (& git -C $repo commit -m 'test' 2>&1 | Out-String)
 
             $out | Should -Not -Match 'cannot spawn'
             (& git -C $repo log --oneline 2>$null | Measure-Object).Count | Should -Be 1 -Because 'a missing dispatcher must fail open, not block the commit'
         } finally {
             $env:HOME, $env:USERPROFILE = $origHome, $origProfile
+            $env:GIT_CONFIG_NOSYSTEM, $env:XDG_CONFIG_HOME = $origNoSystem, $origXdgConfig
             Remove-Item -Path $root -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
@@ -81,8 +85,11 @@ Describe 'git/gitconfig-work work-policy hook' -Skip:(-not $script:HasConfigHook
         if (Get-Command chmod -ErrorAction SilentlyContinue) { & chmod +x $policy }
 
         $origHome, $origProfile = $env:HOME, $env:USERPROFILE
+        $origNoSystem, $origXdgConfig = $env:GIT_CONFIG_NOSYSTEM, $env:XDG_CONFIG_HOME
         try {
             $env:HOME = $env:USERPROFILE = (Join-Path $root 'home')
+            $env:GIT_CONFIG_NOSYSTEM = '1'
+            $env:XDG_CONFIG_HOME = ''
             Set-Content -Path (Join-Path $repo 'f.txt') -Value 'x'
             & git -C $repo add f.txt
             $out = (& git -C $repo commit -m 'test' 2>&1 | Out-String)
@@ -92,6 +99,7 @@ Describe 'git/gitconfig-work work-policy hook' -Skip:(-not $script:HasConfigHook
             $out | Should -Not -Match 'cannot spawn'
         } finally {
             $env:HOME, $env:USERPROFILE = $origHome, $origProfile
+            $env:GIT_CONFIG_NOSYSTEM, $env:XDG_CONFIG_HOME = $origNoSystem, $origXdgConfig
             Remove-Item -Path $root -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
@@ -117,8 +125,11 @@ Describe 'git/gitconfig-work work-policy hook' -Skip:(-not $script:HasConfigHook
         }
 
         $origHome, $origProfile = $env:HOME, $env:USERPROFILE
+        $origNoSystem, $origXdgConfig = $env:GIT_CONFIG_NOSYSTEM, $env:XDG_CONFIG_HOME
         try {
             $env:HOME = $env:USERPROFILE = (Join-Path $root 'home')
+            $env:GIT_CONFIG_NOSYSTEM = '1'
+            $env:XDG_CONFIG_HOME = ''
             Set-Content -Path (Join-Path $repo 'f.txt') -Value 'x'
             & git -C $repo add f.txt
             & git -C $repo commit -m 'test' 2>&1 | Out-Null
@@ -126,6 +137,7 @@ Describe 'git/gitconfig-work work-policy hook' -Skip:(-not $script:HasConfigHook
             (& git -C $repo log --oneline 2>$null | Measure-Object).Count | Should -Be 0 -Because 'a broken install must fail closed, not skip the policy silently'
         } finally {
             $env:HOME, $env:USERPROFILE = $origHome, $origProfile
+            $env:GIT_CONFIG_NOSYSTEM, $env:XDG_CONFIG_HOME = $origNoSystem, $origXdgConfig
             Remove-Item -Path $root -Recurse -Force -ErrorAction SilentlyContinue
         }
     }

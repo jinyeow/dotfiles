@@ -10,12 +10,13 @@ local specs = {
   -- configs.setup{} module framework this config relies on (repo archived 2026-04).
   { src = 'https://github.com/nvim-treesitter/nvim-treesitter', version = 'master' },
   { src = 'https://github.com/nvim-treesitter/nvim-treesitter-textobjects', version = 'master' },
-  'https://github.com/junegunn/fzf',
-  -- fzf-lua: Neovim-native fzf frontend. Uses the same fzf binary as the shell
-  -- integration (rfv/frg in the PS profile). The 'fzf-vim' profile creates the
-  -- same :Files/:Rg/:Buffers/:Commands/:Lines commands as fzf.vim did, so all
-  -- keymaps are unchanged. Adds LSP pickers (definitions, references, diagnostics)
-  -- that the old VimL fzf.vim could not provide.
+  -- fzf-lua: Neovim-native fzf frontend. Needs only the fzf BINARY (winget:
+  -- junegunn.fzf / system package manager), not the junegunn/fzf vim plugin -
+  -- fzf-lua never calls fzf#run/fzf#wrap or :FZF. Uses the same fzf binary as
+  -- the shell integration (rfv/frg in the PS profile). The 'fzf-vim' profile
+  -- creates the same :Files/:Rg/:Buffers/:Commands/:Lines commands as fzf.vim
+  -- did, so all keymaps are unchanged. Adds LSP pickers (definitions,
+  -- references, diagnostics) that the old VimL fzf.vim could not provide.
   'https://github.com/ibhagwan/fzf-lua',
   'https://github.com/tpope/vim-fugitive',
   'https://github.com/kylechui/nvim-surround',

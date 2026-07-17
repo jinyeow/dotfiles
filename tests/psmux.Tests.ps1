@@ -3,7 +3,10 @@
 # trailing-comment-on-`set`-line bug (psmux parses an inline comment into the option value) or a
 # psmux update that renames a command. Runs only when psmux is installed (CI has none, so it skips
 # there); isolated on a private socket (-L) and a throwaway HOME so it never touches the user's real
-# psmux server or triggers the vendored persistence plugins (`run ppm.ps1` finds no plugins).
+# psmux server. The vendored plugins are copied into that throwaway HOME so `source-file` resolves
+# for real (no PPM, no `@plugin`, no network — see psmux/plugins/README.md), and the test asserts
+# one of them (psmux-resurrect) actually bound a key, so a plugin that silently fails to load
+# can't false-green this test.
 
 BeforeAll {
     $script:Repo = Split-Path $PSScriptRoot -Parent

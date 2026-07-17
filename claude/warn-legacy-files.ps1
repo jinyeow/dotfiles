@@ -1,9 +1,6 @@
 #Requires -Version 7
 # PreToolUse(Edit|Write) hook: guard the legacy / Linux-snapshot files in the dotfiles repo
-# that CLAUDE.md says to "touch only when explicitly asked" - the superseded root profile and
-# the frozen Linux snapshot:
-#   - pwsh_profile.ps1        (old profile; active one is powershell/Microsoft.PowerShell_profile.ps1)
-#   - bootstrap.sh / Makefile (legacy Linux installer snapshot)
+# that CLAUDE.md says to "touch only when explicitly asked" - the frozen Linux WM snapshot:
 #   - config/bspwm|sxhkd/     (legacy WM configs)
 # Emits a PreToolUse `ask` decision so the edit pauses for confirmation rather than being denied
 # (these are edited legitimately when asked). Scoped to the dotfiles repo via $env:DOTFILES so
@@ -33,14 +30,14 @@ if (-not $full.StartsWith($rootFull + $sep, [System.StringComparison]::OrdinalIg
 
 $rel = $full.Substring($rootFull.Length).TrimStart('\', '/') -replace '\\', '/'
 
-$legacy = '^pwsh_profile\.ps1$|^bootstrap\.sh$|^Makefile$|^config/(bspwm|sxhkd)/'
+$legacy = '^config/(bspwm|sxhkd)/'
 if ($rel -notmatch $legacy) { exit 0 }
 
 @{
   hookSpecificOutput = @{
     hookEventName            = 'PreToolUse'
     permissionDecision       = 'ask'
-    permissionDecisionReason = "'$rel' is a legacy / Linux-snapshot file (CLAUDE.md: edit only when explicitly asked). The active PowerShell profile is powershell/Microsoft.PowerShell_profile.ps1. Confirm you intend to edit it."
+    permissionDecisionReason = "'$rel' is a legacy / Linux-snapshot file (CLAUDE.md: edit only when explicitly asked). Confirm you intend to edit it."
   }
 } | ConvertTo-Json -Depth 5 -Compress
 exit 0

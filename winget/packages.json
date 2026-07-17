@@ -85,7 +85,8 @@
         { "PackageIdentifier": "yt-dlp.yt-dlp" },
         { "PackageIdentifier": "Zen-Team.Zen-Browser" },
         { "PackageIdentifier": "ZedIndustries.Zed" },
-        { "PackageIdentifier": "Zellij.Zellij" }
+        { "PackageIdentifier": "Zellij.Zellij" },
+        { "PackageIdentifier": "zig.zig" }
       ],
       "SourceDetails": {
         "Argument": "https://cdn.winget.microsoft.com/cache",

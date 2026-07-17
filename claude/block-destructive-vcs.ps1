@@ -19,17 +19,30 @@ try { $call = $payload | ConvertFrom-Json } catch { exit 0 }
 $cmd = $call.tool_input.command
 if (-not $cmd) { exit 0 }
 
-# Drop quoted substrings before matching: a destructive phrase quoted in a message
-# (git commit -m "reset --hard") must not false-match, and a quoted arg before the
-# subcommand (git -C "a b" reset --hard) must not hide it. Both fall out of this scrub.
-$scrubbed = $cmd -replace '"[^"]*"', '' -replace "'[^']*'", ''
+# Scrub quoted substrings before matching. Two goals at once:
+#   - a destructive phrase quoted in a message (git commit -m "reset --hard") must not
+#     false-match, and a quoted arg before the subcommand (git -C "a b" reset --hard) must
+#     not hide it -> non-flag quoted content is DELETED.
+#   - a quoted FLAG (git push "--force") expands identically in the shell, so it must NOT
+#     bypass the deny -> flag-shaped quoted content is UNQUOTED IN PLACE, not deleted.
+# The double-quote pattern is escape-aware ("(?:\\.|[^"\\])*") so an escaped quote inside a
+# message (git commit -m "say \"reset --hard\"") does not terminate the match early and get
+# mangled into a bare `reset --hard`. Single quotes need no escape form (bash forbids \').
+$scrubEval = {
+  param($m)
+  $inner = $m.Groups[1].Value
+  # Flag-shaped: -x, --long, or short-combined (-fd). Kept (unquoted) so it still matches.
+  if ($inner -match '^-{1,2}[A-Za-z][A-Za-z-]*$') { $inner } else { '' }
+}
+$scrubbed = [regex]::Replace($cmd, '"((?:\\.|[^"\\])*)"', $scrubEval)
+$scrubbed = [regex]::Replace($scrubbed, "'([^']*)'", $scrubEval)
 
 # Pattern -> reason, matched case-sensitively. Each catches both short (-f / -D) and long
 # (--force / --delete --force) destructive forms. Case-sensitive is required: `git branch -d`
 # (safe) vs `-D` (force) differ only by case, so a case-insensitive match would deny the safe
 # form too. (`git` is lowercase by universal convention, so a capitalized `Git` is not gated.)
 $rules = [ordered]@{
-  '\bgit\b[^\n;|&]*\bpush\b[^\n;|&]*(--force(?!-with-lease)\b|(?<![\w-])-[a-z]*f)' =
+  '\bgit\b[^\n;|&]*\bpush\b[^\n;|&]*(--force(?!-(?:with-lease|if-includes))\b|(?<![\w-])-[a-z]*f)' =
     'Blocked `git push --force` - it can clobber the remote. Use `--force-with-lease` instead.'
   '\bgit\b[^\n;|&]*\breset\b[^\n;|&]*--hard\b' =
     'Blocked `git reset --hard` - it discards uncommitted work. Stash or commit first.'

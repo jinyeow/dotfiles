@@ -23,8 +23,10 @@ function Test-ReasoningExtraction {
   if (-not $Text) { return $false }
 
   # Strip quoted substrings (single, double, backtick) so text that quotes the phrase to
-  # discuss or ban it does not false-fire.
-  $scrubbed = $Text -replace '"[^"]*"', '' -replace "'[^']*'", '' -replace '`[^`]*`', ''
+  # discuss or ban it does not false-fire. The double-quote pattern is escape-aware
+  # ("(?:\\.|[^"\\])*") so an escaped quote inside the string does not terminate it early
+  # and re-expose the phrase (bash forbids \' inside single quotes, so those stay simple).
+  $scrubbed = $Text -replace '"(?:\\.|[^"\\])*"', '' -replace "'[^']*'", '' -replace '`[^`]*`', ''
 
   $patterns = @(
     'explain your (reasoning|thinking) step[- ]by[- ]step',
