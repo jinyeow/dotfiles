@@ -53,7 +53,6 @@
     excludesfile = ~/.gitignore
     fsmonitor = true
     hooksPath = ~/.git_templates/hooks
-    ignoreCase = true
     longpaths = true
     pager = delta
     # https://git-scm.com/docs/git-update-index#_untracked_cache
@@ -66,6 +65,16 @@
     navigate = true
     side-by-side = true
     syntax-highlighting = true
+
+# Named feature blocks, activated via $env:DELTA_FEATURES (set alongside BAT_THEME in the
+# PowerShell profile). Neither block sets an option already present in [delta] above, since
+# delta ignores a feature's value for any option the base [delta] section already sets.
+[delta "dark-mode"]
+    syntax-theme = Catppuccin Mocha
+
+[delta "light-mode"]
+    light = true
+    syntax-theme = Catppuccin Latte
 
 [diff]
     # https://luppeng.wordpress.com/2020/10/10/when-to-use-each-of-the-git-diff-algorithms/
@@ -88,6 +97,8 @@
     cmd = \"C:/Program Files/Microsoft VS Code/Code.exe\" --new-window --wait --diff \"$LOCAL\" \"$REMOTE\"
 
 [fetch]
+    # 0 = as many parallel submodule/remote fetches as fetch.jobs / CPU count allows
+    parallel = 0
     # automatically delete remote tracking branches that have been deleted
     prune = true
     prunetags = true
@@ -99,8 +110,8 @@
     format = ssh
 
 [help]
-    # automatically correct and execute mistyped commands after 0.1s
-    autocorrect = 1
+    # prompt before running the corrected command, rather than auto-executing it
+    autocorrect = prompt
 
 [init]
     templatedir = ~/.git_templates
@@ -117,6 +128,8 @@
     strategy = incremental
 
 [merge]
+    # parallels rebase.autoStash below
+    autoStash = true
     # https://www.ductile.systems/zdiff3/
     conflictStyle = zdiff3
     guitool = vscode
@@ -151,10 +164,11 @@
     stat = true
 
 [rerere]
+    autoUpdate = true
     enabled = true
 
 [tag]
-    sort = taggerdate
+    sort = version:refname
 
 [transfer]
     fsckObjects = true

@@ -14,6 +14,7 @@
     submoduleSummary = true
 
 [submodule]
+    fetchJobs = 0
     recurse = true
 
 # Work-only pre-commit policy hook. Config-based hooks need Git >= 2.54; on older

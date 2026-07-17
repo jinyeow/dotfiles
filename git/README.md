@@ -24,17 +24,24 @@ Git configuration, global ignore rules, commit template, and hook templates.
 ## Key settings
 
 - **Delta** as pager and diff filter — side-by-side view, line numbers, syntax highlighting
+- **`[delta "dark-mode"]` / `[delta "light-mode"]`** — Catppuccin Mocha/Latte syntax-theme feature blocks, selected via `$env:DELTA_FEATURES` (set alongside `BAT_THEME` in the PowerShell profile) so delta's colors track the OS dark/light setting
 - **Histogram diff algorithm** — better diff quality on refactored code
 - **zdiff3 conflict style** — shows common ancestor in conflict markers
 - **`pull.ff = only`** — never creates merge commits on pull
 - **`rebase.updateRefs = true`** — automatic stacked branch ref updates
 - **`rebase.rescheduleFailedExec = true`** — retry failed `exec` steps in interactive rebase
+- **`merge.autoStash = true`** — parallels `rebase.autoStash`: auto-stash/pop local changes around a merge
 - **`rerere.enabled = true`** — remembers and replays conflict resolutions
+- **`rerere.autoUpdate = true`** — stages a rerere-resolved conflict automatically, no manual `git add`
+- **`tag.sort = version:refname`** — `git tag` lists in version order instead of creation-date order
+- **`help.autocorrect = prompt`** — prompts before running a corrected mistyped command, instead of auto-executing it
+- **`fetch.parallel = 0`** — let git pick the parallelism for multi-remote/submodule fetches
 - **`push.autoSetupRemote = true`** — no manual upstream needed on first push
 - **`push.useForceIfIncludes = true`** — safety check: force push only if remote hasn't diverged unexpectedly
 - **`fetch.fsckObjects` + `transfer.fsckObjects`** — integrity check on every fetch/clone
 - **`column.ui = auto`** — columnize `git branch`, `git tag`, and similar list output
 - **`maintenance.strategy = incremental`** — background repo maintenance; activate per-repo with `git maintenance register`
+- **`submodule.fetchJobs = 0`** (work only, `gitconfig-work`) — parallelizes submodule fetches, alongside `submodule.recurse = true`
 - **GitHub SSH rewrite** — both `https://github.com/` and `gh:` resolve to SSH
 
 ## Work identity (`[includeIf]`)

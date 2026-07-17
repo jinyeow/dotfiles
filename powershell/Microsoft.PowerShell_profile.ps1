@@ -152,6 +152,10 @@ function y {
     Remove-Item -Path $tmp -ErrorAction Ignore
 }
 
+# Sorted output stays one keystroke away without paying rg's single-threaded --sort=path
+# cost on every default invocation (removed from ripgreprc — see ripgrep/ripgreprc).
+function rgs { rg --sort=path @args }
+
 if ($global:ProfileModules['PSFzf']) {
     function switch_git_branch {
         $branches = git branch -vv | Select-String ': gone]' -NotMatch | ForEach-Object {
@@ -232,6 +236,8 @@ function Invoke-Tig {
     # Re-check OS theme on each launch so tig picks up mid-session theme changes
     $env:TIGRC_USER = Join-Path $env:DOTFILES $(if (Get-IsDarkMode) { 'tig\tigrc-mocha' } else { 'tig\tigrc-latte' })
     $env:BAT_THEME  = if (Get-IsDarkMode) { 'Catppuccin Mocha' } else { 'Catppuccin Latte' }
+    # Selects the [delta "dark-mode"/"light-mode"] feature block in git/gitconfig.
+    $env:DELTA_FEATURES = if (Get-IsDarkMode) { 'dark-mode' } else { 'light-mode' }
     & (Get-Command tig -CommandType Application -ErrorAction Stop) @args
 }
 Set-Alias -Name tig -Value Invoke-Tig -Force
@@ -240,6 +246,8 @@ function Invoke-Bat {
     # Re-check OS theme on each call so bat picks up mid-session dark/light toggles
     # (BAT_THEME is otherwise resolved once at profile load — see the bat block below)
     $env:BAT_THEME = if (Get-IsDarkMode) { 'Catppuccin Mocha' } else { 'Catppuccin Latte' }
+    # Selects the [delta "dark-mode"/"light-mode"] feature block in git/gitconfig.
+    $env:DELTA_FEATURES = if (Get-IsDarkMode) { 'dark-mode' } else { 'light-mode' }
     & (Get-Command bat -CommandType Application -ErrorAction Stop) @args
 }
 Set-Alias -Name bat -Value Invoke-Bat -Force
@@ -353,6 +361,11 @@ $env:_ZO_FZF_OPTS = $env:FZF_DEFAULT_OPTS
 # Load-time default; the `bat` alias (Invoke-Bat) re-checks per call for mid-session toggles.
 $env:BAT_CONFIG_PATH = Join-Path $_dotfiles 'bat\config'
 $env:BAT_THEME = if ($_isDark) { 'Catppuccin Mocha' } else { 'Catppuccin Latte' }
+
+# delta syntax theme — selects the [delta "dark-mode"/"light-mode"] feature block in
+# git/gitconfig (DELTA_FEATURES is delta's env var for activating named feature sections).
+# Load-time default; Invoke-Tig/Invoke-Bat re-check per call for mid-session toggles.
+$env:DELTA_FEATURES = if ($_isDark) { 'dark-mode' } else { 'light-mode' }
 
 # lazygit config — base merged with theme via LG_CONFIG_FILE
 $env:LG_CONFIG_FILE = (Join-Path $_dotfiles 'lazygit\config.yml') + ',' + $(if ($_isDark) {

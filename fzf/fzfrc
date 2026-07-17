@@ -10,4 +10,4 @@
 
 # Bindings
 --bind=ctrl-a:select-all
---bind=?:toggle-preview
+--bind=ctrl-/:toggle-preview

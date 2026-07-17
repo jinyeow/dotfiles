@@ -58,6 +58,12 @@ $ErrorActionPreference = 'Stop'
 
 $Dotfiles = $PSScriptRoot
 
+# This script targets Windows (see root CLAUDE.md); $env:USERPROFILE is normally set by the
+# OS. But its -DryRun path is also exercised by cross-platform Pester tests in CI, and pwsh on
+# non-Windows never populates $env:USERPROFILE, so every Join-Path against it below would throw
+# on a null path. $HOME is PowerShell's own cross-platform automatic variable — fall back to it.
+if (-not $env:USERPROFILE) { $env:USERPROFILE = $HOME }
+
 # Expand 'all'
 if ($Module -contains 'all') {
     $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'psmux', 'yazi', 'curl', 'claude', 'codex', 'serena', 'context7', 'fastmail', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget')
@@ -637,10 +643,84 @@ function Install-Bat {
     Write-Info '=== bat ==='
     Write-Info 'Config is loaded via $env:BAT_CONFIG_PATH set in the PowerShell profile — no files to copy.'
     Write-Info "Config: $(Join-Path $Dotfiles 'bat\config')"
-    if (-not (Get-Command -Name bat -ErrorAction Ignore)) {
+    $batCmd = Get-Command -Name bat -ErrorAction Ignore
+    if (-not $batCmd) {
         Write-Warn 'bat not found. Install with: winget install sharkdp.bat'
-    } else {
-        Write-Ok 'bat is installed.'
+        return
+    }
+    Write-Ok 'bat is installed.'
+
+    # -Backup is a reverse live -> repo sync (see Copy-Dotfile); there is nothing here to
+    # pull back into the repo (themes are fetched content, not tracked), so skip entirely.
+    if ($Backup) {
+        Write-Info 'Backup mode — skipping theme provisioning.'
+        return
+    }
+
+    Install-BatCatppuccinTheme -BatCmd $batCmd
+}
+
+# bat doesn't ship the Catppuccin themes the PowerShell profile selects via $env:BAT_THEME
+# ('Catppuccin Mocha' / 'Catppuccin Latte' — see Microsoft.PowerShell_profile.ps1) — without
+# this, a fresh machine gets a "theme not found" warning from bat and falls back to its
+# default. Downloads the two .tmTheme files from the official catppuccin/bat repo into bat's
+# own theme directory when missing, then rebuilds bat's theme cache — but only when a theme
+# was actually added, so a re-run with both themes already present costs nothing.
+#
+# Split out from Install-Bat (and takes $BatCmd as a param rather than re-resolving it) so a
+# test can call the theme-dir-resolution/skip logic directly against a shimmed `bat` on PATH
+# without needing a real bat install or network access.
+function Install-BatCatppuccinTheme ([System.Management.Automation.CommandInfo]$BatCmd) {
+    # bat's own convention: `bat --config-dir`/themes is where it looks for user themes.
+    $configDir = (& $BatCmd --config-dir | Select-Object -First 1)
+    if (-not $configDir) {
+        Write-Warn 'Could not determine `bat --config-dir` — skipping Catppuccin theme provisioning.'
+        return
+    }
+    $themesDir = Join-Path $configDir 'themes'
+
+    # https://github.com/catppuccin/bat/tree/main/themes — raw file per flavor, %20 for the space.
+    $themes = @(
+        @{ Name = 'Catppuccin Mocha'; Url = 'https://raw.githubusercontent.com/catppuccin/bat/main/themes/Catppuccin%20Mocha.tmTheme' }
+        @{ Name = 'Catppuccin Latte'; Url = 'https://raw.githubusercontent.com/catppuccin/bat/main/themes/Catppuccin%20Latte.tmTheme' }
+    )
+
+    $added = $false
+    $missing = $false
+    foreach ($theme in $themes) {
+        $dest = Join-Path $themesDir "$($theme.Name).tmTheme"
+        if (Test-Path -LiteralPath $dest) {
+            Write-Ok "Theme:      $dest (already present)"
+            continue
+        }
+        $missing = $true
+        if ($DryRun) {
+            Write-Info "[DRY RUN] would download $($theme.Url) -> $dest"
+            continue
+        }
+        if (-not (Test-Path $themesDir)) {
+            New-Item -ItemType Directory -Path $themesDir -Force | Out-Null
+            Write-Info "Created:    $themesDir"
+        }
+        # Fails open, like Install-Codex's installer download: a blocked/offline network must
+        # not abort the rest of -Module all, just leave bat on its (warn-and-fall-back) default.
+        try {
+            Invoke-WebRequest -Uri $theme.Url -OutFile $dest -ErrorAction Stop
+            Write-Ok "Downloaded: $dest"
+            $added = $true
+        } catch {
+            Write-Warn "Could not download '$($theme.Name)' theme ($($_.Exception.Message))."
+            Write-Warn "  bat will warn and fall back to its default theme until this succeeds — re-run this module, or download manually (see bat/README.md)."
+        }
+    }
+
+    if ($DryRun) {
+        if ($missing) { Write-Info '[DRY RUN] would run: bat cache --build' }
+        return
+    }
+    if ($added) {
+        & $BatCmd cache --build
+        Write-Ok 'Rebuilt bat theme cache (bat cache --build).'
     }
 }
 
