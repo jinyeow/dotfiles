@@ -24,6 +24,16 @@ if (-not $env:COLORTERM) { $env:COLORTERM = 'truecolor' }
 # See docs/zellij-windows-terminal-colors.md §4.
 if (-not $env:TERM) { $env:TERM = 'xterm-256color' }
 
+# Force UTF-8 console I/O. Without this, pwsh on Windows decodes native-command
+# output with the legacy OEM code page — non-ASCII git branch/jj bookmark names
+# mojibake in the prompt, and the Ctrl+r history picker's temp-file round-trip
+# corrupts non-ASCII history entries on reinsertion. UTF8Encoding::new($false) =
+# no BOM. Wrapped in try/catch: some hosts (e.g. non-console hosts) throw on
+# setting encodings, and the profile must never fail to load because of this.
+try {
+    [Console]::InputEncoding = [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+} catch {}
+
 # yazi shells out to file(1) to guess MIME types for files its rules don't match.
 # Git for Windows bundles file.exe but doesn't put usr\bin on PATH, so point yazi
 # at it directly via YAZI_FILE_ONE (yazi's documented Windows override) rather than
