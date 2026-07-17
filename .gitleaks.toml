@@ -1,0 +1,20 @@
+# gitleaks config for the dotfiles repo.
+#
+# Auto-detected by both the CI `gitleaks/gitleaks-action@v3` job and the local
+# `git/templates/hooks/pre-commit` hook: gitleaks resolves `(--source)/.gitleaks.toml`
+# when no `--config`/`GITLEAKS_CONFIG` is given, so a root file governs both paths.
+#
+# `useDefault` keeps every built-in rule — this only *adds* an allowlist, it does not
+# narrow detection anywhere else in the tree.
+[extend]
+useDefault = true
+
+# The secret-warning hook's own test suite is, by design, a corpus of fake credentials
+# used to prove `claude/warn-hardcoded-secrets.ps1` fires (and that placeholders don't).
+# The values are dummies (`sk-abcdef123456789`, `sk-live-abc123def456ghi`, …), so scan the
+# whole file out rather than chase individual fingerprints — those churn on squash-merge.
+[allowlist]
+description = "Fake-secret fixtures for the warn-hardcoded-secrets hook tests"
+paths = [
+  '''tests/warn-hardcoded-secrets\.Tests\.ps1''',
+]
