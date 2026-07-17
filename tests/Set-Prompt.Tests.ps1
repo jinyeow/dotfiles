@@ -128,18 +128,27 @@ Describe 'Get-GitPromptInfo — unmerged/conflict counting' {
 }
 
 Describe 'Get-GitPromptInfo — copied (C) index status counts as staged' {
-    # `git status --porcelain` v1 emits a C code for a copy-detected index entry, but
-    # it is impractical to force deterministically from real git, so shadow `git` with
-    # a function that returns a canned porcelain including a C row. Cross-platform:
-    # a PowerShell function shadows the native executable in command resolution.
+    # `git status --porcelain=v2` emits a copy as a `2` record with X=C, but it is
+    # impractical to force copy-detection deterministically from real git, so shadow
+    # `git` with a function that returns canned v2 output including a `2 C.` row.
+    # Cross-platform: a PowerShell function shadows the native executable in command
+    # resolution. The canned output matches the NEW single `status --porcelain=v2
+    # --branch` command (branch + ahead/behind + records all in one stream).
     It 'increments Staged for a C (copied) index entry' {
         function global:git {
             $a = $args -join ' '
             $global:LASTEXITCODE = 0
-            if ($a -like 'rev-parse*')            { return @('/repo', '/repo/.git', '/repo/.git') }
-            if ($a -like 'branch --show-current*') { return 'main' }
-            if ($a -like 'rev-list*')             { $global:LASTEXITCODE = 1; return }
-            if ($a -like 'status --porcelain*')   { return @('C  copied.txt', 'A  added.txt') }
+            if ($a -like 'rev-parse*')          { return @('/repo', '/repo/.git', '/repo/.git') }
+            if ($a -like 'status --porcelain=v2*') {
+                return @(
+                    '# branch.oid 0000000000000000000000000000000000000000',
+                    '# branch.head main',
+                    # `2` record, XY = C. (index copy, worktree unchanged): X=C -> Staged++
+                    "2 C. N... 100644 100644 100644 1111111111111111111111111111111111111111 1111111111111111111111111111111111111111 C100 copied.txt`tsrc.txt",
+                    # `1` record, XY = A. (index add, worktree unchanged): X=A -> Staged++
+                    '1 A. N... 000000 100644 100644 0000000000000000000000000000000000000000 2222222222222222222222222222222222222222 added.txt'
+                )
+            }
             return
         }
         # `Remove-Item function:global:git` silently no-ops (the global: qualifier is
@@ -147,6 +156,90 @@ Describe 'Get-GitPromptInfo — copied (C) index status counts as staged' {
         # the same Pester process. `function:git` removes it for real.
         try { $info = Get-GitPromptInfo } finally { Remove-Item function:git -ErrorAction Ignore }
         $info.Staged | Should -Be 2   # both the C (copied) and the A (added)
+    }
+}
+
+Describe 'Get-GitPromptInfo — porcelain v2 branch + ahead/behind parse' {
+    It 'reports the branch name and ahead/behind from a single status --porcelain=v2 --branch stream' {
+        # `# branch.ab +A -B`: + is ahead, - is behind (opposite operand order from the
+        # old `rev-list --left-right --count @{upstream}...HEAD`, which printed behind ahead).
+        function global:git {
+            $a = $args -join ' '
+            $global:LASTEXITCODE = 0
+            if ($a -like 'rev-parse*')          { return @('/repo', '/repo/.git', '/repo/.git') }
+            if ($a -like 'status --porcelain=v2*') {
+                return @(
+                    '# branch.oid 0000000000000000000000000000000000000000',
+                    '# branch.head feature/x',
+                    '# branch.upstream origin/feature/x',
+                    '# branch.ab +2 -3'
+                )
+            }
+            return
+        }
+        try { $info = Get-GitPromptInfo } finally { Remove-Item function:git -ErrorAction Ignore }
+        $info.Branch | Should -Be 'feature/x'
+        $info.Ahead  | Should -Be 2
+        $info.Behind | Should -Be 3
+    }
+
+    It 'renders a detached HEAD as an empty branch' {
+        function global:git {
+            $a = $args -join ' '
+            $global:LASTEXITCODE = 0
+            if ($a -like 'rev-parse*')          { return @('/repo', '/repo/.git', '/repo/.git') }
+            if ($a -like 'status --porcelain=v2*') {
+                return @(
+                    '# branch.oid abcdef0000000000000000000000000000000000',
+                    '# branch.head (detached)'
+                )
+            }
+            return
+        }
+        try { $info = Get-GitPromptInfo } finally { Remove-Item function:git -ErrorAction Ignore }
+        # Detached: Branch stays empty/null so the prompt's `elseif ($git.Branch)` skips it.
+        $info.Branch | Should -BeNullOrEmpty
+    }
+}
+
+Describe 'Get-GitPromptInfo — renamed (R) index status counts as renamed' {
+    It 'increments Renamed for a real git mv after a commit' {
+        $repo = New-TempGitRepo
+        Push-Location $repo
+        try {
+            Set-Content -LiteralPath (Join-Path $repo 'orig.txt') -Value "l1`nl2`nl3`nl4"
+            git add orig.txt 2>$null; git commit -q -m base 2>$null
+            git mv orig.txt renamed.txt 2>$null   # -> "2 R. ... renamed.txt<TAB>orig.txt"
+            $info = Get-GitPromptInfo
+        } finally { Pop-Location }
+        $info.Renamed | Should -Be 1
+        $info.Staged  | Should -Be 0   # a rename is NOT double-counted as staged
+    }
+}
+
+Describe 'Get-GitPromptInfo — git invocation count' {
+    It 'spawns at most 2 git processes for a normal (non-bare) prompt-info call' {
+        # The rewrite collapsed 4 spawns (rev-parse + branch + rev-list + status) to 2
+        # (rev-parse gate/top-level/worktree + one status --porcelain=v2 --branch).
+        $global:gitCallCount = 0
+        function global:git {
+            $global:gitCallCount++
+            $a = $args -join ' '
+            $global:LASTEXITCODE = 0
+            if ($a -like 'rev-parse*')          { return @('/repo', '/repo/.git', '/repo/.git') }
+            if ($a -like 'status --porcelain=v2*') {
+                return @(
+                    '# branch.oid 0000000000000000000000000000000000000000',
+                    '# branch.head main',
+                    '# branch.ab +0 -0',
+                    '1 .M N... 100644 100644 100644 3333333333333333333333333333333333333333 3333333333333333333333333333333333333333 f.txt'
+                )
+            }
+            return
+        }
+        try { $info = Get-GitPromptInfo } finally { Remove-Item function:git -ErrorAction Ignore }
+        $global:gitCallCount | Should -BeLessOrEqual 2
+        $info.Modified       | Should -Be 1   # proves the status stream was actually parsed
     }
 }
 

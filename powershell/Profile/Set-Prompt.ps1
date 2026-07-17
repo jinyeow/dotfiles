@@ -260,9 +260,10 @@ function Get-GitPromptInfo {
     .SYNOPSIS
     Returns a hashtable with git status info, or $null if not in a repo.
     All git calls are synchronous — fast enough for interactive prompt.
-    Uses 4 git processes: rev-parse (gate + top-level), branch (name),
-    rev-list (ahead/behind), status. In a bare repo the gate errors on
-    --show-toplevel and retries without it (5 processes), which is the rare path.
+    Uses 2 git processes: rev-parse (gate + top-level + worktree detection) and
+    one `status --porcelain=v2 --branch` (branch name, ahead/behind, and file
+    status in a single stream). In a bare repo the gate errors on --show-toplevel
+    and retries without it (3 processes), which is the rare path.
     #>
 
     # Gate + top-level in one rev-parse. --show-toplevel is first so it is line 0.
@@ -286,13 +287,8 @@ function Get-GitPromptInfo {
         $gitCommonDir = if ($revLines.Count -gt 1) { $revLines[1] } else { $null }
     }
 
-    # Branch name. `branch --show-current` prints the branch even on an unborn
-    # branch (empty in detached HEAD), where `rev-parse --abbrev-ref HEAD` fails.
-    $branch = git branch --show-current 2>$null
-    if ($LASTEXITCODE -ne 0) { $branch = $null }
-
     $info = @{
-        Branch     = $branch
+        Branch     = $null
         IsWorktree = $false
         # git emits forward slashes; normalise to the platform separator so the
         # truncate-to-repo prefix match against $PWD.Path works on Windows.
@@ -313,33 +309,50 @@ function Get-GitPromptInfo {
         $info.IsWorktree = $true
     }
 
-    # Ahead/behind
-    $ab = git rev-list --left-right --count '@{upstream}...HEAD' 2>$null
-    if ($LASTEXITCODE -eq 0 -and $ab -match '(\d+)\s+(\d+)') {
-        $info.Behind = [int]$Matches[1]
-        $info.Ahead  = [int]$Matches[2]
-    }
-
-    # Porcelain status parse
-    $status = git status --porcelain 2>$null
+    # Branch name, ahead/behind, and file status in ONE porcelain v2 stream.
+    # `# branch.head` reports the real branch even on an UNBORN branch (fresh
+    # `git init`, no commit) and prints `(detached)` in detached HEAD — where the
+    # old `branch --show-current` produced an empty string; both render as no git
+    # segment, so a null Branch preserves that. `# branch.ab +A -B` is present only
+    # with an upstream (absent = no upstream, ahead/behind stay 0). File records:
+    #   `1 XY …` ordinary / `2 XY …` rename+copy (X=index, Y=worktree; `.` = unchanged)
+    #   `u XY …` unmerged  → an EXACT conflict signal (no XY-pair heuristic needed;
+    #                         the v1 parser had to whitelist DD/AU/…/UU and dodge AD)
+    #   `? …`   untracked
+    # In a bare repo status also errors (exit 128) and yields nothing — Branch stays
+    # null so the bare repo shows no git segment, exactly as before.
+    $status = git status --porcelain=v2 --branch 2>$null
     if ($status) {
-        $info.HasChanges = $true
         foreach ($line in $status) {
-            if ($line.Length -lt 2) { continue }
-            $idx = $line[0]
-            $wt  = $line[1]
+            if ($line.Length -lt 1) { continue }
+            $c0 = $line[0]
 
-            # Untracked
-            if ($idx -eq '?' -and $wt -eq '?') { $info.Untracked++; continue }
+            # Header lines: branch name + ahead/behind.
+            if ($c0 -eq '#') {
+                if ($line.StartsWith('# branch.head ')) {
+                    $name = $line.Substring(14)
+                    # `(detached)` -> leave Branch null (renders no branch, as before).
+                    if ($name -ne '(detached)') { $info.Branch = $name }
+                } elseif ($line.StartsWith('# branch.ab ') -and $line -match '\+(\d+)\s+-(\d+)') {
+                    $info.Ahead  = [int]$Matches[1]   # +A ahead
+                    $info.Behind = [int]$Matches[2]   # -B behind
+                }
+                continue
+            }
 
-            # Conflicts (unmerged). The unmerged XY pairs are exactly DD, AU, UD,
-            # UA, DU, AA, UU — every pair where at least one side is U, plus AA/DD.
-            # The old `$idx -in U,A,D -and $wt -in U,A,D` mis-flagged AD (staged add,
-            # then deleted in the worktree) as a conflict; match the real set instead.
-            $xy = "$idx$wt"
-            if ($xy -in 'DD','AU','UD','UA','DU','AA','UU') { $info.Conflicts++; continue }
+            # Any non-header record is a change.
+            $info.HasChanges = $true
 
-            # Staged
+            if ($c0 -eq '?') { $info.Untracked++; continue }   # untracked
+            if ($c0 -eq 'u') { $info.Conflicts++; continue }   # unmerged = exact conflict
+
+            # `1`/`2` ordinary or rename/copy: field[1] is the 2-char XY status pair.
+            $fields = $line.Split(' ')
+            if ($fields.Count -lt 2 -or $fields[1].Length -lt 2) { continue }
+            $idx = $fields[1][0]   # index (staged) side
+            $wt  = $fields[1][1]   # working-tree side
+
+            # Staged (index side). Copied (C) counts as staged; renamed (R) is its own.
             switch ($idx) {
                 'M' { $info.Staged++ }
                 'A' { $info.Staged++ }
@@ -348,7 +361,7 @@ function Get-GitPromptInfo {
                 'R' { $info.Renamed++ }
             }
 
-            # Working tree
+            # Working tree side.
             switch ($wt) {
                 'M' { $info.Modified++ }
                 'D' { $info.Deleted++ }
