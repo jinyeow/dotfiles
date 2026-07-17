@@ -19,10 +19,25 @@ Describe 'setup.ps1 argument validation' {
 
 Describe 'setup.ps1 psmux module' {
     It 'runs the psmux module in -DryRun without error and prints its section header' {
-        $output = & pwsh -NoProfile -File $script:SetupScript -Module psmux -DryRun 2>&1 | Out-String
-        $LASTEXITCODE | Should -Be 0
-        $output | Should -Match '=== psmux'
-        $output | Should -Not -Match "Unknown module 'psmux'"
+        # Isolated on a throwaway USERPROFILE, like the -Backup test below. Without this, a
+        # $env:USERPROFILE/$env:HOME left empty by another test file earlier in a full `Invoke-
+        # Pester -Path tests` run (setup-sh.Tests.ps1's `Remove-Item Env:\HOME` clears HOME
+        # instead of restoring its prior value) leaks in: setup.ps1's non-Windows fallback is
+        # `$env:USERPROFILE = $HOME`, and an empty $HOME makes that a no-op, so Join-Path still
+        # throws. Pinning USERPROFILE here makes the test self-contained regardless of run order.
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-psmux-dryrun-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module psmux -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Match '=== psmux'
+            $output | Should -Not -Match "Unknown module 'psmux'"
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
 
     It 'does not forward-copy vendored plugins into a live ~/.psmux/plugins during -Backup' {
