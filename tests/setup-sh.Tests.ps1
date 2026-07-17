@@ -24,11 +24,16 @@ Describe 'setup.sh --clean-backups' {
         $bak = Join-Path $script:TmpHome '.gitconfig.bak.20200101_010101'
         Set-Content -Path $bak -Value 'old config' -Encoding UTF8
 
+        # Save/restore, not Remove-Item: the latter unconditionally unsets HOME instead of
+        # putting back whatever it was before this test (regression - see the -DryRun test in
+        # tests/setup.Tests.ps1, which needed its own isolation to survive an empty HOME leaked
+        # from here in a full `Invoke-Pester -Path tests` run).
+        $origHome = $env:HOME
         $env:HOME = $script:TmpHome
         try {
             $out = & bash $script:SetupSh --clean-backups --keep-backups 0 --max-backup-age-days 0 2>&1 | Out-String
         } finally {
-            Remove-Item Env:\HOME -ErrorAction SilentlyContinue
+            $env:HOME = $origHome
         }
 
         # --keep-backups 0 --max-backup-age-days 0 means "nothing to prune" (both disabled) —
@@ -36,11 +41,12 @@ Describe 'setup.sh --clean-backups' {
         $bak2 = Join-Path $script:TmpHome '.gitconfig.bak.20200101_020202'
         Set-Content -Path $bak2 -Value 'newer config' -Encoding UTF8
 
+        $origHome = $env:HOME
         $env:HOME = $script:TmpHome
         try {
             $out = & bash $script:SetupSh --clean-backups --keep-backups 1 2>&1 | Out-String
         } finally {
-            Remove-Item Env:\HOME -ErrorAction SilentlyContinue
+            $env:HOME = $origHome
         }
 
         $out | Should -Not -Match 'No backup files found'
@@ -56,11 +62,12 @@ Describe 'setup.sh --clean-backups' {
         Set-Content -Path $bak -Value 'old config' -Encoding UTF8
         Set-Content -Path $bak2 -Value 'newer config' -Encoding UTF8
 
+        $origHome = $env:HOME
         $env:HOME = $script:TmpHome
         try {
             $out = & bash $script:SetupSh --dry-run --clean-backups --keep-backups 1 2>&1 | Out-String
         } finally {
-            Remove-Item Env:\HOME -ErrorAction SilentlyContinue
+            $env:HOME = $origHome
         }
 
         $out | Should -Match '\[DRY RUN\] would remove \(count\)'
@@ -75,13 +82,14 @@ Describe 'setup.sh --dry-run' {
         # any -DryRun check — the one place --dry-run mutated the filesystem.
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-dryrun-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origHome = $env:HOME
         try {
             $env:HOME = $tmpHome
             $out = & bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             (Test-Path (Join-Path $tmpHome '.claude')) | Should -Be $false
         } finally {
-            Remove-Item Env:\HOME -ErrorAction SilentlyContinue
+            $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
@@ -103,6 +111,7 @@ Describe 'setup.sh module list' {
     It 'runs lazygit and windowsterminal as recognized modules (no "Unknown module")' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-modules-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origHome = $env:HOME
         try {
             $env:HOME = $tmpHome
             $out = & bash $script:SetupSh -m lazygit,windowsterminal --dry-run 2>&1 | Out-String
@@ -110,7 +119,7 @@ Describe 'setup.sh module list' {
             $out | Should -Not -Match "Unknown module 'windowsterminal'"
             $out | Should -Match '=== Lazygit ==='
         } finally {
-            Remove-Item Env:\HOME -ErrorAction SilentlyContinue
+            $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
