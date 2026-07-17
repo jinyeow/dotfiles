@@ -67,6 +67,7 @@ Describe 'setup.ps1 zellij/yazi -Backup mode' {
         # run still mutated the filesystem by creating an otherwise-unused empty directory.
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-zellij-backup-' + [guid]::NewGuid())
         $appData = Join-Path $tmpHome 'AppData'
+        $zellijParent = Join-Path $appData 'Zellij'
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP, $origAD = $env:USERPROFILE, $env:APPDATA
         try {
@@ -74,7 +75,11 @@ Describe 'setup.ps1 zellij/yazi -Backup mode' {
             $env:APPDATA = $appData
             $output = & pwsh -NoProfile -File $script:SetupScript -Module zellij -Backup 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
-            (Test-Path $appData) | Should -Be $false
+            # Assert on the Zellij parent specifically, not $appData: redirecting USERPROFILE to
+            # $tmpHome means the child pwsh writes its own module cache to $appData\Local\Microsoft\
+            # PowerShell on Windows, so $appData is not a clean signal. $appData\Zellij is exactly
+            # the dir the guarded mkdir would create — the precise regression target.
+            (Test-Path $zellijParent) | Should -Be $false
         } finally {
             $env:USERPROFILE = $origUP; $env:APPDATA = $origAD
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
@@ -84,6 +89,7 @@ Describe 'setup.ps1 zellij/yazi -Backup mode' {
     It 'does not create the yazi config parent directory during -Backup' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-yazi-backup-' + [guid]::NewGuid())
         $appData = Join-Path $tmpHome 'AppData'
+        $yaziParent = Join-Path $appData 'yazi'
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP, $origAD = $env:USERPROFILE, $env:APPDATA
         try {
@@ -91,7 +97,10 @@ Describe 'setup.ps1 zellij/yazi -Backup mode' {
             $env:APPDATA = $appData
             $output = & pwsh -NoProfile -File $script:SetupScript -Module yazi -Backup 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
-            (Test-Path $appData) | Should -Be $false
+            # Assert on the yazi parent specifically, not $appData: the child pwsh writes its own
+            # module cache under $appData\Local on Windows once USERPROFILE is redirected, so only
+            # $appData\yazi (the dir the guarded mkdir would create) is the precise regression target.
+            (Test-Path $yaziParent) | Should -Be $false
         } finally {
             $env:USERPROFILE = $origUP; $env:APPDATA = $origAD
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
