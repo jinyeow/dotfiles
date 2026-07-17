@@ -29,10 +29,10 @@ BeforeAll {
 }
 
 Describe 'claude/warn-legacy-files.ps1' {
-    It 'asks before editing a legacy file when $env:DOTFILES is set' {
+    It 'asks before editing a legacy WM config file when $env:DOTFILES is set' {
         $root = New-Root
         try {
-            $out = Invoke-Hook -FilePath (Join-Path $root 'pwsh_profile.ps1') -Dotfiles $root
+            $out = Invoke-Hook -FilePath (Join-Path $root 'config/bspwm/bspwmrc') -Dotfiles $root
             $out | Should -Match '"permissionDecision":"ask"'
         } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -40,7 +40,7 @@ Describe 'claude/warn-legacy-files.ps1' {
     It 'no-ops when $env:DOTFILES is unset (avoids global false fires)' {
         $root = New-Root
         try {
-            $out = Invoke-Hook -FilePath (Join-Path $root 'pwsh_profile.ps1') -Dotfiles $null
+            $out = Invoke-Hook -FilePath (Join-Path $root 'config/bspwm/bspwmrc') -Dotfiles $null
             $out.Trim() | Should -BeNullOrEmpty
         } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -50,6 +50,16 @@ Describe 'claude/warn-legacy-files.ps1' {
         try {
             $out = Invoke-Hook -FilePath (Join-Path $root 'powershell/Microsoft.PowerShell_profile.ps1') -Dotfiles $root
             $out.Trim() | Should -BeNullOrEmpty
+        } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'no-ops for pwsh_profile.ps1, bootstrap.sh, and Makefile (no longer present at the repo root)' {
+        $root = New-Root
+        try {
+            foreach ($name in 'pwsh_profile.ps1', 'bootstrap.sh', 'Makefile') {
+                $out = Invoke-Hook -FilePath (Join-Path $root $name) -Dotfiles $root
+                $out.Trim() | Should -BeNullOrEmpty -Because "$name is no longer a legacy path"
+            }
         } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 }

@@ -43,10 +43,10 @@ Two deliberate divergences from upstream, kept in-repo:
 - **`psmux-sidebar/plugin.conf`** — the `Prefix+Tab`/`Prefix+BTab` binds resolve the plugin's
   own script path via `$env:USERPROFILE` instead of a literal `~`. `run-shell` runs its
   argument as PowerShell, so `$env:USERPROFILE` is expanded by the outer pwsh before the inner
-  `pwsh -File` ever sees it; `pwsh -File` itself does **not** tilde-expand, so a literal `~`
-  would fail to find the script and the bind would silently no-op (psmux's own `~` handling is
-  also unreliable — see `psmux/psmux.conf`). The rationale is inlined as a comment above the
-  binds in `plugin.conf` itself.
+  `pwsh -File` ever sees it. `~` in `pwsh -File` binds has since been verified to work live
+  (resurrect save tested and confirmed), so `$env:USERPROFILE` here is belt-and-braces for
+  robustness, not a workaround for a known-broken path. The rationale is inlined as a comment
+  above the binds in `plugin.conf` itself.
 
 A re-copy during an update (below) overwrites both — **re-apply both patches after step 2** and
 confirm `tests/psmux.Tests.ps1` passes.
