@@ -32,8 +32,9 @@ Verify with `claude doctor` (install method = native) and `Get-Command claude`
 | `warn-legacy-files.ps1` | `~/.claude/warn-legacy-files.ps1` | PreToolUse(Edit\|Write) hook that asks to confirm before editing legacy/do-not-touch dotfiles (scoped to `$env:DOTFILES`) |
 | `warn-hardcoded-secrets.ps1` | `~/.claude/warn-hardcoded-secrets.ps1` | PostToolUse(Edit\|Write) hook that warns when written content looks like a hardcoded secret |
 | `warn-reasoning-extraction.ps1` | `~/.claude/warn-reasoning-extraction.ps1` | UserPromptSubmit + PreToolUse(Edit\|Write) hook that flags reasoning-extraction phrasing that trips Fable-5's `reasoning_extraction` → Opus fallback |
-| `skills/<name>/` | `~/.claude/skills/<name>/` | Global custom skills |
+| `skills/<name>/` | `~/.claude/skills/<name>/` | Global custom skills (also shared into `~/.codex/skills/` by the codex module — see `../codex/README.md`) |
 | `agents/<name>.md` | `~/.claude/agents/<name>.md` | User-scope subagents (whole dir junctioned/symlinked) |
+| `output-styles/<name>.md` | `~/.claude/output-styles/<name>.md` | Output styles (whole dir junctioned); active style pinned by `outputStyle` in `settings.json` |
 
 **Install method.** `settings.json`, `CLAUDE.md`, `AGENTS.md`,
 `statusline-command.sh`, `no-claude-session-trailer.sh`, and the seven pwsh hook scripts
@@ -52,6 +53,7 @@ old copy-based install + planned live→repo sync.)
 | Setting | Value | Notes |
 |---|---|---|
 | `effortLevel` | `high` | Default thinking effort |
+| `outputStyle` | `concise` | Custom style from `output-styles/concise.md` — enforces the AGENTS.md output contract (lead with the answer, no sycophancy/filler, tight bullets) at system-prompt level, which is a stronger lever than CLAUDE.md-imported instructions alone. `keep-coding-instructions: true` keeps the default coding behaviour |
 | `theme` | `dark-ansi` | Palette-based dark theme — readable under Zellij on Windows Terminal, where `auto` + truecolor diff backgrounds collapse into the pane (see `docs/zellij-windows-terminal-colors.md`) |
 | `editorMode` | `vim` | Vim keybindings in the prompt input |
 | `agentPushNotifEnabled` | `true` | Mobile push notifications (cloud/background agents — not local CLI) |
@@ -158,6 +160,11 @@ claude/skills/
 The installer junctions (Windows) or symlinks (Linux) each skill directory into
 `~/.claude/skills/`, making it available in every project. To add a skill,
 create its subdirectory here and re-run `setup.ps1 -Module claude`.
+
+The codex module junctions the same skill directories into `~/.codex/skills/` (minus a
+denylist of Claude-harness-coupled skills), so Codex CLI reads them too — one source,
+both tools. See `../codex/README.md` → Skills, and re-run `setup.ps1 -Module codex`
+after adding a skill so Codex picks it up as well.
 
 `azure-boards-organiser` (Azure DevOps Boards management for a Scrum process — PBIs,
 sprints, backlog) needs a one-time local setup: copy its `config.example.json` to

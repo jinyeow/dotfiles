@@ -141,6 +141,7 @@
       }
     }
   },
+  "outputStyle": "concise",
   "effortLevel": "high",
   "advisorModel": "opus",
   "teammateMode": "in-process",

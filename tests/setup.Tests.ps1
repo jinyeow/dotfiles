@@ -129,6 +129,73 @@ Describe 'setup.ps1 dry-run directory-creation cosmetics' {
     }
 }
 
+Describe 'setup.ps1 codex module shared claude skills' {
+    It 'junctions claude/skills subdirectories into ~/.codex/skills, minus the Claude-harness-coupled denylist' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-skills-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module codex -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            # A shared skill and the _shared support dir (referenced via ../_shared) come across.
+            # Patterns anchor on the "link -> target" separator so `tdd` can't false-match a
+            # future `tdd-something` skill (`\b` treats the hyphen as a word boundary).
+            $output | Should -Match '\[DRY RUN\] junction .*\.codex\\skills\\tdd ->'
+            $output | Should -Match '\[DRY RUN\] junction .*\.codex\\skills\\_shared ->'
+            # Skills coupled to the Claude Code harness stay out of Codex.
+            $output | Should -Not -Match '\.codex\\skills\\codex-review ->'
+            $output | Should -Not -Match '\.codex\\skills\\handoff ->'
+            $output | Should -Not -Match '\.codex\\skills\\git-guardrails-claude-code ->'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'junctions only the Codex-native flavour when a codex/skills name collides with a shared skill' {
+        # A name in both sources must yield ONE junction (the codex/skills one) — junctioning
+        # the shared dir first and letting the native one replace it would back up and re-create
+        # the junction on every run, accumulating stale .bak.* junctions.
+        $repoRoot = Split-Path $script:SetupScript -Parent
+        $codexSkillsDir = Join-Path $repoRoot 'codex\skills'
+        $createdParent = -not (Test-Path $codexSkillsDir)
+        $fixture = Join-Path $codexSkillsDir 'tdd'
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-collision-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $fixture, $tmpHome -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module codex -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Match '\.codex\\skills\\tdd -> .*codex\\skills\\tdd'
+            $output | Should -Not -Match '\.codex\\skills\\tdd -> .*claude\\skills\\tdd'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $fixture -Recurse -Force -ErrorAction SilentlyContinue
+            if ($createdParent) { Remove-Item -Path $codexSkillsDir -Force -ErrorAction SilentlyContinue }
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+Describe 'setup.ps1 claude module output styles' {
+    It 'junctions claude/output-styles into ~/.claude/output-styles' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-styles-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Match '\[DRY RUN\] junction .*\.claude\\output-styles'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 Describe 'setup.ps1 -Module all' {
     It 'runs the full module set in -DryRun without error (Windows-only)' -Skip:(-not $IsWindows) {
         # Non-Windows hits [Environment]::GetFolderPath('MyDocuments') returning an empty string

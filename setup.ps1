@@ -778,6 +778,15 @@ function Install-Claude {
     } else {
         Write-Info 'No agents to install (claude/agents/ is missing).'
     }
+
+    # Output styles — whole-dir junction like agents: flat .md files in a dir nothing else
+    # writes to. The active style is pinned by "outputStyle" in settings.json.
+    $stylesSrc = Join-Path $Dotfiles 'claude\output-styles'
+    if (Test-Path $stylesSrc) {
+        New-Junction -Link (Join-Path $claudeDir 'output-styles') -Target $stylesSrc
+    } else {
+        Write-Info 'No output styles to install (claude/output-styles/ is missing).'
+    }
 }
 
 function Install-Codex {
@@ -850,23 +859,36 @@ function Install-Codex {
     }
 
     # 5. Skills — junction each subdirectory into ~/.codex/skills/, mirroring the claude module's
-    #    per-subdir skill junctions. Codex ships its own built-in skills under
-    #    ~/.codex/skills/.system/ — untouched, since we only ever write sibling <name> dirs here.
-    #    Codex's "agents" are per-skill (an agents/openai.yaml inside each skill folder), not a
-    #    separate top-level dir like Claude's, so there is no separate agents junction to wire up.
-    $codexSkillsSrc = Join-Path $Dotfiles 'codex\skills'
+    #    per-subdir skill junctions. Two sources: the shared claude/skills (Codex reads the same
+    #    SKILL.md format), minus skills coupled to the Claude Code harness; and codex/skills
+    #    (Codex-native). On a name collision the Codex-native skill wins — the shared one is
+    #    filtered out up front, not overwritten, so New-Junction stays idempotent (junction-then-
+    #    replace would back up and re-create the link on every run, accumulating .bak junctions).
+    #    _shared comes across too — council/deep-review reference it via ../_shared. Codex ships
+    #    its own built-in skills under ~/.codex/skills/.system/ — untouched, since we only ever
+    #    write sibling <name> dirs here. Codex's "agents" are per-skill (an agents/openai.yaml
+    #    inside each skill folder), not a separate top-level dir like Claude's, so there is no
+    #    separate agents junction to wire up.
     $codexSkillsDst = Join-Path $codexDir 'skills'
     if (-not (Test-Path $codexSkillsDst)) {
         if (-not $DryRun) { New-Item -ItemType Directory -Path $codexSkillsDst -Force | Out-Null }
         Write-Info "Created:    $codexSkillsDst"
     }
-    $codexSkills = Get-ChildItem -Path $codexSkillsSrc -Directory -ErrorAction SilentlyContinue
-    if ($codexSkills) {
-        foreach ($skill in $codexSkills) {
+    # Skills the Codex CLI can't use: codex-review drives Codex *from* Claude (circular inside
+    # Codex), handoff pairs with Claude's SessionStart inject-handoff.ps1 hook, and
+    # git-guardrails-claude-code installs Claude Code hooks.
+    $claudeOnlySkills = @('codex-review', 'handoff', 'git-guardrails-claude-code')
+    $codexSkills = @(Get-ChildItem -Path (Join-Path $Dotfiles 'codex\skills') -Directory -ErrorAction SilentlyContinue)
+    # .ForEach('Name'), not .Name: member enumeration on an empty array throws under StrictMode.
+    $codexSkillNames = @($codexSkills.ForEach('Name'))
+    $sharedSkills = @(Get-ChildItem -Path (Join-Path $Dotfiles 'claude\skills') -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notin $claudeOnlySkills -and $_.Name -notin $codexSkillNames })
+    if ($sharedSkills -or $codexSkills) {
+        foreach ($skill in $sharedSkills + $codexSkills) {
             New-Junction -Link (Join-Path $codexSkillsDst $skill.Name) -Target $skill.FullName
         }
     } else {
-        Write-Info 'No skills to install (codex/skills/ is empty).'
+        Write-Info 'No skills to install (claude/skills/ and codex/skills/ are empty).'
     }
 
     Write-Info 'Next: run `codex login` (interactive ChatGPT-account OAuth) to authenticate.'
