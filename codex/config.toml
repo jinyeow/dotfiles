@@ -18,3 +18,11 @@ sandbox_mode = "workspace-write"
 # (sourced from dotfiles claude/AGENTS.md). Cap the instruction chain generously so the
 # full conventions file is always read.
 project_doc_max_bytes = 32768
+
+# Enable Codex's hook system so herdr's agent-state integration can report session
+# activity to a running herdr server. `setup.ps1 -Module herdr` runs `herdr integration
+# install codex`, which writes the hook script + ~/.codex/hooks.json; this flag turns the
+# hook system on. It lives here (not left to the integration) because this file is COPIED,
+# not symlinked — so a fresh -Module codex run after herdr would otherwise drop it.
+[features]
+hooks = true

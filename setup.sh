@@ -5,7 +5,7 @@
 #   ./setup.sh -m neovim,vim
 #   ./setup.sh -m all --dry-run
 #
-# Modules: neovim, vim, powershell, git, bash, tig, tmux, zellij, curl, claude, lazygit, windowsterminal, all
+# Modules: neovim, vim, powershell, git, bash, tig, tmux, zellij, herdr, curl, claude, lazygit, windowsterminal, all
 
 set -euo pipefail
 
@@ -20,7 +20,7 @@ MAX_BACKUP_AGE_DAYS=0
 
 usage() {
     echo "Usage: $0 -m <module[,module,...]> [--dry-run] [--clean-backups [--keep-backups N] [--max-backup-age-days N]]"
-    echo "  Modules: neovim, vim, powershell, git, bash, tig, tmux, zellij, curl, claude, lazygit, windowsterminal, all"
+    echo "  Modules: neovim, vim, powershell, git, bash, tig, tmux, zellij, herdr, curl, claude, lazygit, windowsterminal, all"
     echo "  --clean-backups          remove old .bak.TIMESTAMP files from previous runs"
     echo "  --keep-backups N         keep N most recent backups per file (default: 5, 0 = no limit)"
     echo "  --max-backup-age-days N  delete backups older than N days (default: 0 = disabled)"
@@ -55,7 +55,12 @@ done
 # Expand 'all'
 for m in "${MODULES[@]}"; do
     if [[ "$m" == "all" ]]; then
-        MODULES=(neovim vim powershell git bash tig tmux zellij curl claude lazygit windowsterminal)
+        # 'herdr' MUST come after 'claude': install_herdr runs `herdr integration install claude`,
+        # which writes a hook registration into ~/.claude/settings.json — a file the claude module
+        # symlinks to the repo. If herdr ran first it would create a real settings.json, then the
+        # claude symlink would replace it, dropping the herdr block. Running herdr last writes
+        # through the established symlink so the block survives (same reasoning as setup.ps1).
+        MODULES=(neovim vim powershell git bash tig tmux zellij curl claude lazygit windowsterminal herdr)
         break
     fi
 done
@@ -222,6 +227,34 @@ install_zellij() {
     local xdg_config="${XDG_CONFIG_HOME:-$HOME/.config}"
     # Symlink the whole directory so themes/ and layouts/ are included automatically.
     make_symlink "$DOTFILES/zellij" "$xdg_config/zellij"
+}
+
+install_herdr() {
+    echo ''
+    info '=== Herdr ==='
+    local xdg_config="${XDG_CONFIG_HOME:-$HOME/.config}"
+    # Link only config.toml, not the directory: herdr keeps its runtime state
+    # (session.json, herdr.sock, *.log) in the same dir and that must stay untracked.
+    make_symlink "$DOTFILES/herdr/config.toml" "$xdg_config/herdr/config.toml"
+
+    # Wire herdr's agent-state hooks into installed AI agents so herdr can track each pane's
+    # live agent session. `herdr integration install <agent>` is idempotent and writes files
+    # herdr manages itself, so nothing is vendored — setup regenerates it per machine. Only
+    # agents on PATH are wired. Unlike Windows, pi's integration is supported here.
+    if command -v herdr >/dev/null 2>&1; then
+        for agent in claude codex pi; do
+            command -v "$agent" >/dev/null 2>&1 || continue
+            if [[ $DRY_RUN -eq 1 ]]; then
+                info "[DRY RUN] herdr integration install $agent"
+            elif herdr integration install "$agent" >/dev/null 2>&1; then
+                ok "Integration: $agent wired to herdr"
+            else
+                warn "herdr integration install $agent failed"
+            fi
+        done
+    else
+        warn 'herdr not found on PATH. Install from https://herdr.dev'
+    fi
 }
 
 install_curl() {
@@ -394,6 +427,7 @@ for module in "${MODULES[@]}"; do
         tig)        install_tig        ;;
         tmux)       install_tmux       ;;
         zellij)     install_zellij     ;;
+        herdr)      install_herdr      ;;
         curl)       install_curl       ;;
         claude)     install_claude     ;;
         lazygit)         install_lazygit    ;;
