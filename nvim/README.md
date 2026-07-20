@@ -70,10 +70,15 @@ blocked machine**, after the dotfiles are present:
 
 It provisions three things without ever touching `github.com`:
 
+> ⚠️ **Parser step is out of date for the `main` migration.** The parser and org-grammar
+> steps drive nvim-treesitter's old `master` local-compile path (they read the removed
+> `ensure_installed` and don't use the `tree-sitter` CLI); they need reworking before this
+> script is usable on `main`. The plugin-staging step still works. See root `CLAUDE.md`.
+
 | | Source of truth | Fetched from |
 |---|---|---|
 | Plugins | `nvim-pack-lock.json` (pinned revs) | codeload ZIP → `<data>/site/pack/core/opt/<name>` |
-| Treesitter parsers | `treesitter.lua`'s `ensure_installed` + nvim-treesitter's `lockfile.json` | codeload → compiled locally |
+| Treesitter parsers | `treesitter.lua`'s parser list + nvim-treesitter's `lockfile.json` | codeload → compiled locally |
 | Org grammar | the version pinned in orgmode's own `install.lua` | codeload → compiled by orgmode from the local path |
 
 The org grammar is a separate step because orgmode bypasses nvim-treesitter and
@@ -145,8 +150,8 @@ Falls back to sunrise/sunset window if detection fails.
 
 | Plugin | Purpose |
 |---|---|
-| nvim-treesitter | Syntax highlighting and text objects (pinned to `master`; needs Zig to build parsers) |
-| nvim-treesitter-textobjects | Function/class text objects (pinned to `master`) |
+| nvim-treesitter | Syntax highlighting and text objects (pinned to `main` for Neovim 0.12+; builds parsers via the tree-sitter CLI + the `zigcc.cmd` zig shim) |
+| nvim-treesitter-textobjects | Function/class text objects (pinned to `main`) |
 | fzf-lua | Fuzzy finding (files, grep, buffers, LSP symbols); needs the fzf binary on PATH, not a vim plugin |
 | vim-fugitive | Git command wrapper |
 | nvim-surround | Surround text objects |

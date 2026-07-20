@@ -18,8 +18,21 @@ end
 -- Same 16 parsers as the old ensure_installed (markdown_inline is injection-only).
 -- Do NOT add 'org' - orgmode manages its own grammar (see plugins.lua).
 local parsers = {
-  'lua', 'vim', 'vimdoc', 'python', 'javascript', 'typescript', 'html', 'css',
-  'json', 'bash', 'markdown', 'markdown_inline', 'yaml', 'powershell', 'bicep',
+  'lua',
+  'vim',
+  'vimdoc',
+  'python',
+  'javascript',
+  'typescript',
+  'html',
+  'css',
+  'json',
+  'bash',
+  'markdown',
+  'markdown_inline',
+  'yaml',
+  'powershell',
+  'bicep',
   'c_sharp',
 }
 
@@ -43,9 +56,24 @@ vim.treesitter.language.register('javascript', 'javascriptreact')
 
 -- Filetypes covered by the parsers above (parser name != filetype).
 local filetypes = {
-  'lua', 'vim', 'help', 'python', 'javascript', 'javascriptreact', 'typescript',
-  'html', 'css', 'json', 'sh', 'bash', 'markdown', 'yaml', 'azure-pipelines',
-  'ps1', 'bicep', 'cs',
+  'lua',
+  'vim',
+  'help',
+  'python',
+  'javascript',
+  'javascriptreact',
+  'typescript',
+  'html',
+  'css',
+  'json',
+  'sh',
+  'bash',
+  'markdown',
+  'yaml',
+  'azure-pipelines',
+  'ps1',
+  'bicep',
+  'cs',
 }
 
 local augroup = vim.api.nvim_create_augroup('config.treesitter', { clear = true })
