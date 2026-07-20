@@ -196,6 +196,32 @@ Describe 'setup.ps1 claude module output styles' {
     }
 }
 
+Describe 'setup.ps1 herdr module' {
+    It 'dry-run links config.toml and, when herdr + an agent are present, wires the integration' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-herdr-dryrun-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module herdr -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Match '\[DRY RUN\] symlink .*herdr[\\/]config\.toml'
+            # The agent-integration wiring only runs when herdr itself is on PATH; assert its
+            # dry-run line only then, so CI (which has no herdr) still exercises the symlink path.
+            if (Get-Command -Name herdr -ErrorAction Ignore) {
+                foreach ($agent in @('claude', 'codex')) {
+                    if (Get-Command -Name $agent -ErrorAction Ignore) {
+                        $output | Should -Match "\[DRY RUN\] herdr integration install $agent"
+                    }
+                }
+            }
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 Describe 'setup.ps1 -Module all' {
     It 'runs the full module set in -DryRun without error (Windows-only)' -Skip:(-not $IsWindows) {
         # Non-Windows hits [Environment]::GetFolderPath('MyDocuments') returning an empty string

@@ -1,0 +1,31 @@
+# herdr configuration — see `herdr --default-config` for the full annotated template.
+# Only deliberate overrides live here; everything else stays on herdr's defaults.
+#
+# Installed by `setup.ps1 -Module herdr` / `setup.sh -m herdr` as a symlink to
+# ~/.config/herdr/config.toml (herdr uses ~/.config on Windows too, not %APPDATA%).
+# Only this file is linked — the rest of that directory is herdr runtime state
+# (session.json, sockets, logs) and must not be tracked.
+#
+# Validate with `herdr config check`; apply to a running server with
+# `herdr server reload-config`.
+
+# Skip the first-run onboarding flow.
+onboarding = false
+
+[terminal]
+# Resolved from PATH. Herdr otherwise falls back to $SHELL, then /bin/sh.
+default_shell = "pwsh"
+
+[experimental]
+# Keep per-pane scrollback history across sessions.
+pane_history = true
+
+[ui]
+show_agent_labels_on_pane_borders = true
+
+[ui.toast]
+delivery = "herdr"
+
+[theme]
+name = "catppuccin"
+auto_switch = false

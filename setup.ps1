@@ -9,7 +9,7 @@
     before being replaced.
 
 .PARAMETER Module
-    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, zellij, psmux, yazi, curl, claude, codex, serena, context7, fastmail, lazygit, windowsterminal, bat, vscode, winget, all.
+    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, zellij, psmux, herdr, yazi, curl, claude, codex, serena, context7, fastmail, lazygit, windowsterminal, bat, vscode, winget, all.
     Optional when -CleanBackups is specified.
 
 .PARAMETER DryRun
@@ -66,7 +66,13 @@ if (-not $env:USERPROFILE) { $env:USERPROFILE = $HOME }
 
 # Expand 'all'
 if ($Module -contains 'all') {
-    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'psmux', 'yazi', 'curl', 'claude', 'codex', 'serena', 'context7', 'fastmail', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget')
+    # 'herdr' MUST come after 'claude' and 'codex': it runs `herdr integration install <agent>`,
+    # which writes a hook registration into each agent's settings. claude's registration lands in
+    # ~/.claude/settings.json — a file the claude module SYMLINKS to the repo. If herdr ran first,
+    # that write would create a real settings.json, then the claude module's symlink would back it
+    # up and replace it, silently dropping the herdr block. Running herdr last means it writes
+    # through the already-established symlink into the repo file, so the block survives.
+    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'psmux', 'yazi', 'curl', 'claude', 'codex', 'serena', 'context7', 'fastmail', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget', 'herdr')
 }
 # @() wrapper: `Select-Object -Unique` over an empty array yields $null (and a
 # single value yields a scalar), so without it the `$Module.Count` guard below
@@ -538,6 +544,60 @@ function Install-Psmux {
         }
     } else {
         Write-Info 'No vendored plugins found (psmux/plugins/ is empty).'
+    }
+}
+
+function Install-Herdr {
+    Write-Host ''
+    Write-Info '=== Herdr (terminal workspace manager for AI agents) ==='
+    # Herdr reads ~/.config/herdr/config.toml on every platform including Windows
+    # (verified from the server log's own path output) — it does not use %APPDATA%.
+    # Only config.toml is linked, NOT the whole directory: herdr keeps its runtime
+    # state (session.json, herdr.sock, *.log) alongside it, which must stay untracked.
+    $herdrConfig = Join-Path $env:USERPROFILE '.config\herdr'
+    # -Backup is a reverse-sync (live -> repo) and must never mutate the live side;
+    # New-FileSymlink skips under -Backup, so guard the mkdir the same way (mirrors Install-Zellij).
+    if (-not (Test-Path $herdrConfig) -and -not $Backup) {
+        if ($DryRun) {
+            Write-Info "[DRY RUN] would create: $herdrConfig"
+        } else {
+            New-Item -ItemType Directory -Path $herdrConfig -Force | Out-Null
+            Write-Info "Created:    $herdrConfig"
+        }
+    }
+    $params = @{
+        Link = Join-Path $herdrConfig 'config.toml'
+        Target = Join-Path $Dotfiles 'herdr\config.toml'
+    }
+    New-FileSymlink @params
+
+    if (-not (Get-Command -Name herdr -ErrorAction Ignore)) {
+        Write-Warn 'herdr not found on PATH. Install from https://herdr.dev'
+    } else {
+        Write-Ok 'herdr is installed.'
+        Write-Info 'Validate with: herdr config check   Apply live with: herdr server reload-config'
+
+        # Wire herdr's agent-state hooks into the installed AI agents so herdr can track each
+        # pane's live agent session. `herdr integration install <agent>` is idempotent (a re-run
+        # is a verified no-op) and writes agent-side files herdr manages itself — the hook script
+        # (~/.claude/hooks, ~/.codex) plus its registration in that agent's settings — so nothing
+        # is vendored here; setup regenerates it per machine with correct paths. Only agents
+        # actually on PATH are wired. pi is omitted: `herdr integration install pi` reports "not
+        # supported on Windows" (it is wired on Linux by setup.sh instead).
+        foreach ($agent in @('claude', 'codex')) {
+            if (-not (Get-Command -Name $agent -ErrorAction Ignore)) { continue }
+            if ($Backup) { continue }  # reverse-sync must never mutate the live side
+            if ($DryRun) {
+                Write-Info "[DRY RUN] herdr integration install $agent"
+                continue
+            }
+            herdr integration install $agent *>$null
+            if ($LASTEXITCODE -eq 0) {
+                Write-Ok "Integration: $agent wired to herdr"
+            } else {
+                Write-Warn "herdr integration install $agent failed (exit $LASTEXITCODE)"
+            }
+        }
     }
 }
 
@@ -1114,6 +1174,7 @@ foreach ($m in $Module) {
         'tmux'       { Install-Tmux       }
         'zellij'     { Install-Zellij     }
         'psmux'      { Install-Psmux      }
+        'herdr'      { Install-Herdr      }
         'yazi'       { Install-Yazi       }
         'curl'       { Install-Curl       }
         'winget'     { Install-Winget     }
