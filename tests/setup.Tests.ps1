@@ -130,7 +130,7 @@ Describe 'setup.ps1 dry-run directory-creation cosmetics' {
 }
 
 Describe 'setup.ps1 codex module shared claude skills' {
-    It 'junctions claude/skills subdirectories into ~/.codex/skills, minus the Claude-harness-coupled denylist' {
+    It 'junctions claude/skills subdirectories into ~/.codex/skills, minus the Claude-harness-coupled denylist' -Skip:(-not $IsWindows) {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-skills-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
@@ -153,7 +153,7 @@ Describe 'setup.ps1 codex module shared claude skills' {
         }
     }
 
-    It 'junctions only the Codex-native flavour when a codex/skills name collides with a shared skill' {
+    It 'junctions only the Codex-native flavour when a codex/skills name collides with a shared skill' -Skip:(-not $IsWindows) {
         # A name in both sources must yield ONE junction (the codex/skills one) — junctioning
         # the shared dir first and letting the native one replace it would back up and re-create
         # the junction on every run, accumulating stale .bak.* junctions.
@@ -180,7 +180,7 @@ Describe 'setup.ps1 codex module shared claude skills' {
 }
 
 Describe 'setup.ps1 claude module output styles' {
-    It 'junctions claude/output-styles into ~/.claude/output-styles' {
+    It 'junctions claude/output-styles into ~/.claude/output-styles' -Skip:(-not $IsWindows) {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-styles-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
