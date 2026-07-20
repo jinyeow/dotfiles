@@ -6,7 +6,10 @@
 # Code calls Codex is set separately, as -c overrides on the MCP registration — see
 # codex/README.md. Do not relax this to danger-full-access.
 
-model = "gpt-5.5"
+model = "gpt-5.6-sol"
+
+# "minimal" | "low" | "medium" | "high"
+model_reasoning_effort = "low"
 
 # "untrusted" | "on-request" | "never"
 approval_policy = "on-request"
