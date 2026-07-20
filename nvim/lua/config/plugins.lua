@@ -6,10 +6,13 @@ if _G.user_config.profile == 'minimal' then
 end
 
 local specs = {
-  -- Pinned to master: the main branch is a from-scratch rewrite that drops the
-  -- configs.setup{} module framework this config relies on (repo archived 2026-04).
-  { src = 'https://github.com/nvim-treesitter/nvim-treesitter', version = 'master' },
-  { src = 'https://github.com/nvim-treesitter/nvim-treesitter-textobjects', version = 'master' },
+  -- Pinned to main: the maintained rewrite for Neovim 0.12+ (master is locked to
+  -- 0.11 and crashes under 0.12 - its query_predicates call vim.treesitter's old
+  -- get_node_text/get_range API). No configs.setup{} anymore - see treesitter.lua.
+  -- main compiles parsers via the tree-sitter CLI (winget: tree-sitter.tree-sitter-cli);
+  -- treesitter.lua points its CC at nvim/zigcc.cmd so zig alone builds them (no LLVM/MSVC).
+  { src = 'https://github.com/nvim-treesitter/nvim-treesitter', version = 'main' },
+  { src = 'https://github.com/nvim-treesitter/nvim-treesitter-textobjects', version = 'main' },
   -- fzf-lua: Neovim-native fzf frontend. Needs only the fzf BINARY (winget:
   -- junegunn.fzf / system package manager), not the junegunn/fzf vim plugin -
   -- fzf-lua never calls fzf#run/fzf#wrap or :FZF. Uses the same fzf binary as

@@ -11,7 +11,8 @@ manager (`vim.pack`) and native LSP API (`vim.lsp.config` / `vim.lsp.enable`).
 | Git | Plugin auto-install | — |
 | [ripgrep](https://github.com/BurntSushi/ripgrep) | fzf-lua live grep | `winget install BurntSushi.ripgrep.GNU` |
 | A [Nerd Font](https://www.nerdfonts.com/) | Diagnostic and gitsigns icons | — |
-| [Zig](https://ziglang.org/) | C compiler for building Treesitter parsers (as `zig cc`) and orgmode's org grammar | `winget install zig.zig` |
+| [tree-sitter CLI](https://github.com/tree-sitter/tree-sitter) | Compiles nvim-treesitter (`main`) parsers via `tree-sitter build` | `winget install tree-sitter.tree-sitter-cli` |
+| [Zig](https://ziglang.org/) | The C compiler for Treesitter parsers (via the `nvim/zigcc.cmd` shim), orgmode's org grammar, and the offline installer | `winget install zig.zig` |
 | .NET SDK + roslyn-language-server | C# LSP (optional, only if editing C#) | `dotnet tool install -g roslyn-language-server --prerelease` |
 
 ## Structure
