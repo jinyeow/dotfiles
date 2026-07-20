@@ -31,6 +31,9 @@ local specs = {
   'https://github.com/seblyng/roslyn.nvim',
   'https://github.com/b0o/schemastore.nvim',
   'https://github.com/lewis6991/gitsigns.nvim',
+  -- forge-agnostic branch/PR diff UI — `:DiffviewOpen origin/main...HEAD`; works for Azure
+  -- DevOps PRs where octo.nvim, GitHub-only, does not; config in config/diffview.lua
+  'https://github.com/sindrets/diffview.nvim',
   'https://github.com/MeanderingProgrammer/render-markdown.nvim',
   -- orgmode compiles its own pinned tree-sitter-org grammar into its own plugin
   -- dir on setup(), independent of nvim-treesitter. Do NOT add 'org' to
