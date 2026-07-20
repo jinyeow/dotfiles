@@ -77,6 +77,7 @@
         { "PackageIdentifier": "sxyazi.yazi" },
         { "PackageIdentifier": "Task.Task" },
         { "PackageIdentifier": "Tencent.WeChat.Universal" },
+        { "PackageIdentifier": "tree-sitter.tree-sitter-cli" },
         { "PackageIdentifier": "uutils.coreutils" },
         { "PackageIdentifier": "VideoLAN.VLC" },
         { "PackageIdentifier": "vim.vim" },
