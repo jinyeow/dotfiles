@@ -609,6 +609,54 @@ function Initialize-DeferredProfileSecondary {
             }
             Remove-Item $completion_file, Env:\_ARGCOMPLETE_STDOUT_FILENAME, Env:\ARGCOMPLETE_USE_TEMPFILES, Env:\COMP_LINE, Env:\COMP_POINT, Env:\_ARGCOMPLETE, Env:\_ARGCOMPLETE_SUPPRESS_SPACE, Env:\_ARGCOMPLETE_IFS, Env:\_ARGCOMPLETE_SHELL
         }
+
+        # Local ADO PR review (the review-worktree workflow): fzf-pick an active PR — or pass
+        # -Id — hop to the repo's standing detached `review` worktree, and hand off to nvim
+        # (ado-pr.nvim checks out the PR and opens diffview). Run from inside the target repo;
+        # az auto-detects org/project/repo from the remote.
+        # global: — a bare `function` here would be local to Initialize-DeferredProfileSecondary.
+        function global:Invoke-AdoPrReview {
+            param([int]$Id)
+
+            $commonDir = git rev-parse --path-format=absolute --git-common-dir 2>$null
+            if (-not $commonDir) {
+                Write-Error 'Invoke-AdoPrReview: not inside a git repository'
+                return
+            }
+            # The review worktree lives beside .bare (bare-worktree layout) — never review in main.
+            if ((Split-Path $commonDir -Leaf) -ne '.bare') {
+                Write-Error "Invoke-AdoPrReview: needs the bare-worktree layout (git common dir is '$commonDir', expected a '.bare')"
+                return
+            }
+
+            if (-not $Id) {
+                $prs = az repos pr list --status active --query '[].[pullRequestId, title, createdBy.displayName]' -o tsv
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Error "Invoke-AdoPrReview: 'az repos pr list' failed (exit $LASTEXITCODE) — is az logged in and the remote an ADO repo?"
+                    return
+                }
+                # An empty fzf pick is a deliberate cancel — return silently.
+                $picked = $prs | fzf --prompt 'ado pr> ' --height 40% --reverse
+                if (-not $picked) { return }
+                $Id = [int]($picked -split "`t")[0]
+            }
+
+            $reviewDir = Join-Path (Split-Path $commonDir) 'review'
+            if (-not (Test-Path $reviewDir)) {
+                git worktree add --detach $reviewDir
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Error "Invoke-AdoPrReview: 'git worktree add --detach $reviewDir' failed (exit $LASTEXITCODE)"
+                    return
+                }
+            }
+            if (git -C $reviewDir status --porcelain) {
+                Write-Error "Invoke-AdoPrReview: review worktree '$reviewDir' is dirty — clean it before checking out a PR"
+                return
+            }
+            Set-Location $reviewDir
+            nvim "+AdoPrReview $Id"
+        }
+        Set-Alias -Name prr -Value Invoke-AdoPrReview -Scope Global
     }
     if (Get-Command -Name zellij -ErrorAction Ignore) {
         Register-ArgumentCompleter -Native -CommandName zellij -ScriptBlock {
