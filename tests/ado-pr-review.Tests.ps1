@@ -8,6 +8,11 @@
 # a real ADO remote and a logged-in az.
 
 BeforeAll {
+    # GitHub Actions' pwsh shell runs with $ErrorActionPreference = 'Stop', which turns the
+    # function's Write-Error guards terminating before the assertions can capture them via
+    # 2>&1. Pin the default so local runs and CI behave identically.
+    $ErrorActionPreference = 'Continue'
+
     $profilePath = Join-Path (Split-Path $PSScriptRoot -Parent) 'powershell' 'Microsoft.PowerShell_profile.ps1'
     $ast = [System.Management.Automation.Language.Parser]::ParseFile($profilePath, [ref]$null, [ref]$null)
     $wanted = 'Invoke-AdoPrReview', 'ConvertFrom-AdoRemoteUrl'
@@ -18,11 +23,18 @@ BeforeAll {
         . ([scriptblock]::Create($fn.Extent.Text))
     }
 
-    # nvim shim: records its args instead of launching an editor.
+    # nvim shim: records its args instead of launching an editor (.cmd on Windows,
+    # executable sh script on Linux — CI runs this suite on both).
     $script:shimDir = Join-Path $TestDrive 'shims'
     $script:nvimArgsFile = Join-Path $TestDrive 'nvim-args.txt'
     New-Item -ItemType Directory -Path $script:shimDir | Out-Null
-    Set-Content -Path (Join-Path $script:shimDir 'nvim.cmd') -Value "@echo %*> `"$script:nvimArgsFile`""
+    if ($IsWindows) {
+        Set-Content -Path (Join-Path $script:shimDir 'nvim.cmd') -Value "@echo %*> `"$script:nvimArgsFile`""
+    } else {
+        $shim = Join-Path $script:shimDir 'nvim'
+        Set-Content -Path $shim -Value "#!/bin/sh`nprintf '%s ' `"`$@`" > '$script:nvimArgsFile'"
+        chmod +x $shim
+    }
     $script:origPath = $env:PATH
     $env:PATH = $script:shimDir + [IO.Path]::PathSeparator + $env:PATH
 
