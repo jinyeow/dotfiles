@@ -1,6 +1,6 @@
 ---
 name: review-ado-pr
-description: "Review an Azure DevOps pull request locally, end-to-end. Use when the user says 'review this ADO PR', 'review PR <dev.azure.com url>', 'review azure devops PR <id>', or asks to look over an ADO pull request. Fetches the PR into the dedicated review worktree, runs IaC gates (Bicep), reads the diff, does a cross-model review, and — only on approval — posts inline threads / a vote back. Read-only by default. NOT for GitHub PRs (use the review skill) or the local working diff (use /code-review)."
+description: "Review an Azure DevOps pull request locally, end-to-end. Use when the user says 'review this ADO PR', 'review PR <dev.azure.com url>', 'review azure devops PR <id>', 'review my pending ADO PRs' (no id needed — it discovers), or asks to look over an ADO pull request. Fetches the PR into the dedicated review worktree, runs IaC gates (Bicep), reads the diff, does a cross-model review, and — only on approval — posts inline threads / a vote back. Read-only by default. NOT for GitHub PRs (use the review skill) or the local working diff (use /code-review)."
 metadata:
   author: justin
   version: "1.0.0"
@@ -15,7 +15,8 @@ read it, review it across models, and report. Posting anything back to the PR (t
 ## When to use
 
 - The user gives an ADO PR URL or id and wants it reviewed.
-- Trigger phrases: "review this ADO PR", "review PR <url>", "review azure devops PR <id>".
+- Trigger phrases: "review this ADO PR", "review PR <url>", "review azure devops PR <id>",
+  "review my pending ADO PRs" (no id — discover via step 1).
 - NOT GitHub (use the `review` skill), NOT the uncommitted working diff (use `/code-review`).
 
 ## Preconditions
@@ -27,7 +28,12 @@ read it, review it across models, and report. Posting anything back to the PR (t
 
 ## Steps
 
-1. **Resolve the PR.** `az repos pr show --id <N> --organization <org> --query "{status:status, sourceRefName:sourceRefName, targetRefName:targetRefName, title:title, mergeStatus:mergeStatus}"`.
+1. **Resolve the PR.** No id/URL given ("review my pending PRs")? Discover first — run inside the
+   repo (org/project/repo auto-detect from the remote):
+   `az repos pr list --status active --query "[].{id:pullRequestId, title:title, author:createdBy.displayName}" -o table`
+   and let the user pick. (From a shell, the `prr` profile helper is the same discovery: fzf-pick →
+   review worktree → nvim.) Then:
+   `az repos pr show --id <N> --organization <org> --query "{status:status, sourceRefName:sourceRefName, targetRefName:targetRefName, title:title, mergeStatus:mergeStatus}"`.
    - Confirm `status` is `active`. A `lastMergeCommit` in the full payload is a **merge preview**, not
      proof it merged — trust `status`, not the presence of a merge commit.
    - Note the target branch; the review diff is always three-dot against it.
@@ -91,5 +97,7 @@ read it, review it across models, and report. Posting anything back to the PR (t
 ## Related
 
 - `bicep-tdd` — the IaC gate for step 4.  ·  `deep-review` / `codex-review` — the review passes in step 5.
-- The `local-pr-review` brain initiative and `ado-pr.nvim` (a Neovim ADO PR plugin being built to fold
-  steps 2–3 and 7 into the editor).
+- `prr` (PowerShell profile helper) — collapses discovery + steps 2–3 from a shell: fzf PR picker →
+  review worktree → `nvim "+AdoPrReview <id>"`.
+- The `local-pr-review` brain initiative and `ado-pr.nvim` (a Neovim ADO PR plugin folding steps 2–3
+  and 7 into the editor: `:AdoPr` pick, `:AdoPrComment`, `:AdoPrVote`).

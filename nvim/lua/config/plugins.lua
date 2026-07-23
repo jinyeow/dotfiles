@@ -50,3 +50,12 @@ local specs = {
 -- config modules (treesitter, lsp, ui, gitsigns) can use the plugins.
 -- confirm=false: installs silently on a fresh machine.
 vim.pack.add(specs, { load = true, confirm = false })
+
+-- ado-pr.nvim (local checkout, no git remote yet): loaded via rtp prepend instead of a
+-- vim.pack spec so the machine-absolute path never enters nvim-pack-lock.json; its
+-- plugin/ file is sourced at startup like any rtp plugin, and the guard makes it inert
+-- on machines without the checkout. Switch to vim.pack once it has a remote.
+local ado_pr = 'E:/Personal Projects/ado-pr.nvim'
+if vim.fn.isdirectory(ado_pr) == 1 then
+  vim.opt.rtp:prepend(ado_pr)
+end

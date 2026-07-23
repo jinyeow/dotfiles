@@ -36,3 +36,10 @@ map('n', '<leader>gm', function()
 end, { desc = 'Diffview: review branch vs default' })
 map('n', '<leader>gh', '<cmd>DiffviewFileHistory<CR>', { desc = 'Diffview: repo history' })
 map('n', '<leader>gH', '<cmd>DiffviewFileHistory %<CR>', { desc = 'Diffview: current file history' })
+
+-- ado-pr.nvim (loaded in plugins.lua when the local checkout exists) layers ADO PR
+-- pick/checkout/comment/vote on top of diffview. In the diff: <Tab>/<S-Tab> cycle files,
+-- ]c/[c jump hunks (diffview defaults — the stepping keys for a PR review).
+if pcall(require, 'ado-pr') then
+  map('n', '<leader>ga', '<cmd>AdoPr<CR>', { desc = 'ado-pr: pick an active PR to review' })
+end
