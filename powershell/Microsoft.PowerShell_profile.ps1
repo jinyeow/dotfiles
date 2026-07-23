@@ -612,9 +612,47 @@ function Initialize-DeferredProfileSecondary {
 
         # Local ADO PR review (the review-worktree workflow): fzf-pick an active PR — or pass
         # -Id — hop to the repo's standing detached `review` worktree, and hand off to nvim
-        # (ado-pr.nvim checks out the PR and opens diffview). Run from inside the target repo;
-        # az auto-detects org/project/repo from the remote.
+        # (ado-pr.nvim checks out the PR and opens diffview). Run from inside the target repo.
+        # Discovery goes over ADO REST with a cached az bearer token — `az repos pr list`
+        # costs ~2-3s of az cold start on every call, Invoke-RestMethod a few hundred ms.
         # global: — a bare `function` here would be local to Initialize-DeferredProfileSecondary.
+
+        # Parse an Azure DevOps remote URL into org/project/repo; $null when not ADO.
+        function global:ConvertFrom-AdoRemoteUrl {
+            param([string]$Url)
+            $patterns =
+                '^https://(?:[^@/]+@)?dev\.azure\.com/([^/]+)/([^/]+)/_git/([^/]+?)/?$',
+                '^git@ssh\.dev\.azure\.com:v3/([^/]+)/([^/]+)/([^/]+?)/?$'
+            foreach ($p in $patterns) {
+                if ($Url -match $p) {
+                    return [pscustomobject]@{
+                        Organization = [uri]::UnescapeDataString($Matches[1])
+                        Project      = [uri]::UnescapeDataString($Matches[2])
+                        Repository   = [uri]::UnescapeDataString($Matches[3])
+                    }
+                }
+            }
+        }
+
+        # Bearer token for ADO REST, cached for the session — `az account get-access-token`
+        # costs ~2s; the token lives ~1h. 499b84ac-… is the well-known ADO resource id.
+        function global:Get-AdoAccessToken {
+            if ($global:__AdoAccessToken -and $global:__AdoAccessToken.Expires -gt [DateTimeOffset]::UtcNow.AddMinutes(5)) {
+                return $global:__AdoAccessToken.Token
+            }
+            $raw = az account get-access-token --resource 499b84ac-1321-427f-aa17-267ca6975798 --output json
+            if ($LASTEXITCODE -ne 0) {
+                Write-Error "Get-AdoAccessToken: 'az account get-access-token' failed (exit $LASTEXITCODE) — is az logged in?"
+                return
+            }
+            $tok = $raw | ConvertFrom-Json
+            # expires_on (unix epoch) on current az; expiresOn (local time) is the legacy field.
+            $expires = if ($tok.expires_on) { [DateTimeOffset]::FromUnixTimeSeconds([long]$tok.expires_on) }
+                       else { [DateTimeOffset](Get-Date $tok.expiresOn) }
+            $global:__AdoAccessToken = @{ Token = $tok.accessToken; Expires = $expires }
+            $global:__AdoAccessToken.Token
+        }
+
         function global:Invoke-AdoPrReview {
             param([int]$Id)
 
@@ -630,13 +668,31 @@ function Initialize-DeferredProfileSecondary {
             }
 
             if (-not $Id) {
-                $prs = az repos pr list --status active --query '[].[pullRequestId, title, createdBy.displayName]' -o tsv
-                if ($LASTEXITCODE -ne 0) {
-                    Write-Error "Invoke-AdoPrReview: 'az repos pr list' failed (exit $LASTEXITCODE) — is az logged in and the remote an ADO repo?"
+                $remote = git remote get-url origin 2>$null
+                $repoInfo = ConvertFrom-AdoRemoteUrl -Url $remote
+                if (-not $repoInfo) {
+                    Write-Error "Invoke-AdoPrReview: origin remote '$remote' is not an Azure DevOps remote"
+                    return
+                }
+                $token = Get-AdoAccessToken
+                if (-not $token) { return }
+                $uri = 'https://dev.azure.com/{0}/{1}/_apis/git/repositories/{2}/pullrequests?searchCriteria.status=active&api-version=7.1' -f
+                    $repoInfo.Organization,
+                    [uri]::EscapeDataString($repoInfo.Project),
+                    [uri]::EscapeDataString($repoInfo.Repository)
+                try {
+                    $prs = (Invoke-RestMethod -Uri $uri -Headers @{ Authorization = "Bearer $token" } -ErrorAction Stop).value
+                } catch {
+                    Write-Error "Invoke-AdoPrReview: PR list request failed for '$uri': $($_.Exception.Message)"
+                    return
+                }
+                if (-not $prs) {
+                    Write-Host "no active PRs in $($repoInfo.Repository)"
                     return
                 }
                 # An empty fzf pick is a deliberate cancel — return silently.
-                $picked = $prs | fzf --prompt 'ado pr> ' --height 40% --reverse
+                $picked = $prs | ForEach-Object { "$($_.pullRequestId)`t$($_.title)`t$($_.createdBy.displayName)" } |
+                    fzf --prompt 'ado pr> ' --height 40% --reverse
                 if (-not $picked) { return }
                 $Id = [int]($picked -split "`t")[0]
             }

@@ -10,10 +10,13 @@
 BeforeAll {
     $profilePath = Join-Path (Split-Path $PSScriptRoot -Parent) 'powershell' 'Microsoft.PowerShell_profile.ps1'
     $ast = [System.Management.Automation.Language.Parser]::ParseFile($profilePath, [ref]$null, [ref]$null)
-    $fn = $ast.FindAll(
+    $wanted = 'Invoke-AdoPrReview', 'ConvertFrom-AdoRemoteUrl'
+    $funcs = $ast.FindAll(
         { param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true) |
-        Where-Object { $_.Name -match 'Invoke-AdoPrReview' }
-    . ([scriptblock]::Create($fn.Extent.Text))
+        Where-Object { $fn = $_.Name; $wanted | Where-Object { $fn -match $_ } }
+    foreach ($fn in $funcs) {
+        . ([scriptblock]::Create($fn.Extent.Text))
+    }
 
     # nvim shim: records its args instead of launching an editor.
     $script:shimDir = Join-Path $TestDrive 'shims'
@@ -38,6 +41,33 @@ AfterAll {
     $env:PATH = $script:origPath
     # git pack/object files are read-only, which Pester's TestDrive cleanup cannot delete.
     Get-ChildItem $TestDrive -Recurse -Force -File | ForEach-Object { $_.IsReadOnly = $false }
+}
+
+Describe 'ConvertFrom-AdoRemoteUrl' {
+    It 'parses the https-with-userinfo form and unescapes names' {
+        $r = ConvertFrom-AdoRemoteUrl -Url 'https://MyOrg@dev.azure.com/MyOrg/My%20Project/_git/My.Repo'
+        $r.Organization | Should -Be 'MyOrg'
+        $r.Project | Should -Be 'My Project'
+        $r.Repository | Should -Be 'My.Repo'
+    }
+
+    It 'parses the plain https form' {
+        $r = ConvertFrom-AdoRemoteUrl -Url 'https://dev.azure.com/MyOrg/Proj/_git/Repo'
+        $r.Organization | Should -Be 'MyOrg'
+        $r.Project | Should -Be 'Proj'
+        $r.Repository | Should -Be 'Repo'
+    }
+
+    It 'parses the ssh v3 form' {
+        $r = ConvertFrom-AdoRemoteUrl -Url 'git@ssh.dev.azure.com:v3/MyOrg/Proj/Repo'
+        $r.Organization | Should -Be 'MyOrg'
+        $r.Project | Should -Be 'Proj'
+        $r.Repository | Should -Be 'Repo'
+    }
+
+    It 'returns nothing for a non-ADO remote' {
+        ConvertFrom-AdoRemoteUrl -Url 'git@github.com:user/repo.git' | Should -BeNullOrEmpty
+    }
 }
 
 Describe 'Invoke-AdoPrReview' {
