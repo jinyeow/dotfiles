@@ -13,7 +13,7 @@ Two permission postures, one config file:
 
 | Path | Posture | Where set |
 |---|---|---|
-| **Reviewer** (Claude calls Codex) | read-only, non-interactive | `-c` overrides on the MCP registration: `codex mcp-server -c sandbox_mode="read-only" -c approval_policy="never"` |
+| **Reviewer** (Claude calls Codex) | read-only, non-interactive, medium effort | `-c` overrides on the MCP registration: `codex mcp-server -c sandbox_mode="read-only" -c approval_policy="never" -c model_reasoning_effort="medium"` |
 | **Standalone** (you run `codex`) | workspace-write, asks first | `config.toml` (`approval_policy = "on-request"`, `sandbox_mode = "workspace-write"`) |
 
 ## Shared conventions (single source)

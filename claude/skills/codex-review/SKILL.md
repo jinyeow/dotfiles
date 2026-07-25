@@ -54,4 +54,5 @@ Codex only returns findings.
 
 - The reviewer runs read-only and non-interactive (pinned via `-c sandbox_mode=read-only
   -c approval_policy=never` on the MCP registration), so it will not prompt mid-review.
+  Reasoning effort is pinned to `medium` there too (standalone codex stays at config.toml's `low`).
 - Do not auto-apply HIGH findings. Surface everything; the human decides.

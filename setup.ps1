@@ -906,11 +906,11 @@ function Install-Codex {
     } elseif (-not (Get-Command -Name claude -ErrorAction Ignore)) {
         Write-Warn 'claude CLI not found — skipping MCP registration. Install the claude module first.'
     } elseif ($DryRun) {
-        Write-Info '[DRY RUN] would register user-scope MCP: claude mcp add --scope user codex -- codex mcp-server -c sandbox_mode=read-only -c approval_policy=never'
+        Write-Info '[DRY RUN] would register user-scope MCP: claude mcp add --scope user codex -- codex mcp-server -c sandbox_mode=read-only -c approval_policy=never -c model_reasoning_effort=medium'
     } else {
         # Native command: a non-zero exit when no prior entry exists is benign and does not throw.
         & claude mcp remove --scope user codex 2>$null | Out-Null
-        & claude mcp add --scope user --transport stdio codex -- codex mcp-server -c sandbox_mode=read-only -c approval_policy=never
+        & claude mcp add --scope user --transport stdio codex -- codex mcp-server -c sandbox_mode=read-only -c approval_policy=never -c model_reasoning_effort=medium
         if ($LASTEXITCODE -eq 0) {
             Write-Ok 'Registered read-only Codex MCP reviewer (user scope).'
         } else {
