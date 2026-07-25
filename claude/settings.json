@@ -4,7 +4,7 @@
     "pr": "",
     "sessionUrl": false
   },
-  "model": "opus[1m]",
+  "model": "claude-opus-5",
   "hooks": {
     "SessionStart": [
       {
@@ -142,7 +142,7 @@
     }
   },
   "outputStyle": "concise",
-  "effortLevel": "high",
+  "effortLevel": "medium",
   "advisorModel": "opus",
   "teammateMode": "in-process",
   "tui": "fullscreen",

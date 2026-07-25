@@ -20,7 +20,7 @@ Verify with `claude doctor` (install method = native) and `Get-Command claude`
 
 | File / Directory | Installed to | Notes |
 |---|---|---|
-| `settings.json` | `~/.claude/settings.json` | Theme, effort level, editor mode, hooks, statusline, pins `model: "opus[1m]"` |
+| `settings.json` | `~/.claude/settings.json` | Theme, effort level, editor mode, hooks, statusline, pins `model: "claude-opus-5"` |
 | `CLAUDE.md` | `~/.claude/CLAUDE.md` | Claude-specific instructions; imports `AGENTS.md` via `@AGENTS.md` |
 | `AGENTS.md` | `~/.claude/AGENTS.md` | Shared coding conventions (single source). The `codex` module installs the same file to `~/.codex/AGENTS.md` so Claude Code and Codex CLI agree. See `../codex/README.md`. |
 | `statusline-command.sh` | `~/.claude/statusline-command.sh` | Token usage statusline script |
@@ -52,7 +52,7 @@ old copy-based install + planned live→repo sync.)
 
 | Setting | Value | Notes |
 |---|---|---|
-| `effortLevel` | `high` | Default thinking effort |
+| `effortLevel` | `medium` | Default thinking effort |
 | `outputStyle` | `concise` | Custom style from `output-styles/concise.md` — enforces the AGENTS.md output contract (lead with the answer, no sycophancy/filler, tight bullets) at system-prompt level, which is a stronger lever than CLAUDE.md-imported instructions alone. `keep-coding-instructions: true` keeps the default coding behaviour |
 | `theme` | `dark-ansi` | Palette-based dark theme — readable under Zellij on Windows Terminal, where `auto` + truecolor diff backgrounds collapse into the pane (see `docs/zellij-windows-terminal-colors.md`) |
 | `editorMode` | `vim` | Vim keybindings in the prompt input |
