@@ -117,6 +117,13 @@ if ($global:ProfileInteractiveConsole) {
 # --- Prompt -----------------------------------------------------------------
 . "$(Split-Path -Path $PROFILE)/Profile/Set-Prompt.ps1"
 
+# --- az CLI account switch (azw/azp) ----------------------------------------
+# Defines functions only (no load-time side effects); the explicit Restore call
+# below applies the persisted last-used account. Cheap enough for Phase 1 — one
+# state-file read plus an env-var set.
+. "$(Split-Path -Path $PROFILE)/Profile/AzCliAccount.ps1"
+Restore-AzActiveProfile
+
 # Native tab-completers for az + zellij are registered in Phase 2b
 # (Initialize-DeferredProfileSecondary) — they only matter once you tab-complete,
 # so registering them at load just delayed the first prompt.

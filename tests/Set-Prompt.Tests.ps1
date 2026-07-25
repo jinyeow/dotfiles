@@ -264,6 +264,24 @@ Describe 'prompt skips VCS helpers on non-FileSystem providers' {
     }
 }
 
+Describe 'Get-AzCliAccountSegment — az CLI account tag' {
+    BeforeEach { $script:origAzDir = $env:AZURE_CONFIG_DIR }
+    AfterEach {
+        if ($null -eq $script:origAzDir) { Remove-Item Env:AZURE_CONFIG_DIR -ErrorAction Ignore }
+        else { $env:AZURE_CONFIG_DIR = $script:origAzDir }
+    }
+
+    It 'renders az:personal when AZURE_CONFIG_DIR is set (personal account active)' {
+        $env:AZURE_CONFIG_DIR = Join-Path $HOME '.azure-personal'
+        Get-AzCliAccountSegment | Should -Match 'az:.*personal'
+    }
+
+    It 'renders az:work when AZURE_CONFIG_DIR is unset (default work account)' {
+        Remove-Item Env:AZURE_CONFIG_DIR -ErrorAction Ignore
+        Get-AzCliAccountSegment | Should -Match 'az:.*work'
+    }
+}
+
 AfterAll {
     if ($global:PromptCache.AzInvocation) {
         try { $global:PromptCache.AzInvocation.PowerShell.Dispose() } catch {}
