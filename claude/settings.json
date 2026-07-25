@@ -148,6 +148,7 @@
   "tui": "fullscreen",
   "theme": "dark-ansi",
   "editorMode": "vim",
+  "defaultShell": "powershell",
   "preferredNotifChannel": "terminal_bell",
   "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true,
