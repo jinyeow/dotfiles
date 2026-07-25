@@ -22,6 +22,7 @@ PowerShell 7 profile and prompt for Windows (and Linux where applicable).
 |---|---|
 | `Microsoft.PowerShell_profile.ps1` | Shared profile — used on all machines |
 | `Profile/Set-Prompt.ps1` | Prompt definition (jj/git + Azure context) |
+| `Profile/AzCliAccount.ps1` | Azure CLI account switch (`azw`/`azp`) — defines functions only; the profile calls `Restore-AzActiveProfile` in Phase 1 |
 
 The installer generates a stub at `~/Documents/PowerShell/Microsoft.PowerShell_profile.ps1`
 that dot-sources the repo file — changes are live immediately without re-running setup.
@@ -100,9 +101,40 @@ in `Set-Prompt.ps1`.
 - jj (Jujutsu) change-id, closest bookmark, ahead count, and state — shown instead of git in jj repos (takes precedence in colocated repos; toggle `ShowJj`). Gate is a filesystem walk; up to 3 jj processes, all `--ignore-working-copy`. Renders `jj:<change-id> <bookmark> ↑<dist> *<files> ∅ ✎` (`∅` empty, `✎` no description, `!` conflict)
 - Git branch and status — synchronous, 3 git processes per prompt (used when not in a jj repo)
 - Azure subscription context — async via background runspace, refreshed every 60s
+- Active **az CLI account** tag (`az:work` / `az:personal`) — always shown so the current account is never in doubt; a cheap `$env:AZURE_CONFIG_DIR` read, no `az` process (see the account-switch section below)
 - Last command exit status (colour coded) and execution time
 - Truncated path for long directories
 - Windows Terminal OSC 9;9 CWD tracking; also syncs the Win32 process CWD so Zellij opens new panes in the current directory
+
+## Azure CLI account switch (`azw` / `azp`)
+
+Flip the Azure CLI (`az`) between a **work** and a **personal** account in the running
+shell — no new terminal, no re-login. `az` keeps all state (including the token cache)
+under one config dir, so each account gets its own dir via `AZURE_CONFIG_DIR`:
+
+| Alias | Function | Account | `AZURE_CONFIG_DIR` |
+|---|---|---|---|
+| `azw` | `Switch-AzWork` | work | **unset** → default `~/.azure` (keeps the existing work login) |
+| `azp` | `Switch-AzPersonal` | personal | `~/.azure-personal` (isolated token cache) |
+
+The strategy is deliberately **asymmetric**: work stays on the default `~/.azure` (so an
+existing work login is untouched), and only personal gets a redirected config dir.
+
+The active account is **always visible in the prompt** as an `az:work` / `az:personal` tag
+(green for work, magenta for personal) on the context line — driven purely by
+`$env:AZURE_CONFIG_DIR`, so it costs nothing and never spawns `az`.
+
+- **Persistence**: each switch writes `work` or `personal` to the `~/.azure-active-profile`
+  state file. On startup the profile calls `Restore-AzActiveProfile` (Phase 1) which reads
+  that file and re-applies the choice — so the active account survives new shells. A `work`,
+  missing, empty, or unrecognized state **actively unsets** `AZURE_CONFIG_DIR` (it never
+  merely skips), so an inherited value can't leak a stale personal dir into a work shell.
+- **`prr` follows the active account**: switching clears the session-cached ADO bearer token
+  (`$global:__AdoAccessToken`), so `prr` / `Invoke-AdoPrReview` (Phase 2b) re-authenticates
+  against whichever account is now active. Run `prr` under the account that owns the PRs.
+- Each switch announces the target account immediately, then makes a best-effort
+  `az account show` to append the active user (or an `az login` hint). The announce never
+  blocks or throws if `az` is slow, absent, or logged out; it never runs `az login` for you.
 
 ## Per-machine differences
 

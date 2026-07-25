@@ -519,6 +519,22 @@ function Get-ShortenedBranch {
     return $Branch.Substring(0, $keep) + '...' + $Branch.Substring($Branch.Length - $keep)
 }
 
+function Get-AzCliAccountSegment {
+    <#
+    .SYNOPSIS
+    Render the active az CLI account tag (az:work / az:personal) for the prompt
+    context line, so the current account is always visible. Cheap by design —
+    reads $env:AZURE_CONFIG_DIR only, never spawns az. Set (→ ~/.azure-personal)
+    means personal; unset (the default ~/.azure) means work — the asymmetric
+    contract owned by Profile/AzCliAccount.ps1 (Switch-Az*).
+    #>
+    $c = $global:PromptConst
+    if ($env:AZURE_CONFIG_DIR) {
+        return "$($c.DimWhite)az:$($c.Magenta)personal$($c.Reset) "
+    }
+    return "$($c.DimWhite)az:$($c.Green)work$($c.Reset) "
+}
+
 # --- Prompt function --------------------------------------------------------
 function prompt {
     # Capture immediately before any commands corrupt these
@@ -664,6 +680,11 @@ function prompt {
         $null = $contextLine.Append("$($c.BrightBlue)☁$($c.Reset) ")
         $null = $contextLine.Append("$($c.Cyan)$($az.Subscription)$($c.Reset) ")
     }
+
+    # az CLI active account — always shown so the current account (work/personal)
+    # is never in doubt. Cheap: an env-var read, no az process. This makes the
+    # context line render on every prompt (there is now always something to show).
+    $null = $contextLine.Append((Get-AzCliAccountSegment))
 
     # Background jobs count
     $runningJobs = @(Get-Job -State Running).Count
