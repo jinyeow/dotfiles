@@ -20,7 +20,7 @@ Verify with `claude doctor` (install method = native) and `Get-Command claude`
 
 | File / Directory | Installed to | Notes |
 |---|---|---|
-| `settings.json` | `~/.claude/settings.json` | Theme, effort level, editor mode, hooks, statusline, pins `model: "opus[1m]"` |
+| `settings.json` | `~/.claude/settings.json` | Theme, effort level, editor mode, hooks, statusline, pins `model: "claude-opus-5"` |
 | `CLAUDE.md` | `~/.claude/CLAUDE.md` | Claude-specific instructions; imports `AGENTS.md` via `@AGENTS.md` |
 | `AGENTS.md` | `~/.claude/AGENTS.md` | Shared coding conventions (single source). The `codex` module installs the same file to `~/.codex/AGENTS.md` so Claude Code and Codex CLI agree. See `../codex/README.md`. |
 | `statusline-command.sh` | `~/.claude/statusline-command.sh` | Token usage statusline script |
@@ -52,10 +52,11 @@ old copy-based install + planned live→repo sync.)
 
 | Setting | Value | Notes |
 |---|---|---|
-| `effortLevel` | `high` | Default thinking effort |
+| `effortLevel` | `medium` | Default thinking effort |
 | `outputStyle` | `concise` | Custom style from `output-styles/concise.md` — enforces the AGENTS.md output contract (lead with the answer, no sycophancy/filler, tight bullets) at system-prompt level, which is a stronger lever than CLAUDE.md-imported instructions alone. `keep-coding-instructions: true` keeps the default coding behaviour |
 | `theme` | `dark-ansi` | Palette-based dark theme — readable under Zellij on Windows Terminal, where `auto` + truecolor diff backgrounds collapse into the pane (see `docs/zellij-windows-terminal-colors.md`) |
 | `editorMode` | `vim` | Vim keybindings in the prompt input |
+| `defaultShell` | `powershell` | Shell for the input-box **`!` bang** commands. `powershell` → **pwsh 7** (Claude Code auto-detects `pwsh.exe`, falling back to `powershell.exe` 5.1 only if absent), matching this repo's pwsh-native posture. The Claude Code default is `bash` on every platform (no Windows auto-flip), which is why `!` ran bash before. No per-command override exists — `!` always uses this shell, so run a one-off bash line via `! bash -c '…'` |
 | `agentPushNotifEnabled` | `true` | Mobile push notifications (cloud/background agents — not local CLI) |
 | `teammateMode` | `in-process` | How spawned **teammates** execute (`auto`/`tmux`/`iterm2`/`in-process`). Pinned to `in-process` so agent teams run inline and spawn **no panes**. At `auto`, Claude's backend detection sees `$TMUX` (psmux sets it) and picks the tmux backend, which emits a hardcoded POSIX launch line (`cd . && env VAR=x 'path/to/claude' .`) that is invalid in a pwsh pane — panes open to a bare prompt and the fan-out silently does nothing ([#42848](https://github.com/anthropics/claude-code/issues/42848); psmux-as-a-backend [#34150](https://github.com/anthropics/claude-code/issues/34150) is closed/not-planned). Revisit if upstream ships a shell-aware launch formatter. Note: this pin is global, so it also disables *working* bash panes under real tmux on Linux — move it to an untracked `settings.local.json` if that becomes a problem. Ordinary **subagents** (Agent/Task tool) are unaffected — they always ran in-process |
 | `preferredNotifChannel` | `terminal_bell` | Built-in bell on the **needs-input** notification → marks the Zellij tab |
