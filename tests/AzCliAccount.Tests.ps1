@@ -131,14 +131,32 @@ Describe 'AzCliAccount' {
             $env:AZURE_CONFIG_DIR = Join-Path $HOME '.azure-profiles' 'work'
             Set-Content -LiteralPath (Join-Path $HOME '.azure-active-profile') -Value $Content
             Restore-AzActiveProfile
-            $env:AZURE_CONFIG_DIR | Should -BeNullOrEmpty
+            # Test-Path, not -BeNullOrEmpty: the latter also passes when the variable
+            # still exists holding an empty string, which is a different state from
+            # removed and not the one this contract promises.
+            Test-Path Env:AZURE_CONFIG_DIR | Should -BeFalse
         }
 
         It 'unsets a pre-set AZURE_CONFIG_DIR when the state file is missing' {
             # Fresh $HOME has no state file; an inherited AZURE_CONFIG_DIR must not survive.
             $env:AZURE_CONFIG_DIR = Join-Path $HOME '.azure-profiles' 'work'
             Restore-AzActiveProfile
-            $env:AZURE_CONFIG_DIR | Should -BeNullOrEmpty
+            Test-Path Env:AZURE_CONFIG_DIR | Should -BeFalse
+        }
+
+        It 'clears the cached ADO access token when the state is <name>' -ForEach @(
+            @{ Name = 'a named profile'; Content = 'work' }
+            @{ Name = 'default'; Content = 'default' }
+            @{ Name = 'an invalid token'; Content = '..\evil' }
+        ) {
+            # Restore switches accounts just as Switch-AzProfile does, so it owes the same
+            # token clear. A fresh shell has no cached token, but `. $PROFILE` in a session
+            # that already ran prr does — and after another shell rewrote the state file it
+            # would otherwise list the PREVIOUS account's PRs from the stale cached token.
+            $global:__AdoAccessToken = @{ Token = 'stale'; Expires = [DateTimeOffset]::MaxValue }
+            Set-Content -LiteralPath (Join-Path $HOME '.azure-active-profile') -Value $Content
+            Restore-AzActiveProfile
+            $global:__AdoAccessToken | Should -BeNullOrEmpty
         }
 
         It 'points AZURE_EXTENSION_DIR at the shared extension store when the state is <name>' -ForEach @(

@@ -198,6 +198,12 @@ function Restore-AzActiveProfile {
         # inherited/parent AZURE_CONFIG_DIR can't survive.
         Remove-Item Env:AZURE_CONFIG_DIR -ErrorAction Ignore
     }
+
+    # Restore changes the active account exactly as Switch-AzProfile does, so it owes the
+    # same clear. A fresh shell has nothing cached, but `. $PROFILE` in a session that has
+    # already run prr does — and if another shell rewrote the state file meanwhile, prr
+    # would otherwise list the PREVIOUS account's PRs from the stale session token.
+    $global:__AdoAccessToken = $null
 }
 
 Set-Alias -Name azs -Value Switch-AzProfile

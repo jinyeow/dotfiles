@@ -684,9 +684,10 @@ function prompt {
         $null = $contextLine.Append("$($c.Cyan)$($az.Subscription)$($c.Reset) ")
     }
 
-    # az CLI active account — always shown so the current account (work/personal)
-    # is never in doubt. Cheap: an env-var read, no az process. This makes the
-    # context line render on every prompt (there is now always something to show).
+    # az CLI active profile — always shown so the current profile (az:<name>, or
+    # az:default when unset) is never in doubt. Cheap: an env-var read, no az
+    # process. This makes the context line render on every prompt (there is now
+    # always something to show).
     $null = $contextLine.Append((Get-AzCliAccountSegment))
 
     # Background jobs count
