@@ -271,14 +271,24 @@ Describe 'Get-AzCliAccountSegment — az CLI account tag' {
         else { $env:AZURE_CONFIG_DIR = $script:origAzDir }
     }
 
-    It 'renders az:personal when AZURE_CONFIG_DIR is set (personal account active)' {
-        $env:AZURE_CONFIG_DIR = Join-Path $HOME '.azure-personal'
+    It 'renders az:work for a work profile dir' {
+        $env:AZURE_CONFIG_DIR = Join-Path $HOME '.azure-profiles/work'
+        Get-AzCliAccountSegment | Should -Match 'az:.*work'
+    }
+
+    It 'renders az:personal for a personal profile dir' {
+        $env:AZURE_CONFIG_DIR = Join-Path $HOME '.azure-profiles/personal'
         Get-AzCliAccountSegment | Should -Match 'az:.*personal'
     }
 
-    It 'renders az:work when AZURE_CONFIG_DIR is unset (default work account)' {
+    It 'renders az:work-admin for an arbitrary profile name' {
+        $env:AZURE_CONFIG_DIR = Join-Path $HOME '.azure-profiles/work-admin'
+        Get-AzCliAccountSegment | Should -Match 'az:.*work-admin'
+    }
+
+    It 'renders az:default when AZURE_CONFIG_DIR is unset' {
         Remove-Item Env:AZURE_CONFIG_DIR -ErrorAction Ignore
-        Get-AzCliAccountSegment | Should -Match 'az:.*work'
+        Get-AzCliAccountSegment | Should -Match 'az:.*default'
     }
 }
 
