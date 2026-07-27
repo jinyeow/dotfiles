@@ -522,17 +522,20 @@ function Get-ShortenedBranch {
 function Get-AzCliAccountSegment {
     <#
     .SYNOPSIS
-    Render the active az CLI account tag (az:work / az:personal) for the prompt
-    context line, so the current account is always visible. Cheap by design —
-    reads $env:AZURE_CONFIG_DIR only, never spawns az. Set (→ ~/.azure-personal)
-    means personal; unset (the default ~/.azure) means work — the asymmetric
-    contract owned by Profile/AzCliAccount.ps1 (Switch-Az*).
+    Render the active az CLI account tag (az:<name> / az:default) for the
+    prompt context line, so the current profile is always visible. Cheap by
+    design — reads $env:AZURE_CONFIG_DIR only, never spawns az. Set means the
+    named profile at that path (name = the path leaf, e.g. az:work for
+    ~/.azure-profiles/work); unset means az's own default ~/.azure, rendered
+    as az:default — the named-profile contract owned by
+    Profile/AzCliAccount.ps1 (Switch-AzProfile).
     #>
     $c = $global:PromptConst
     if ($env:AZURE_CONFIG_DIR) {
-        return "$($c.DimWhite)az:$($c.Magenta)personal$($c.Reset) "
+        $name = Split-Path -Leaf $env:AZURE_CONFIG_DIR
+        return "$($c.DimWhite)az:$($c.Magenta)$name$($c.Reset) "
     }
-    return "$($c.DimWhite)az:$($c.Green)work$($c.Reset) "
+    return "$($c.DimWhite)az:$($c.Green)default$($c.Reset) "
 }
 
 # --- Prompt function --------------------------------------------------------
@@ -681,9 +684,10 @@ function prompt {
         $null = $contextLine.Append("$($c.Cyan)$($az.Subscription)$($c.Reset) ")
     }
 
-    # az CLI active account — always shown so the current account (work/personal)
-    # is never in doubt. Cheap: an env-var read, no az process. This makes the
-    # context line render on every prompt (there is now always something to show).
+    # az CLI active profile — always shown so the current profile (az:<name>, or
+    # az:default when unset) is never in doubt. Cheap: an env-var read, no az
+    # process. This makes the context line render on every prompt (there is now
+    # always something to show).
     $null = $contextLine.Append((Get-AzCliAccountSegment))
 
     # Background jobs count

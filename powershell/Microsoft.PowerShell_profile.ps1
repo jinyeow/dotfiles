@@ -117,10 +117,11 @@ if ($global:ProfileInteractiveConsole) {
 # --- Prompt -----------------------------------------------------------------
 . "$(Split-Path -Path $PROFILE)/Profile/Set-Prompt.ps1"
 
-# --- az CLI account switch (azw/azp) ----------------------------------------
-# Defines functions only (no load-time side effects); the explicit Restore call
-# below applies the persisted last-used account. Cheap enough for Phase 1 — one
-# state-file read plus an env-var set.
+# --- az CLI named-profile switch (azs) --------------------------------------
+# Defines functions and the azs alias only (no environment, filesystem, or
+# process side effects at dot-source); the explicit Restore call below applies
+# the persisted last-used profile. Cheap enough for Phase 1 — one state-file
+# read plus env-var sets.
 . "$(Split-Path -Path $PROFILE)/Profile/AzCliAccount.ps1"
 Restore-AzActiveProfile
 
