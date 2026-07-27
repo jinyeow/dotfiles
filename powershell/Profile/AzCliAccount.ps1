@@ -55,10 +55,13 @@ function Get-AzProfileIdentity {
     # Users first — that is the identity the one-identity-per-profile rule is about. A
     # service-principal / managed-identity login writes no user.name, so fall back to the
     # subscription names rather than mislabelling a real login as logged out.
-    [string[]]$users = @($subscriptions.user.name | Where-Object { $_ } | Select-Object -Unique)
+    [string[]]$users = @($subscriptions.user.name.Where({ $_ }) | Select-Object -Unique)
     [string]$identity = if ($users) { $users -join ', ' } else { '' }
 
-    $active = @($subscriptions | Where-Object { $_.isDefault })[0]
+    # .Where(..., 'First') short-circuits on the first match and yields an EMPTY
+    # collection (not $null) when nothing matches — so test it for truthiness below,
+    # never with -eq $null, and do not index [0] (that throws under StrictMode).
+    $active = $subscriptions.Where({ $_.isDefault }, 'First')
     [string]$subscription = if ($active) { $active.name } else { $subscriptions[0].name }
     if ($subscription) {
         $identity = if ($identity) { "$identity — $subscription" } else { $subscription }
