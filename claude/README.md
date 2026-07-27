@@ -53,7 +53,7 @@ old copy-based install + planned live→repo sync.)
 | Setting | Value | Notes |
 |---|---|---|
 | `effortLevel` | `medium` | Default thinking effort |
-| `outputStyle` | `concise` | Custom style from `output-styles/concise.md` — enforces the AGENTS.md output contract (lead with the answer, no sycophancy/filler, tight bullets) at system-prompt level, which is a stronger lever than CLAUDE.md-imported instructions alone. `keep-coding-instructions: true` keeps the default coding behaviour |
+| `outputStyle` | `concise` | Custom style from `output-styles/concise.md` — enforces the AGENTS.md output contract (lead with the answer, no sycophancy/filler, terse mid-turn, self-contained fixed-header wrap-up) at system-prompt level, which is a stronger lever than CLAUDE.md-imported instructions alone. `keep-coding-instructions: true` keeps the default coding behaviour |
 | `theme` | `dark-ansi` | Palette-based dark theme — readable under Zellij on Windows Terminal, where `auto` + truecolor diff backgrounds collapse into the pane (see `docs/zellij-windows-terminal-colors.md`) |
 | `editorMode` | `vim` | Vim keybindings in the prompt input |
 | `defaultShell` | `powershell` | Shell for the input-box **`!` bang** commands. `powershell` → **pwsh 7** (Claude Code auto-detects `pwsh.exe`, falling back to `powershell.exe` 5.1 only if absent), matching this repo's pwsh-native posture. The Claude Code default is `bash` on every platform (no Windows auto-flip), which is why `!` ran bash before. No per-command override exists — `!` always uses this shell, so run a one-off bash line via `! bash -c '…'` |
