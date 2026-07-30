@@ -83,7 +83,7 @@ Pick the backend per operation, in this order:
 ## Prerequisites
 
 - `az` CLI with the `azure-devops` extension: `az extension add --name azure-devops`
-- Authenticated: `az login`, and org defaulted: `az devops configure --defaults organization=https://dev.azure.com/<ORG>`
+- Authenticated: `az login`. Setting a default organisation is **optional and not relied on** — `org` in `config.json` is the source of truth and is passed explicitly on every call (see Configuration).
 - `config.json` present in this skill directory (see Configuration).
 
 ---
@@ -162,7 +162,7 @@ WHERE [System.WorkItemType] = 'Product Backlog Item'
 
 Find the current sprint name:
 ```powershell
-az boards iteration team list --team $cfg.team --timeframe current --query '[0].name' -o tsv
+az boards iteration team list --team $cfg.team --timeframe current --organization $cfg.org --query '[0].name' -o tsv
 ```
 
 ---
@@ -225,9 +225,9 @@ $fields = @(
   'Microsoft.VSTS.Scheduling.RemainingWork=4'
   'Microsoft.VSTS.Common.Activity=Development'
 )
-$azArgs = @('boards','work-item','create','--project', $cfg.project,'--title','Author Bicep module','--type','Task','--fields') + $fields
+$azArgs = @('boards','work-item','create','--project', $cfg.project,'--organization', $cfg.org,'--title','Author Bicep module','--type','Task','--fields') + $fields
 $task = az @azArgs -o json | ConvertFrom-Json
-az boards work-item relation add --id $task.id --relation-type parent --target-id $ParentId -o json | ConvertFrom-Json | Out-Null
+az boards work-item relation add --id $task.id --relation-type parent --target-id $ParentId --organization $cfg.org -o json | ConvertFrom-Json | Out-Null
 ```
 
 ---
@@ -287,8 +287,8 @@ When analysing or enriching a PBI, evaluate against these criteria:
 <iterationRoot>\<SprintName>   # e.g. CloudPlatform\Team\Sprint 42
 
 # Inspect iterations
-az boards iteration project list --depth 3 --project $cfg.project
-az boards iteration team list --team $cfg.team --project $cfg.project
+az boards iteration project list --depth 3 --project $cfg.project --organization $cfg.org
+az boards iteration team list --team $cfg.team --project $cfg.project --organization $cfg.org
 ```
 
 ---
