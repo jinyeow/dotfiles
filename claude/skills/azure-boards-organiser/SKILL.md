@@ -19,15 +19,20 @@ Enables Claude Code to interact with Azure DevOps Boards using the Azure DevOps 
 
 ## Configuration
 
-Configuration resolves from two sources, in this order:
+Configuration resolves from `config.json` in this skill directory, with the machine's `az devops` defaults
+as an optional convenience only:
 
-1. **Org & project** — from the machine's `az devops` defaults (kept in `~/.azure`, never in this repo):
+1. **Org, project, team, iteration root, default area, tag taxonomy** — all from `config.json`. **`org` is
+   required and must be passed explicitly on every `az` call** as `--organization $cfg.org`. Do not rely on
+   `az devops configure --list`: a machine can legitimately have no default organization, and when it does,
+   every `az boards` call fails with `--organization must be specified` — which reads like an auth problem
+   and is not.
+
    ```powershell
-   az devops configure --list   # shows organization (+ project if defaulted)
+   az devops configure --list   # informational only; may show no organization at all
    ```
-   If a default project is not set, it is read from `config.json` (below) or passed per-command with `--project`.
 
-2. **Team, iteration root, default area, tag taxonomy** — from `config.json` in this skill directory. This file is **gitignored** (it holds internal ADO structure). Copy the template and fill it in once:
+2. `config.json` lives in this skill directory. This file is **gitignored** (it holds internal ADO structure). Copy the template and fill it in once:
    ```powershell
    Copy-Item "$HOME/.claude/skills/azure-boards-organiser/config.example.json" `
              "$HOME/.claude/skills/azure-boards-organiser/config.json"
@@ -38,17 +43,28 @@ Configuration resolves from two sources, in this order:
 
 | Key | Purpose | Example |
 |-----|---------|---------|
+| `org` | Organisation URL. **Required** — pass as `--organization` on every `az` call | `https://dev.azure.com/MyOrg` |
 | `project` | Default project (overrides/supplies the `az` default) | `CloudPlatform` |
 | `team` | Team name for `@CurrentIteration` and iteration queries | `CloudPlatform Team` |
 | `iterationRoot` | Root iteration path for `UNDER` scoping | `CloudPlatform\Team\2026` |
 | `areaPathDefault` | Default Area Path for new items | `CloudPlatform` |
 | `tags` | Team tag taxonomy used for suggestions | `["bicep", "networking", …]` |
 
-**At the start of any command**, read `config.json` and resolve org from `az devops configure --list`. If `config.json` is missing, tell the user to copy `config.example.json` and stop — do not guess team/iteration values.
+**At the start of any command**, read `config.json`. If it is missing, or `org` is absent from it, tell the user to copy `config.example.json` and fill it in, then stop — do not guess org/team/iteration values.
 
 ```powershell
 $cfg = Get-Content "$HOME/.claude/skills/azure-boards-organiser/config.json" -Raw | ConvertFrom-Json
+if (-not $cfg.org) { throw "config.json has no 'org'. Copy config.example.json and set it to your organisation URL." }
 ```
+
+> **`--org` is not an accepted abbreviation for `--organization` on `az boards query`.** It fails with the
+> same `--organization must be specified` message as passing nothing, so a typo here looks like a config
+> problem. Always spell it out.
+
+> **Flatten every WIQL here-string before passing it to `az`.** A `--wiql` value containing newlines is
+> truncated at the first one on Windows, so every flag after it — including `--organization` — never reaches
+> `az`. Append `-replace '\s*\r?\n\s*', ' '` to the here-string. Verified 2026-07-30 against four queries:
+> all four failed un-flattened and all four succeeded flattened.
 
 ---
 
@@ -167,16 +183,17 @@ See `references/wiql-patterns.md` for query templates. Load that file when const
 $cfg = Get-Content "$HOME/.claude/skills/azure-boards-organiser/config.json" -Raw | ConvertFrom-Json
 
 # Get a work item by ID (parse JSON, never text)
-$wi = az boards work-item show --id $Id -o json | ConvertFrom-Json
+$wi = az boards work-item show --id $Id --organization $cfg.org -o json | ConvertFrom-Json
 
-# Run a WIQL query (single-quoted here-string keeps $, @, \ literal)
+# Run a WIQL query. The single-quoted here-string keeps $, @, \ literal; the trailing
+# -replace flattens it to one line, without which --organization is silently lost.
 $wiql = @'
 SELECT [System.Id], [System.Title], [System.State]
 FROM WorkItems
 WHERE [System.WorkItemType] = 'Product Backlog Item'
   AND [System.AssignedTo] = @Me
-'@
-$result = az boards query --wiql $wiql --project $cfg.project -o json | ConvertFrom-Json
+'@ -replace '\s*\r?\n\s*', ' '
+$result = az boards query --wiql $wiql --project $cfg.project --organization $cfg.org -o json | ConvertFrom-Json
 
 # Create a PBI (--fields as an array; HTML escaped + wrapped)
 $fields = @(
@@ -187,6 +204,7 @@ $fields = @(
 )
 $azArgs = @(
   'boards','work-item','create'
+  '--organization', $cfg.org
   '--project', $cfg.project
   '--title','Configure hub VNet peering to route spoke egress through Azure Firewall'
   '--type','Product Backlog Item'
@@ -198,7 +216,7 @@ $created = az @azArgs -o json | ConvertFrom-Json
 
 # Update fields on an existing work item
 $fields = @('System.State=Approved', 'Microsoft.VSTS.Scheduling.StoryPoints=5')
-$azArgs = @('boards','work-item','update','--id', $Id, '--fields') + $fields
+$azArgs = @('boards','work-item','update','--id', $Id, '--organization', $cfg.org, '--fields') + $fields
 az @azArgs -o json | ConvertFrom-Json | Out-Null
 
 # Create a child Task under a PBI, then parent it via a relation
