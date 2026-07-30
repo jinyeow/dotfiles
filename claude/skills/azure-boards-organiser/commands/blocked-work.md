@@ -8,8 +8,10 @@ Load this skill's `SKILL.md` (azure-boards-organiser) and resolve config (see SK
 
 ```powershell
 $cfg = Get-Content "$HOME/.claude/skills/azure-boards-organiser/config.json" -Raw | ConvertFrom-Json
+$org = $cfg.org
+if (-not $org) { throw "config.json has no 'org'. Copy config.example.json and set it to your organisation URL." }
 ```
-Resolve org from `az devops configure --list`. If `config.json` is missing, stop and tell the user to copy `config.example.json` to `config.json` and fill it in.
+If `config.json` is missing, stop and tell the user to copy `config.example.json` to `config.json` and fill it in. `--organization` is passed on every call and is **not** optional — see SKILL.md → Configuration.
 
 If an Azure DevOps MCP server is connected this session, use its tools for all reads/writes; otherwise use the PowerShell `az` blocks below.
 
@@ -30,8 +32,8 @@ WHERE [System.Tags] CONTAINS 'blocked'
   AND [System.State] NOT IN ('Done', 'Removed')
   AND [System.IterationPath] = @CurrentIteration('[<PROJECT>]\<TEAM>')
 ORDER BY [System.ChangedDate]
-'@ -replace '<PROJECT>', $cfg.project -replace '<TEAM>', $cfg.team
-$blocked = az boards query --wiql $wiql --project $cfg.project -o json | ConvertFrom-Json
+'@ -replace '<PROJECT>', $cfg.project -replace '<TEAM>', $cfg.team -replace '\s*\r?\n\s*', ' '
+$blocked = az boards query --wiql $wiql --project $cfg.project --organization $org -o json | ConvertFrom-Json
 ```
 
 ## Step 2: At-risk — committed but stalled
@@ -47,8 +49,8 @@ WHERE [System.State] = 'Committed'
   AND [System.ChangedDate] < @Today - 3
   AND [System.IterationPath] = @CurrentIteration('[<PROJECT>]\<TEAM>')
 ORDER BY [System.ChangedDate]
-'@ -replace '<PROJECT>', $cfg.project -replace '<TEAM>', $cfg.team
-$atRisk = az boards query --wiql $wiql --project $cfg.project -o json | ConvertFrom-Json
+'@ -replace '<PROJECT>', $cfg.project -replace '<TEAM>', $cfg.team -replace '\s*\r?\n\s*', ' '
+$atRisk = az boards query --wiql $wiql --project $cfg.project --organization $org -o json | ConvertFrom-Json
 ```
 
 ## Step 3: (Optional) No owner

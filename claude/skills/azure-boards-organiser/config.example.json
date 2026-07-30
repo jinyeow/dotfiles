@@ -1,4 +1,5 @@
 {
+  "org": "https://dev.azure.com/<YOUR_ORG>",
   "project": "<YOUR_PROJECT>",
   "team": "<YOUR_TEAM>",
   "iterationRoot": "<YOUR_PROJECT>\\<YOUR_TEAM>\\<YEAR>",

@@ -8,9 +8,10 @@ Load this skill's `SKILL.md` (azure-boards-organiser) and resolve config (see SK
 
 ```powershell
 $cfg = Get-Content "$HOME/.claude/skills/azure-boards-organiser/config.json" -Raw | ConvertFrom-Json
-# org comes from: az devops configure --list
+$org = $cfg.org
+if (-not $org) { throw "config.json has no 'org'. Copy config.example.json and set it to your organisation URL." }
 ```
-If `config.json` is missing, stop and tell the user to copy `config.example.json` first.
+If `config.json` is missing, stop and tell the user to copy `config.example.json` first. `--organization` is passed on every call and is **not** optional — see SKILL.md → Configuration.
 
 If an Azure DevOps MCP server is connected this session, use its tools for all reads/writes; otherwise use the PowerShell `az` blocks below.
 
@@ -32,8 +33,8 @@ WHERE [System.AssignedTo] = @Me
   AND [System.ChangedDate] >= @Today - 1
   AND [System.State] <> 'Removed'
 ORDER BY [System.ChangedDate] DESC
-'@ -replace '<PROJECT>', $cfg.project -replace '<TEAM>', $cfg.team
-$changed = az boards query --wiql $wiql --project $cfg.project -o json | ConvertFrom-Json
+'@ -replace '<PROJECT>', $cfg.project -replace '<TEAM>', $cfg.team -replace '\s*\r?\n\s*', ' '
+$changed = az boards query --wiql $wiql --project $cfg.project --organization $org -o json | ConvertFrom-Json
 ```
 
 ## Step 2: In progress
@@ -49,8 +50,8 @@ WHERE [System.WorkItemType] = 'Task'
   AND [System.IterationPath] = @CurrentIteration('[<PROJECT>]\<TEAM>')
   AND [System.State] NOT IN ('Done', 'Removed')
 ORDER BY [System.State]
-'@ -replace '<PROJECT>', $cfg.project -replace '<TEAM>', $cfg.team
-$inProgress = az boards query --wiql $taskWiql --project $cfg.project -o json | ConvertFrom-Json
+'@ -replace '<PROJECT>', $cfg.project -replace '<TEAM>', $cfg.team -replace '\s*\r?\n\s*', ' '
+$inProgress = az boards query --wiql $taskWiql --project $cfg.project --organization $org -o json | ConvertFrom-Json
 ```
 
 ## Step 3: Blockers / at-risk
