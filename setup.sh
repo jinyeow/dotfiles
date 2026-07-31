@@ -5,7 +5,7 @@
 #   ./setup.sh -m neovim,vim
 #   ./setup.sh -m all --dry-run
 #
-# Modules: neovim, vim, powershell, git, bash, tig, tmux, zellij, herdr, curl, claude, lazygit, windowsterminal, all
+# Modules: neovim, vim, powershell, git, bash, tig, tmux, zellij, herdr, curl, claude, langservers, lazygit, windowsterminal, all
 
 set -euo pipefail
 
@@ -20,7 +20,7 @@ MAX_BACKUP_AGE_DAYS=0
 
 usage() {
     echo "Usage: $0 -m <module[,module,...]> [--dry-run] [--clean-backups [--keep-backups N] [--max-backup-age-days N]]"
-    echo "  Modules: neovim, vim, powershell, git, bash, tig, tmux, zellij, herdr, curl, claude, lazygit, windowsterminal, all"
+    echo "  Modules: neovim, vim, powershell, git, bash, tig, tmux, zellij, herdr, curl, claude, langservers, lazygit, windowsterminal, all"
     echo "  --clean-backups          remove old .bak.TIMESTAMP files from previous runs"
     echo "  --keep-backups N         keep N most recent backups per file (default: 5, 0 = no limit)"
     echo "  --max-backup-age-days N  delete backups older than N days (default: 0 = disabled)"
@@ -60,7 +60,10 @@ for m in "${MODULES[@]}"; do
         # symlinks to the repo. If herdr ran first it would create a real settings.json, then the
         # claude symlink would replace it, dropping the herdr block. Running herdr last writes
         # through the established symlink so the block survives (same reasoning as setup.ps1).
-        MODULES=(neovim vim powershell git bash tig tmux zellij curl claude lazygit windowsterminal herdr)
+        # 'langservers' has no ordering constraint here: setup.ps1 must run it after 'winget'
+        # (which provides Volta), but there is no winget module on this side — Volta is installed
+        # by hand, and the module warns and skips if it is absent.
+        MODULES=(neovim vim powershell git bash tig tmux zellij curl claude langservers lazygit windowsterminal herdr)
         break
     fi
 done
@@ -263,6 +266,60 @@ install_curl() {
     make_symlink "$DOTFILES/curl/curlrc" "$HOME/.curlrc"
 }
 
+install_langservers() {
+    echo ''
+    info '=== Language servers (JSON / YAML / Azure Pipelines) ==='
+
+    # Neovim enables jsonls, yamlls and azure_pipelines_ls unconditionally (nvim/lua/config/lsp.lua),
+    # so without these binaries every JSON/YAML buffer prints a spawn failure. Each package is paired
+    # with the binary nvim-lspconfig's cmd actually spawns — vscode-langservers-extracted is a bundle
+    # whose JSON server is the only one wired up here. Installed through Volta rather than
+    # `npm install -g`: under Volta a bare global npm install does not produce working shims.
+    # Verified on Windows — all three shim cleanly and Neovim attaches each server.
+    # One "<package>:<binary>" entry each, not two index-coupled arrays: under `set -u` a pair
+    # left half-added would abort the whole run mid-way (silently skipping every module after
+    # this one) instead of failing on the one package.
+    local servers=(
+        vscode-langservers-extracted:vscode-json-language-server
+        yaml-language-server:yaml-language-server
+        azure-pipelines-language-server:azure-pipelines-language-server
+    )
+
+    # The dry run reports which packages this module owns, not which the machine happens to have,
+    # so it stays deterministic — hence it precedes the volta and per-package presence checks.
+    if [[ $DRY_RUN -eq 1 ]]; then
+        for server in "${servers[@]}"; do
+            info "[DRY RUN] would run: volta install ${server%%:*}"
+        done
+        return 0
+    fi
+
+    # Warn and skip, never fail: one missing toolchain must not abort an otherwise good -m all.
+    if ! command -v volta >/dev/null 2>&1; then
+        warn 'volta not found — install Volta (https://volta.sh), then re-run this module.'
+        return 0
+    fi
+
+    local server package binary status
+    for server in "${servers[@]}"; do
+        package="${server%%:*}"
+        binary="${server#*:}"
+        if command -v "$binary" >/dev/null 2>&1; then
+            ok "Language server: $binary (already installed)"
+            continue
+        fi
+        # `|| status=$?` keeps `set -e` from aborting the whole run on one bad package, and
+        # captures the exit code so a partial failure is reported rather than swallowed.
+        status=0
+        volta install "$package" || status=$?
+        if [[ $status -eq 0 ]]; then
+            ok "Language server: installed $package"
+        else
+            fail "volta install $package failed (exit $status)."
+        fi
+    done
+}
+
 install_lazygit() {
     echo ''
     info '=== Lazygit ==='
@@ -430,6 +487,7 @@ for module in "${MODULES[@]}"; do
         herdr)      install_herdr      ;;
         curl)       install_curl       ;;
         claude)     install_claude     ;;
+        langservers) install_langservers ;;
         lazygit)         install_lazygit    ;;
         windowsterminal) warn 'Windows Terminal is Windows-only — skipping.' ;;
         *)               warn "Unknown module '$module' — skipping." ;;

@@ -169,15 +169,23 @@ Falls back to sunrise/sunset window if detection fails.
 
 ## LSP servers
 
-| Server | Language |
-|---|---|
-| jsonls | JSON |
-| yamlls | YAML |
-| azure_pipelines_ls | Azure Pipelines YAML |
-| marksman | Markdown |
-| bicep | Bicep (requires `bicep_lsp_path` in user.lua) |
-| powershell_es | PowerShell (requires `pwsh_bundle_path` in user.lua) |
-| roslyn | C# / .NET (auto-enabled when `dotnet` is on PATH) |
+| Server | Language | Provisioned by |
+|---|---|---|
+| jsonls | JSON | `setup.ps1/setup.sh -Module langservers` |
+| yamlls | YAML | `setup.ps1/setup.sh -Module langservers` |
+| azure_pipelines_ls | Azure Pipelines YAML | `setup.ps1/setup.sh -Module langservers` |
+| marksman | Markdown | Elsewhere (install manually / via package manager) |
+| bicep | Bicep (requires `bicep_lsp_path` in user.lua) | Elsewhere |
+| powershell_es | PowerShell (requires `pwsh_bundle_path` in user.lua) | Elsewhere |
+| roslyn | C# / .NET (auto-enabled when `dotnet` is on PATH) | `dotnet tool install -g roslyn-language-server --prerelease` |
+
+The first three are the only servers this repo provisions: the `langservers` installer module
+installs them as npm packages through Volta (`vscode-langservers-extracted` supplies the JSON
+server; the YAML and Azure Pipelines servers are their own packages). Their three
+`vim.lsp.enable` calls are deliberately **ungated** — JSON and YAML support is baseline, not
+machine-dependent, so a missing binary should produce Neovim's loud spawn-failure warning
+rather than silently degrading schema validation. The remaining servers are gated on a
+machine-specific prerequisite in `user.lua` (or on `dotnet`) and are installed by other means.
 
 ## Filetype detection
 
