@@ -32,8 +32,12 @@ local specs = {
   'https://github.com/b0o/schemastore.nvim',
   'https://github.com/lewis6991/gitsigns.nvim',
   -- forge-agnostic branch/PR diff UI — `:DiffviewOpen origin/main...HEAD`; works for Azure
-  -- DevOps PRs where octo.nvim, GitHub-only, does not; config in config/diffview.lua
-  'https://github.com/sindrets/diffview.nvim',
+  -- DevOps PRs where octo.nvim, GitHub-only, does not; config in config/diffview.lua.
+  -- The -plus fork, NOT sindrets/diffview.nvim: upstream's last commit is 2024-06-13 with
+  -- 130 open issues. The fork keeps the `diffview` module namespace and the :Diffview*
+  -- commands, so config/diffview.lua and the <leader>g* maps are unchanged. Requires only
+  -- Neovim >= 0.10 (README); plenary is its test-runner dep, not a runtime one.
+  'https://github.com/dlyongemallo/diffview-plus.nvim',
   'https://github.com/MeanderingProgrammer/render-markdown.nvim',
   -- orgmode compiles its own pinned tree-sitter-org grammar into its own plugin
   -- dir on setup(), independent of nvim-treesitter. Do NOT add 'org' to
