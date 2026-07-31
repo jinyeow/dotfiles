@@ -198,7 +198,9 @@ The `azure-pipelines` filetype has no Treesitter grammar of its own, so `autocmd
 
 ## Key mappings
 
-`<leader>` = `Space`, `<localleader>` = `\`
+`<leader>` = `Space` (mapped to `<Nop>` on its own so a stray Space does nothing), `<localleader>` = `\`
+
+`timeoutlen` is `1000` (Neovim's default) — there is no which-key popup whose latency a shorter value would improve, and no leader mapping is a prefix of a longer one, so nothing is delayed by the full timeout. `ttimeoutlen` stays at `10` so `<Esc>` remains instant.
 
 ### General
 

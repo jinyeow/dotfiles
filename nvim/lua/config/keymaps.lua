@@ -1,5 +1,9 @@
 local map = vim.keymap.set
 
+-- Leader is Space; without this a bare Space still falls through to its builtin
+-- "move right" once 'timeoutlen' expires.
+map({ 'n', 'v' }, '<Space>', '<Nop>')
+
 map('n', '<Esc>', '<cmd>nohlsearch<CR>')
 
 -- Search: use very magic mode so +, (, | etc. work without escaping
