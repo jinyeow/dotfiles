@@ -4,9 +4,9 @@
       "rev": "b77c47c34e11ef9102a3f6dbd12f6b835b7c3af1",
       "src": "https://github.com/stevearc/aerial.nvim"
     },
-    "diffview.nvim": {
-      "rev": "4516612fe98ff56ae0415a259ff6361a89419b0a",
-      "src": "https://github.com/sindrets/diffview.nvim"
+    "diffview-plus.nvim": {
+      "rev": "62dc5adf4e77489a2a6d3bf36ef6e4ac5738b634",
+      "src": "https://github.com/dlyongemallo/diffview-plus.nvim"
     },
     "fzf-lua": {
       "rev": "c8aaa74c97157b2c62bdcfc1e57b15c052dc63ca",
@@ -35,12 +35,12 @@
     "nvim-treesitter": {
       "rev": "7248feaca45e4d944591497964bc19afa89ad1c6",
       "src": "https://github.com/nvim-treesitter/nvim-treesitter",
-      "version": "main"
+      "version": "'main'"
     },
     "nvim-treesitter-textobjects": {
       "rev": "898ee307df58f854d11cd7edd06472574d48014e",
       "src": "https://github.com/nvim-treesitter/nvim-treesitter-textobjects",
-      "version": "main"
+      "version": "'main'"
     },
     "oil-git-status.nvim": {
       "rev": "a3e2ccb00cb8822115e28a9a1791eda051d940c9",
