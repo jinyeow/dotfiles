@@ -9,7 +9,7 @@
     before being replaced.
 
 .PARAMETER Module
-    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, zellij, psmux, herdr, yazi, curl, claude, codex, serena, context7, fastmail, lazygit, windowsterminal, bat, vscode, winget, all.
+    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, zellij, psmux, herdr, yazi, curl, claude, codex, serena, context7, fastmail, langservers, lazygit, windowsterminal, bat, vscode, winget, all.
     Optional when -CleanBackups is specified.
 
 .PARAMETER DryRun
@@ -72,7 +72,13 @@ if ($Module -contains 'all') {
     # that write would create a real settings.json, then the claude module's symlink would back it
     # up and replace it, silently dropping the herdr block. Running herdr last means it writes
     # through the already-established symlink into the repo file, so the block survives.
-    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'psmux', 'yazi', 'curl', 'claude', 'codex', 'serena', 'context7', 'fastmail', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget', 'herdr')
+    #
+    # 'langservers' comes after 'winget': it installs npm packages through Volta, which is part of
+    # the curated winget set (Volta.Volta in winget/packages.json), so the order encodes the
+    # dependency direction. Note the winget module only PRINTS the bootstrap command — it installs
+    # nothing — so on a bare machine Volta is absent until winget/packages.ps1 has actually been
+    # run; until then langservers warns and skips, and a re-run afterwards picks it up.
+    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'psmux', 'yazi', 'curl', 'claude', 'codex', 'serena', 'context7', 'fastmail', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget', 'langservers', 'herdr')
 }
 # @() wrapper: `Select-Object -Unique` over an empty array yields $null (and a
 # single value yields a scalar), so without it the `$Module.Count` guard below
@@ -1092,6 +1098,61 @@ function Install-Fastmail {
     Write-Info 'Then start a new session to load it. Verify with `claude mcp get fastmail`; reset auth with `claude mcp logout fastmail`.'
 }
 
+function Install-Langservers {
+    Write-Host ''
+    Write-Info '=== Language servers (JSON / YAML / Azure Pipelines) ==='
+
+    # Neovim enables jsonls, yamlls and azure_pipelines_ls unconditionally (nvim/lua/config/lsp.lua),
+    # so without these binaries every JSON/YAML buffer prints a spawn failure. Each package is paired
+    # with the binary nvim-lspconfig's cmd actually spawns — vscode-langservers-extracted is a bundle
+    # whose JSON server is the only one wired up here (its HTML/CSS/ESLint servers come along
+    # incidentally), so its package and binary names differ.
+    #
+    # Installed through Volta, the machine's Node toolchain manager (Volta.Volta, from the winget
+    # module) rather than `npm install -g`: under Volta a bare global npm install does not produce
+    # working shims. Verified — all three shim cleanly into Volta's bin dir.
+    $servers = @(
+        @{ Package = 'vscode-langservers-extracted';    Binary = 'vscode-json-language-server'     }
+        @{ Package = 'yaml-language-server';            Binary = 'yaml-language-server'            }
+        @{ Package = 'azure-pipelines-language-server'; Binary = 'azure-pipelines-language-server' }
+    )
+
+    if ($Backup) {
+        Write-Info 'Backup mode — skipping language-server install.'
+        return
+    }
+
+    # The dry run reports which packages this module OWNS, not which the machine happens to have,
+    # so it stays deterministic once they are installed. Hence it sits ahead of both the volta
+    # lookup and the per-package presence check below — unlike Install-Bat, whose dry-run output
+    # is deliberately machine-dependent.
+    if ($DryRun) {
+        foreach ($server in $servers) {
+            Write-Info "[DRY RUN] would run: volta install $($server.Package)"
+        }
+        return
+    }
+
+    # Warn and skip, never fail: one missing toolchain must not abort an otherwise good -Module all.
+    if (-not (Get-Command -Name volta -ErrorAction Ignore)) {
+        Write-Warn 'volta not found — install the winget module first (Volta.Volta), then re-run this module.'
+        return
+    }
+
+    foreach ($server in $servers) {
+        if (Get-Command -Name $server.Binary -ErrorAction Ignore) {
+            Write-Ok "Language server: $($server.Binary) (already installed)"
+            continue
+        }
+        & volta install $server.Package
+        if ($LASTEXITCODE -eq 0) {
+            Write-Ok "Language server: installed $($server.Package)"
+        } else {
+            Write-Fail "volta install $($server.Package) failed (exit $LASTEXITCODE)."
+        }
+    }
+}
+
 function Remove-OldBackups {
     Write-Host ''
     Write-Info '=== Cleaning backups ==='
@@ -1185,6 +1246,7 @@ foreach ($m in $Module) {
         'serena'     { Install-Serena     }
         'context7'   { Install-Context7   }
         'fastmail'   { Install-Fastmail   }
+        'langservers' { Install-Langservers }
         'lazygit'        { Install-Lazygit        }
         'windowsterminal' { Install-WindowsTerminal }
         default          { Write-Warn "Unknown module '$m' — skipping." }

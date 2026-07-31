@@ -222,6 +222,108 @@ Describe 'setup.ps1 herdr module' {
     }
 }
 
+Describe 'setup.ps1 langservers module' {
+    It 'names all three npm language-server packages in a dry run' {
+        # The dry run must state which packages this module OWNS, not what this machine happens
+        # to have — the per-binary presence check lives after the -DryRun branch on purpose, so
+        # this assertion stays deterministic once the servers are actually installed here.
+        $output = & pwsh -NoProfile -File $script:SetupScript -Module langservers -DryRun 2>&1 | Out-String
+        $LASTEXITCODE | Should -Be 0
+        $output | Should -Match 'volta install vscode-langservers-extracted'
+        $output | Should -Match 'volta install yaml-language-server'
+        $output | Should -Match 'volta install azure-pipelines-language-server'
+        $output | Should -Not -Match "Unknown module 'langservers'"
+    }
+
+    It 'warns and skips rather than failing when the Node toolchain manager is absent' {
+        # Simulating a missing toolchain means REPLACING PATH with an empty directory, not
+        # shimming something into it (you cannot shim absence). pwsh itself then no longer
+        # resolves from PATH, so the child is launched by absolute path from $PSHOME.
+        $emptyDir = Join-Path ([IO.Path]::GetTempPath()) ('setup-langservers-nopath-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $emptyDir -Force | Out-Null
+        $pwshName = if ($IsWindows) { 'pwsh.exe' } else { 'pwsh' }
+        $pwshExe = Join-Path $PSHOME $pwshName
+        $origPath = $env:PATH
+        try {
+            $env:PATH = $emptyDir
+            $output = & $pwshExe -NoProfile -File $script:SetupScript -Module langservers 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Match 'volta not found'
+        } finally {
+            $env:PATH = $origPath
+            Remove-Item -Path $emptyDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    # The two tests above both return before the install loop (one at the -DryRun branch, one at
+    # the volta guard), so without these the loop itself — the package/binary pairing, the
+    # already-installed skip, and the per-package exit-code check — is never executed by the suite.
+    # Driven against a fake `volta` on a stripped PATH, the same shim technique tests/psmux.Tests.ps1
+    # uses for save.ps1. Stripping PATH also hides the real language-server binaries, so the
+    # presence check falls through to the install branch on a machine where they ARE installed.
+    Context 'install loop, driven against a shimmed volta' -Skip:(-not $IsWindows) {
+        BeforeAll {
+            $script:PwshExe = Join-Path $PSHOME 'pwsh.exe'
+            $script:Packages = @(
+                'vscode-langservers-extracted'
+                'yaml-language-server'
+                'azure-pipelines-language-server'
+            )
+
+            # Writes a volta.cmd that exits with $ExitCode and echoes the args it was handed, so a
+            # test can assert WHICH package each invocation got, not merely that something ran.
+            # Must be declared `function script:` inside BeforeAll — a bare `function` in a Context
+            # body is not in scope for its It blocks under Pester 5.
+            function script:New-VoltaShim ([int]$ExitCode) {
+                $dir = Join-Path ([IO.Path]::GetTempPath()) ('setup-langservers-shim-' + [guid]::NewGuid())
+                New-Item -ItemType Directory -Path $dir -Force | Out-Null
+                Set-Content -Path (Join-Path $dir 'volta.cmd') -Encoding ASCII -Value @"
+@echo off
+echo SHIM-CALLED %*
+exit /b $ExitCode
+"@
+                return $dir
+            }
+        }
+
+        It 'installs each package by name and reports success when volta exits 0' {
+            $shimDir = New-VoltaShim -ExitCode 0
+            $origPath = $env:PATH
+            try {
+                $env:PATH = $shimDir
+                $output = & $script:PwshExe -NoProfile -File $script:SetupScript -Module langservers 2>&1 | Out-String
+                $LASTEXITCODE | Should -Be 0
+                foreach ($package in $script:Packages) {
+                    $output | Should -Match "SHIM-CALLED install $([regex]::Escape($package))"
+                    $output | Should -Match "installed $([regex]::Escape($package))"
+                }
+                $output | Should -Not -Match 'failed \(exit'
+            } finally {
+                $env:PATH = $origPath
+                Remove-Item -Path $shimDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+
+        It 'reports each package that fails rather than reporting overall success' {
+            # Story 14: a partial failure must be visible. A non-zero volta exit has to reach the
+            # else branch and name the package — not be swallowed, and not abort the remaining ones.
+            $shimDir = New-VoltaShim -ExitCode 1
+            $origPath = $env:PATH
+            try {
+                $env:PATH = $shimDir
+                $output = & $script:PwshExe -NoProfile -File $script:SetupScript -Module langservers 2>&1 | Out-String
+                foreach ($package in $script:Packages) {
+                    $output | Should -Match "volta install $([regex]::Escape($package)) failed \(exit 1\)"
+                }
+                $output | Should -Not -Match 'Language server: installed'
+            } finally {
+                $env:PATH = $origPath
+                Remove-Item -Path $shimDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+}
+
 Describe 'setup.ps1 -Module all' {
     It 'runs the full module set in -DryRun without error (Windows-only)' -Skip:(-not $IsWindows) {
         # Non-Windows hits [Environment]::GetFolderPath('MyDocuments') returning an empty string
@@ -233,6 +335,20 @@ Describe 'setup.ps1 -Module all' {
         $output = & pwsh -NoProfile -File $script:SetupScript -Module all -DryRun 2>&1 | Out-String
         $LASTEXITCODE | Should -Be 0
         $output | Should -Not -Match 'Unknown module'
+    }
+
+    It 'runs langservers after winget (whose curated set carries Volta) and before herdr' -Skip:(-not $IsWindows) {
+        # Two ordering constraints, both enforced here rather than left to a comment: langservers
+        # depends on Volta, which is part of the winget module's curated package set, and herdr must
+        # stay LAST (it writes hook registrations through a settings.json the claude module
+        # symlinks into the repo).
+        $output = & pwsh -NoProfile -File $script:SetupScript -Module all -DryRun 2>&1 | Out-String
+        $winget      = $output.IndexOf('=== winget packages')
+        $langservers = $output.IndexOf('=== Language servers')
+        $herdr       = $output.IndexOf('=== Herdr')
+        $winget      | Should -BeGreaterThan -1
+        $langservers | Should -BeGreaterThan $winget
+        $herdr       | Should -BeGreaterThan $langservers
     }
 }
 
