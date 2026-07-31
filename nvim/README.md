@@ -200,7 +200,7 @@ The `azure-pipelines` filetype has no Treesitter grammar of its own, so `autocmd
 
 `<leader>` = `Space` (mapped to `<Nop>` on its own so a stray Space does nothing), `<localleader>` = `\`
 
-`timeoutlen` is `1000` (Neovim's default) — there is no which-key popup whose latency a shorter value would improve, and no leader mapping is a prefix of a longer one, so nothing is delayed by the full timeout. `ttimeoutlen` stays at `10` so `<Esc>` remains instant.
+`timeoutlen` is `1000` (Neovim's default) — there is no which-key popup whose latency a shorter value would improve. No leader mapping is a prefix of a longer one (apart from the bare `<Space>` `<Nop>` itself, which does nothing), so leader sequences are never delayed by the full timeout. Plugin operator mappings where a short form *is* a prefix of a longer one — `gc`/`gcc`, `ys`/`yss`, `yS`/`ySS` — wait the full second only if you pause mid-sequence; typing the motion resolves them immediately. `ttimeoutlen` stays at `10` so `<Esc>` remains instant.
 
 ### General
 
