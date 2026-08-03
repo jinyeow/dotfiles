@@ -100,7 +100,7 @@ Not sure which one fits? Run `/router` — a manual index that maps these as flo
 | `tdd` | mattpocock/skills | Red-green-refactor TDD loop |
 | `spec-review` | local | Review a diff for conformance to its originating spec/ticket |
 | `walkthrough` | local | Walk me through a diff like a senior mentoring a junior — pair-programming style, chunk by chunk, concise, open to questions |
-| `setup-agent-skills` | mattpocock/skills | One-time per-repo config for the spec → tickets → wayfinding flow |
+| `setup-agent-skills` | mattpocock/skills | Writes root `agent-skills.md`, the on-demand config for the spec → tickets → wayfinding flow |
 | `triage` | mattpocock/skills | State-machine triage of issues/PRs you didn't create |
 | `diagnosing-bugs` | mattpocock/skills | Diagnosis loop for hard bugs and regressions |
 | `wayfinder` | mattpocock/skills | Chart a huge, foggy effort as a map of investigation tickets |
