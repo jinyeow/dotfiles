@@ -17,6 +17,26 @@ Describe 'setup.ps1 argument validation' {
     }
 }
 
+Describe 'setup.ps1 pi module' {
+    It 'recognises Pi and stops before projection when Pi is unavailable in dry-run' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-pi-dryrun-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module pi -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Match '=== Pi ==='
+            $output | Should -Match '(would install Pi via npm|pi is already installed)'
+            $output | Should -Not -Match 'pi\\agent\\settings.json'
+            $output | Should -Not -Match "Unknown module 'pi'"
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 Describe 'setup.ps1 psmux module' {
     It 'runs the psmux module in -DryRun without error and prints its section header' {
         # Isolated on a throwaway USERPROFILE, like the -Backup test below. Without this, a

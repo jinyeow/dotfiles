@@ -5,7 +5,7 @@
 #   ./setup.sh -m neovim,vim
 #   ./setup.sh -m all --dry-run
 #
-# Modules: neovim, vim, powershell, git, bash, tig, tmux, zellij, herdr, curl, claude, langservers, lazygit, windowsterminal, all
+# Modules: neovim, vim, powershell, git, bash, tig, tmux, zellij, herdr, curl, claude, codex, pi, langservers, lazygit, windowsterminal, all
 
 set -euo pipefail
 
@@ -20,7 +20,7 @@ MAX_BACKUP_AGE_DAYS=0
 
 usage() {
     echo "Usage: $0 -m <module[,module,...]> [--dry-run] [--clean-backups [--keep-backups N] [--max-backup-age-days N]]"
-    echo "  Modules: neovim, vim, powershell, git, bash, tig, tmux, zellij, herdr, curl, claude, langservers, lazygit, windowsterminal, all"
+    echo "  Modules: neovim, vim, powershell, git, bash, tig, tmux, zellij, herdr, curl, claude, codex, pi, langservers, lazygit, windowsterminal, all"
     echo "  --clean-backups          remove old .bak.TIMESTAMP files from previous runs"
     echo "  --keep-backups N         keep N most recent backups per file (default: 5, 0 = no limit)"
     echo "  --max-backup-age-days N  delete backups older than N days (default: 0 = disabled)"
@@ -63,7 +63,7 @@ for m in "${MODULES[@]}"; do
         # 'langservers' has no ordering constraint here: setup.ps1 must run it after 'winget'
         # (which provides Volta), but there is no winget module on this side — Volta is installed
         # by hand, and the module warns and skips if it is absent.
-        MODULES=(neovim vim powershell git bash tig tmux zellij curl claude langservers lazygit windowsterminal herdr)
+        MODULES=(neovim vim powershell git bash tig tmux zellij curl claude langservers lazygit windowsterminal pi herdr)
         break
     fi
 done
@@ -329,6 +329,38 @@ install_lazygit() {
     make_symlink "$DOTFILES/lazygit/config.yml" "$xdg_config/lazygit/config.yml"
 }
 
+install_pi() {
+    echo ''
+    info '=== Pi ==='
+    if command -v pi >/dev/null 2>&1; then
+        ok 'pi is already installed.'
+    elif [[ $DRY_RUN -eq 1 ]]; then
+        info '[DRY RUN] would install Pi via npm (@mariozechner/pi-coding-agent)'
+        return
+    elif ! command -v npm >/dev/null 2>&1; then
+        fail 'npm not found — Pi setup stopped before changing Pi configuration.'
+        return
+    elif ! npm install --global '@mariozechner/pi-coding-agent' || ! command -v pi >/dev/null 2>&1; then
+        fail 'Pi installation failed — no Pi configuration or resources were changed.'
+        return
+    else
+        ok 'Pi installed.'
+    fi
+    [[ $DRY_RUN -eq 1 ]] && return
+
+    local pi_dir="$HOME/.pi/agent"
+    make_symlink "$DOTFILES/pi/settings.json" "$pi_dir/settings.json"
+    while IFS= read -r package; do
+        if ! pi install "$package"; then
+            fail "Pi package install failed for $package — repository resources were not projected."
+            return
+        fi
+    done < <(grep -o '"npm:[^"]*"' "$DOTFILES/pi/settings.json" | tr -d '"')
+    for resource in extensions skills prompts themes; do
+        make_symlink "$DOTFILES/pi/$resource" "$pi_dir/$resource"
+    done
+}
+
 install_claude() {
     echo ''
     info '=== Claude Code ==='
@@ -487,6 +519,7 @@ for module in "${MODULES[@]}"; do
         herdr)      install_herdr      ;;
         curl)       install_curl       ;;
         claude)     install_claude     ;;
+        pi)         install_pi         ;;
         langservers) install_langservers ;;
         lazygit)         install_lazygit    ;;
         windowsterminal) warn 'Windows Terminal is Windows-only — skipping.' ;;
