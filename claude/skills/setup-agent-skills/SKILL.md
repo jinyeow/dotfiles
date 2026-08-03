@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Setup Agent Skills
 
-One-time per-repo configuration for the spec → design → tickets → implement workflow. Explore the repo, present options one at a time, confirm, then write an **Agent skills** block into the repo's `CLAUDE.md` (or `AGENTS.md`) that the other skills read. If a block already exists, show it and confirm changes rather than starting over.
+One-time per-repo configuration for the spec → design → tickets → implement workflow. Explore the repo, present options one at a time, confirm, then write the repository-root `agent-skills.md` file that the other skills read. If the file already exists, show it and confirm changes rather than starting over.
 
 ## 1. Output locations
 
@@ -53,4 +53,4 @@ Confirm how domain knowledge is arranged so skills use the right vocabulary and 
 
 ## Write the config
 
-Write an `## Agent skills` block into `CLAUDE.md`/`AGENTS.md` capturing the five sections. Downstream skills (`to-spec`, `to-hld`, `to-tickets`, `triage`, `wayfinder`) read this block; absent it, they fall back to the bold defaults (and `wayfinder` to the local-markdown tracker).
+Write repository-root `agent-skills.md` capturing the five sections. Downstream skills (`to-spec`, `to-hld`, `to-tickets`, `triage`, `wayfinder`) read this file; absent it, they fall back to the bold defaults (and `wayfinder` to the local-markdown tracker). Do not store this configuration in `CLAUDE.md` or `AGENTS.md`; those files are runtime-loaded instructions, while this file is read only by skills that need the workflow configuration.

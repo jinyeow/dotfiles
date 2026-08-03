@@ -10,7 +10,7 @@ truth. For current behavior, follow the exact authority index in the root `AGENT
 | --- | --- | --- |
 | Repository scope and active/legacy boundary | Always-loaded invariant | `AGENTS.md` → Scope and safety |
 | Startup/deferred profile phases and prompt invariants | Always-loaded invariant plus current behavior | `AGENTS.md` → Scope and safety; `powershell/README.md`; `powershell/Microsoft.PowerShell_profile.ps1`; `powershell/Profile/Set-Prompt.ps1` |
-| Azure CLI profile isolation and prompt rendering | Current subsystem documentation | `powershell/Profile/AzCliAccount.ps1`; `tests/AzCliAccount.Tests.ps1`; `tests/Set-Prompt.Tests.ps1` |
+| Azure CLI profile isolation and prompt rendering | Current subsystem documentation plus historical rationale | `powershell/README.md`; `powershell/Profile/AzCliAccount.ps1`; `docs/adr/az-cli-profile-isolation.md`; `tests/AzCliAccount.Tests.ps1`; `tests/Set-Prompt.Tests.ps1` |
 | Git work-hook dispatch and fail-open boundary | Always-loaded invariant plus current behavior | `AGENTS.md` → Scope and safety; `git/README.md`; `git/work-hooks/`; `tests/git-work-hooks.Tests.ps1` |
 | Native Neovim API and lockfile discipline | Always-loaded invariant plus current behavior | `AGENTS.md` → Scope and safety; `nvim/README.md`; `nvim/nvim-pack-lock.json` |
 | psmux/Zellij roles and keymaps | Current subsystem documentation | `psmux/README.md`; `psmux/psmux.conf`; `zellij/README.md`; `zellij/config.kdl` |

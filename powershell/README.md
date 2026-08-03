@@ -136,7 +136,10 @@ account you did not pick. Never log two accounts into one profile dir.
 
 There is **no manifest or config file** listing profiles: the directories under
 `~/.azure-profiles/` are the only registry. Adding a profile is "switch to it and log in",
-never "edit a file".
+never "edit a file". When revisiting profile storage or discovery, read
+[`docs/adr/az-cli-profile-isolation.md`](../docs/adr/az-cli-profile-isolation.md) for the
+rejected alternatives and verified failure experiments; it is historical rationale, not
+required reading for ordinary profile changes.
 
 The active profile is **always visible in the prompt** as an `az:<name>` tag (magenta), or
 `az:default` (green) when `AZURE_CONFIG_DIR` is unset — driven purely by that env var, so

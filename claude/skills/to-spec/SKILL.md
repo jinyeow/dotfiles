@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 This skill takes the current conversation context and codebase understanding and produces a spec (you may know this document as a PRD). Do NOT interview the user — just synthesize what you already know.
 
-Output location and any tracker target come from the repo's Agent-skills config — run `/setup-agent-skills` if absent. Default: write `.claude/specs/<slug>.md` (`<slug>` = kebab-cased title, no date prefix).
+Output location and any tracker target come from repository-root `agent-skills.md` — run `/setup-agent-skills` if absent. Default: write `.claude/specs/<slug>.md` (`<slug>` = kebab-cased title, no date prefix).
 
 ## Process
 
