@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 Produce a **high-level design** — the *what and why* of an architecture: components, flows, key decisions, NFRs. Not the low-level *how* (ports, SKUs, exact rules) — that lives in code (`/to-tickets` + `bicep-tdd` + parameter/pipeline files). Do NOT interview the user; synthesize what you already know. If the design is still fuzzy, stop and run `/grill-with-docs` first.
 
-Output location and any tracker/wiki target come from the repo's Agent-skills config — run `/setup-agent-skills` if absent. Default: `docs/design/<slug>.md` (`<slug>` = kebab-cased title, no date prefix).
+Resolve output location and any tracker/wiki target from repository-root `.agents/workflow.local.md` when present, otherwise repository-root `.agents/workflow.md`; run `/setup-agent-skills` if neither exists. Default: `docs/design/<slug>.md` (`<slug>` = kebab-cased title, no date prefix).
 
 ## Process
 
