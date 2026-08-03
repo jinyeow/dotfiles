@@ -148,10 +148,10 @@ mishandles escape sequences (see `docs/zellij-windows-terminal-colors.md`).
 
 ## Skills
 
-`claude/skills/` holds global custom skills. Each subdirectory is a skill:
+`ai-agents/shared/skills/` holds portable global skills, while `ai-agents/claude/skills/` holds Claude Code-only skills. Each subdirectory is a skill:
 
 ```
-claude/skills/
+ai-agents/shared/skills/
   my-skill/
     SKILL.md            ← skill definition (frontmatter: name + description)
     commands/           ← optional: slash-command prompt files
@@ -162,7 +162,7 @@ The installer junctions (Windows) or symlinks (Linux) each skill directory into
 `~/.claude/skills/`, making it available in every project. To add a skill,
 create its subdirectory here and re-run `setup.ps1 -Module claude`.
 
-The codex module junctions the same skill directories into `~/.codex/skills/` (minus a
+The codex module junctions the portable shared skill directories into `~/.codex/skills/` (minus a
 denylist of Claude-harness-coupled skills), so Codex CLI reads them too — one source,
 both tools. See `../codex/README.md` → Skills, and re-run `setup.ps1 -Module codex`
 after adding a skill so Codex picks it up as well.
@@ -216,7 +216,7 @@ a skill; it is still junctioned so skills can reference it via `../_shared/<file
 
 Built-in Claude Code skills (`code-review`, `compact`, `deep-research`, `security-review`,
 `verify`, etc.) are provided by the harness and do not need to be installed. `handoff` is
-this repo's own skill (`claude/skills/handoff/`), not a harness built-in — see the Files
+this repo's own skill (`ai-agents/claude/skills/handoff/`), not a harness built-in — see the Files
 table above.
 
 ## Agents

@@ -149,8 +149,8 @@ Describe 'setup.ps1 dry-run directory-creation cosmetics' {
     }
 }
 
-Describe 'setup.ps1 codex module shared claude skills' {
-    It 'junctions claude/skills subdirectories into ~/.codex/skills, minus the Claude-harness-coupled denylist' -Skip:(-not $IsWindows) {
+Describe 'setup.ps1 codex module shared skills' {
+    It 'junctions portable shared skill subdirectories into ~/.codex/skills'  -Skip:(-not $IsWindows) {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-skills-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
@@ -158,12 +158,10 @@ Describe 'setup.ps1 codex module shared claude skills' {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module codex -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
-            # A shared skill and the _shared support dir (referenced via ../_shared) come across.
             # Patterns anchor on the "link -> target" separator so `tdd` can't false-match a
             # future `tdd-something` skill (`\b` treats the hyphen as a word boundary).
             $output | Should -Match '\[DRY RUN\] junction .*\.codex\\skills\\tdd ->'
-            $output | Should -Match '\[DRY RUN\] junction .*\.codex\\skills\\_shared ->'
-            # Skills coupled to the Claude Code harness stay out of Codex.
+            # Claude-only skills are not sourced into Codex.
             $output | Should -Not -Match '\.codex\\skills\\codex-review ->'
             $output | Should -Not -Match '\.codex\\skills\\handoff ->'
             $output | Should -Not -Match '\.codex\\skills\\git-guardrails-claude-code ->'
@@ -173,12 +171,12 @@ Describe 'setup.ps1 codex module shared claude skills' {
         }
     }
 
-    It 'junctions only the Codex-native flavour when a codex/skills name collides with a shared skill' -Skip:(-not $IsWindows) {
+    It 'junctions only the Codex-native flavour when an ai-agents/codex skill collides with shared'  -Skip:(-not $IsWindows) {
         # A name in both sources must yield ONE junction (the codex/skills one) — junctioning
         # the shared dir first and letting the native one replace it would back up and re-create
         # the junction on every run, accumulating stale .bak.* junctions.
         $repoRoot = Split-Path $script:SetupScript -Parent
-        $codexSkillsDir = Join-Path $repoRoot 'codex\skills'
+        $codexSkillsDir = Join-Path $repoRoot 'ai-agents\codex\skills'
         $createdParent = -not (Test-Path $codexSkillsDir)
         $fixture = Join-Path $codexSkillsDir 'tdd'
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-collision-' + [guid]::NewGuid())
@@ -189,7 +187,7 @@ Describe 'setup.ps1 codex module shared claude skills' {
             $output = & pwsh -NoProfile -File $script:SetupScript -Module codex -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match '\.codex\\skills\\tdd -> .*codex\\skills\\tdd'
-            $output | Should -Not -Match '\.codex\\skills\\tdd -> .*claude\\skills\\tdd'
+            $output | Should -Not -Match '\.codex\\skills\\tdd -> .*ai-agents\\shared\\skills\\tdd'
         } finally {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $fixture -Recurse -Force -ErrorAction SilentlyContinue

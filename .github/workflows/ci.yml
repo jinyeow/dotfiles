@@ -141,7 +141,7 @@ jobs:
       # PSScriptAnalyzer job makes for legacy/vendored files):
       #   - the legacy Linux snapshot per CLAUDE.md: scripts/, config/, nvim/install.sh
       #   - bash/*.sh: sourced fragments with no shebang, never executed as scripts
-      #   - claude/skills/**: vendored skill payloads, not ours to lint
+      #   - ai-agents/**/skills/**: vendored skill payloads, not ours to lint
       #   - git/templates/hooks/{ctags,post-*}: the upstream git-ctags recipe. Its SC1007 is
       #     a false positive (`CDPATH= cd --` is a valid env-var prefix, not a botched
       #     assignment), so gating on it would mean suppressing, not fixing.

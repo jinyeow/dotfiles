@@ -387,22 +387,24 @@ install_claude() {
     # SessionStart hook: inject a pending .claude/handoff.md (from the handoff skill) into a fresh session.
     make_symlink "$DOTFILES/claude/inject-handoff.ps1" "$HOME/.claude/inject-handoff.ps1"
 
-    # Skills — symlink each subdirectory into ~/.claude/skills/
-    local skills_src="$DOTFILES/claude/skills"
+    # Skills — project shared and Claude-specific resources into ~/.claude/skills/.
     local skills_dst="$HOME/.claude/skills"
+    local skills_sources=("$DOTFILES/ai-agents/shared/skills" "$DOTFILES/ai-agents/claude/skills")
     if [[ $DRY_RUN -eq 0 ]]; then
         mkdir -p "$skills_dst"
     fi
     local skill_dirs=()
-    while IFS= read -r -d '' d; do
-        skill_dirs+=("$d")
-    done < <(find "$skills_src" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+    for skills_src in "${skills_sources[@]}"; do
+        while IFS= read -r -d '' d; do
+            skill_dirs+=("$d")
+        done < <(find "$skills_src" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+    done
     if [ "${#skill_dirs[@]}" -gt 0 ]; then
         for skill_dir in "${skill_dirs[@]}"; do
             make_symlink "$skill_dir" "$skills_dst/$(basename "$skill_dir")"
         done
     else
-        info 'No skills to install (claude/skills/ is empty).'
+        info 'No skills to install (shared/ and claude/ skill sources are empty).'
     fi
 
     # Agents — symlink the whole dir into ~/.claude/agents/ (Linux equivalent of the Windows

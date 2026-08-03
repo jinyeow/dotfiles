@@ -84,7 +84,7 @@ See `fzf/`, `ripgrep/`, `lazygit/`, `tig/`, and `nvim/` for tool-specific `READM
 
 ## Claude Code skills
 
-Global skills live in `claude/skills/` and are junctioned into `~/.claude/skills/` by `setup.ps1 -Module claude`. They are available across all Claude Code sessions, not just this repo.
+Global skills live in `ai-agents/shared/skills/` and are junctioned into `~/.claude/skills/` by `setup.ps1 -Module claude`. They are available across all Claude Code sessions, not just this repo.
 
 Not sure which one fits? Run `/router` — a manual index that maps these as flows and decision tables. Built-in Claude Code skills (`code-review`, `compact`, `deep-research`, `security-review`, `verify`) are provided by the harness and aren't listed here.
 

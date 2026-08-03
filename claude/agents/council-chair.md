@@ -79,5 +79,5 @@ evidence they returned.
 ---
 
 Maintenance: this file's judging rules pair with `council-critic.md` and the pipeline in
-`claude/skills/council/SKILL.md` — keep the three consistent when changing verdict
+`ai-agents/claude/skills/council/SKILL.md` — keep the three consistent when changing verdict
 vocabulary, severity scale, or debate mechanics.

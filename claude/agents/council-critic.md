@@ -85,4 +85,4 @@ report) short rationale + assumptions + evidence.
 
 Maintenance: this file intentionally restates evidence/verdict conventions aligned with
 `claude/AGENTS.md` because subagents cannot import it. Perspective charters live in
-`claude/skills/council/references/perspectives.md` — edit charters there, mechanics here.
+`ai-agents/claude/skills/council/references/perspectives.md` — edit charters there, mechanics here.
