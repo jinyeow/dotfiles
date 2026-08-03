@@ -1,7 +1,12 @@
-# Agent skills
+# Agent workflow
 
-This file configures the repository's spec, design, ticket, triage, and wayfinding
-skills. Run `/setup-agent-skills` before changing these values.
+This is the shared repository configuration for the spec, design, ticket, triage, and
+wayfinding skills. It is an explicit cross-harness convention, not an auto-loaded Agent
+Skills standard file. Claude Code, Codex, and Pi read it only when one of those skills
+needs the workflow configuration.
+
+A private `.agents/workflow.local.md` takes precedence when present. Run
+`/setup-agent-skills` before changing either file.
 
 - **Specs**: `.claude/specs/`
 - **High-level designs**: `docs/design/`

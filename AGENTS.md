@@ -36,7 +36,7 @@ These are repository paths, so this routing works without runtime-specific impor
 | Herdr | [`herdr/README.md`](herdr/README.md); [`herdr/config.toml`](herdr/config.toml); [`tests/setup.Tests.ps1`](tests/setup.Tests.ps1) |
 | Yazi | [`yazi/yazi.toml`](yazi/yazi.toml); [`yazi/keymap.toml`](yazi/keymap.toml); [`yazi/theme.toml`](yazi/theme.toml); [`yazi/package.toml`](yazi/package.toml) |
 | Setup and installers | [`setup.ps1`](setup.ps1); [`setup.sh`](setup.sh); [`tests/setup.Tests.ps1`](tests/setup.Tests.ps1); [`tests/setup-sh.Tests.ps1`](tests/setup-sh.Tests.ps1) |
-| Agent skill workflow | [`agent-skills.md`](agent-skills.md); [`claude/skills/setup-agent-skills/SKILL.md`](claude/skills/setup-agent-skills/SKILL.md) |
+| Agent workflow configuration | [`.agents/workflow.md`](.agents/workflow.md); [`claude/skills/setup-agent-skills/SKILL.md`](claude/skills/setup-agent-skills/SKILL.md) |
 | Claude Code hooks and agents | [`claude/README.md`](claude/README.md); [`claude/AGENTS.md`](claude/AGENTS.md); [`claude/settings.json`](claude/settings.json); [`claude/agents/`](claude/agents/) |
 | Codex CLI | [`codex/README.md`](codex/README.md); [`codex/config.toml`](codex/config.toml); [`codex/templates/`](codex/templates/) |
 | Pi | [`pi/README.md`](pi/README.md); [`pi/settings.json`](pi/settings.json); [`pi/extensions/`](pi/extensions/); [`pi/skills/`](pi/skills/) |

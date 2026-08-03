@@ -20,7 +20,7 @@ Use whatever fixed point the user supplies — a commit SHA, branch, tag, `main`
 
 Locate the originating spec/ticket, in this order:
 
-1. Issue references in the commit messages (`#123`, `Closes #45`, Azure Boards `AB#123`) — fetch via the tracker in repository-root `agent-skills.md` (`/setup-agent-skills` if absent).
+1. Issue references in the commit messages (`#123`, `Closes #45`, Azure Boards `AB#123`) — fetch via the tracker in repository-root `.agents/workflow.local.md` when present, otherwise repository-root `.agents/workflow.md` (`/setup-agent-skills` if neither exists).
 2. A path the user passed as an argument.
 3. A spec/ticket file under `.claude/specs/`, `.claude/tickets.md`, `docs/design/`, or `docs/`.
 4. If nothing is found, ask the user where the spec is. If they say there isn't one, report "no spec available" and stop — there is nothing to conform to.

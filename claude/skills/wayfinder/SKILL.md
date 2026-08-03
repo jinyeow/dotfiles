@@ -22,7 +22,7 @@ The map is a single issue on this repo's issue tracker, labelled `wayfinder:map`
 
 The map is an **index**, not a store. It lists the decisions made and points at the tickets that hold their detail; a decision lives in exactly one place — its ticket — so the map never restates it, only gists it and links.
 
-**Where the map, its child tickets, blocking, and frontier queries physically live is tracker-specific.** Read the issue tracker and its "Wayfinding operations" from repository-root `agent-skills.md`; run `/setup-agent-skills` if the file is absent. If no tracker is configured, default to the local-markdown tracker.
+**Where the map, its child tickets, blocking, and frontier queries physically live is tracker-specific.** Read the issue tracker and its "Wayfinding operations" from repository-root `.agents/workflow.local.md` when present, otherwise repository-root `.agents/workflow.md`; run `/setup-agent-skills` if neither exists. If no tracker is configured, default to the local-markdown tracker.
 
 ### The map body
 

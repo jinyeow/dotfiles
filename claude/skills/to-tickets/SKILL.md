@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 Break a plan, spec, or conversation into a set of **tickets** — tracer-bullet vertical slices, each declaring the tickets that **block** it.
 
-Output location and any tracker target come from repository-root `agent-skills.md` — run `/setup-agent-skills` if absent. Default: write `.claude/tickets.md`.
+Resolve output location and any tracker target from repository-root `.agents/workflow.local.md` when present, otherwise repository-root `.agents/workflow.md`; run `/setup-agent-skills` if neither exists. Default: write `.claude/tickets.md`.
 
 ## Process
 
