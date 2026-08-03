@@ -9,7 +9,7 @@
     before being replaced.
 
 .PARAMETER Module
-    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, zellij, psmux, herdr, yazi, curl, claude, codex, serena, context7, fastmail, langservers, lazygit, windowsterminal, bat, vscode, winget, all.
+    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, zellij, psmux, herdr, yazi, curl, claude, codex, pi, serena, context7, fastmail, langservers, lazygit, windowsterminal, bat, vscode, winget, all.
     Optional when -CleanBackups is specified.
 
 .PARAMETER DryRun
@@ -78,7 +78,7 @@ if ($Module -contains 'all') {
     # dependency direction. Note the winget module only PRINTS the bootstrap command — it installs
     # nothing — so on a bare machine Volta is absent until winget/packages.ps1 has actually been
     # run; until then langservers warns and skips, and a re-run afterwards picks it up.
-    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'psmux', 'yazi', 'curl', 'claude', 'codex', 'serena', 'context7', 'fastmail', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget', 'langservers', 'herdr')
+    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'psmux', 'yazi', 'curl', 'claude', 'codex', 'pi', 'serena', 'context7', 'fastmail', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget', 'langservers', 'herdr')
 }
 # @() wrapper: `Select-Object -Unique` over an empty array yields $null (and a
 # single value yields a scalar), so without it the `$Module.Count` guard below
@@ -855,6 +855,52 @@ function Install-Claude {
     }
 }
 
+function Install-Pi {
+    Write-Host ''
+    Write-Info '=== Pi ==='
+
+    if ($Backup) {
+        Write-Info 'Backup mode — skipping Pi installation and projection.'
+        return
+    }
+
+    # Do not touch Pi state until the executable is available. This makes a failed bootstrap
+    # safe to retry and prevents a partial configuration from looking like a valid install.
+    if (Get-Command -Name pi -ErrorAction Ignore) {
+        Write-Ok 'pi is already installed.'
+    } elseif ($DryRun) {
+        Write-Info '[DRY RUN] would install Pi via npm (@mariozechner/pi-coding-agent)'
+        return
+    } else {
+        if (-not (Get-Command -Name npm -ErrorAction Ignore)) {
+            Write-Fail 'npm not found — Pi setup stopped before changing Pi configuration.'
+            return
+        }
+        Write-Info 'Installing Pi via npm...'
+        & npm install --global '@mariozechner/pi-coding-agent'
+        if ($LASTEXITCODE -ne 0 -or -not (Get-Command -Name pi -ErrorAction Ignore)) {
+            Write-Fail 'Pi installation failed — no Pi configuration or resources were changed.'
+            return
+        }
+        Write-Ok 'Pi installed.'
+    }
+    if ($DryRun) { return }
+
+    $piDir = Join-Path $env:USERPROFILE '.pi\agent'
+    Copy-Dotfile -Dest (Join-Path $piDir 'settings.json') -Source (Join-Path $Dotfiles 'pi\settings.json')
+    $piSettings = Get-Content (Join-Path $Dotfiles 'pi\settings.json') -Raw | ConvertFrom-Json
+    foreach ($package in @($piSettings.packages)) {
+        & pi install $package
+        if ($LASTEXITCODE -ne 0) {
+            Write-Fail "Pi package install failed for $package — repository resources were not projected."
+            return
+        }
+    }
+    foreach ($resource in @('extensions', 'skills', 'prompts', 'themes')) {
+        New-Junction -Link (Join-Path $piDir $resource) -Target (Join-Path $Dotfiles "pi\$resource")
+    }
+}
+
 function Install-Codex {
     Write-Host ''
     Write-Info '=== Codex CLI ==='
@@ -1243,6 +1289,7 @@ foreach ($m in $Module) {
         'bat'        { Install-Bat        }
         'claude'     { Install-Claude     }
         'codex'      { Install-Codex      }
+        'pi'         { Install-Pi         }
         'serena'     { Install-Serena     }
         'context7'   { Install-Context7   }
         'fastmail'   { Install-Fastmail   }
