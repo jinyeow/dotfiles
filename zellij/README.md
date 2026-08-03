@@ -28,6 +28,20 @@ Config for [Zellij](https://zellij.dev/) — a terminal workspace / multiplexer.
 ./setup.sh -m zellij
 ```
 
+## Role and layout policy
+
+psmux is the daily multiplexer; Zellij remains installed as a fallback. Keep
+`auto_layout false`: new panes stay where they are split instead of being
+reflowed by a swap layout.
+
+An even-grid `swap_tiled_layout` was tested on Zellij 0.44.3 using
+`default_layout "grid"` and pane-count-specific layouts. Zellij loaded the
+layout definitions but did not automatically apply them to manually opened
+panes, and `NextSwapLayout` did not reliably produce a clean 2×2 grid. This
+remains an upstream feature request ([zellij#4936](https://github.com/zellij-org/zellij/issues/4936)).
+Do not restore `default_layout` or swap-layout auto-tiling without a working
+live demonstration.
+
 ## Design: locked-first
 
 `default_mode "locked"` means all key input passes through to the running
