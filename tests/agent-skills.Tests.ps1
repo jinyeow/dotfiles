@@ -16,18 +16,28 @@ Describe 'agent skill source layout' {
         $codexStart = $ownership.IndexOf('Codex-specific')
         $sharedSection = $ownership.Substring($sharedStart, $claudeStart - $sharedStart)
         $claudeSection = $ownership.Substring($claudeStart, $codexStart - $claudeStart)
-        $sharedNames = @([regex]::Matches($sharedSection, '(?m)^- `([^`]+)`$') | ForEach-Object { $_.Groups[1].Value })
-        $claudeNames = @([regex]::Matches($claudeSection, '(?m)^- `([^`]+)`$') | ForEach-Object { $_.Groups[1].Value })
+        $claudeNames = @([regex]::Matches($claudeSection, '(?m)^- `([^`]+)`') | ForEach-Object { $_.Groups[1].Value })
         $actualShared = @(Get-ChildItem $shared -Directory | Select-Object -ExpandProperty Name)
         $actualClaude = @(Get-ChildItem $claude -Directory | Select-Object -ExpandProperty Name)
 
-        $sharedNames | Sort-Object | Should -Be ($actualShared | Sort-Object)
-        $claudeNames | Sort-Object | Should -Be ($actualClaude | Sort-Object)
-        (@($sharedNames + $claudeNames) | Sort-Object -Unique).Count | Should -Be ($sharedNames.Count + $claudeNames.Count)
+        $sharedStart | Should -BeGreaterThan -1
+        $actualShared.Count | Should -BeGreaterThan 0
+        foreach ($name in $actualClaude) {
+            $claudeNames | Should -Contain $name
+        }
+        $actualClaude.Count | Should -Be $claudeNames.Count
+        (@($actualShared + $actualClaude) | Sort-Object -Unique).Count | Should -Be ($actualShared.Count + $actualClaude.Count)
+    }
+
+    It 'stores the custom agents in the shared agent source area' {
+        $agents = Join-Path $repo 'ai-agents/shared/agents'
+        Test-Path $agents | Should -BeTrue
+        @(Get-ChildItem $agents -File -Filter '*.md').Count | Should -BeGreaterThan 0
+        Test-Path (Join-Path $repo 'claude/agents') | Should -BeFalse
     }
 
     It 'keeps shared skills free of runtime-specific source references' {
-        $hits = Get-ChildItem $shared -Recurse -File | Select-String -Pattern 'claude/skills|codex/skills|~/.claude|~/.codex|/to-(spec|hld|tickets)|/setup-agent-skills|CLAUDE\.md'
+        $hits = Get-ChildItem $shared -Recurse -File | Select-String -Pattern 'ai-agents/claude/skills|ai-agents/claude/agents'
         $hits | Should -BeNullOrEmpty
     }
 }

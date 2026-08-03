@@ -33,7 +33,7 @@ Verify with `claude doctor` (install method = native) and `Get-Command claude`
 | `warn-hardcoded-secrets.ps1` | `~/.claude/warn-hardcoded-secrets.ps1` | PostToolUse(Edit\|Write) hook that warns when written content looks like a hardcoded secret |
 | `warn-reasoning-extraction.ps1` | `~/.claude/warn-reasoning-extraction.ps1` | UserPromptSubmit + PreToolUse(Edit\|Write) hook that flags reasoning-extraction phrasing that trips Fable-5's `reasoning_extraction` → Opus fallback |
 | `ai-agents/shared/skills/<name>/` or `ai-agents/claude/skills/<name>/` | `~/.claude/skills/<name>/` | Portable and Claude-only custom skills (only portable skills are also projected into Codex) |
-| `agents/<name>.md` | `~/.claude/agents/<name>.md` | User-scope subagents (whole dir junctioned/symlinked) |
+| `ai-agents/shared/agents/<name>.md` | `~/.claude/agents/<name>.md` | User-scope subagents (whole dir junctioned/symlinked) |
 | `output-styles/<name>.md` | `~/.claude/output-styles/<name>.md` | Output styles (whole dir junctioned); active style pinned by `outputStyle` in `settings.json` |
 
 **Install method.** `settings.json`, `CLAUDE.md`, `AGENTS.md`,
@@ -148,7 +148,7 @@ mishandles escape sequences (see `docs/zellij-windows-terminal-colors.md`).
 
 ## Skills
 
-`ai-agents/shared/skills/` holds portable global skills, while `ai-agents/claude/skills/` holds Claude Code-only skills. Each subdirectory is a skill:
+`ai-agents/shared/skills/` holds portable global skills, while `ai-agents/claude/skills/` holds the small set of Claude Code-only skills. Each subdirectory is a skill:
 
 ```
 ai-agents/shared/skills/
@@ -221,12 +221,12 @@ table above.
 
 ## Agents
 
-`claude/agents/` holds user-scope [subagents](https://code.claude.com/docs/en/subagents) —
+`ai-agents/shared/agents/` holds user-scope [subagents](https://code.claude.com/docs/en/subagents) —
 each is a single `.md` with YAML frontmatter (`name`, `description`, `tools`, `model`,
 `skills`, …) plus a system-prompt body:
 
 ```
-claude/agents/
+ai-agents/shared/agents/
   pwsh-implementer.md   ← one agent = one self-contained file
 ```
 

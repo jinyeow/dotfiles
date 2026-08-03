@@ -411,10 +411,10 @@ install_claude() {
     # dir-junction; unlike skills, which link per-subdir). Agent definitions are flat .md files
     # in one dir nothing else writes to, so a whole-dir link preserves the no-drift philosophy
     # and lets agents created via /agents land in the repo. Bodies can't @import AGENTS.md.
-    if [ -d "$DOTFILES/claude/agents" ]; then
-        make_symlink "$DOTFILES/claude/agents" "$HOME/.claude/agents"
+    if [ -d "$DOTFILES/ai-agents/shared/agents" ]; then
+        make_symlink "$DOTFILES/ai-agents/shared/agents" "$HOME/.claude/agents"
     else
-        info 'No agents to install (claude/agents/ is missing).'
+        info 'No agents to install (ai-agents/shared/agents/ is missing).'
     fi
 }
 

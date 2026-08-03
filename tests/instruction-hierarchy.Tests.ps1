@@ -5,15 +5,15 @@ BeforeAll {
     $script:AgentsPath = Join-Path $script:RepoRoot 'AGENTS.md'
     $script:ClaudePath = Join-Path $script:RepoRoot 'CLAUDE.md'
     $script:AgentWorkflowPath = Join-Path $script:RepoRoot '.agents/workflow.md'
-    $script:SetupAgentSkillsPath = Join-Path $script:RepoRoot 'ai-agents/claude/skills/setup-agent-skills/SKILL.md'
+    $script:SetupAgentSkillsPath = Join-Path $script:RepoRoot 'ai-agents/shared/skills/setup-agent-skills/SKILL.md'
     $script:WorkGitignorePath = Join-Path $script:RepoRoot 'git/gitignore-work'
     $script:WorkflowConsumerPaths = @(
-        'ai-agents/claude/skills/spec-review/SKILL.md',
-        'ai-agents/claude/skills/to-hld/SKILL.md',
-        'ai-agents/claude/skills/to-spec/SKILL.md',
-        'ai-agents/claude/skills/to-tickets/SKILL.md',
-        'ai-agents/claude/skills/triage/SKILL.md',
-        'ai-agents/claude/skills/wayfinder/SKILL.md'
+        'ai-agents/shared/skills/spec-review/SKILL.md',
+        'ai-agents/shared/skills/to-hld/SKILL.md',
+        'ai-agents/shared/skills/to-spec/SKILL.md',
+        'ai-agents/shared/skills/to-tickets/SKILL.md',
+        'ai-agents/shared/skills/triage/SKILL.md',
+        'ai-agents/shared/skills/wayfinder/SKILL.md'
     )
     $script:RationalePath = Join-Path $script:RepoRoot 'docs/adr/agent-instructions-rationale.md'
     $script:AzProfileRationalePath = Join-Path $script:RepoRoot 'docs/adr/az-cli-profile-isolation.md'
@@ -113,7 +113,7 @@ Describe 'repository instruction hierarchy' {
             @('Herdr', 'herdr/README.md', 'herdr/config.toml'),
             @('Yazi', 'yazi/yazi.toml', 'yazi/keymap.toml', 'yazi/theme.toml'),
             @('Setup', 'setup.ps1', 'setup.sh', 'tests/setup.Tests.ps1'),
-            @('Agent workflow', '.agents/workflow.md', 'ai-agents/claude/skills/setup-agent-skills/SKILL.md'),
+            @('Agent workflow', '.agents/workflow.md', 'ai-agents/shared/skills/setup-agent-skills/SKILL.md'),
             @('Claude', 'claude/README.md', 'claude/AGENTS.md'),
             @('Codex', 'codex/README.md', 'codex/config.toml'),
             @('Pi', 'pi/README.md', 'pi/settings.json')

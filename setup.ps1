@@ -843,11 +843,11 @@ function Install-Claude {
     # per-subdir). Agent definitions are flat .md files in one dir nothing else writes to, so a
     # whole-dir junction preserves the no-drift philosophy and lets agents created via /agents
     # land straight in the repo. Bodies are self-contained — they can't @import AGENTS.md.
-    $agentsSrc = Join-Path $Dotfiles 'claude\agents'
+    $agentsSrc = Join-Path $Dotfiles 'ai-agents\shared\agents'
     if (Test-Path $agentsSrc) {
         New-Junction -Link (Join-Path $claudeDir 'agents') -Target $agentsSrc
     } else {
-        Write-Info 'No agents to install (claude/agents/ is missing).'
+        Write-Info 'No agents to install (ai-agents/shared/agents/ is missing).'
     }
 
     # Output styles — whole-dir junction like agents: flat .md files in a dir nothing else
