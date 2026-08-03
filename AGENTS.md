@@ -1,7 +1,5 @@
 # AGENTS.md
 
-This file is the canonical project guidance for Claude Code, Codex CLI, and Pi when working in this repository. Runtime-specific adapters should import this file and add only behavior unique to their runtime.
-
 ## Repository scope
 
 Personal dotfiles spanning Windows (PowerShell 7) and Linux/WSL (bash, Neovim, tmux, i3/bspwm). Active development is on the **Windows side**: the PowerShell profile under `powershell/`, the prompt in `powershell/Profile/Set-Prompt.ps1`, the Neovim Lua config under `nvim/`, the Zellij config under `zellij/`, the Yazi config under `yazi/`, and the git config under `git/`. Configs are organized into per-tool directories: `git/`, `nvim/`, `vim/`, `bash/`, `powershell/`, `tig/`, `tmux/`, `zellij/`, `psmux/`, `herdr/`, `yazi/`, `fzf/`, `curl/`, `claude/`, `codex/`, `windowsterminal/`, `lazygit/`, `bat/`, `vscode/`, `winget/`, `ripgrep/`, `eza/`. The Linux setup (`config/bspwm`, `config/sxhkd`, `i3/`, `tmux/`, `bash/`, `vim/`, etc.) is a legacy snapshot — touch only when explicitly asked.
