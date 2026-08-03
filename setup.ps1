@@ -887,8 +887,9 @@ function Install-Pi {
     if ($DryRun) { return }
 
     $piDir = Join-Path $env:USERPROFILE '.pi\agent'
-    Copy-Dotfile -Dest (Join-Path $piDir 'settings.json') -Source (Join-Path $Dotfiles 'pi\settings.json')
     $piSettings = Get-Content (Join-Path $Dotfiles 'pi\settings.json') -Raw | ConvertFrom-Json
+    # Install packages before projecting tracked configuration/resources. If a pinned package
+    # fails, the return below leaves the existing Pi configuration and resources untouched.
     foreach ($package in @($piSettings.packages)) {
         & pi install $package
         if ($LASTEXITCODE -ne 0) {
@@ -896,6 +897,7 @@ function Install-Pi {
             return
         }
     }
+    Copy-Dotfile -Dest (Join-Path $piDir 'settings.json') -Source (Join-Path $Dotfiles 'pi\settings.json')
     foreach ($resource in @('extensions', 'skills', 'prompts', 'themes')) {
         New-Junction -Link (Join-Path $piDir $resource) -Target (Join-Path $Dotfiles "pi\$resource")
     }
