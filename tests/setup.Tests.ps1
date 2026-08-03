@@ -197,6 +197,31 @@ Describe 'setup.ps1 codex module shared skills' {
     }
 }
 
+Describe 'setup.ps1 Codex skill migration' {
+    It 'previews removal of obsolete managed Claude skill junctions but preserves unmanaged entries' -Skip:(-not $IsWindows) {
+        $repoRoot = Split-Path $script:SetupScript -Parent
+        $oldSource = Join-Path $repoRoot 'claude\skills'
+        $oldSkill = Join-Path $oldSource 'legacy-only'
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-migration-' + [guid]::NewGuid())
+        $codexSkills = Join-Path $tmpHome '.codex\skills'
+        New-Item -ItemType Directory -Path $oldSkill, $codexSkills, (Join-Path $codexSkills 'unmanaged') -Force | Out-Null
+        $oldLink = Join-Path $codexSkills 'legacy-only'
+        $origUP = $env:USERPROFILE
+        try {
+            New-Item -ItemType Junction -Path $oldLink -Target $oldSkill -ErrorAction Stop | Out-Null
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module codex -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Match 'remove obsolete Codex skill junction.*legacy-only'
+            $output | Should -Not -Match 'remove obsolete Codex skill junction.*unmanaged'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path $oldSource -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 Describe 'setup.ps1 claude module output styles' {
     It 'junctions claude/output-styles into ~/.claude/output-styles' -Skip:(-not $IsWindows) {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-styles-' + [guid]::NewGuid())

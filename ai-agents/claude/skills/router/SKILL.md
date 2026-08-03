@@ -29,7 +29,7 @@ The route most feature work travels. You have an idea and want it built.
 
 4. **Understand what was built** — once the reviews have run, **`/walkthrough`** walks *you* through the diff like a senior pairing with a junior: chunked into narrative beats, framed against the driving spec/ticket, in your choice of checkpoint tour / overview / socratic mode. It explains rather than judges, and it remembers what you know across sessions via the learner profile (global + project-brain).
 
-**Precondition — `/setup-agent-skills`.** Run once per repo before your first `to-spec` / `to-hld` / `to-tickets` / `triage`: it records where specs/designs/tickets land, whether a tracker is used and its labels, and the doc layout the flow assumes.
+**Precondition — `/setup-agent-skills`.** Run once per repo before your first `to-spec` / `to-hld` / `to-tickets` / `triage`: it records in private repository-root `.agents/workflow.local.md` (default) or shared repository-root `.agents/workflow.md` where specs/designs/tickets land, whether a tracker is used and its labels, and the doc layout the flow assumes.
 
 ### Context hygiene
 

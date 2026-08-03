@@ -39,7 +39,7 @@ For a PR, the same states read against the attached code: `ready` means a brief 
 
 Every triaged issue should carry exactly one category role and one state role. If state roles conflict, flag it and ask the maintainer before doing anything else.
 
-These are canonical role names — the actual label strings used in the issue tracker may differ. The mapping should have been provided to you - run `/setup-agent-skills` if not.
+These are canonical role names — the actual label strings used in the issue tracker may differ. Read the mapping from repository-root `.agents/workflow.local.md` when present, otherwise repository-root `.agents/workflow.md`; run `/setup-agent-skills` if neither exists.
 
 State transitions: an unlabeled issue is untriaged; from there it moves to `triaged`, `needs-info`, `ready`, or `wontfix`. `needs-info` returns to untriaged for re-evaluation once the reporter replies. The maintainer can override at any time — flag transitions that look unusual and ask before proceeding.
 

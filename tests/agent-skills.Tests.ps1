@@ -11,20 +11,20 @@ Describe 'agent skill source layout' {
 
     It 'classifies every skill in exactly one source area' {
         $ownership = Get-Content (Join-Path $repo 'ai-agents/SKILL-OWNERSHIP.md') -Raw
-        $skills = @(
-            Get-ChildItem $shared -Directory | Where-Object { Test-Path (Join-Path $_.FullName 'SKILL.md') }
-            Get-ChildItem $claude -Directory | Where-Object { Test-Path (Join-Path $_.FullName 'SKILL.md') }
-        )
-        $skills | Should -Not -BeNullOrEmpty
-        foreach ($skill in $skills) {
-            $ownership | Should -Match ([regex]::Escape(('`{0}`' -f $skill.Name)))
-            Test-Path (Join-Path $skill.FullName 'SKILL.md') | Should -BeTrue
-        }
-        (@($skills.Name) | Sort-Object -Unique).Count | Should -Be $skills.Count
+        $sharedSection = [regex]::Match($ownership, '(?s)## Shared \(`ai-agents/shared/skills/`\)(.*?)(?=\r?\n## Claude-only)').Groups[1].Value
+        $claudeSection = [regex]::Match($ownership, '(?s)## Claude-only \(`ai-agents/claude/skills/`\)(.*?)(?=\r?\n\r?\nCodex-specific)').Groups[1].Value
+        $sharedNames = @([regex]::Matches($sharedSection, '(?m)^- `([^`]+)`$') | ForEach-Object { $_.Groups[1].Value })
+        $claudeNames = @([regex]::Matches($claudeSection, '(?m)^- `([^`]+)`$') | ForEach-Object { $_.Groups[1].Value })
+        $actualShared = @(Get-ChildItem $shared -Directory | Select-Object -ExpandProperty Name)
+        $actualClaude = @(Get-ChildItem $claude -Directory | Select-Object -ExpandProperty Name)
+
+        $sharedNames | Sort-Object | Should -Be ($actualShared | Sort-Object)
+        $claudeNames | Sort-Object | Should -Be ($actualClaude | Sort-Object)
+        (@($sharedNames + $claudeNames) | Sort-Object -Unique).Count | Should -Be ($sharedNames.Count + $claudeNames.Count)
     }
 
     It 'keeps shared skills free of runtime-specific source references' {
-        $hits = Get-ChildItem $shared -Recurse -File | Select-String -Pattern 'claude/skills|codex/skills|~/.claude|~/.codex'
+        $hits = Get-ChildItem $shared -Recurse -File | Select-String -Pattern 'claude/skills|codex/skills|~/.claude|~/.codex|/to-(spec|hld|tickets)|/setup-agent-skills|CLAUDE\.md'
         $hits | Should -BeNullOrEmpty
     }
 }

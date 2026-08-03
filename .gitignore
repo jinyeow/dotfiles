@@ -21,6 +21,9 @@ tags
 **/.worktrees
 .worktrees
 
+# Agent project-local configuration (private override; shared configuration is tracked)
+.agents/workflow.local.md
+
 # Claude Code project-local settings (auto-modified by sessions; intentional config goes in settings.json)
 .claude/settings.local.json
 

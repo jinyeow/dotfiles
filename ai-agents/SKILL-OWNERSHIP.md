@@ -9,16 +9,11 @@ Ownership is explicit by source directory. Shared skills are reviewed for runtim
 - `grill-with-docs`
 - `grilling`
 - `jj`
-- `prompt-draft`
 - `prototype`
 - `quick-research`
 - `resolving-merge-conflicts`
 - `tdd`
 - `teach`
-- `to-hld`
-- `triage`
-- `wayfinder`
-- `write`
 - `zoom-out`
 
 ## Claude-only (`ai-agents/claude/skills/`)
@@ -59,5 +54,10 @@ Ownership is explicit by source directory. Shared skills are reviewed for runtim
 - `to-tickets`
 - `walkthrough`
 - `writing-great-skills`
+- `prompt-draft`
+- `to-hld`
+- `triage`
+- `wayfinder`
+- `write`
 
-Codex and Pi-specific directories are reserved under `ai-agents/codex/skills/` and `ai-agents/pi/skills/`; they are empty until a runtime-specific variant is required.
+Codex-specific variants are reserved under `ai-agents/codex/skills/`, while Pi-specific variants remain under `pi/skills/`; both are empty until a runtime-specific variant is required.

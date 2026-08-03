@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Setup Agent Skills
 
-One-time per-repo configuration for the spec → design → tickets → implement workflow. Explore the repo, present options one at a time, confirm, then write an **Agent skills** block into the repo's `CLAUDE.md` (or `AGENTS.md`) that the other skills read. If a block already exists, show it and confirm changes rather than starting over.
+One-time per-repo configuration for the spec → design → tickets → implement workflow. Explore the repo, present options one at a time, and confirm them. Read repository-root `.agents/workflow.local.md` first when it exists, otherwise repository-root `.agents/workflow.md`. Show the effective configuration and confirm changes rather than starting over.
 
 ## 1. Output locations
 
@@ -53,4 +53,9 @@ Confirm how domain knowledge is arranged so skills use the right vocabulary and 
 
 ## Write the config
 
-Write an `## Agent skills` block into `CLAUDE.md`/`AGENTS.md` capturing the five sections. Downstream skills (`to-spec`, `to-hld`, `to-tickets`, `triage`, `wayfinder`) read this block; absent it, they fall back to the bold defaults (and `wayfinder` to the local-markdown tracker).
+Ask whether the configuration is private to this checkout or intentionally shared with the repository:
+
+- **Private (default)** — write repository-root `.agents/workflow.local.md`. If this is a git repository, resolve its root with `git rev-parse --show-toplevel`. From that root, if `git check-ignore -q .agents/workflow.local.md` reports it is not already ignored, append `/.agents/workflow.local.md` to the local exclude file returned by `git rev-parse --git-path info/exclude`. Create its parent directory if needed. This is idempotent, applies across linked worktrees through Git's resolved path, and never modifies a tracked ignore file.
+- **Shared** — write repository-root `.agents/workflow.md`, which may be committed for the team.
+
+Capture the five sections under an `# Agent workflow` heading. Downstream skills (`to-spec`, `to-hld`, `to-tickets`, `triage`, `wayfinder`) resolve `.agents/workflow.local.md` first, then `.agents/workflow.md`; if neither exists, they fall back to the bold defaults (and `wayfinder` to the local-markdown tracker). Do not duplicate this configuration under `.claude/`, `.codex/`, or `.pi/`, and do not store it in `CLAUDE.md` or `AGENTS.md`: all three harnesses read this one file explicitly only when a workflow skill needs it.

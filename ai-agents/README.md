@@ -11,4 +11,4 @@ skill prose:
 - `pi/skills/` — reserved for Pi-specific variants.
 
 The installer projections in the individual runtime modules consume these source areas.
-Do not restore a second `claude/skills` or `codex/skills` source tree.
+Do not restore a second `claude/skills` or `codex/skills` source tree; those are installed paths, not source areas.

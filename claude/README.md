@@ -32,7 +32,7 @@ Verify with `claude doctor` (install method = native) and `Get-Command claude`
 | `warn-legacy-files.ps1` | `~/.claude/warn-legacy-files.ps1` | PreToolUse(Edit\|Write) hook that asks to confirm before editing legacy/do-not-touch dotfiles (scoped to `$env:DOTFILES`) |
 | `warn-hardcoded-secrets.ps1` | `~/.claude/warn-hardcoded-secrets.ps1` | PostToolUse(Edit\|Write) hook that warns when written content looks like a hardcoded secret |
 | `warn-reasoning-extraction.ps1` | `~/.claude/warn-reasoning-extraction.ps1` | UserPromptSubmit + PreToolUse(Edit\|Write) hook that flags reasoning-extraction phrasing that trips Fable-5's `reasoning_extraction` → Opus fallback |
-| `skills/<name>/` | `~/.claude/skills/<name>/` | Global custom skills (also shared into `~/.codex/skills/` by the codex module — see `../codex/README.md`) |
+| `ai-agents/shared/skills/<name>/` or `ai-agents/claude/skills/<name>/` | `~/.claude/skills/<name>/` | Portable and Claude-only custom skills (only portable skills are also projected into Codex) |
 | `agents/<name>.md` | `~/.claude/agents/<name>.md` | User-scope subagents (whole dir junctioned/symlinked) |
 | `output-styles/<name>.md` | `~/.claude/output-styles/<name>.md` | Output styles (whole dir junctioned); active style pinned by `outputStyle` in `settings.json` |
 
@@ -159,12 +159,12 @@ ai-agents/shared/skills/
 ```
 
 The installer junctions (Windows) or symlinks (Linux) each skill directory into
-`~/.claude/skills/`, making it available in every project. To add a skill,
-create its subdirectory here and re-run `setup.ps1 -Module claude`.
+`~/.claude/skills/`, making it available in every project. To add a portable skill, create its subdirectory under `ai-agents/shared/skills/`; for a
+Claude-only skill, use `ai-agents/claude/skills/`. Re-run `setup.ps1 -Module claude` afterward.
 
-The codex module junctions the portable shared skill directories into `~/.codex/skills/` (minus a
-denylist of Claude-harness-coupled skills), so Codex CLI reads them too — one source,
-both tools. See `../codex/README.md` → Skills, and re-run `setup.ps1 -Module codex`
+The codex module projects only portable shared skill directories into `~/.codex/skills/`,
+so Codex CLI reads runtime-neutral skills from the same source. Claude-only skills remain
+private to Claude Code. See `../codex/README.md` → Skills, and re-run `setup.ps1 -Module codex`
 after adding a skill so Codex picks it up as well.
 
 `azure-boards-organiser` (Azure DevOps Boards management for a Scrum process — PBIs,

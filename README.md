@@ -84,7 +84,7 @@ See `fzf/`, `ripgrep/`, `lazygit/`, `tig/`, and `nvim/` for tool-specific `READM
 
 ## Claude Code skills
 
-Global skills live in `ai-agents/shared/skills/` and are junctioned into `~/.claude/skills/` by `setup.ps1 -Module claude`. They are available across all Claude Code sessions, not just this repo.
+Global skills live in `ai-agents/shared/skills/` (portable) and `ai-agents/claude/skills/` (Claude-only); both are junctioned into `~/.claude/skills/` by `setup.ps1 -Module claude`. Only portable skills are projected to Codex.
 
 Not sure which one fits? Run `/router` — a manual index that maps these as flows and decision tables. Built-in Claude Code skills (`code-review`, `compact`, `deep-research`, `security-review`, `verify`) are provided by the harness and aren't listed here.
 
@@ -100,7 +100,7 @@ Not sure which one fits? Run `/router` — a manual index that maps these as flo
 | `tdd` | mattpocock/skills | Red-green-refactor TDD loop |
 | `spec-review` | local | Review a diff for conformance to its originating spec/ticket |
 | `walkthrough` | local | Walk me through a diff like a senior mentoring a junior — pair-programming style, chunk by chunk, concise, open to questions |
-| `setup-agent-skills` | mattpocock/skills | One-time per-repo config for the spec → tickets → wayfinding flow |
+| `setup-agent-skills` | mattpocock/skills | Writes private `.agents/workflow.local.md` or shared `.agents/workflow.md` for the spec → tickets → wayfinding flow |
 | `triage` | mattpocock/skills | State-machine triage of issues/PRs you didn't create |
 | `diagnosing-bugs` | mattpocock/skills | Diagnosis loop for hard bugs and regressions |
 | `wayfinder` | mattpocock/skills | Chart a huge, foggy effort as a map of investigation tickets |

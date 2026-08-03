@@ -908,6 +908,27 @@ function Install-Pi {
     }
 }
 
+function Remove-ObsoleteCodexSkillJunctions ([string]$SkillsDst, [string[]]$DesiredNames) {
+    if ($Backup -or -not (Test-Path $SkillsDst -PathType Container)) { return }
+
+    $formerSource = [IO.Path]::GetFullPath((Join-Path $Dotfiles 'claude\skills')).TrimEnd('\') + '\'
+    foreach ($item in @(Get-ChildItem -LiteralPath $SkillsDst -Force -ErrorAction SilentlyContinue)) {
+        if (-not ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { continue }
+        $target = if ($item.LinkTarget) { $item.LinkTarget } else { @($item.Target)[0] }
+        if (-not $target) { continue }
+        $fullTarget = [IO.Path]::GetFullPath($target)
+        if ($fullTarget.StartsWith($formerSource, [StringComparison]::OrdinalIgnoreCase) -and
+            $item.Name -notin $DesiredNames) {
+            if ($DryRun) {
+                Write-Info "[DRY RUN] remove obsolete Codex skill junction: $($item.FullName)"
+            } else {
+                Remove-Item -LiteralPath $item.FullName -Force
+                Write-Warn "Removed obsolete Codex skill junction: $($item.FullName)"
+            }
+        }
+    }
+}
+
 function Install-Codex {
     Write-Host ''
     Write-Info '=== Codex CLI ==='
@@ -988,6 +1009,8 @@ function Install-Codex {
     $codexSkills = @(Get-ChildItem -Path (Join-Path $Dotfiles 'ai-agents\codex\skills') -Directory -ErrorAction SilentlyContinue)
     $codexSkillNames = @($codexSkills.ForEach('Name'))
     $sharedSkills = @($sharedSkills | Where-Object { $_.Name -notin $codexSkillNames })
+    $desiredSkillNames = @($sharedSkills | ForEach-Object Name) + @($codexSkills | ForEach-Object Name)
+    Remove-ObsoleteCodexSkillJunctions -SkillsDst $codexSkillsDst -DesiredNames $desiredSkillNames
     if ($sharedSkills -or $codexSkills) {
         foreach ($skill in $sharedSkills + $codexSkills) {
             New-Junction -Link (Join-Path $codexSkillsDst $skill.Name) -Target $skill.FullName
