@@ -1,9 +1,5 @@
 # AGENTS.md
 
-This is the shared repository guide for Claude Code, Codex CLI, and Pi. Keep it small
-because it is loaded for every task. Current operational detail belongs with the
-subsystem; durable rationale and rejected alternatives belong in focused ADRs.
-
 ## Scope and safety
 
 This repository contains Windows/PowerShell and Linux/WSL dotfiles. Active development
@@ -32,7 +28,8 @@ These are repository paths, so this routing works without runtime-specific impor
 | Prompt, jj/git status, exit code, and CWD | `powershell/Profile/Set-Prompt.ps1`; `tests/Set-Prompt.Tests.ps1` |
 | Git config and work hooks | `git/README.md`; `git/gitconfig`; `git/work-hooks/`; `tests/git-work-hooks.Tests.ps1` |
 | Neovim APIs and plugins | `nvim/README.md`; `nvim/init.lua`; `nvim/lua/`; `nvim/nvim-pack-lock.json` |
-| psmux and Zellij | `psmux/README.md`; `psmux/psmux.conf`; `zellij/README.md`; `zellij/config.kdl` |
+| psmux | `psmux/README.md`; `psmux/psmux.conf` |
+| Zellij | `zellij/README.md`; `zellij/config.kdl` |
 | Herdr | `herdr/README.md`; `herdr/config.toml`; `tests/setup.Tests.ps1` |
 | Yazi | `yazi/yazi.toml`; `yazi/keymap.toml`; `yazi/theme.toml`; `yazi/package.toml` |
 | Setup and installers | `setup.ps1`; `setup.sh`; `tests/setup.Tests.ps1`; `tests/setup-sh.Tests.ps1` |
