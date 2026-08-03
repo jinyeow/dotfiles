@@ -349,13 +349,15 @@ install_pi() {
     [[ $DRY_RUN -eq 1 ]] && return
 
     local pi_dir="$HOME/.pi/agent"
-    make_symlink "$DOTFILES/pi/settings.json" "$pi_dir/settings.json"
+    # Install packages before projecting tracked configuration/resources. If a pinned package
+    # fails, the return below leaves the existing Pi configuration and resources untouched.
     while IFS= read -r package; do
         if ! pi install "$package"; then
             fail "Pi package install failed for $package — repository resources were not projected."
             return
         fi
     done < <(grep -o '"npm:[^"]*"' "$DOTFILES/pi/settings.json" | tr -d '"')
+    make_symlink "$DOTFILES/pi/settings.json" "$pi_dir/settings.json"
     for resource in extensions skills prompts themes; do
         make_symlink "$DOTFILES/pi/$resource" "$pi_dir/$resource"
     done
