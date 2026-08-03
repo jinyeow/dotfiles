@@ -11,8 +11,11 @@ Describe 'agent skill source layout' {
 
     It 'classifies every skill in exactly one source area' {
         $ownership = Get-Content (Join-Path $repo 'ai-agents/SKILL-OWNERSHIP.md') -Raw
-        $sharedSection = [regex]::Match($ownership, '(?s)## Shared \(`ai-agents/shared/skills/`\)(.*?)(?=\r?\n## Claude-only)').Groups[1].Value
-        $claudeSection = [regex]::Match($ownership, '(?s)## Claude-only \(`ai-agents/claude/skills/`\)(.*?)(?=\r?\n\r?\nCodex-specific)').Groups[1].Value
+        $sharedStart = $ownership.IndexOf('## Shared')
+        $claudeStart = $ownership.IndexOf('## Claude-only')
+        $codexStart = $ownership.IndexOf('Codex-specific')
+        $sharedSection = $ownership.Substring($sharedStart, $claudeStart - $sharedStart)
+        $claudeSection = $ownership.Substring($claudeStart, $codexStart - $claudeStart)
         $sharedNames = @([regex]::Matches($sharedSection, '(?m)^- `([^`]+)`$') | ForEach-Object { $_.Groups[1].Value })
         $claudeNames = @([regex]::Matches($claudeSection, '(?m)^- `([^`]+)`$') | ForEach-Object { $_.Groups[1].Value })
         $actualShared = @(Get-ChildItem $shared -Directory | Select-Object -ExpandProperty Name)
