@@ -68,7 +68,7 @@ Files live under `git/`: `gitconfig` (base), `gitconfig-work` (work overrides), 
 
 ## Claude Code + Codex integration
 
-Codex CLI is wired in as a **read-only second-opinion reviewer** for Claude Code (Claude is the primary driver; the integration is one-way, Claude → Codex). See `codex/README.md` for the full design.
+Codex CLI serves two roles: a standalone coding agent and a **read-only second-opinion reviewer** for Claude Code. Claude Code is currently the primary daily driver, and the MCP integration is one-way: Claude → Codex. See `codex/README.md` for the full design.
 
 - **MCP reviewer**: registered at **user scope** (in `~/.claude.json`, not a tracked file — `settings.json` can't hold `mcpServers`). `setup.ps1 -Module codex` runs `claude mcp add --scope user codex -- codex mcp-server -c sandbox_mode=read-only -c approval_policy=never -c model_reasoning_effort=medium`. The `-c` overrides pin the reviewer read-only/non-interactive regardless of `~/.codex/config.toml`, and raise reasoning effort to medium for reviews (standalone stays at config.toml's `low`).
 - **Two postures, one config**: `codex/config.toml` sets the **standalone** posture (`workspace-write` + `on-request` + `low` effort) for when you run `codex` directly; the MCP registration overrides to **read-only/never/medium-effort** for the reviewer path.
