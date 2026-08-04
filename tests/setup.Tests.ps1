@@ -29,7 +29,7 @@ Describe 'setup.ps1 pi module' {
             $output = & pwsh -NoProfile -File $script:SetupScript -Module pi -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match 'Pi skills destination is unmanaged and is not a directory'
-            $output | Should -Not -Match '\.pi\\agent\\(settings\.json|extensions|prompts|themes)'
+            $output | Should -Not -Match '\.pi[\\/]agent[\\/](settings\.json|extensions|prompts|themes)'
             Get-Content -LiteralPath $skills | Should -Be 'user-owned'
         } finally {
             $env:USERPROFILE = $origUP
@@ -47,9 +47,9 @@ Describe 'setup.ps1 pi module' {
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match '=== Pi ==='
             $output | Should -Match '(would install Pi via npm|pi is already installed)'
-            $output | Should -Match 'pi\\agent\\settings.json'
+            $output | Should -Match 'pi[\\/]agent[\\/]settings\.json'
             foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc')) {
-                $output | Should -Match "pi\\agent\\skills\\$name -> .*ai-agents\\shared\\skills\\$name"
+                $output | Should -Match "pi[\\/]agent[\\/]skills[\\/]$name -> .*ai-agents[\\/]shared[\\/]skills[\\/]$name"
             }
             Test-Path (Join-Path $tmpHome '.pi') | Should -BeFalse
             $output | Should -Not -Match "Unknown module 'pi'"
@@ -69,8 +69,8 @@ Describe 'setup.ps1 Claude skill projection safety' {
         try {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
-            $output | Should -Match 'Preserved unmanaged Claude skill: .*\.claude\\skills\\council'
-            $output | Should -Not -Match '\[DRY RUN\] junction .*\.claude\\skills\\council ->'
+            $output | Should -Match 'Preserved unmanaged Claude skill: .*\.claude[\\/]skills[\\/]council'
+            $output | Should -Not -Match '\[DRY RUN\] junction .*\.claude[\\/]skills[\\/]council ->'
         } finally {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
