@@ -467,9 +467,60 @@ install_pi() {
     done < <(find "$old_skills_target" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
 }
 
+find_claude_cli() {
+    if command -v claude >/dev/null 2>&1; then
+        return 0
+    fi
+
+    # The native installer places the executable here, but a child installer cannot update this
+    # shell's PATH. Refresh it before gating configuration so a successful bootstrap is usable now.
+    local native_bin="$HOME/.local/bin"
+    if [[ -x "$native_bin/claude" ]]; then
+        case ":${PATH}:" in
+            *:"$native_bin":*) ;;
+            *) PATH="$native_bin:$PATH"; export PATH ;;
+        esac
+        command -v claude >/dev/null 2>&1
+        return
+    fi
+    return 1
+}
+
+ensure_claude_cli() {
+    if find_claude_cli; then
+        ok 'Claude Code CLI is already installed.'
+        return 0
+    fi
+    if [[ $DRY_RUN -eq 1 ]]; then
+        info '[DRY RUN] would install Claude Code CLI via https://claude.ai/install.sh'
+        return 0
+    fi
+    if ! command -v curl >/dev/null 2>&1; then
+        fail 'Claude Code CLI bootstrap requires curl — install curl, then re-run: ./setup.sh -m claude'
+        return 1
+    fi
+
+    info 'Claude Code CLI not found — installing via the native installer...'
+    # Supported Linux install path; deliberately do not use npm/Volta.
+    if ! curl -fsSL https://claude.ai/install.sh | bash; then
+        fail 'Claude Code CLI bootstrap failed.'
+    fi
+    if ! find_claude_cli; then
+        fail 'Claude setup stopped before configuration or projection because the CLI is unavailable.'
+        info 'Install it manually with: curl -fsSL https://claude.ai/install.sh | bash'
+        info 'Then verify `claude` is on PATH and re-run: ./setup.sh -m claude'
+        return 1
+    fi
+    ok 'Claude Code CLI installed.'
+    return 0
+}
+
 install_claude() {
     echo ''
     info '=== Claude Code ==='
+    if ! ensure_claude_cli; then
+        return
+    fi
     make_symlink "$DOTFILES/claude/settings.json"          "$HOME/.claude/settings.json"
     make_symlink "$DOTFILES/claude/CLAUDE.md"              "$HOME/.claude/CLAUDE.md"
     # Shared conventions — CLAUDE.md imports this via `@AGENTS.md` (resolves to ~/.claude/AGENTS.md).

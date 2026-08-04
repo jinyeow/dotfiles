@@ -5,6 +5,7 @@
 BeforeAll {
     $script:Repo = Split-Path $PSScriptRoot -Parent
     $script:SetupSh = Join-Path $script:Repo 'setup.sh'
+    $script:Bash = (Get-Command bash -ErrorAction Stop).Source
 }
 
 Describe 'setup.sh --clean-backups' {
@@ -123,9 +124,64 @@ Describe 'setup.sh --dry-run' {
             $env:HOME = $tmpHome
             $out = & bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
+            $out | Should -Match '(Claude Code CLI is already installed|\[DRY RUN\] would install Claude Code CLI via)'
             (Test-Path (Join-Path $tmpHome '.claude')) | Should -Be $false
         } finally {
             $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'fails closed when native Claude bootstrap fails, without creating Claude state' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-claude-bootstrap-fail-' + [guid]::NewGuid())
+        $shim = Join-Path $tmpHome 'bin'
+        New-Item -ItemType Directory -Path $shim -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $shim 'curl') -Value "#!/usr/bin/env bash`nexit 42`n" -Encoding UTF8
+        & $script:Bash -c 'chmod +x "$1"' _ ((Join-Path $shim 'curl') -replace '\\', '/')
+        $origHome = $env:HOME
+        $origPath = $env:PATH
+        try {
+            $env:HOME = $tmpHome
+            $env:PATH = (($shim -replace '\\', '/') + ':/usr/bin:/bin')
+            $out = & $script:Bash $script:SetupSh -m claude 2>&1 | Out-String
+            $out | Should -Match 'Claude Code CLI bootstrap failed'
+            $out | Should -Match 'stopped before configuration or projection'
+            (Test-Path (Join-Path $tmpHome '.claude')) | Should -Be $false
+        } finally {
+            $env:HOME = $origHome
+            $env:PATH = $origPath
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'bootstraps Claude natively before projecting configuration' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-claude-bootstrap-ok-' + [guid]::NewGuid())
+        $shim = Join-Path $tmpHome 'bin'
+        New-Item -ItemType Directory -Path $shim -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $shim 'curl') -Value @'
+#!/usr/bin/env bash
+cat <<'INSTALL'
+mkdir -p "$HOME/.local/bin"
+cat > "$HOME/.local/bin/claude" <<'CLAUDE'
+#!/usr/bin/env bash
+exit 0
+CLAUDE
+chmod +x "$HOME/.local/bin/claude"
+INSTALL
+'@ -Encoding UTF8
+        & $script:Bash -c 'chmod +x "$1"' _ ((Join-Path $shim 'curl') -replace '\\', '/')
+        $origHome = $env:HOME
+        $origPath = $env:PATH
+        try {
+            $env:HOME = $tmpHome
+            $env:PATH = (($shim -replace '\\', '/') + ':/usr/bin:/bin')
+            $out = & $script:Bash $script:SetupSh -m claude 2>&1 | Out-String
+            $out | Should -Match 'Claude Code CLI installed'
+            $out | Should -Match '\.claude/settings\.json'
+            Test-Path (Join-Path $tmpHome '.claude/settings.json') | Should -BeTrue
+        } finally {
+            $env:HOME = $origHome
+            $env:PATH = $origPath
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
     }

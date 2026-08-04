@@ -16,6 +16,18 @@ Verify with `claude doctor` (install method = native) and `Get-Command claude`
 (resolves to `~\.local\bin`, no Volta entries). This repo only tracks the
 *config* under `~/.claude`, not the binary.
 
+## Setup bootstrap boundary
+
+`setup.ps1 -Module claude` and `setup.sh -m claude` independently bootstrap the
+Claude Code CLI when it is missing, using the native installer above (never
+npm/Volta). The installer is run before any Claude configuration, skills, agents,
+or other resources are linked. If bootstrap fails or the executable is still not
+available, setup emits the manual install and re-run commands and stops without
+mutating `~/.claude`. Re-run the module after putting `claude` on `PATH`.
+
+Dry-run mode only previews the native bootstrap and existing projections; it does
+not download or change the machine.
+
 ## Files
 
 | File / Directory | Installed to | Notes |
