@@ -32,8 +32,8 @@ Verify with `claude doctor` (install method = native) and `Get-Command claude`
 | `warn-legacy-files.ps1` | `~/.claude/warn-legacy-files.ps1` | PreToolUse(Edit\|Write) hook that asks to confirm before editing legacy/do-not-touch dotfiles (scoped to `$env:DOTFILES`) |
 | `warn-hardcoded-secrets.ps1` | `~/.claude/warn-hardcoded-secrets.ps1` | PostToolUse(Edit\|Write) hook that warns when written content looks like a hardcoded secret |
 | `warn-reasoning-extraction.ps1` | `~/.claude/warn-reasoning-extraction.ps1` | UserPromptSubmit + PreToolUse(Edit\|Write) hook that flags reasoning-extraction phrasing that trips Fable-5's `reasoning_extraction` → Opus fallback |
-| `skills/<name>/` | `~/.claude/skills/<name>/` | Global custom skills (also shared into `~/.codex/skills/` by the codex module — see `../codex/README.md`) |
-| `agents/<name>.md` | `~/.claude/agents/<name>.md` | User-scope subagents (whole dir junctioned/symlinked) |
+| `ai-agents/shared/skills/<name>/` or `ai-agents/claude/skills/<name>/` | `~/.claude/skills/<name>/` | Portable and Claude-only custom skills (only portable skills are also projected into Codex) |
+| `ai-agents/shared/agents/<name>.md` | `~/.claude/agents/<name>.md` | User-scope subagents (whole dir junctioned/symlinked) |
 | `output-styles/<name>.md` | `~/.claude/output-styles/<name>.md` | Output styles (whole dir junctioned); active style pinned by `outputStyle` in `settings.json` |
 
 **Install method.** `settings.json`, `CLAUDE.md`, `AGENTS.md`,
@@ -148,10 +148,10 @@ mishandles escape sequences (see `docs/zellij-windows-terminal-colors.md`).
 
 ## Skills
 
-`claude/skills/` holds global custom skills. Each subdirectory is a skill:
+`ai-agents/shared/skills/` holds portable global skills, while `ai-agents/claude/skills/` holds the small set of Claude Code-only skills. Each subdirectory is a skill:
 
 ```
-claude/skills/
+ai-agents/shared/skills/
   my-skill/
     SKILL.md            ← skill definition (frontmatter: name + description)
     commands/           ← optional: slash-command prompt files
@@ -159,12 +159,12 @@ claude/skills/
 ```
 
 The installer junctions (Windows) or symlinks (Linux) each skill directory into
-`~/.claude/skills/`, making it available in every project. To add a skill,
-create its subdirectory here and re-run `setup.ps1 -Module claude`.
+`~/.claude/skills/`, making it available in every project. To add a portable skill, create its subdirectory under `ai-agents/shared/skills/`; for a
+Claude-only skill, use `ai-agents/claude/skills/`. Re-run `setup.ps1 -Module claude` afterward.
 
-The codex module junctions the same skill directories into `~/.codex/skills/` (minus a
-denylist of Claude-harness-coupled skills), so Codex CLI reads them too — one source,
-both tools. See `../codex/README.md` → Skills, and re-run `setup.ps1 -Module codex`
+The codex module projects only portable shared skill directories into `~/.codex/skills/`,
+so Codex CLI reads runtime-neutral skills from the same source. Claude-only skills remain
+private to Claude Code. See `../codex/README.md` → Skills, and re-run `setup.ps1 -Module codex`
 after adding a skill so Codex picks it up as well.
 
 `azure-boards-organiser` (Azure DevOps Boards management for a Scrum process — PBIs,
@@ -180,17 +180,14 @@ on the machine: the **Bicep CLI** on PATH and the **PSRule.Rules.Azure** module
 (`Install-Module PSRule.Rules.Azure -Scope CurrentUser`). It deliberately stops at compiled
 ARM — no `what-if`/deploy, so it never authenticates to a tenant.
 
-`council` runs an adversarial multi-perspective review of a **non-diff artifact** (idea,
-business case, technical design/ADR, project plan, presentation): a panel of
-`council-critic` seats (registry + charters in `council/references/perspectives.md`,
-routed by artifact type — `code`/`business`/`plan`/`doc`, plus cross-cutting
-`contrarian`/`completeness`) critiques blind in parallel, rebuts each other with
-new-evidence discipline, and a `council-chair` issues a verdict with dissent preserved.
-Codex joins as a cross-model seat under the same standing-consent exception as
-`deep-review`. Four thin aliases — `council-code`, `council-business`, `council-plan`,
-`council-doc` — pin their panel and delegate to the same engine (better auto-trigger
-surface per domain; the pipeline is defined once in `council`). For branch diffs/PRs use
-`deep-review`, not `council`.
+`council` is a shared, cost-bounded prompt orchestration contract for adversarial review
+of a **non-diff artifact**. Claude's native isolated workers receive portable critic/chair
+contracts; there are no named council custom agents. `/council ...` defaults to quick
+(three critics + chair); add `--debate` for four critics plus rebuttals, and `--codex` only
+when an external Codex seat is explicitly wanted. Charter seats are limited to 2–5 and
+normal calls to 12. The four `/council-code`, `/council-business`, `/council-plan`, and
+`/council-doc` aliases pin their panel. Reports use `.agents/council/reports/`. For branch
+diffs/PRs use `deep-review`, not council.
 
 `walkthrough` is the post-`implement` mentoring stage of the main flow: it walks the user through
 a diff like a senior pairing with a junior (checkpoint tour / overview-then-Q&A / socratic, chosen
@@ -216,17 +213,17 @@ a skill; it is still junctioned so skills can reference it via `../_shared/<file
 
 Built-in Claude Code skills (`code-review`, `compact`, `deep-research`, `security-review`,
 `verify`, etc.) are provided by the harness and do not need to be installed. `handoff` is
-this repo's own skill (`claude/skills/handoff/`), not a harness built-in — see the Files
+this repo's own skill (`ai-agents/claude/skills/handoff/`), not a harness built-in — see the Files
 table above.
 
 ## Agents
 
-`claude/agents/` holds user-scope [subagents](https://code.claude.com/docs/en/subagents) —
+`ai-agents/shared/agents/` holds user-scope [subagents](https://code.claude.com/docs/en/subagents) —
 each is a single `.md` with YAML frontmatter (`name`, `description`, `tools`, `model`,
 `skills`, …) plus a system-prompt body:
 
 ```
-claude/agents/
+ai-agents/shared/agents/
   pwsh-implementer.md   ← one agent = one self-contained file
 ```
 
@@ -267,11 +264,6 @@ Seeded agents:
   dispatches the specialists above in parallel via the `Agent` tool (nesting depth 1 → 2),
   integrates, and verifies once at the end. Deliberately has **no Write/Edit tools** — every
   file change flows through a dispatched worker. `model: inherit`.
-- **`council-critic`** / **`council-chair`** — the seats and judge of the `council` skill's
-  adversarial review panels. One generic critic agent, parameterized by a perspective
-  charter from `skills/council/references/perspectives.md` (charters are data — add a
-  perspective there, not a new agent); the chair synthesizes, adjudicates on evidence
-  weight, and preserves dissent. Dispatched by `/council`, not ad hoc. `model: inherit`.
 
 ## Install
 

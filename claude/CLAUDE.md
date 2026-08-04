@@ -38,7 +38,8 @@ cross-model second opinion — its strengths differ from mine, so it catches thi
   Codex for a second opinion before trying a third approach — again, only on my go-ahead.
 - The reviewer is read-only and non-interactive; it returns findings only and cannot edit
   my working tree. Applying fixes is your job (with my approval), not Codex's.
-- **Exception — `deep-review` / `review-fix-loop` / `council`:** invoking any of these skills is
-  itself standing consent to include Codex as a reviewer/verifier/council seat when its MCP is
-  present, without a per-run offer. The offer-first rule above still governs all *ad-hoc* Codex
-  use. When a run uses Codex, report it visibly in the run summary.
+- **Exception — `deep-review` / `review-fix-loop`:** invoking either skill is standing consent
+  to include Codex as a reviewer/verifier when its MCP is present, without a per-run offer.
+  Council never implies consent: it includes external Codex only with explicit `--codex`.
+  The offer-first rule above still governs all *ad-hoc* Codex use. When a run uses Codex,
+  report it visibly in the run summary.

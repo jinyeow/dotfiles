@@ -124,6 +124,23 @@ function Backup-Existing ([string]$Path) {
     return $backup
 }
 
+# Resolve a link's stored target for comparisons. Relative targets are relative to the
+# link's parent, not the setup process CWD. A malformed target fails closed so callers
+# preserve the existing entry rather than treating it as repository-managed.
+function Resolve-LinkTargetPath ([string]$Link, [string]$Target) {
+    if ([string]::IsNullOrWhiteSpace($Target)) { return $null }
+    try {
+        $candidate = if ([IO.Path]::IsPathRooted($Target)) {
+            $Target
+        } else {
+            Join-Path (Split-Path -Parent $Link) $Target
+        }
+        return [IO.Path]::GetFullPath($candidate)
+    } catch {
+        return $null
+    }
+}
+
 # Directory junction — works cross-volume, no elevation required.
 function New-Junction ([string]$Link, [string]$Target) {
     if ($Backup) { Write-Info "Skipped (linked, no drift):  $Link"; return }
@@ -140,9 +157,9 @@ function New-Junction ([string]$Link, [string]$Target) {
         if ($existing -and ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
             $curTarget = if ($existing.LinkTarget) { $existing.LinkTarget } else { @($existing.Target)[0] }
             if ($curTarget) {
-                $a = [IO.Path]::GetFullPath($curTarget).TrimEnd('\')
-                $b = [IO.Path]::GetFullPath($Target).TrimEnd('\')
-                if ([string]::Equals($a, $b, [StringComparison]::OrdinalIgnoreCase)) {
+                $a = Resolve-LinkTargetPath -Link $Link -Target $curTarget
+                $b = Resolve-LinkTargetPath -Link $Link -Target $Target
+                if ($a -and $b -and [string]::Equals($a.TrimEnd('\'), $b.TrimEnd('\'), [StringComparison]::OrdinalIgnoreCase)) {
                     Write-Ok "Junction:   $Link (already current)"
                     return
                 }
@@ -173,9 +190,9 @@ function New-FileSymlink ([string]$Link, [string]$Target) {
         if ($existing -and ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
             $curTarget = if ($existing.LinkTarget) { $existing.LinkTarget } else { @($existing.Target)[0] }
             if ($curTarget) {
-                $a = [IO.Path]::GetFullPath($curTarget)
-                $b = [IO.Path]::GetFullPath($Target)
-                if ([string]::Equals($a, $b, [StringComparison]::OrdinalIgnoreCase)) {
+                $a = Resolve-LinkTargetPath -Link $Link -Target $curTarget
+                $b = Resolve-LinkTargetPath -Link $Link -Target $Target
+                if ($a -and $b -and [string]::Equals($a, $b, [StringComparison]::OrdinalIgnoreCase)) {
                     Write-Ok "Symlink:    $Link (already current)"
                     return
                 }
@@ -818,31 +835,77 @@ function Install-Claude {
     # SessionStart hook: inject a pending .claude/handoff.md (from the handoff skill) into a fresh session.
     New-FileSymlink -Link (Join-Path $claudeDir 'inject-handoff.ps1') -Target (Join-Path $Dotfiles 'claude\inject-handoff.ps1')
 
-    # Skills — junction each subdirectory into ~/.claude/skills/
-    $skillsSrc = Join-Path $Dotfiles 'claude\skills'
+    # Skills — project shared and Claude-specific resources into ~/.claude/skills/.
     $skillsDst = Join-Path $claudeDir 'skills'
+    foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc')) {
+        $link = Join-Path $skillsDst $name
+        $item = Get-Item -LiteralPath $link -Force -ErrorAction SilentlyContinue
+        if (-not $item -or -not ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { continue }
+        $target = if ($item.LinkTarget) { $item.LinkTarget } else { @($item.Target)[0] }
+        $oldTarget = Join-Path $Dotfiles "ai-agents\claude\skills\$name"
+        $resolvedTarget = Resolve-LinkTargetPath -Link $link -Target $target
+        $resolvedOldTarget = Resolve-LinkTargetPath -Link $link -Target $oldTarget
+        if ($resolvedTarget -and $resolvedOldTarget -and [string]::Equals($resolvedTarget.TrimEnd('\'), $resolvedOldTarget.TrimEnd('\'), [StringComparison]::OrdinalIgnoreCase)) {
+            if ($DryRun) { Write-Info "[DRY RUN] remove moved Claude council junction: $link" }
+            else { Remove-Item -LiteralPath $link -Force; Write-Warn "Removed moved Claude council junction: $link" }
+        }
+    }
+    $skillsSources = @(
+        (Join-Path $Dotfiles 'ai-agents\shared\skills'),
+        (Join-Path $Dotfiles 'ai-agents\claude\skills')
+    )
+    # Released installers projected skills from the former top-level claude\skills source;
+    # links into it are repository-managed legacy entries — replaced below when the skill
+    # still exists, removed when it left the projection. Foreign links stay preserved.
+    $managedSkillRoots = $skillsSources + (Join-Path $Dotfiles 'claude\skills')
     if (-not (Test-Path $skillsDst)) {
         if (-not $DryRun) { New-Item -ItemType Directory -Path $skillsDst -Force | Out-Null }
         Write-Info "Created:    $skillsDst"
     }
-    $skills = Get-ChildItem -Path $skillsSrc -Directory -ErrorAction SilentlyContinue
+    $skills = @($skillsSources | ForEach-Object {
+        Get-ChildItem -Path $_ -Directory -ErrorAction SilentlyContinue
+    })
+    Remove-ObsoleteLegacySkillJunctions -SkillsDst $skillsDst -DesiredNames @($skills | ForEach-Object Name) -Runtime 'Claude'
     if ($skills) {
         foreach ($skill in $skills) {
-            New-Junction -Link (Join-Path $skillsDst $skill.Name) -Target $skill.FullName
+            $link = Join-Path $skillsDst $skill.Name
+            $existing = Get-Item -LiteralPath $link -Force -ErrorAction SilentlyContinue
+            if ($existing) {
+                if (-not ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+                    Write-Warn "Preserved unmanaged Claude skill: $link"
+                    continue
+                }
+                $existingTarget = if ($existing.LinkTarget) { $existing.LinkTarget } else { @($existing.Target)[0] }
+                $fullExistingTarget = Resolve-LinkTargetPath -Link $link -Target $existingTarget
+                $isManaged = $false
+                foreach ($root in $managedSkillRoots) {
+                    $fullRoot = Resolve-LinkTargetPath -Link $link -Target $root
+                    if ($fullExistingTarget -and $fullRoot -and
+                        $fullExistingTarget.StartsWith($fullRoot.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+                        $isManaged = $true
+                        break
+                    }
+                }
+                if (-not $isManaged) {
+                    Write-Warn "Preserved unmanaged Claude skill link: $link"
+                    continue
+                }
+            }
+            New-Junction -Link $link -Target $skill.FullName
         }
     } else {
-        Write-Info 'No skills to install (claude/skills/ is empty).'
+        Write-Info 'No skills to install (shared/ and claude/ skill sources are empty).'
     }
 
     # Agents — junction the whole dir into ~/.claude/agents/ (unlike skills, which junction
     # per-subdir). Agent definitions are flat .md files in one dir nothing else writes to, so a
     # whole-dir junction preserves the no-drift philosophy and lets agents created via /agents
     # land straight in the repo. Bodies are self-contained — they can't @import AGENTS.md.
-    $agentsSrc = Join-Path $Dotfiles 'claude\agents'
+    $agentsSrc = Join-Path $Dotfiles 'ai-agents\shared\agents'
     if (Test-Path $agentsSrc) {
         New-Junction -Link (Join-Path $claudeDir 'agents') -Target $agentsSrc
     } else {
-        Write-Info 'No agents to install (claude/agents/ is missing).'
+        Write-Info 'No agents to install (ai-agents/shared/agents/ is missing).'
     }
 
     # Output styles — whole-dir junction like agents: flat .md files in a dir nothing else
@@ -870,7 +933,6 @@ function Install-Pi {
         Write-Ok 'pi is already installed.'
     } elseif ($DryRun) {
         Write-Info '[DRY RUN] would install Pi via npm (@mariozechner/pi-coding-agent)'
-        return
     } else {
         if (-not (Get-Command -Name npm -ErrorAction Ignore)) {
             Write-Fail 'npm not found — Pi setup stopped before changing Pi configuration.'
@@ -884,22 +946,103 @@ function Install-Pi {
         }
         Write-Ok 'Pi installed.'
     }
-    if ($DryRun) { return }
 
     $piDir = Join-Path $env:USERPROFILE '.pi\agent'
     $piSettings = Get-Content (Join-Path $Dotfiles 'pi\settings.json') -Raw | ConvertFrom-Json
     # Install packages before projecting tracked configuration/resources. If a pinned package
     # fails, the return below leaves the existing Pi configuration and resources untouched.
     foreach ($package in @($piSettings.packages)) {
+        if ($DryRun) {
+            Write-Info "[DRY RUN] pi install $package"
+            continue
+        }
         & pi install $package
         if ($LASTEXITCODE -ne 0) {
             Write-Fail "Pi package install failed for $package — repository resources were not projected."
             return
         }
     }
+    # Validate or migrate skills before projecting any tracked Pi configuration/resources.
+    # Skills need two source areas, so project children rather than linking the whole directory.
+    # Remove the former whole-directory junction only when it is exactly repository-managed.
+    $skillsDst = Join-Path $piDir 'skills'
+    $oldSkillsTarget = Join-Path $Dotfiles 'pi\skills'
+    $skillsItem = Get-Item -LiteralPath $skillsDst -Force -ErrorAction SilentlyContinue
+    if ($skillsItem -and ($skillsItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+        $target = if ($skillsItem.LinkTarget) { $skillsItem.LinkTarget } else { @($skillsItem.Target)[0] }
+        $resolvedTarget = Resolve-LinkTargetPath -Link $skillsDst -Target $target
+        $resolvedOldTarget = Resolve-LinkTargetPath -Link $skillsDst -Target $oldSkillsTarget
+        if ($resolvedTarget -and $resolvedOldTarget -and [string]::Equals($resolvedTarget.TrimEnd('\'), $resolvedOldTarget.TrimEnd('\'), [StringComparison]::OrdinalIgnoreCase)) {
+            if ($DryRun) { Write-Info "[DRY RUN] remove managed Pi skills junction: $skillsDst" }
+            else { Remove-Item -LiteralPath $skillsDst -Force; Write-Warn "Removed managed Pi skills junction: $skillsDst" }
+            $skillsItem = $null
+        } else {
+            Write-Fail "Pi skills junction is unmanaged; preserving it: $skillsDst"
+            return
+        }
+    }
+    if ($skillsItem -and -not (Test-Path $skillsDst -PathType Container)) {
+        Write-Fail "Pi skills destination is unmanaged and is not a directory: $skillsDst"
+        return
+    }
+    if (-not $skillsItem -and -not (Test-Path $skillsDst)) {
+        if (-not $DryRun) { New-Item -ItemType Directory -Path $skillsDst -Force | Out-Null }
+        Write-Info "Created:    $skillsDst"
+    }
+
     Copy-Dotfile -Dest (Join-Path $piDir 'settings.json') -Source (Join-Path $Dotfiles 'pi\settings.json')
-    foreach ($resource in @('extensions', 'skills', 'prompts', 'themes')) {
+    foreach ($resource in @('extensions', 'prompts', 'themes')) {
         New-Junction -Link (Join-Path $piDir $resource) -Target (Join-Path $Dotfiles "pi\$resource")
+    }
+
+    $nativeSkills = @(Get-ChildItem -Path $oldSkillsTarget -Directory -ErrorAction SilentlyContinue)
+    $nativeNames = @($nativeSkills.ForEach('Name'))
+    $sharedSkills = @(Get-ChildItem -Path (Join-Path $Dotfiles 'ai-agents\shared\skills') -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notin $nativeNames })
+    foreach ($skill in @($sharedSkills) + @($nativeSkills)) {
+        $link = Join-Path $skillsDst $skill.Name
+        $existing = Get-Item -LiteralPath $link -Force -ErrorAction SilentlyContinue
+        if ($existing) {
+            if (-not ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+                Write-Warn "Preserved unmanaged Pi skill: $link"
+                continue
+            }
+            $existingTarget = if ($existing.LinkTarget) { $existing.LinkTarget } else { @($existing.Target)[0] }
+            $managedRoots = @(
+                (Resolve-LinkTargetPath -Link $link -Target (Join-Path $Dotfiles 'ai-agents\shared\skills')).TrimEnd('\') + '\',
+                (Resolve-LinkTargetPath -Link $link -Target $oldSkillsTarget).TrimEnd('\') + '\'
+            )
+            $fullExistingTarget = Resolve-LinkTargetPath -Link $link -Target $existingTarget
+            if (-not $fullExistingTarget -or -not @($managedRoots | Where-Object { $fullExistingTarget.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) })) {
+                Write-Warn "Preserved unmanaged Pi skill link: $link"
+                continue
+            }
+        }
+        New-Junction -Link $link -Target $skill.FullName
+    }
+}
+
+# Removes per-skill junctions a released installer created from the former top-level
+# claude\skills source when the skill no longer exists in the current projection. Links
+# pointing anywhere outside that legacy root are user-owned and stay untouched.
+function Remove-ObsoleteLegacySkillJunctions ([string]$SkillsDst, [string[]]$DesiredNames, [string]$Runtime) {
+    if ($Backup -or -not (Test-Path $SkillsDst -PathType Container)) { return }
+
+    $formerSource = [IO.Path]::GetFullPath((Join-Path $Dotfiles 'claude\skills')).TrimEnd('\') + '\'
+    foreach ($item in @(Get-ChildItem -LiteralPath $SkillsDst -Force -ErrorAction SilentlyContinue)) {
+        if (-not ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { continue }
+        $target = if ($item.LinkTarget) { $item.LinkTarget } else { @($item.Target)[0] }
+        if (-not $target) { continue }
+        $fullTarget = Resolve-LinkTargetPath -Link $item.FullName -Target $target
+        if ($fullTarget -and $fullTarget.StartsWith($formerSource, [StringComparison]::OrdinalIgnoreCase) -and
+            $item.Name -notin $DesiredNames) {
+            if ($DryRun) {
+                Write-Info "[DRY RUN] remove obsolete $Runtime skill junction: $($item.FullName)"
+            } else {
+                Remove-Item -LiteralPath $item.FullName -Force
+                Write-Warn "Removed obsolete $Runtime skill junction: $($item.FullName)"
+            }
+        }
     }
 }
 
@@ -972,37 +1115,25 @@ function Install-Codex {
         }
     }
 
-    # 5. Skills — junction each subdirectory into ~/.codex/skills/, mirroring the claude module's
-    #    per-subdir skill junctions. Two sources: the shared claude/skills (Codex reads the same
-    #    SKILL.md format), minus skills coupled to the Claude Code harness; and codex/skills
-    #    (Codex-native). On a name collision the Codex-native skill wins — the shared one is
-    #    filtered out up front, not overwritten, so New-Junction stays idempotent (junction-then-
-    #    replace would back up and re-create the link on every run, accumulating .bak junctions).
-    #    _shared comes across too — council/deep-review reference it via ../_shared. Codex ships
-    #    its own built-in skills under ~/.codex/skills/.system/ — untouched, since we only ever
-    #    write sibling <name> dirs here. Codex's "agents" are per-skill (an agents/openai.yaml
-    #    inside each skill folder), not a separate top-level dir like Claude's, so there is no
-    #    separate agents junction to wire up.
+    # 5. Skills — project portable shared resources and Codex-specific variants into ~/.codex/skills/.
+    #    Codex's own built-in skills under ~/.codex/skills/.system/ remain untouched.
     $codexSkillsDst = Join-Path $codexDir 'skills'
     if (-not (Test-Path $codexSkillsDst)) {
         if (-not $DryRun) { New-Item -ItemType Directory -Path $codexSkillsDst -Force | Out-Null }
         Write-Info "Created:    $codexSkillsDst"
     }
-    # Skills the Codex CLI can't use: codex-review drives Codex *from* Claude (circular inside
-    # Codex), handoff pairs with Claude's SessionStart inject-handoff.ps1 hook, and
-    # git-guardrails-claude-code installs Claude Code hooks.
-    $claudeOnlySkills = @('codex-review', 'handoff', 'git-guardrails-claude-code')
-    $codexSkills = @(Get-ChildItem -Path (Join-Path $Dotfiles 'codex\skills') -Directory -ErrorAction SilentlyContinue)
-    # .ForEach('Name'), not .Name: member enumeration on an empty array throws under StrictMode.
+    $sharedSkills = @(Get-ChildItem -Path (Join-Path $Dotfiles 'ai-agents\shared\skills') -Directory -ErrorAction SilentlyContinue)
+    $codexSkills = @(Get-ChildItem -Path (Join-Path $Dotfiles 'ai-agents\codex\skills') -Directory -ErrorAction SilentlyContinue)
     $codexSkillNames = @($codexSkills.ForEach('Name'))
-    $sharedSkills = @(Get-ChildItem -Path (Join-Path $Dotfiles 'claude\skills') -Directory -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -notin $claudeOnlySkills -and $_.Name -notin $codexSkillNames })
+    $sharedSkills = @($sharedSkills | Where-Object { $_.Name -notin $codexSkillNames })
+    $desiredSkillNames = @($sharedSkills | ForEach-Object Name) + @($codexSkills | ForEach-Object Name)
+    Remove-ObsoleteLegacySkillJunctions -SkillsDst $codexSkillsDst -DesiredNames $desiredSkillNames -Runtime 'Codex'
     if ($sharedSkills -or $codexSkills) {
         foreach ($skill in $sharedSkills + $codexSkills) {
             New-Junction -Link (Join-Path $codexSkillsDst $skill.Name) -Target $skill.FullName
         }
     } else {
-        Write-Info 'No skills to install (claude/skills/ and codex/skills/ are empty).'
+        Write-Info 'No skills to install (shared/ and codex/ skill sources are empty).'
     }
 
     Write-Info 'Next: run `codex login` (interactive ChatGPT-account OAuth) to authenticate.'

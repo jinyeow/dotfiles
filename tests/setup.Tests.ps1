@@ -18,7 +18,26 @@ Describe 'setup.ps1 argument validation' {
 }
 
 Describe 'setup.ps1 pi module' {
-    It 'recognises Pi and stops before projection when Pi is unavailable in dry-run' {
+    It 'returns before repository projection when the skills destination is unmanaged' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-pi-unmanaged-' + [guid]::NewGuid())
+        $skills = Join-Path $tmpHome '.pi\agent\skills'
+        New-Item -ItemType Directory -Path (Split-Path $skills -Parent) -Force | Out-Null
+        Set-Content -LiteralPath $skills -Value 'user-owned'
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module pi -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Match 'Pi skills destination is unmanaged and is not a directory'
+            $output | Should -Not -Match '\.pi[\\/]agent[\\/](settings\.json|extensions|prompts|themes)'
+            Get-Content -LiteralPath $skills | Should -Be 'user-owned'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'previews Pi shared and native per-skill projection without mutating the home' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-pi-dryrun-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
@@ -28,11 +47,121 @@ Describe 'setup.ps1 pi module' {
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match '=== Pi ==='
             $output | Should -Match '(would install Pi via npm|pi is already installed)'
-            $output | Should -Not -Match 'pi\\agent\\settings.json'
+            $output | Should -Match 'pi[\\/]agent[\\/]settings\.json'
+            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc')) {
+                $output | Should -Match "pi[\\/]agent[\\/]skills[\\/]$name -> .*ai-agents[\\/]shared[\\/]skills[\\/]$name"
+            }
+            Test-Path (Join-Path $tmpHome '.pi') | Should -BeFalse
             $output | Should -Not -Match "Unknown module 'pi'"
         } finally {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+Describe 'setup.ps1 Claude skill projection safety' {
+    It 'preserves an unmanaged same-name skill directory' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-unmanaged-dir-' + [guid]::NewGuid())
+        $link = Join-Path $tmpHome '.claude\skills\council'
+        New-Item -ItemType Directory -Path $link -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
+            $output | Should -Match 'Preserved unmanaged Claude skill: .*\.claude[\\/]skills[\\/]council'
+            $output | Should -Not -Match '\[DRY RUN\] junction .*\.claude[\\/]skills[\\/]council ->'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'preserves an external same-name skill link' -Skip:(-not $IsWindows) {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-external-link-' + [guid]::NewGuid())
+        $foreign = Join-Path $tmpHome 'foreign-council'
+        $link = Join-Path $tmpHome '.claude\skills\council'
+        New-Item -ItemType Directory -Path $foreign, (Split-Path $link -Parent) -Force | Out-Null
+        New-Item -ItemType Junction -Path $link -Target $foreign | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
+            $output | Should -Match 'Preserved unmanaged Claude skill link: .*\.claude\\skills\\council'
+            $output | Should -Not -Match '\[DRY RUN\] junction .*\.claude\\skills\\council ->'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'migrates a legacy claude\skills link to the current projection' -Skip:(-not $IsWindows) {
+        # Released installs junctioned ~/.claude/skills/<name> at the old top-level claude\skills
+        # source. Those links are repository-managed and must be replaced by the current
+        # ai-agents projection, not preserved as dangling unmanaged links.
+        $repoRoot = Split-Path $script:SetupScript -Parent
+        $oldSource = Join-Path $repoRoot 'claude\skills'
+        $oldSkill = Join-Path $oldSource 'council'
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-legacy-link-' + [guid]::NewGuid())
+        $link = Join-Path $tmpHome '.claude\skills\council'
+        New-Item -ItemType Directory -Path $oldSkill, (Split-Path $link -Parent) -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            New-Item -ItemType Junction -Path $link -Target $oldSkill -ErrorAction Stop | Out-Null
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Not -Match 'Preserved unmanaged Claude skill link: .*\.claude\\skills\\council'
+            $output | Should -Match '\[DRY RUN\] junction .*\.claude\\skills\\council -> .*ai-agents\\shared\\skills\\council'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path $oldSource -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'leaves a junction already pointing at the current projection untouched' -Skip:(-not $IsWindows) {
+        # Idempotency: a re-run over an already-migrated home must recognize the junction as
+        # current — not re-create it, and not misclassify it as an unmanaged entry.
+        $repoRoot = Split-Path $script:SetupScript -Parent
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-idempotent-' + [guid]::NewGuid())
+        $link = Join-Path $tmpHome '.claude\skills\council'
+        New-Item -ItemType Directory -Path (Split-Path $link -Parent) -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            New-Item -ItemType Junction -Path $link -Target (Join-Path $repoRoot 'ai-agents\shared\skills\council') -ErrorAction Stop | Out-Null
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Match 'Junction:\s+.*\.claude\\skills\\council \(already current\)'
+            $output | Should -Not -Match '\[DRY RUN\] junction .*\.claude\\skills\\council ->'
+            $output | Should -Not -Match 'Preserved unmanaged Claude skill'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'removes an obsolete legacy claude\skills junction but preserves unmanaged entries' -Skip:(-not $IsWindows) {
+        $repoRoot = Split-Path $script:SetupScript -Parent
+        $oldSource = Join-Path $repoRoot 'claude\skills'
+        $oldSkill = Join-Path $oldSource 'legacy-only'
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-legacy-obsolete-' + [guid]::NewGuid())
+        $claudeSkills = Join-Path $tmpHome '.claude\skills'
+        New-Item -ItemType Directory -Path $oldSkill, $claudeSkills, (Join-Path $claudeSkills 'unmanaged') -Force | Out-Null
+        $oldLink = Join-Path $claudeSkills 'legacy-only'
+        $origUP = $env:USERPROFILE
+        try {
+            New-Item -ItemType Junction -Path $oldLink -Target $oldSkill -ErrorAction Stop | Out-Null
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Match 'remove obsolete Claude skill junction.*legacy-only'
+            $output | Should -Not -Match 'remove obsolete Claude skill junction.*unmanaged'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path $oldSource -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
 }
@@ -149,8 +278,8 @@ Describe 'setup.ps1 dry-run directory-creation cosmetics' {
     }
 }
 
-Describe 'setup.ps1 codex module shared claude skills' {
-    It 'junctions claude/skills subdirectories into ~/.codex/skills, minus the Claude-harness-coupled denylist' -Skip:(-not $IsWindows) {
+Describe 'setup.ps1 codex module shared skills' {
+    It 'junctions portable shared skill subdirectories into ~/.codex/skills'  -Skip:(-not $IsWindows) {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-skills-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
@@ -158,12 +287,13 @@ Describe 'setup.ps1 codex module shared claude skills' {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module codex -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
-            # A shared skill and the _shared support dir (referenced via ../_shared) come across.
             # Patterns anchor on the "link -> target" separator so `tdd` can't false-match a
             # future `tdd-something` skill (`\b` treats the hyphen as a word boundary).
             $output | Should -Match '\[DRY RUN\] junction .*\.codex\\skills\\tdd ->'
-            $output | Should -Match '\[DRY RUN\] junction .*\.codex\\skills\\_shared ->'
-            # Skills coupled to the Claude Code harness stay out of Codex.
+            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc')) {
+                $output | Should -Match "\\.codex\\skills\\$name -> .*ai-agents\\shared\\skills\\$name"
+            }
+            # Claude-only skills are not sourced into Codex.
             $output | Should -Not -Match '\.codex\\skills\\codex-review ->'
             $output | Should -Not -Match '\.codex\\skills\\handoff ->'
             $output | Should -Not -Match '\.codex\\skills\\git-guardrails-claude-code ->'
@@ -173,12 +303,12 @@ Describe 'setup.ps1 codex module shared claude skills' {
         }
     }
 
-    It 'junctions only the Codex-native flavour when a codex/skills name collides with a shared skill' -Skip:(-not $IsWindows) {
+    It 'junctions only the Codex-native flavour when an ai-agents/codex skill collides with shared'  -Skip:(-not $IsWindows) {
         # A name in both sources must yield ONE junction (the codex/skills one) — junctioning
         # the shared dir first and letting the native one replace it would back up and re-create
         # the junction on every run, accumulating stale .bak.* junctions.
         $repoRoot = Split-Path $script:SetupScript -Parent
-        $codexSkillsDir = Join-Path $repoRoot 'codex\skills'
+        $codexSkillsDir = Join-Path $repoRoot 'ai-agents\codex\skills'
         $createdParent = -not (Test-Path $codexSkillsDir)
         $fixture = Join-Path $codexSkillsDir 'tdd'
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-collision-' + [guid]::NewGuid())
@@ -189,12 +319,37 @@ Describe 'setup.ps1 codex module shared claude skills' {
             $output = & pwsh -NoProfile -File $script:SetupScript -Module codex -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match '\.codex\\skills\\tdd -> .*codex\\skills\\tdd'
-            $output | Should -Not -Match '\.codex\\skills\\tdd -> .*claude\\skills\\tdd'
+            $output | Should -Not -Match '\.codex\\skills\\tdd -> .*ai-agents\\shared\\skills\\tdd'
         } finally {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $fixture -Recurse -Force -ErrorAction SilentlyContinue
             if ($createdParent) { Remove-Item -Path $codexSkillsDir -Force -ErrorAction SilentlyContinue }
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+Describe 'setup.ps1 Codex skill migration' {
+    It 'previews removal of obsolete managed Claude skill junctions but preserves unmanaged entries' -Skip:(-not $IsWindows) {
+        $repoRoot = Split-Path $script:SetupScript -Parent
+        $oldSource = Join-Path $repoRoot 'claude\skills'
+        $oldSkill = Join-Path $oldSource 'legacy-only'
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-migration-' + [guid]::NewGuid())
+        $codexSkills = Join-Path $tmpHome '.codex\skills'
+        New-Item -ItemType Directory -Path $oldSkill, $codexSkills, (Join-Path $codexSkills 'unmanaged') -Force | Out-Null
+        $oldLink = Join-Path $codexSkills 'legacy-only'
+        $origUP = $env:USERPROFILE
+        try {
+            New-Item -ItemType Junction -Path $oldLink -Target $oldSkill -ErrorAction Stop | Out-Null
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module codex -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Match 'remove obsolete Codex skill junction.*legacy-only'
+            $output | Should -Not -Match 'remove obsolete Codex skill junction.*unmanaged'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path $oldSource -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
 }
@@ -369,6 +524,24 @@ Describe 'setup.ps1 -Module all' {
         $winget      | Should -BeGreaterThan -1
         $langservers | Should -BeGreaterThan $winget
         $herdr       | Should -BeGreaterThan $langservers
+    }
+}
+
+Describe 'relative reparse-target comparison' {
+    BeforeAll {
+        # Load helper functions without running a real module.
+        . $script:SetupScript -Module bogus *>$null
+    }
+
+    It 'canonicalizes a relative target against the link parent' {
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('link-target-resolution-' + [guid]::NewGuid())
+        $link = Join-Path $root 'nested/live-link'
+        $expected = [IO.Path]::GetFullPath((Join-Path $root 'target'))
+        Resolve-LinkTargetPath -Link $link -Target '../target' | Should -Be $expected
+    }
+
+    It 'fails closed when a target cannot be resolved' {
+        Resolve-LinkTargetPath -Link ([IO.Path]::GetTempPath()) -Target ([string][char]0) | Should -BeNullOrEmpty
     }
 }
 

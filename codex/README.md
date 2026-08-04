@@ -33,8 +33,8 @@ conventions in `claude/AGENTS.md` only; re-run the installer to push the copy.
 |---|---|---|
 | `config.toml` | `~/.codex/config.toml` | Model + standalone permissions |
 | `claude/AGENTS.md` (shared) | `~/.codex/AGENTS.md` | Personal conventions (sourced from the claude module) |
-| `claude/skills/<name>/` (shared) | `~/.codex/skills/<name>/` | Global skills, minus a Claude-only denylist |
-| `skills/<name>/` | `~/.codex/skills/<name>/` | Codex-native skills (win on name collision) |
+| `ai-agents/shared/skills/<name>/` (shared) | `~/.codex/skills/<name>/` | Portable global skills |
+| `ai-agents/codex/skills/<name>/` | `~/.codex/skills/<name>/` | Codex-native skills (win on name collision) |
 | `templates/work-AGENTS.md` | — (manual copy) | Drop into an Azure work repo root as `AGENTS.md` |
 
 `config.toml` and the shared `AGENTS.md` are **copied** on Windows (like the claude module),
@@ -43,16 +43,22 @@ so the live `~/.codex` copies can drift — re-run `setup.ps1 -Module codex` to 
 ## Skills
 
 Codex reads the same `SKILL.md` format Claude does (optionally with an `agents/openai.yaml`
-per skill), so the installer junctions skills into `~/.codex/skills/` from two sources, in
-order:
+per skill), so the installer projects skills into `~/.codex/skills/` from two sources:
 
-1. **`claude/skills/` (shared)** — every subdirectory, including the `_shared/` support dir
-   (skills reference it via `../_shared`), **minus** a denylist of skills coupled to the
-   Claude Code harness: `codex-review` (drives Codex *from* Claude — circular inside Codex),
-   `handoff` (pairs with Claude's SessionStart inject hook), and `git-guardrails-claude-code`
-   (installs Claude Code hooks). The denylist lives in `setup.ps1` (`$claudeOnlySkills`).
-2. **`codex/skills/` (Codex-native)** — on a name collision the Codex-native skill wins;
+1. **`ai-agents/shared/skills/` (portable)** — every shared skill is runtime-neutral and is
+   projected to Codex.
+2. **`ai-agents/codex/skills/` (Codex-native)** — on a name collision the Codex-native skill wins;
    the shared one is filtered out up front (not overwritten, keeping the junctions idempotent).
+
+Claude-only skills under `ai-agents/claude/skills/` are never projected to Codex.
+
+The shared `council` skill and its four aliases are available after setup. They are prompt
+orchestration contracts, not installed custom agents: the host must use a Codex version
+whose native delegation can isolate at least two workers, or report
+`unsupported-capability`. Quick mode is the default; debate and external Codex are opt-in.
+On a Codex host, `--codex` is rejected unless a separately configured adapter supplies a
+genuinely independent provider/context. Exact invocation syntax and the minimum supported
+Codex CLI version remain to be smoke-tested; this README does not guess a prefix.
 
 Codex's own built-in skills live alongside at `~/.codex/skills/.system/` and are never
 touched by this installer. Claude-specific frontmatter fields (e.g. `disable-model-invocation`)
@@ -62,15 +68,15 @@ Unlike Claude, Codex has no separate top-level "agents" concept — an "agent" i
 `agents/openai.yaml` file nested inside a skill folder, so there's no separate agents
 junction to wire up; the skills junction covers both.
 
-`codex/skills/` is empty for now — a skill there is only needed when the Codex flavour must
-differ from the shared `claude/skills/` one. Create `codex/skills/<name>/SKILL.md` and
+`ai-agents/codex/skills/` is empty for now — a skill there is only needed when the Codex flavour must
+differ from the shared skill. Create `ai-agents/codex/skills/<name>/SKILL.md` and
 re-run `setup.ps1 -Module codex`.
 
 ## Install
 
 1. `setup.ps1 -Module codex` — installs the Codex CLI (native installer), copies
-   `config.toml` + `AGENTS.md` into `~/.codex/`, junctions the shared `claude/skills/`
-   (minus the denylist) plus any `codex/skills/` into `~/.codex/skills/`, and registers
+   `config.toml` + `AGENTS.md` into `~/.codex/`, projects shared skills plus any
+   `ai-agents/codex/skills/` variants into `~/.codex/skills/`, and registers
    the read-only MCP reviewer at user scope in Claude Code.
 2. `codex login` — interactive ChatGPT-account OAuth (run this yourself; one-time).
 

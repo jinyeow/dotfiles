@@ -88,6 +88,36 @@ backup() {
     warn "        ->  $backup_path"
 }
 
+# Canonicalize a stored symlink target for comparisons. Relative targets are interpreted
+# against the link parent. Failure is reported to the caller so migration code preserves
+# the existing link rather than assuming it is repository-managed.
+resolve_link_target() {
+    local link="$1" raw
+    raw="$(readlink -- "$link")" || return 1
+    if [[ "$raw" != /* ]]; then raw="$(dirname -- "$link")/$raw"; fi
+    realpath -m -- "$raw" 2>/dev/null
+}
+
+canonical_path() {
+    realpath -m -- "$1" 2>/dev/null
+}
+
+# A per-skill link is replaceable only when its resolved target is below one of the
+# repository skill roots supplied after the link path.
+is_managed_skill_link() {
+    local link="$1" resolved root resolved_root
+    shift
+    [[ -L "$link" ]] || return 1
+    resolved="$(resolve_link_target "$link")" || return 1
+    for root in "$@"; do
+        resolved_root="$(canonical_path "$root")" || continue
+        case "$resolved" in
+            "$resolved_root/"*) return 0 ;;
+        esac
+    done
+    return 1
+}
+
 # Create a symlink, backing up any existing target first.
 # Skips silently if the symlink already points to the correct target.
 make_symlink() {
@@ -99,8 +129,12 @@ make_symlink() {
         return
     fi
 
-    # Already correct — nothing to do
-    if [[ -L "$link" && "$(readlink "$link")" == "$target" ]]; then
+    # Already correct — nothing to do. Canonical comparison also handles relative links.
+    local resolved_link resolved_target
+    if [[ -L "$link" ]] &&
+        resolved_link="$(resolve_link_target "$link")" &&
+        resolved_target="$(canonical_path "$target")" &&
+        [[ "$resolved_link" == "$resolved_target" ]]; then
         ok "Up to date: $link"
         return
     fi
@@ -336,7 +370,6 @@ install_pi() {
         ok 'pi is already installed.'
     elif [[ $DRY_RUN -eq 1 ]]; then
         info '[DRY RUN] would install Pi via npm (@mariozechner/pi-coding-agent)'
-        return
     elif ! command -v npm >/dev/null 2>&1; then
         fail 'npm not found — Pi setup stopped before changing Pi configuration.'
         return
@@ -346,21 +379,98 @@ install_pi() {
     else
         ok 'Pi installed.'
     fi
-    [[ $DRY_RUN -eq 1 ]] && return
 
     local pi_dir="$HOME/.pi/agent"
     # Install packages before projecting tracked configuration/resources. If a pinned package
     # fails, the return below leaves the existing Pi configuration and resources untouched.
     while IFS= read -r package; do
-        if ! pi install "$package"; then
+        if [[ $DRY_RUN -eq 1 ]]; then
+            info "[DRY RUN] pi install $package"
+        elif ! pi install "$package"; then
             fail "Pi package install failed for $package — repository resources were not projected."
             return
         fi
     done < <(grep -o '"npm:[^"]*"' "$DOTFILES/pi/settings.json" | tr -d '"')
+    # Validate or migrate skills before projecting any tracked Pi configuration/resources.
+    # Shared and Pi-native skills coexist as child links; Pi-native names win collisions.
+    local skills_dst="$pi_dir/skills"
+    local old_skills_target="$DOTFILES/pi/skills"
+    if [[ -L "$skills_dst" ]]; then
+        local resolved_skills resolved_old_skills
+        resolved_skills="$(resolve_link_target "$skills_dst")" || resolved_skills=''
+        resolved_old_skills="$(canonical_path "$old_skills_target")" || resolved_old_skills=''
+        if [[ -n "$resolved_skills" && -n "$resolved_old_skills" && "$resolved_skills" == "$resolved_old_skills" ]]; then
+            if [[ $DRY_RUN -eq 1 ]]; then
+                info "[DRY RUN] remove managed Pi skills link: $skills_dst"
+            else
+                rm "$skills_dst"
+                warn "Removed managed Pi skills link: $skills_dst"
+            fi
+        else
+            fail "Pi skills link is unmanaged; preserving it: $skills_dst"
+            return
+        fi
+    elif [[ -e "$skills_dst" && ! -d "$skills_dst" ]]; then
+        fail "Pi skills destination is unmanaged and is not a directory: $skills_dst"
+        return
+    fi
+    if [[ $DRY_RUN -eq 0 ]]; then mkdir -p "$skills_dst"; fi
+
     make_symlink "$DOTFILES/pi/settings.json" "$pi_dir/settings.json"
-    for resource in extensions skills prompts themes; do
+    for resource in extensions prompts themes; do
         make_symlink "$DOTFILES/pi/$resource" "$pi_dir/$resource"
     done
+
+    local skill_dir name link
+    declare -A native_names=()
+    while IFS= read -r -d '' skill_dir; do
+        native_names["$(basename "$skill_dir")"]=1
+    done < <(find "$old_skills_target" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+    while IFS= read -r -d '' skill_dir; do
+        name="$(basename "$skill_dir")"
+        [[ -n "${native_names[$name]:-}" ]] && continue
+        link="$skills_dst/$name"
+        if [[ -e "$link" && ! -L "$link" ]]; then
+            warn "Preserved unmanaged Pi skill: $link"
+            continue
+        elif [[ -L "$link" ]]; then
+            local resolved_existing shared_root old_root
+            resolved_existing="$(resolve_link_target "$link")" || resolved_existing=''
+            shared_root="$(canonical_path "$DOTFILES/ai-agents/shared/skills")" || shared_root=''
+            old_root="$(canonical_path "$old_skills_target")" || old_root=''
+            if [[ -z "$resolved_existing" || -z "$shared_root" || -z "$old_root" ]]; then
+                warn "Preserved unmanaged Pi skill link: $link"
+                continue
+            fi
+            case "$resolved_existing" in
+                "$shared_root/"*|"$old_root/"*) ;;
+                *) warn "Preserved unmanaged Pi skill link: $link"; continue ;;
+            esac
+        fi
+        make_symlink "$skill_dir" "$link"
+    done < <(find "$DOTFILES/ai-agents/shared/skills" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+    while IFS= read -r -d '' skill_dir; do
+        name="$(basename "$skill_dir")"
+        link="$skills_dst/$name"
+        if [[ -e "$link" && ! -L "$link" ]]; then
+            warn "Preserved unmanaged Pi skill: $link"
+            continue
+        elif [[ -L "$link" ]]; then
+            local resolved_existing shared_root old_root
+            resolved_existing="$(resolve_link_target "$link")" || resolved_existing=''
+            shared_root="$(canonical_path "$DOTFILES/ai-agents/shared/skills")" || shared_root=''
+            old_root="$(canonical_path "$old_skills_target")" || old_root=''
+            if [[ -z "$resolved_existing" || -z "$shared_root" || -z "$old_root" ]]; then
+                warn "Preserved unmanaged Pi skill link: $link"
+                continue
+            fi
+            case "$resolved_existing" in
+                "$shared_root/"*|"$old_root/"*) ;;
+                *) warn "Preserved unmanaged Pi skill link: $link"; continue ;;
+            esac
+        fi
+        make_symlink "$skill_dir" "$link"
+    done < <(find "$old_skills_target" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
 }
 
 install_claude() {
@@ -387,32 +497,85 @@ install_claude() {
     # SessionStart hook: inject a pending .claude/handoff.md (from the handoff skill) into a fresh session.
     make_symlink "$DOTFILES/claude/inject-handoff.ps1" "$HOME/.claude/inject-handoff.ps1"
 
-    # Skills — symlink each subdirectory into ~/.claude/skills/
-    local skills_src="$DOTFILES/claude/skills"
+    # Skills — project shared and Claude-specific resources into ~/.claude/skills/.
     local skills_dst="$HOME/.claude/skills"
+    local name link old_target
+    for name in council council-code council-business council-plan council-doc; do
+        link="$skills_dst/$name"
+        old_target="$DOTFILES/ai-agents/claude/skills/$name"
+        local resolved_link resolved_old_target
+        resolved_link="$(resolve_link_target "$link")" || resolved_link=''
+        resolved_old_target="$(canonical_path "$old_target")" || resolved_old_target=''
+        if [[ -L "$link" && -n "$resolved_link" && -n "$resolved_old_target" && "$resolved_link" == "$resolved_old_target" ]]; then
+            if [[ $DRY_RUN -eq 1 ]]; then
+                info "[DRY RUN] remove moved Claude council link: $link"
+            else
+                rm "$link"
+                warn "Removed moved Claude council link: $link"
+            fi
+        fi
+    done
+    local skills_sources=("$DOTFILES/ai-agents/shared/skills" "$DOTFILES/ai-agents/claude/skills")
+    # Released installers projected skills from the former top-level claude/skills source;
+    # links into it are repository-managed legacy entries — replaced below when the skill
+    # still exists, removed when it left the projection. Foreign links stay preserved.
+    local legacy_skills_source="$DOTFILES/claude/skills"
     if [[ $DRY_RUN -eq 0 ]]; then
         mkdir -p "$skills_dst"
     fi
     local skill_dirs=()
-    while IFS= read -r -d '' d; do
-        skill_dirs+=("$d")
-    done < <(find "$skills_src" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+    for skills_src in "${skills_sources[@]}"; do
+        while IFS= read -r -d '' d; do
+            skill_dirs+=("$d")
+        done < <(find "$skills_src" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+    done
+    local legacy_root entry entry_name resolved_entry skill_dir
+    legacy_root="$(canonical_path "$legacy_skills_source")" || legacy_root=''
+    if [[ -n "$legacy_root" && -d "$skills_dst" ]]; then
+        declare -A desired_names=()
+        for skill_dir in "${skill_dirs[@]}"; do
+            desired_names["$(basename "$skill_dir")"]=1
+        done
+        while IFS= read -r -d '' entry; do
+            entry_name="$(basename "$entry")"
+            [[ -n "${desired_names[$entry_name]:-}" ]] && continue
+            resolved_entry="$(resolve_link_target "$entry")" || continue
+            case "$resolved_entry" in
+                "$legacy_root/"*)
+                    if [[ $DRY_RUN -eq 1 ]]; then
+                        info "[DRY RUN] remove obsolete Claude skill link: $entry"
+                    else
+                        rm "$entry"
+                        warn "Removed obsolete Claude skill link: $entry"
+                    fi
+                    ;;
+            esac
+        done < <(find "$skills_dst" -mindepth 1 -maxdepth 1 -type l -print0 2>/dev/null)
+    fi
     if [ "${#skill_dirs[@]}" -gt 0 ]; then
         for skill_dir in "${skill_dirs[@]}"; do
-            make_symlink "$skill_dir" "$skills_dst/$(basename "$skill_dir")"
+            link="$skills_dst/$(basename "$skill_dir")"
+            if [[ -e "$link" && ! -L "$link" ]]; then
+                warn "Preserved unmanaged Claude skill: $link"
+                continue
+            elif [[ -L "$link" ]] && ! is_managed_skill_link "$link" "${skills_sources[@]}" "$legacy_skills_source"; then
+                warn "Preserved unmanaged Claude skill link: $link"
+                continue
+            fi
+            make_symlink "$skill_dir" "$link"
         done
     else
-        info 'No skills to install (claude/skills/ is empty).'
+        info 'No skills to install (shared/ and claude/ skill sources are empty).'
     fi
 
     # Agents — symlink the whole dir into ~/.claude/agents/ (Linux equivalent of the Windows
     # dir-junction; unlike skills, which link per-subdir). Agent definitions are flat .md files
     # in one dir nothing else writes to, so a whole-dir link preserves the no-drift philosophy
     # and lets agents created via /agents land in the repo. Bodies can't @import AGENTS.md.
-    if [ -d "$DOTFILES/claude/agents" ]; then
-        make_symlink "$DOTFILES/claude/agents" "$HOME/.claude/agents"
+    if [ -d "$DOTFILES/ai-agents/shared/agents" ]; then
+        make_symlink "$DOTFILES/ai-agents/shared/agents" "$HOME/.claude/agents"
     else
-        info 'No agents to install (claude/agents/ is missing).'
+        info 'No agents to install (ai-agents/shared/agents/ is missing).'
     fi
 }
 

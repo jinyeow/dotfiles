@@ -15,7 +15,7 @@ truth. For current behavior, follow the exact authority index in the root `AGENT
 | Native Neovim API and lockfile discipline | Always-loaded invariant plus current behavior | `AGENTS.md` → Scope and safety; `nvim/README.md`; `nvim/nvim-pack-lock.json` |
 | psmux/Zellij roles and keymaps | Current subsystem documentation | `psmux/README.md`; `psmux/psmux.conf`; `zellij/README.md`; `zellij/config.kdl` |
 | Herdr, Yazi, and installer mechanics | Current subsystem documentation | `herdr/README.md`; `herdr/config.toml`; `yazi/yazi.toml`; `setup.ps1`; `setup.sh` |
-| Spec, ticket, triage, and wayfinding settings | On-demand workflow configuration | `.agents/workflow.local.md` (private override); `.agents/workflow.md` (shared); `claude/skills/setup-agent-skills/SKILL.md` |
+| Spec, ticket, triage, and wayfinding settings | On-demand workflow configuration | `.agents/workflow.local.md` (private override); `.agents/workflow.md` (shared); `ai-agents/shared/skills/setup-agent-skills/SKILL.md` |
 | Claude hooks, Codex posture, Pi installation | Current subsystem documentation | `claude/README.md`; `claude/settings.json`; `codex/README.md`; `codex/config.toml`; `pi/README.md`; `pi/settings.json` |
 | Detailed experiments, “do not reverse” explanations, and rejected designs | Historical ADR material | This ADR only when it explains the pruning decision; subsystem ADRs/source comments own tool-specific rationale |
 | Duplicate inventories, stale package notes, and machine-local preferences | Obsolete content | Deleted from the loaded guide; machine-local values remain in user configuration |

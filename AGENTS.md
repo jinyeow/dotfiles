@@ -36,8 +36,8 @@ These are repository paths, so this routing works without runtime-specific impor
 | Herdr | [`herdr/README.md`](herdr/README.md); [`herdr/config.toml`](herdr/config.toml); [`tests/setup.Tests.ps1`](tests/setup.Tests.ps1) |
 | Yazi | [`yazi/yazi.toml`](yazi/yazi.toml); [`yazi/keymap.toml`](yazi/keymap.toml); [`yazi/theme.toml`](yazi/theme.toml); [`yazi/package.toml`](yazi/package.toml) |
 | Setup and installers | [`setup.ps1`](setup.ps1); [`setup.sh`](setup.sh); [`tests/setup.Tests.ps1`](tests/setup.Tests.ps1); [`tests/setup-sh.Tests.ps1`](tests/setup-sh.Tests.ps1) |
-| Agent workflow configuration | [`.agents/workflow.md`](.agents/workflow.md); [`claude/skills/setup-agent-skills/SKILL.md`](claude/skills/setup-agent-skills/SKILL.md) |
-| Claude Code hooks and agents | [`claude/README.md`](claude/README.md); [`claude/AGENTS.md`](claude/AGENTS.md); [`claude/settings.json`](claude/settings.json); [`claude/agents/`](claude/agents/) |
+| Agent workflow configuration | [`.agents/workflow.md`](.agents/workflow.md); [`ai-agents/shared/skills/setup-agent-skills/SKILL.md`](ai-agents/shared/skills/setup-agent-skills/SKILL.md) |
+| Claude Code hooks and agents | [`claude/README.md`](claude/README.md); [`claude/AGENTS.md`](claude/AGENTS.md); [`claude/settings.json`](claude/settings.json); [`ai-agents/shared/agents/`](ai-agents/shared/agents/) |
 | Codex CLI | [`codex/README.md`](codex/README.md); [`codex/config.toml`](codex/config.toml); [`codex/templates/`](codex/templates/) |
 | Pi | [`pi/README.md`](pi/README.md); [`pi/settings.json`](pi/settings.json); [`pi/extensions/`](pi/extensions/); [`pi/skills/`](pi/skills/) |
 
@@ -50,10 +50,12 @@ either. Pi reads this project guide directly; its tracked configuration is under
 [`pi/`](pi/). Do not rely on Claude imports or automatic runtime loading to discover the
 authority index above.
 
-Keep hooks deterministic and fail-open where their source says so. User-scope Claude
-agents remain under [`claude/agents/`](claude/agents/); shared skills remain under
-[`claude/skills/`](claude/skills/) and are projected to Codex by the installer.
-Lane-specific rehoming/projection work is out of scope here.
+Keep hooks deterministic and fail-open where their source says so. User-scope agent definitions live under [`ai-agents/shared/agents/`](ai-agents/shared/agents/)
+and are currently projected to Claude Code. Skills live under
+[`ai-agents/shared/skills/`](ai-agents/shared/skills/) by default; the small set of Claude-only
+skills remains under [`ai-agents/claude/skills/`](ai-agents/claude/skills/) and is not projected
+to Codex.
+Keep runtime projections derived from the canonical `ai-agents/` source areas; do not create a second source tree under a runtime module.
 
 ## Editing conventions
 
