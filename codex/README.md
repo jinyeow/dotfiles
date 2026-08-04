@@ -33,8 +33,8 @@ conventions in `claude/AGENTS.md` only; re-run the installer to push the copy.
 |---|---|---|
 | `config.toml` | `~/.codex/config.toml` | Model + standalone permissions |
 | `claude/AGENTS.md` (shared) | `~/.codex/AGENTS.md` | Personal conventions (sourced from the claude module) |
-| `ai-agents/shared/skills/<name>/` (shared) | `~/.codex/skills/<name>/` | Portable global skills |
-| `ai-agents/codex/skills/<name>/` | `~/.codex/skills/<name>/` | Codex-native skills (win on name collision) |
+| `ai-agents/skills/<name>/` (portable) | `~/.codex/skills/<name>/` | Portable global skills |
+| `codex/skills/<name>/` | `~/.codex/skills/<name>/` | Codex-native skills (win on name collision) |
 | `templates/work-AGENTS.md` | — (manual copy) | Drop into an Azure work repo root as `AGENTS.md` |
 
 `config.toml` and the shared `AGENTS.md` are **copied** on Windows (like the claude module),
@@ -45,12 +45,12 @@ so the live `~/.codex` copies can drift — re-run `setup.ps1 -Module codex` to 
 Codex reads the same `SKILL.md` format Claude does (optionally with an `agents/openai.yaml`
 per skill), so the installer projects skills into `~/.codex/skills/` from two sources:
 
-1. **`ai-agents/shared/skills/` (portable)** — every shared skill is runtime-neutral and is
+1. **`ai-agents/skills/` (portable)** — every portable skill is runtime-neutral and is
    projected to Codex.
-2. **`ai-agents/codex/skills/` (Codex-native)** — on a name collision the Codex-native skill wins;
+2. **`codex/skills/` (Codex-native)** — on a name collision the Codex-native skill wins;
    the shared one is filtered out up front (not overwritten, keeping the junctions idempotent).
 
-Claude-only skills under `ai-agents/claude/skills/` are never projected to Codex.
+Claude-native skills and Claude support content under `claude/skills/` are never projected to Codex.
 
 The shared `council` skill and its four aliases are available after setup. They are prompt
 orchestration contracts, not installed custom agents: the host must use a Codex version
@@ -68,15 +68,15 @@ Unlike Claude, Codex has no separate top-level "agents" concept — an "agent" i
 `agents/openai.yaml` file nested inside a skill folder, so there's no separate agents
 junction to wire up; the skills junction covers both.
 
-`ai-agents/codex/skills/` is empty for now — a skill there is only needed when the Codex flavour must
-differ from the shared skill. Create `ai-agents/codex/skills/<name>/SKILL.md` and
+`codex/skills/` is empty for now — a skill there is only needed when the Codex flavour must
+differ from the portable skill. Create `codex/skills/<name>/SKILL.md` and
 re-run `setup.ps1 -Module codex`.
 
 ## Install
 
 1. `setup.ps1 -Module codex` — installs the Codex CLI (native installer), copies
-   `config.toml` + `AGENTS.md` into `~/.codex/`, projects shared skills plus any
-   `ai-agents/codex/skills/` variants into `~/.codex/skills/`, and registers
+   `config.toml` + `AGENTS.md` into `~/.codex/`, projects portable skills plus any
+   `codex/skills/` variants into `~/.codex/skills/`, and registers
    the read-only MCP reviewer at user scope in Claude Code.
 2. `codex login` — interactive ChatGPT-account OAuth (run this yourself; one-time).
 

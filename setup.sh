@@ -421,55 +421,49 @@ install_pi() {
         make_symlink "$DOTFILES/pi/$resource" "$pi_dir/$resource"
     done
 
-    local skill_dir name link
-    declare -A native_names=()
+    local skill_dir name link entry entry_name
+    local portable_skills_root="$DOTFILES/ai-agents/skills"
+    local managed_skill_roots=("$portable_skills_root" "$DOTFILES/pi/skills" "$DOTFILES/ai-agents/shared/skills" "$DOTFILES/ai-agents/claude/skills" "$DOTFILES/ai-agents/codex/skills" "$DOTFILES/claude/skills")
+    declare -A native_names=() desired_names=()
     while IFS= read -r -d '' skill_dir; do
         native_names["$(basename "$skill_dir")"]=1
+        desired_names["$(basename "$skill_dir")"]=1
     done < <(find "$old_skills_target" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
     while IFS= read -r -d '' skill_dir; do
         name="$(basename "$skill_dir")"
         [[ -n "${native_names[$name]:-}" ]] && continue
-        link="$skills_dst/$name"
-        if [[ -e "$link" && ! -L "$link" ]]; then
-            warn "Preserved unmanaged Pi skill: $link"
-            continue
-        elif [[ -L "$link" ]]; then
-            local resolved_existing shared_root old_root
-            resolved_existing="$(resolve_link_target "$link")" || resolved_existing=''
-            shared_root="$(canonical_path "$DOTFILES/ai-agents/shared/skills")" || shared_root=''
-            old_root="$(canonical_path "$old_skills_target")" || old_root=''
-            if [[ -z "$resolved_existing" || -z "$shared_root" || -z "$old_root" ]]; then
-                warn "Preserved unmanaged Pi skill link: $link"
-                continue
-            fi
-            case "$resolved_existing" in
-                "$shared_root/"*|"$old_root/"*) ;;
-                *) warn "Preserved unmanaged Pi skill link: $link"; continue ;;
-            esac
+        desired_names["$name"]=1
+    done < <(find "$portable_skills_root" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+    # Remove obsolete managed links before projecting. Missing historical roots are never
+    # recreated; canonical_path resolves them lexically for delayed-upgrade repair.
+    if [[ -d "$skills_dst" ]]; then
+        while IFS= read -r -d '' entry; do
+            entry_name="$(basename "$entry")"
+            [[ -n "${desired_names[$entry_name]:-}" ]] && continue
+            is_managed_skill_link "$entry" "${managed_skill_roots[@]}" || continue
+            if [[ $DRY_RUN -eq 1 ]]; then info "[DRY RUN] remove obsolete Pi skill link: $entry"; else rm "$entry"; warn "Removed obsolete Pi skill link: $entry"; fi
+        done < <(find "$skills_dst" -mindepth 1 -maxdepth 1 -type l -print0 2>/dev/null)
+    fi
+    project_pi_skill() {
+        local source="$1" project_name project_link
+        project_name="$(basename "$source")"
+        project_link="$skills_dst/$project_name"
+        if [[ -e "$project_link" && ! -L "$project_link" ]]; then
+            warn "Preserved unmanaged Pi skill: $project_link"
+            return
         fi
-        make_symlink "$skill_dir" "$link"
-    done < <(find "$DOTFILES/ai-agents/shared/skills" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+        if [[ -L "$project_link" ]] && ! is_managed_skill_link "$project_link" "${managed_skill_roots[@]}"; then
+            warn "Preserved unmanaged Pi skill link: $project_link"
+            return
+        fi
+        make_symlink "$source" "$project_link"
+    }
     while IFS= read -r -d '' skill_dir; do
-        name="$(basename "$skill_dir")"
-        link="$skills_dst/$name"
-        if [[ -e "$link" && ! -L "$link" ]]; then
-            warn "Preserved unmanaged Pi skill: $link"
-            continue
-        elif [[ -L "$link" ]]; then
-            local resolved_existing shared_root old_root
-            resolved_existing="$(resolve_link_target "$link")" || resolved_existing=''
-            shared_root="$(canonical_path "$DOTFILES/ai-agents/shared/skills")" || shared_root=''
-            old_root="$(canonical_path "$old_skills_target")" || old_root=''
-            if [[ -z "$resolved_existing" || -z "$shared_root" || -z "$old_root" ]]; then
-                warn "Preserved unmanaged Pi skill link: $link"
-                continue
-            fi
-            case "$resolved_existing" in
-                "$shared_root/"*|"$old_root/"*) ;;
-                *) warn "Preserved unmanaged Pi skill link: $link"; continue ;;
-            esac
-        fi
-        make_symlink "$skill_dir" "$link"
+        [[ -n "${native_names[$(basename "$skill_dir")]:-}" ]] && continue
+        project_pi_skill "$skill_dir"
+    done < <(find "$portable_skills_root" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+    while IFS= read -r -d '' skill_dir; do
+        project_pi_skill "$skill_dir"
     done < <(find "$old_skills_target" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
 }
 
@@ -497,76 +491,55 @@ install_claude() {
     # SessionStart hook: inject a pending .claude/handoff.md (from the handoff skill) into a fresh session.
     make_symlink "$DOTFILES/claude/inject-handoff.ps1" "$HOME/.claude/inject-handoff.ps1"
 
-    # Skills — project shared and Claude-specific resources into ~/.claude/skills/.
+    # Skills — project portable and Claude-native resources into ~/.claude/skills/.
+    # Native names win collisions; ai-agents/_shared is source-only and is not enumerated.
     local skills_dst="$HOME/.claude/skills"
-    local name link old_target
-    for name in council council-code council-business council-plan council-doc; do
-        link="$skills_dst/$name"
-        old_target="$DOTFILES/ai-agents/claude/skills/$name"
-        local resolved_link resolved_old_target
-        resolved_link="$(resolve_link_target "$link")" || resolved_link=''
-        resolved_old_target="$(canonical_path "$old_target")" || resolved_old_target=''
-        if [[ -L "$link" && -n "$resolved_link" && -n "$resolved_old_target" && "$resolved_link" == "$resolved_old_target" ]]; then
-            if [[ $DRY_RUN -eq 1 ]]; then
-                info "[DRY RUN] remove moved Claude council link: $link"
-            else
-                rm "$link"
-                warn "Removed moved Claude council link: $link"
-            fi
-        fi
-    done
-    local skills_sources=("$DOTFILES/ai-agents/shared/skills" "$DOTFILES/ai-agents/claude/skills")
-    # Released installers projected skills from the former top-level claude/skills source;
-    # links into it are repository-managed legacy entries — replaced below when the skill
-    # still exists, removed when it left the projection. Foreign links stay preserved.
-    local legacy_skills_source="$DOTFILES/claude/skills"
-    if [[ $DRY_RUN -eq 0 ]]; then
-        mkdir -p "$skills_dst"
-    fi
-    local skill_dirs=()
-    for skills_src in "${skills_sources[@]}"; do
-        while IFS= read -r -d '' d; do
-            skill_dirs+=("$d")
-        done < <(find "$skills_src" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
-    done
-    local legacy_root entry entry_name resolved_entry skill_dir
-    legacy_root="$(canonical_path "$legacy_skills_source")" || legacy_root=''
-    if [[ -n "$legacy_root" && -d "$skills_dst" ]]; then
-        declare -A desired_names=()
-        for skill_dir in "${skill_dirs[@]}"; do
-            desired_names["$(basename "$skill_dir")"]=1
-        done
+    local portable_skills_root="$DOTFILES/ai-agents/skills"
+    local native_skills_root="$DOTFILES/claude/skills"
+    local historical_shared_root="$DOTFILES/ai-agents/shared/skills"
+    local historical_claude_root="$DOTFILES/ai-agents/claude/skills"
+    local managed_skill_roots=("$portable_skills_root" "$native_skills_root" "$historical_shared_root" "$historical_claude_root" "$DOTFILES/ai-agents/codex/skills")
+    if [[ $DRY_RUN -eq 0 ]]; then mkdir -p "$skills_dst"; fi
+    local skill_dir skill_name link entry entry_name
+    declare -A native_names=() desired_names=()
+    while IFS= read -r -d '' skill_dir; do
+        native_names["$(basename "$skill_dir")"]=1
+        desired_names["$(basename "$skill_dir")"]=1
+    done < <(find "$native_skills_root" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+    while IFS= read -r -d '' skill_dir; do
+        skill_name="$(basename "$skill_dir")"
+        [[ -n "${native_names[$skill_name]:-}" ]] && continue
+        desired_names["$skill_name"]=1
+    done < <(find "$portable_skills_root" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+    if [[ -d "$skills_dst" ]]; then
         while IFS= read -r -d '' entry; do
             entry_name="$(basename "$entry")"
             [[ -n "${desired_names[$entry_name]:-}" ]] && continue
-            resolved_entry="$(resolve_link_target "$entry")" || continue
-            case "$resolved_entry" in
-                "$legacy_root/"*)
-                    if [[ $DRY_RUN -eq 1 ]]; then
-                        info "[DRY RUN] remove obsolete Claude skill link: $entry"
-                    else
-                        rm "$entry"
-                        warn "Removed obsolete Claude skill link: $entry"
-                    fi
-                    ;;
-            esac
+            is_managed_skill_link "$entry" "${managed_skill_roots[@]}" || continue
+            if [[ $DRY_RUN -eq 1 ]]; then info "[DRY RUN] remove obsolete Claude skill link: $entry"; else rm "$entry"; warn "Removed obsolete Claude skill link: $entry"; fi
         done < <(find "$skills_dst" -mindepth 1 -maxdepth 1 -type l -print0 2>/dev/null)
     fi
-    if [ "${#skill_dirs[@]}" -gt 0 ]; then
-        for skill_dir in "${skill_dirs[@]}"; do
-            link="$skills_dst/$(basename "$skill_dir")"
-            if [[ -e "$link" && ! -L "$link" ]]; then
-                warn "Preserved unmanaged Claude skill: $link"
-                continue
-            elif [[ -L "$link" ]] && ! is_managed_skill_link "$link" "${skills_sources[@]}" "$legacy_skills_source"; then
-                warn "Preserved unmanaged Claude skill link: $link"
-                continue
-            fi
-            make_symlink "$skill_dir" "$link"
-        done
-    else
-        info 'No skills to install (shared/ and claude/ skill sources are empty).'
-    fi
+    project_claude_skill() {
+        local source="$1" project_name project_link
+        project_name="$(basename "$source")"
+        project_link="$skills_dst/$project_name"
+        if [[ -e "$project_link" && ! -L "$project_link" ]]; then
+            warn "Preserved unmanaged Claude skill: $project_link"
+            return
+        fi
+        if [[ -L "$project_link" ]] && ! is_managed_skill_link "$project_link" "${managed_skill_roots[@]}"; then
+            warn "Preserved unmanaged Claude skill link: $project_link"
+            return
+        fi
+        make_symlink "$source" "$project_link"
+    }
+    while IFS= read -r -d '' skill_dir; do
+        [[ -n "${native_names[$(basename "$skill_dir")]:-}" ]] && continue
+        project_claude_skill "$skill_dir"
+    done < <(find "$portable_skills_root" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+    while IFS= read -r -d '' skill_dir; do
+        project_claude_skill "$skill_dir"
+    done < <(find "$native_skills_root" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
 
     # Agents — symlink the whole dir into ~/.claude/agents/ (Linux equivalent of the Windows
     # dir-junction; unlike skills, which link per-subdir). Agent definitions are flat .md files

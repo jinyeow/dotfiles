@@ -32,7 +32,9 @@ Verify with `claude doctor` (install method = native) and `Get-Command claude`
 | `warn-legacy-files.ps1` | `~/.claude/warn-legacy-files.ps1` | PreToolUse(Edit\|Write) hook that asks to confirm before editing legacy/do-not-touch dotfiles (scoped to `$env:DOTFILES`) |
 | `warn-hardcoded-secrets.ps1` | `~/.claude/warn-hardcoded-secrets.ps1` | PostToolUse(Edit\|Write) hook that warns when written content looks like a hardcoded secret |
 | `warn-reasoning-extraction.ps1` | `~/.claude/warn-reasoning-extraction.ps1` | UserPromptSubmit + PreToolUse(Edit\|Write) hook that flags reasoning-extraction phrasing that trips Fable-5's `reasoning_extraction` → Opus fallback |
-| `ai-agents/shared/skills/<name>/` or `ai-agents/claude/skills/<name>/` | `~/.claude/skills/<name>/` | Portable and Claude-only custom skills (only portable skills are also projected into Codex) |
+| `ai-agents/skills/<name>/` | `~/.claude/skills/<name>/` | Portable custom skills (also projected to Codex and Pi) |
+| `claude/skills/<name>/` | `~/.claude/skills/<name>/` | Claude-native skills and projected Claude support content |
+| `ai-agents/_shared/` | — | Portable support content; source-only, not projected as a skill |
 | `ai-agents/shared/agents/<name>.md` | `~/.claude/agents/<name>.md` | User-scope subagents (whole dir junctioned/symlinked) |
 | `output-styles/<name>.md` | `~/.claude/output-styles/<name>.md` | Output styles (whole dir junctioned); active style pinned by `outputStyle` in `settings.json` |
 
@@ -148,10 +150,10 @@ mishandles escape sequences (see `docs/zellij-windows-terminal-colors.md`).
 
 ## Skills
 
-`ai-agents/shared/skills/` holds portable global skills, while `ai-agents/claude/skills/` holds the small set of Claude Code-only skills. Each subdirectory is a skill:
+`ai-agents/skills/` holds portable global skills, while `claude/skills/` holds Claude-native skills and Claude support content. Each portable or Claude-native subdirectory is projected individually:
 
 ```
-ai-agents/shared/skills/
+ai-agents/skills/
   my-skill/
     SKILL.md            ← skill definition (frontmatter: name + description)
     commands/           ← optional: slash-command prompt files
@@ -159,13 +161,13 @@ ai-agents/shared/skills/
 ```
 
 The installer junctions (Windows) or symlinks (Linux) each skill directory into
-`~/.claude/skills/`, making it available in every project. To add a portable skill, create its subdirectory under `ai-agents/shared/skills/`; for a
-Claude-only skill, use `ai-agents/claude/skills/`. Re-run `setup.ps1 -Module claude` afterward.
+`~/.claude/skills/`, making it available in every project. To add a portable skill, create its subdirectory under `ai-agents/skills/`; for a
+Claude-native skill, use `claude/skills/`. Claude's `claude/skills/_shared/` is projected support content; portable `ai-agents/_shared/` remains source-only. Re-run `setup.ps1 -Module claude` afterward.
 
-The codex module projects only portable shared skill directories into `~/.codex/skills/`,
-so Codex CLI reads runtime-neutral skills from the same source. Claude-only skills remain
-private to Claude Code. See `../codex/README.md` → Skills, and re-run `setup.ps1 -Module codex`
-after adding a skill so Codex picks it up as well.
+The codex module projects only portable skill directories into `~/.codex/skills/`,
+so Codex CLI reads portable skills from the same source. Claude-native skills remain private
+to Claude Code. See `../codex/README.md` → Skills, and re-run `setup.ps1 -Module codex` after
+adding a portable or Codex-native skill so Codex picks it up as well.
 
 `azure-boards-organiser` (Azure DevOps Boards management for a Scrum process — PBIs,
 sprints, backlog) needs a one-time local setup: copy its `config.example.json` to
@@ -205,15 +207,15 @@ partitioned by conflict-set, one commit per fix-unit); **`review-fix-loop`** is 
 that chains the two each cycle and loops to a deterministic clean gate. `codex-review` is the
 standalone lightweight Codex second-opinion pass.
 
-`_shared/` is **not a skill** — it holds resources shared by multiple skills: `review-rubric.md` (the
+`claude/skills/_shared/` is **not a skill** — it holds Claude support resources shared by multiple skills: `review-rubric.md` (the
 merged AGENTS.md + thermo-nuclear quality bar), `dimensions.md` (the 7-dimension registry + charters
 for `deep-review`), and `findings-schema.md` (the JSONL finding schema, semantic fingerprint, and
 store discipline shared by the review→fix skills). It has no `SKILL.md`, so the harness ignores it as
-a skill; it is still junctioned so skills can reference it via `../_shared/<file>`.
+a skill; it is still projected with Claude skills so they can reference it via `../_shared/<file>`. The independent `ai-agents/_shared/` copy is portable support source-only and may diverge.
 
 Built-in Claude Code skills (`code-review`, `compact`, `deep-research`, `security-review`,
 `verify`, etc.) are provided by the harness and do not need to be installed. `handoff` is
-this repo's own skill (`ai-agents/claude/skills/handoff/`), not a harness built-in — see the Files
+this repo's own skill (`claude/skills/handoff/`), not a harness built-in — see the Files
 table above.
 
 ## Agents

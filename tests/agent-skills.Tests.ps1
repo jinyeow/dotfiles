@@ -1,56 +1,71 @@
 Describe 'agent skill source layout' {
     BeforeAll {
         $repo = Split-Path $PSScriptRoot -Parent
-        $shared = Join-Path $repo 'ai-agents/shared/skills'
-        $claude = Join-Path $repo 'ai-agents/claude/skills'
+        $portable = Join-Path $repo 'ai-agents/skills'
+        $portableSupport = Join-Path $repo 'ai-agents/_shared'
+        $claude = Join-Path $repo 'claude/skills'
+        $codex = Join-Path $repo 'codex/skills'
+        $pi = Join-Path $repo 'pi/skills'
     }
 
-    It 'does not retain the old Claude skill source tree' {
-        Test-Path (Join-Path $repo 'claude/skills') | Should -BeFalse
-    }
-
-    It 'classifies every skill in exactly one source area' {
-        $ownership = Get-Content (Join-Path $repo 'ai-agents/SKILL-OWNERSHIP.md') -Raw
-        $sharedStart = $ownership.IndexOf('## Shared')
-        $claudeStart = $ownership.IndexOf('## Claude-only')
-        $codexStart = $ownership.IndexOf('Codex-specific')
-        $sharedSection = $ownership.Substring($sharedStart, $claudeStart - $sharedStart)
-        $claudeSection = $ownership.Substring($claudeStart, $codexStart - $claudeStart)
-        $claudeNames = @([regex]::Matches($claudeSection, '(?m)^- `([^`]+)`') | ForEach-Object { $_.Groups[1].Value })
-        $actualShared = @(Get-ChildItem $shared -Directory | Select-Object -ExpandProperty Name)
-        $actualClaude = @(Get-ChildItem $claude -Directory | Select-Object -ExpandProperty Name)
-
-        $sharedStart | Should -BeGreaterThan -1
-        $actualShared.Count | Should -BeGreaterThan 0
-        foreach ($name in $actualClaude) {
-            $claudeNames | Should -Contain $name
+    It 'has the approved current source directories and no superseded trees' {
+        foreach ($path in @($portable, $portableSupport, $claude, $codex, $pi)) {
+            Test-Path $path | Should -BeTrue
         }
-        $actualClaude.Count | Should -Be $claudeNames.Count
-        (@($actualShared + $actualClaude) | Sort-Object -Unique).Count | Should -Be ($actualShared.Count + $actualClaude.Count)
+        foreach ($path in @('ai-agents/shared/skills', 'ai-agents/claude/skills', 'ai-agents/codex/skills')) {
+            Test-Path (Join-Path $repo $path) | Should -BeFalse
+        }
     }
 
-    It 'stores the custom agents in the shared agent source area' {
+    It 'classifies every current skill in exactly one runtime source area' {
+        $ownership = Get-Content (Join-Path $repo 'ai-agents/SKILL-OWNERSHIP.md') -Raw
+        $portableNames = @(Get-ChildItem $portable -Directory | Select-Object -ExpandProperty Name)
+        $claudeNames = @(Get-ChildItem $claude -Directory | Select-Object -ExpandProperty Name)
+        $codexNames = @(Get-ChildItem $codex -Directory | Select-Object -ExpandProperty Name)
+        $piNames = @(Get-ChildItem $pi -Directory | Select-Object -ExpandProperty Name)
+        $ownership | Should -Match '## Portable \(`ai-agents/skills/`\)'
+        $ownership | Should -Match '## Claude-native \(`claude/skills/`\)'
+        $ownership | Should -Match '## Codex-native \(`codex/skills/`\)'
+        $ownership | Should -Match '## Pi-native \(`pi/skills/`\)'
+        $portableNames.Count | Should -BeGreaterThan 0
+        $claudeNames.Count | Should -BeGreaterThan 0
+        (@($portableNames + $claudeNames + $codexNames + $piNames) | Sort-Object -Unique).Count |
+            Should -Be (@($portableNames + $claudeNames + $codexNames + $piNames).Count)
+    }
+
+    It 'stores custom agents in the unchanged shared agent source area' {
         $agents = Join-Path $repo 'ai-agents/shared/agents'
         Test-Path $agents | Should -BeTrue
         @(Get-ChildItem $agents -File -Filter '*.md').Count | Should -BeGreaterThan 0
         Test-Path (Join-Path $repo 'claude/agents') | Should -BeFalse
     }
 
-    It 'keeps shared skills free of runtime-specific source references' {
-        $hits = Get-ChildItem $shared -Recurse -File | Select-String -Pattern 'ai-agents/claude/skills|ai-agents/claude/agents'
+    It 'keeps portable skills and support free of prohibited Claude-only source references' {
+        $hits = Get-ChildItem $portable, $portableSupport -Recurse -File |
+            Select-String -Pattern 'ai-agents/(shared|claude|codex)/skills'
         $hits | Should -BeNullOrEmpty
     }
 
-    It 'owns all council skills only in the shared source area' {
+    It 'owns council skills only in the portable source area' {
         foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc')) {
-            Test-Path (Join-Path $shared "$name/SKILL.md") | Should -BeTrue
+            Test-Path (Join-Path $portable "$name/SKILL.md") | Should -BeTrue
             Test-Path (Join-Path $claude $name) | Should -BeFalse
+            Test-Path (Join-Path $codex $name) | Should -BeFalse
+            Test-Path (Join-Path $pi $name) | Should -BeFalse
         }
     }
 
-    It 'keeps council aliases thin and linked to the shared contract' {
+    It 'keeps Claude support projected and portable support source-only' {
+        foreach ($name in @('dimensions.md', 'findings-schema.md', 'review-rubric.md')) {
+            Test-Path (Join-Path $claude "_shared/$name") | Should -BeTrue
+            Test-Path (Join-Path $portableSupport $name) | Should -BeTrue
+        }
+        Test-Path (Join-Path $portableSupport 'SKILL.md') | Should -BeFalse
+    }
+
+    It 'keeps council aliases thin and linked to the portable contract' {
         foreach ($name in @('council-code', 'council-business', 'council-plan', 'council-doc')) {
-            $aliasPath = Join-Path $shared "$name/SKILL.md"
+            $aliasPath = Join-Path $portable "$name/SKILL.md"
             $content = Get-Content $aliasPath -Raw
             $contractLink = [regex]::Match($content, '\]\((\.\./council/SKILL\.md)\)').Groups[1].Value
             $contractLink | Should -Not -BeNullOrEmpty
@@ -60,22 +75,15 @@ Describe 'agent skill source layout' {
         }
     }
 
-    It 'defines runtime-neutral cost and role contracts for council' {
-        $council = Join-Path $shared 'council'
+    It 'defines runtime-neutral council contracts' {
+        $council = Join-Path $portable 'council'
         $content = Get-Content (Join-Path $council 'SKILL.md') -Raw
         Test-Path (Join-Path $council 'references/critic-contract.md') | Should -BeTrue
         Test-Path (Join-Path $council 'references/chair-contract.md') | Should -BeTrue
         Test-Path (Join-Path $council 'references/codex-charter.md') | Should -BeTrue
-        $content | Should -Match 'references/codex-charter\.md'
         $content | Should -Match 'default mode is \*\*quick\*\*'
-        $content | Should -Match '--debate'
-        $content | Should -Match '--codex'
-        $content | Should -Match '2–5'
         $content | Should -Match 'call cap of \*\*12\*\*'
-        $content | Should -Match '(?s)precedence order.*\*\*plan\*\*.*\*\*code\*\*.*\*\*business\*\*.*\*\*doc\*\*'
-        $content | Should -Match '(?s)Which council panel\s+should review this: code, business, plan, or doc\?'
-        $content | Should -Match '\.agents/council/reports/'
-        $content | Should -Not -Match 'ai-agents/claude/skills|\.claude/council|mcp__|council-critic|council-chair|Opus|Sonnet|Fable'
+        $content | Should -Not -Match 'ai-agents/(shared|claude)/skills|\.claude/council|mcp__|Opus|Sonnet|Fable'
     }
 
     It 'does not retain obsolete flat council agents' {

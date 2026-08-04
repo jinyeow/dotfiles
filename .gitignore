@@ -28,7 +28,7 @@ tags
 .claude/settings.local.json
 
 # azure-boards-organiser skill: real ADO project/team/iteration values stay out of git (copy config.example.json)
-ai-agents/claude/skills/azure-boards-organiser/config.json
+claude/skills/azure-boards-organiser/config.json
 
 # Claude Code session working-state (handoff notes + deferred plans; local-only, not for the public remote)
 .claude/handoff.md

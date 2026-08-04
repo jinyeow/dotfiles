@@ -1,19 +1,24 @@
 # Skill ownership
 
-Ownership is explicit by source directory. Skills are portable by default; Claude-only
-skills are reserved for instructions that directly require Claude Code hooks, MCP tools,
-Claude-specific state, or Claude's built-in orchestration/tool surface.
+Ownership is explicit by source directory. Skills are portable by default; runtime-native
+skills are reserved for instructions that directly require one runtime's hooks, tools, state,
+or orchestration surface. PR #63 changes only source layout, not skill classification.
 
-## Shared (`ai-agents/shared/skills/`)
+## Portable (`ai-agents/skills/`)
 
-The shared directory is the default home for runtime-neutral Agent Skills. It is projected
-to Claude Code, Codex CLI, and Pi where each runtime is configured to load it. This includes
-`council`, `council-code`, `council-business`, `council-plan`, and `council-doc`: a shared,
-cost-bounded prompt orchestration contract whose runtime adapters use native isolation.
+This is the canonical home for runtime-neutral Agent Skills. It is projected to Claude Code,
+Codex CLI, and Pi where each runtime is configured to load it. This includes `council`,
+`council-code`, `council-business`, `council-plan`, and `council-doc`.
 
-## Claude-only (`ai-agents/claude/skills/`)
+## Portable support (`ai-agents/_shared/`)
 
-- `_shared` — support resources for Claude-oriented review skills
+Source-only portable review support resources live here. The directory has no `SKILL.md` and
+is never projected as a standalone skill. Its files are independently owned from Claude's
+projected support copy and the two directories may diverge.
+
+## Claude-native (`claude/skills/`)
+
+- `_shared` — Claude review-support resources, projected with Claude skills
 - `azure-boards-organiser` — Claude-specific Azure DevOps MCP tool names and config path
 - `codex-review` — Claude → Codex MCP invocation
 - `deep-review` — Claude-oriented review orchestration and shared review resources
@@ -27,18 +32,23 @@ cost-bounded prompt orchestration contract whose runtime adapters use native iso
 - `storm-research` — Claude built-in `Agent`/`Write` workflow
 - `walkthrough` — Claude-specific learner and project-brain state
 
-Claude-only skills are still installed into Claude's `~/.claude/skills/`, but are not
-projected to Codex or Pi as shared skills.
+Claude-native skills are projected only to Claude Code, while portable skills are projected
+there alongside them. If names collide, the Claude-native variant wins.
 
-## Codex-specific (`ai-agents/codex/skills/`)
+## Codex-native (`codex/skills/`)
 
-Codex-native variants live here only when they must differ from a shared skill and win
-name collisions during projection. The directory is currently empty.
+Codex-native variants live here only when they must differ from a portable skill and win name
+collisions during projection. The directory is currently empty. Linux Codex projection is a
+follow-up requirement, not part of this layout migration.
+
+## Pi-native (`pi/skills/`)
+
+Pi-native variants remain in the Pi runtime module and win name collisions over portable
+skills during both Windows and Linux projection.
 
 ## Agents
 
-Agent definitions under `ai-agents/shared/agents/` currently use Claude Code's flat
-agent-file adapter and are projected only to `~/.claude/agents/`; the directory name means
-shared repository ownership, not cross-runtime projection. Codex has no separate top-level
-agent directory, and Pi packages/extensions provide isolation. Portable role contracts,
-such as council critic/chair roles, belong inside their shared skill rather than here.
+Agent definitions under `ai-agents/shared/agents/` remain unchanged in this PR. They use
+Claude Code's flat agent-file adapter and are projected only to `~/.claude/agents/`; the
+directory name means shared repository ownership, not cross-runtime projection. Codex has no
+separate top-level agent directory, and Pi packages/extensions provide isolation.
