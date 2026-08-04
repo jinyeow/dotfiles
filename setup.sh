@@ -516,6 +516,10 @@ install_claude() {
         fi
     done
     local skills_sources=("$DOTFILES/ai-agents/shared/skills" "$DOTFILES/ai-agents/claude/skills")
+    # Released installers projected skills from the former top-level claude/skills source;
+    # links into it are repository-managed legacy entries — replaced below when the skill
+    # still exists, removed when it left the projection. Foreign links stay preserved.
+    local legacy_skills_source="$DOTFILES/claude/skills"
     if [[ $DRY_RUN -eq 0 ]]; then
         mkdir -p "$skills_dst"
     fi
@@ -525,13 +529,36 @@ install_claude() {
             skill_dirs+=("$d")
         done < <(find "$skills_src" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
     done
+    local legacy_root entry entry_name resolved_entry skill_dir
+    legacy_root="$(canonical_path "$legacy_skills_source")" || legacy_root=''
+    if [[ -n "$legacy_root" && -d "$skills_dst" ]]; then
+        declare -A desired_names=()
+        for skill_dir in "${skill_dirs[@]}"; do
+            desired_names["$(basename "$skill_dir")"]=1
+        done
+        while IFS= read -r -d '' entry; do
+            entry_name="$(basename "$entry")"
+            [[ -n "${desired_names[$entry_name]:-}" ]] && continue
+            resolved_entry="$(resolve_link_target "$entry")" || continue
+            case "$resolved_entry" in
+                "$legacy_root/"*)
+                    if [[ $DRY_RUN -eq 1 ]]; then
+                        info "[DRY RUN] remove obsolete Claude skill link: $entry"
+                    else
+                        rm "$entry"
+                        warn "Removed obsolete Claude skill link: $entry"
+                    fi
+                    ;;
+            esac
+        done < <(find "$skills_dst" -mindepth 1 -maxdepth 1 -type l -print0 2>/dev/null)
+    fi
     if [ "${#skill_dirs[@]}" -gt 0 ]; then
         for skill_dir in "${skill_dirs[@]}"; do
             link="$skills_dst/$(basename "$skill_dir")"
             if [[ -e "$link" && ! -L "$link" ]]; then
                 warn "Preserved unmanaged Claude skill: $link"
                 continue
-            elif [[ -L "$link" ]] && ! is_managed_skill_link "$link" "${skills_sources[@]}"; then
+            elif [[ -L "$link" ]] && ! is_managed_skill_link "$link" "${skills_sources[@]}" "$legacy_skills_source"; then
                 warn "Preserved unmanaged Claude skill link: $link"
                 continue
             fi

@@ -854,6 +854,10 @@ function Install-Claude {
         (Join-Path $Dotfiles 'ai-agents\shared\skills'),
         (Join-Path $Dotfiles 'ai-agents\claude\skills')
     )
+    # Released installers projected skills from the former top-level claude\skills source;
+    # links into it are repository-managed legacy entries — replaced below when the skill
+    # still exists, removed when it left the projection. Foreign links stay preserved.
+    $managedSkillRoots = $skillsSources + (Join-Path $Dotfiles 'claude\skills')
     if (-not (Test-Path $skillsDst)) {
         if (-not $DryRun) { New-Item -ItemType Directory -Path $skillsDst -Force | Out-Null }
         Write-Info "Created:    $skillsDst"
@@ -861,6 +865,7 @@ function Install-Claude {
     $skills = @($skillsSources | ForEach-Object {
         Get-ChildItem -Path $_ -Directory -ErrorAction SilentlyContinue
     })
+    Remove-ObsoleteLegacySkillJunctions -SkillsDst $skillsDst -DesiredNames @($skills | ForEach-Object Name) -Runtime 'Claude'
     if ($skills) {
         foreach ($skill in $skills) {
             $link = Join-Path $skillsDst $skill.Name
@@ -873,7 +878,7 @@ function Install-Claude {
                 $existingTarget = if ($existing.LinkTarget) { $existing.LinkTarget } else { @($existing.Target)[0] }
                 $fullExistingTarget = Resolve-LinkTargetPath -Link $link -Target $existingTarget
                 $isManaged = $false
-                foreach ($root in $skillsSources) {
+                foreach ($root in $managedSkillRoots) {
                     $fullRoot = Resolve-LinkTargetPath -Link $link -Target $root
                     if ($fullExistingTarget -and $fullRoot -and
                         $fullExistingTarget.StartsWith($fullRoot.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
@@ -1017,7 +1022,10 @@ function Install-Pi {
     }
 }
 
-function Remove-ObsoleteCodexSkillJunctions ([string]$SkillsDst, [string[]]$DesiredNames) {
+# Removes per-skill junctions a released installer created from the former top-level
+# claude\skills source when the skill no longer exists in the current projection. Links
+# pointing anywhere outside that legacy root are user-owned and stay untouched.
+function Remove-ObsoleteLegacySkillJunctions ([string]$SkillsDst, [string[]]$DesiredNames, [string]$Runtime) {
     if ($Backup -or -not (Test-Path $SkillsDst -PathType Container)) { return }
 
     $formerSource = [IO.Path]::GetFullPath((Join-Path $Dotfiles 'claude\skills')).TrimEnd('\') + '\'
@@ -1029,10 +1037,10 @@ function Remove-ObsoleteCodexSkillJunctions ([string]$SkillsDst, [string[]]$Desi
         if ($fullTarget -and $fullTarget.StartsWith($formerSource, [StringComparison]::OrdinalIgnoreCase) -and
             $item.Name -notin $DesiredNames) {
             if ($DryRun) {
-                Write-Info "[DRY RUN] remove obsolete Codex skill junction: $($item.FullName)"
+                Write-Info "[DRY RUN] remove obsolete $Runtime skill junction: $($item.FullName)"
             } else {
                 Remove-Item -LiteralPath $item.FullName -Force
-                Write-Warn "Removed obsolete Codex skill junction: $($item.FullName)"
+                Write-Warn "Removed obsolete $Runtime skill junction: $($item.FullName)"
             }
         }
     }
@@ -1119,7 +1127,7 @@ function Install-Codex {
     $codexSkillNames = @($codexSkills.ForEach('Name'))
     $sharedSkills = @($sharedSkills | Where-Object { $_.Name -notin $codexSkillNames })
     $desiredSkillNames = @($sharedSkills | ForEach-Object Name) + @($codexSkills | ForEach-Object Name)
-    Remove-ObsoleteCodexSkillJunctions -SkillsDst $codexSkillsDst -DesiredNames $desiredSkillNames
+    Remove-ObsoleteLegacySkillJunctions -SkillsDst $codexSkillsDst -DesiredNames $desiredSkillNames -Runtime 'Codex'
     if ($sharedSkills -or $codexSkills) {
         foreach ($skill in $sharedSkills + $codexSkills) {
             New-Junction -Link (Join-Path $codexSkillsDst $skill.Name) -Target $skill.FullName

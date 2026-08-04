@@ -94,6 +94,76 @@ Describe 'setup.ps1 Claude skill projection safety' {
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
+
+    It 'migrates a legacy claude\skills link to the current projection' -Skip:(-not $IsWindows) {
+        # Released installs junctioned ~/.claude/skills/<name> at the old top-level claude\skills
+        # source. Those links are repository-managed and must be replaced by the current
+        # ai-agents projection, not preserved as dangling unmanaged links.
+        $repoRoot = Split-Path $script:SetupScript -Parent
+        $oldSource = Join-Path $repoRoot 'claude\skills'
+        $oldSkill = Join-Path $oldSource 'council'
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-legacy-link-' + [guid]::NewGuid())
+        $link = Join-Path $tmpHome '.claude\skills\council'
+        New-Item -ItemType Directory -Path $oldSkill, (Split-Path $link -Parent) -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            New-Item -ItemType Junction -Path $link -Target $oldSkill -ErrorAction Stop | Out-Null
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Not -Match 'Preserved unmanaged Claude skill link: .*\.claude\\skills\\council'
+            $output | Should -Match '\[DRY RUN\] junction .*\.claude\\skills\\council -> .*ai-agents\\shared\\skills\\council'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path $oldSource -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'leaves a junction already pointing at the current projection untouched' -Skip:(-not $IsWindows) {
+        # Idempotency: a re-run over an already-migrated home must recognize the junction as
+        # current — not re-create it, and not misclassify it as an unmanaged entry.
+        $repoRoot = Split-Path $script:SetupScript -Parent
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-idempotent-' + [guid]::NewGuid())
+        $link = Join-Path $tmpHome '.claude\skills\council'
+        New-Item -ItemType Directory -Path (Split-Path $link -Parent) -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            New-Item -ItemType Junction -Path $link -Target (Join-Path $repoRoot 'ai-agents\shared\skills\council') -ErrorAction Stop | Out-Null
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Match 'Junction:\s+.*\.claude\\skills\\council \(already current\)'
+            $output | Should -Not -Match '\[DRY RUN\] junction .*\.claude\\skills\\council ->'
+            $output | Should -Not -Match 'Preserved unmanaged Claude skill'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'removes an obsolete legacy claude\skills junction but preserves unmanaged entries' -Skip:(-not $IsWindows) {
+        $repoRoot = Split-Path $script:SetupScript -Parent
+        $oldSource = Join-Path $repoRoot 'claude\skills'
+        $oldSkill = Join-Path $oldSource 'legacy-only'
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-legacy-obsolete-' + [guid]::NewGuid())
+        $claudeSkills = Join-Path $tmpHome '.claude\skills'
+        New-Item -ItemType Directory -Path $oldSkill, $claudeSkills, (Join-Path $claudeSkills 'unmanaged') -Force | Out-Null
+        $oldLink = Join-Path $claudeSkills 'legacy-only'
+        $origUP = $env:USERPROFILE
+        try {
+            New-Item -ItemType Junction -Path $oldLink -Target $oldSkill -ErrorAction Stop | Out-Null
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Match 'remove obsolete Claude skill junction.*legacy-only'
+            $output | Should -Not -Match 'remove obsolete Claude skill junction.*unmanaged'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path $oldSource -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
 }
 
 Describe 'setup.ps1 psmux module' {

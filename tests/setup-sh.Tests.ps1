@@ -205,6 +205,53 @@ Describe 'setup.sh relative-link migration safety' {
         }
     }
 
+    It 'migrates a legacy claude/skills link to the current projection' -Skip:(-not $script:CanCreateSymlink) {
+        # Released installs symlinked ~/.claude/skills/<name> at the old top-level claude/skills
+        # source. Those links are repository-managed and must be replaced by the current
+        # ai-agents projection, not preserved as dangling unmanaged links.
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-claude-legacy-' + [guid]::NewGuid())
+        $link = Join-Path $tmpHome '.claude/skills/council'
+        New-Item -ItemType Directory -Path (Split-Path $link -Parent) -Force | Out-Null
+        $origHome = $env:HOME
+        try {
+            & bash -c 'ln -s "$1" "$2"' _ `
+                ((Join-Path $script:Repo 'claude/skills/council') -replace '\\', '/') ($link -replace '\\', '/')
+            $LASTEXITCODE | Should -Be 0
+            $env:HOME = $tmpHome
+            $out = & bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $out | Should -Not -Match 'Preserved unmanaged Claude skill link: .*\.claude/skills/council'
+            $out | Should -Match '\[DRY RUN\] symlink .*\.claude/skills/council -> .*ai-agents/shared/skills/council'
+        } finally {
+            $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'removes an obsolete legacy claude/skills link but preserves unmanaged entries' -Skip:(-not $script:CanCreateSymlink) {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-claude-legacy-obsolete-' + [guid]::NewGuid())
+        $skillsDir = Join-Path $tmpHome '.claude/skills'
+        $foreign = Join-Path $tmpHome 'foreign-skill'
+        New-Item -ItemType Directory -Path $skillsDir, $foreign -Force | Out-Null
+        $origHome = $env:HOME
+        try {
+            & bash -c 'ln -s "$1" "$2"' _ `
+                ((Join-Path $script:Repo 'claude/skills/legacy-only') -replace '\\', '/') ((Join-Path $skillsDir 'legacy-only') -replace '\\', '/')
+            $LASTEXITCODE | Should -Be 0
+            & bash -c 'ln -s "$1" "$2"' _ `
+                ($foreign -replace '\\', '/') ((Join-Path $skillsDir 'unmanaged') -replace '\\', '/')
+            $LASTEXITCODE | Should -Be 0
+            $env:HOME = $tmpHome
+            $out = & bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $out | Should -Match 'remove obsolete Claude skill link.*legacy-only'
+            $out | Should -Not -Match 'remove obsolete Claude skill link.*unmanaged'
+        } finally {
+            $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     It 'resolves an existing relative council link instead of planning a replacement' -Skip:(-not $script:CanCreateSymlink) {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-council-relative-' + [guid]::NewGuid())
         $link = Join-Path $tmpHome '.claude/skills/council'
