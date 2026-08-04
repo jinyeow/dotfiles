@@ -52,6 +52,14 @@ per skill), so the installer projects skills into `~/.codex/skills/` from two so
 
 Claude-only skills under `ai-agents/claude/skills/` are never projected to Codex.
 
+The shared `council` skill and its four aliases are available after setup. They are prompt
+orchestration contracts, not installed custom agents: the host must use a Codex version
+whose native delegation can isolate at least two workers, or report
+`unsupported-capability`. Quick mode is the default; debate and external Codex are opt-in.
+On a Codex host, `--codex` is rejected unless a separately configured adapter supplies a
+genuinely independent provider/context. Exact invocation syntax and the minimum supported
+Codex CLI version remain to be smoke-tested; this README does not guess a prefix.
+
 Codex's own built-in skills live alongside at `~/.codex/skills/.system/` and are never
 touched by this installer. Claude-specific frontmatter fields (e.g. `disable-model-invocation`)
 are ignored by Codex.

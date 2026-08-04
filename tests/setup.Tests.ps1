@@ -18,7 +18,26 @@ Describe 'setup.ps1 argument validation' {
 }
 
 Describe 'setup.ps1 pi module' {
-    It 'recognises Pi and stops before projection when Pi is unavailable in dry-run' {
+    It 'returns before repository projection when the skills destination is unmanaged' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-pi-unmanaged-' + [guid]::NewGuid())
+        $skills = Join-Path $tmpHome '.pi\agent\skills'
+        New-Item -ItemType Directory -Path (Split-Path $skills -Parent) -Force | Out-Null
+        Set-Content -LiteralPath $skills -Value 'user-owned'
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module pi -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Match 'Pi skills destination is unmanaged and is not a directory'
+            $output | Should -Not -Match '\.pi\\agent\\(settings\.json|extensions|prompts|themes)'
+            Get-Content -LiteralPath $skills | Should -Be 'user-owned'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'previews Pi shared and native per-skill projection without mutating the home' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-pi-dryrun-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
@@ -28,8 +47,48 @@ Describe 'setup.ps1 pi module' {
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match '=== Pi ==='
             $output | Should -Match '(would install Pi via npm|pi is already installed)'
-            $output | Should -Not -Match 'pi\\agent\\settings.json'
+            $output | Should -Match 'pi\\agent\\settings.json'
+            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc')) {
+                $output | Should -Match "pi\\agent\\skills\\$name -> .*ai-agents\\shared\\skills\\$name"
+            }
+            Test-Path (Join-Path $tmpHome '.pi') | Should -BeFalse
             $output | Should -Not -Match "Unknown module 'pi'"
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+Describe 'setup.ps1 Claude skill projection safety' {
+    It 'preserves an unmanaged same-name skill directory' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-unmanaged-dir-' + [guid]::NewGuid())
+        $link = Join-Path $tmpHome '.claude\skills\council'
+        New-Item -ItemType Directory -Path $link -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
+            $output | Should -Match 'Preserved unmanaged Claude skill: .*\.claude\\skills\\council'
+            $output | Should -Not -Match '\[DRY RUN\] junction .*\.claude\\skills\\council ->'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'preserves an external same-name skill link' -Skip:(-not $IsWindows) {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-external-link-' + [guid]::NewGuid())
+        $foreign = Join-Path $tmpHome 'foreign-council'
+        $link = Join-Path $tmpHome '.claude\skills\council'
+        New-Item -ItemType Directory -Path $foreign, (Split-Path $link -Parent) -Force | Out-Null
+        New-Item -ItemType Junction -Path $link -Target $foreign | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
+            $output | Should -Match 'Preserved unmanaged Claude skill link: .*\.claude\\skills\\council'
+            $output | Should -Not -Match '\[DRY RUN\] junction .*\.claude\\skills\\council ->'
         } finally {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
@@ -161,6 +220,9 @@ Describe 'setup.ps1 codex module shared skills' {
             # Patterns anchor on the "link -> target" separator so `tdd` can't false-match a
             # future `tdd-something` skill (`\b` treats the hyphen as a word boundary).
             $output | Should -Match '\[DRY RUN\] junction .*\.codex\\skills\\tdd ->'
+            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc')) {
+                $output | Should -Match "\\.codex\\skills\\$name -> .*ai-agents\\shared\\skills\\$name"
+            }
             # Claude-only skills are not sourced into Codex.
             $output | Should -Not -Match '\.codex\\skills\\codex-review ->'
             $output | Should -Not -Match '\.codex\\skills\\handoff ->'
@@ -392,6 +454,24 @@ Describe 'setup.ps1 -Module all' {
         $winget      | Should -BeGreaterThan -1
         $langservers | Should -BeGreaterThan $winget
         $herdr       | Should -BeGreaterThan $langservers
+    }
+}
+
+Describe 'relative reparse-target comparison' {
+    BeforeAll {
+        # Load helper functions without running a real module.
+        . $script:SetupScript -Module bogus *>$null
+    }
+
+    It 'canonicalizes a relative target against the link parent' {
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('link-target-resolution-' + [guid]::NewGuid())
+        $link = Join-Path $root 'nested/live-link'
+        $expected = [IO.Path]::GetFullPath((Join-Path $root 'target'))
+        Resolve-LinkTargetPath -Link $link -Target '../target' | Should -Be $expected
+    }
+
+    It 'fails closed when a target cannot be resolved' {
+        Resolve-LinkTargetPath -Link ([IO.Path]::GetTempPath()) -Target ([string][char]0) | Should -BeNullOrEmpty
     }
 }
 

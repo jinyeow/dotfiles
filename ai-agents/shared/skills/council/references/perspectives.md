@@ -1,9 +1,9 @@
 # Council perspectives — registry + charters
 
-The seat registry for the `council` skill. Each seat is dispatched as a parallel
-`council-critic` subagent with its charter below pasted verbatim into the dispatch prompt.
-Charters are data: to add a perspective, add a charter here and a row to the registry —
-no agent file changes.
+The portable seat registry for the `council` skill. Each seat runs in a fresh isolated
+worker with its charter below pasted verbatim beside the canonical critic contract.
+Charters are data: add or change a perspective here without creating runtime-specific
+agent definitions.
 
 Every charter has four parts: **Mandate** (what this seat exists to protect), **Attack
 questions** (the interrogation it runs), **Evidence** (what grounds a finding from this
@@ -13,16 +13,17 @@ seat), and **Not yours** (the lane boundary — where to point out-of-lane obser
 
 ## Registry
 
-| Panel | Seats (default) |
+| Panel | Registry order (defaults are selected by the main contract) |
 |---|---|
-| `code` (technical designs, ADRs, API/approach docs — **not** branch diffs) | security, architecture, performance-scale, operability, compliance-privacy, simplicity, testability |
-| `business` (ideas, product/business cases) | customer-market, unit-economics, competition-moat, go-to-market, legal-regulatory, execution, premortem |
-| `plan` (project plans, roadmaps, migrations) | premortem, critical-path, estimation-realism, scope-sequencing, measurability, stakeholder-impact |
-| `doc` (presentations, proposals, important docs) | audience-fit, narrative-logic, evidence-audit, clarity-structure, hostile-reader |
-| cross-cutting (seatable on any panel via `+seat`) | contrarian, completeness |
+| `code` (technical designs, ADRs, API/approach docs — **not** branch diffs) | architecture, security, operability, simplicity, performance-scale, compliance-privacy, testability |
+| `business` (ideas, product/business cases) | customer-market, unit-economics, premortem, execution, competition-moat, go-to-market, legal-regulatory |
+| `plan` (project plans, roadmaps, migrations) | critical-path, scope-sequencing, premortem, estimation-realism, measurability, stakeholder-impact |
+| `doc` (presentations, proposals, important docs) | audience-fit, narrative-logic, hostile-reader, evidence-audit, clarity-structure |
+| cross-cutting (explicitly seatable on any panel) | contrarian, completeness |
 
-Panel size discipline: default panels are ≤7 seats. Perspective **diversity** beats panel
-size (identical-lens members add noise, not signal) — prefer swapping a seat over adding one.
+Quick selects the first three panel seats and debate the first four unless explicit seat
+arguments change them. The hard charter-seat range is 2–5. Perspective diversity beats
+panel size; replace rather than grow beyond the requested count.
 
 ---
 

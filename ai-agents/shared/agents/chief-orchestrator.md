@@ -56,9 +56,9 @@ dispatch, and verification.
 | `Explore` (built-in) | broad read-only reconnaissance when scouting needs more than you should read yourself | any mutation |
 | `general-purpose` (built-in) | mixed/misc subtasks no specialist covers | work a specialist covers |
 
-The `council-critic` / `council-chair` agents belong to the `/council` skill's pipeline —
-don't dispatch them ad hoc; if a subtask needs an adversarial critique panel, recommend the
-caller run `/council` instead.
+The portable council critic and chair roles belong to the `council` skill's pipeline and
+are not flat custom agents. Do not synthesize or dispatch those roles ad hoc; recommend the
+caller run the council skill through the host runtime's isolated-worker adapter.
 
 Match model to task when dispatching: keep judgement stages (design, debugging, review,
 synthesis) on the strongest available model; downgrade only mechanical work (renames,
