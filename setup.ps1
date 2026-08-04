@@ -179,6 +179,52 @@ function New-Junction ([string]$Link, [string]$Target) {
 # File symlink — the live file points at the repo file, so edits flow both ways and there is
 # no drift. Needs Developer Mode (or elevation) on Windows for non-elevated creation; junctions
 # can't link files, only directories. With -Backup there is nothing to capture (linked), so skip.
+# Replace only an installer-managed whole-directory link. Real directories, files, external links,
+# and malformed links are user-owned/unknown and must remain untouched. Historical roots are
+# compared lexically so dangling links remain safely repairable after a source move.
+function New-ManagedDirectoryJunction ([string]$Link, [string]$Target, [string[]]$HistoricalTargets) {
+    if ($Backup) { Write-Info "Skipped (linked, no drift):  $Link"; return }
+    if (-not (Test-Path $Target -PathType Container)) {
+        Write-Fail "Source directory not found: $Target"; return
+    }
+
+    $existing = Get-Item -LiteralPath $Link -Force -ErrorAction SilentlyContinue
+    if ($existing) {
+        if (-not ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+            Write-Warn "Preserved unmanaged directory: $Link"
+            return
+        }
+        $curTarget = if ($existing.LinkTarget) { $existing.LinkTarget } else { @($existing.Target)[0] }
+        $resolvedCurrent = Resolve-LinkTargetPath -Link $Link -Target $curTarget
+        $managed = $false
+        foreach ($candidate in @($Target) + @($HistoricalTargets)) {
+            $resolvedCandidate = Resolve-LinkTargetPath -Link $Link -Target $candidate
+            if ($resolvedCurrent -and $resolvedCandidate -and
+                [string]::Equals($resolvedCurrent.TrimEnd('\', '/'), $resolvedCandidate.TrimEnd('\', '/'), [StringComparison]::OrdinalIgnoreCase)) {
+                $managed = $true
+                if ([string]::Equals($resolvedCurrent.TrimEnd('\', '/'), $resolvedCandidate.TrimEnd('\', '/'), [StringComparison]::OrdinalIgnoreCase) -and
+                    [string]::Equals($resolvedCandidate.TrimEnd('\', '/'), (Resolve-LinkTargetPath -Link $Link -Target $Target).TrimEnd('\', '/'), [StringComparison]::OrdinalIgnoreCase)) {
+                    Write-Ok "Junction:   $Link (already current)"
+                    return
+                }
+                break
+            }
+        }
+        if (-not $managed) {
+            Write-Warn "Preserved unmanaged directory link: $Link"
+            return
+        }
+    }
+
+    if ($DryRun) { Write-Info "[DRY RUN] junction $Link -> $Target"; return }
+    if ($existing) { Remove-Item -LiteralPath $Link -Force }
+    $dir = Split-Path $Link
+    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+    New-Item -ItemType Junction -Path $Link -Target $Target | Out-Null
+    Write-Ok "Junction:   $Link"
+    Write-Ok "         -> $Target"
+}
+
 function New-FileSymlink ([string]$Link, [string]$Target) {
     if ($Backup) { Write-Info "Skipped (linked, no drift):  $Link"; return }
     if (-not (Test-Path $Target -PathType Leaf)) {
@@ -946,11 +992,12 @@ function Install-Claude {
     # per-subdir). Agent definitions are flat .md files in one dir nothing else writes to, so a
     # whole-dir junction preserves the no-drift philosophy and lets agents created via /agents
     # land straight in the repo. Bodies are self-contained — they can't @import AGENTS.md.
-    $agentsSrc = Join-Path $Dotfiles 'ai-agents\shared\agents'
+    $agentsSrc = Join-Path $Dotfiles 'ai-agents\agents'
+    $historicalAgentsSrc = Join-Path $Dotfiles 'ai-agents\shared\agents'
     if (Test-Path $agentsSrc) {
-        New-Junction -Link (Join-Path $claudeDir 'agents') -Target $agentsSrc
+        New-ManagedDirectoryJunction -Link (Join-Path $claudeDir 'agents') -Target $agentsSrc -HistoricalTargets @($historicalAgentsSrc)
     } else {
-        Write-Info 'No agents to install (ai-agents/shared/agents/ is missing).'
+        Write-Info 'No agents to install (ai-agents/agents/ is missing).'
     }
 
     # Output styles — whole-dir junction like agents: flat .md files in a dir nothing else

@@ -215,6 +215,69 @@ Describe 'setup.ps1 Claude skill projection safety' {
     }
 }
 
+Describe 'setup.ps1 Claude agent directory migration' {
+    It 'uses the canonical source and documents historical-link migration' {
+        $source = Get-Content -LiteralPath $script:SetupScript -Raw
+        $source | Should -Match 'ai-agents\\agents'
+        $source | Should -Match 'ai-agents\\shared\\agents'
+        $source | Should -Match 'New-ManagedDirectoryJunction'
+    }
+
+    It 'preserves a user-owned agents directory' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-agents-owned-' + [guid]::NewGuid())
+        $agents = Join-Path $tmpHome '.claude\\agents'
+        New-Item -ItemType Directory -Path $agents -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $agents 'custom.md') -Value 'user-owned'
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Match 'Preserved unmanaged directory: .*\\.claude[\\/]agents'
+            Get-Content -LiteralPath (Join-Path $agents 'custom.md') | Should -Be 'user-owned'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'preserves an external agents link' -Skip:(-not $IsWindows) {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-agents-external-' + [guid]::NewGuid())
+        $foreign = Join-Path $tmpHome 'foreign-agents'
+        $link = Join-Path $tmpHome '.claude\\agents'
+        New-Item -ItemType Directory -Path $foreign, (Split-Path $link -Parent) -Force | Out-Null
+        New-Item -ItemType Junction -Path $link -Target $foreign | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
+            $output | Should -Match 'Preserved unmanaged directory link: .*\\.claude[\\/]agents'
+            $output | Should -Not -Match '\[DRY RUN\] junction .*\\.claude[\\/]agents ->'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'previews migration of a dangling historical agents link' -Skip:(-not $IsWindows) {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-agents-historical-' + [guid]::NewGuid())
+        $link = Join-Path $tmpHome '.claude\\agents'
+        $historical = Join-Path (Split-Path $script:SetupScript -Parent) 'ai-agents\\shared\\agents'
+        New-Item -ItemType Directory -Path (Split-Path $link -Parent) -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            New-Item -ItemType SymbolicLink -Path $link -Target $historical -ErrorAction Stop | Out-Null
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
+            $output | Should -Match '\[DRY RUN\] junction .*\\.claude[\\/]agents -> .*ai-agents[\\/]agents'
+            $output | Should -Not -Match 'Preserved unmanaged directory link'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 Describe 'setup.ps1 psmux module' {
     It 'runs the psmux module in -DryRun without error and prints its section header' {
         # Isolated on a throwaway USERPROFILE, like the -Backup test below. Without this, a
