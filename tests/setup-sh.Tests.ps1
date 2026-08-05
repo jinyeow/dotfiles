@@ -86,9 +86,27 @@ Describe 'setup.sh --dry-run' {
             $out = & bash $script:SetupSh -m pi --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc')) {
-                $out | Should -Match "\.pi/agent/skills/$name -> .*ai-agents/shared/skills/$name"
+                $out | Should -Match "\.pi/agent/skills/$name -> .*ai-agents/skills/$name"
             }
             (Test-Path (Join-Path $tmpHome '.pi')) | Should -BeFalse
+        } finally {
+            $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'projects portable and Claude-native skills plus Claude support in dry-run' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-claude-layout-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origHome = $env:HOME
+        try {
+            $env:HOME = $tmpHome
+            $out = & bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $out | Should -Match '\.claude/skills/council -> .*ai-agents/skills/council'
+            $out | Should -Match '\.claude/skills/codex-review -> .*claude/skills/codex-review'
+            $out | Should -Match '\.claude/skills/_shared -> .*claude/skills/_shared'
+            $out | Should -Not -Match '\.claude/skills/_shared -> .*ai-agents/_shared'
         } finally {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
@@ -215,13 +233,13 @@ Describe 'setup.sh relative-link migration safety' {
         $origHome = $env:HOME
         try {
             & bash -c 'ln -s "$1" "$2"' _ `
-                ((Join-Path $script:Repo 'claude/skills/council') -replace '\\', '/') ($link -replace '\\', '/')
+                ((Join-Path $script:Repo 'ai-agents/claude/skills/council') -replace '\\', '/') ($link -replace '\\', '/')
             $LASTEXITCODE | Should -Be 0
             $env:HOME = $tmpHome
             $out = & bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $out | Should -Not -Match 'Preserved unmanaged Claude skill link: .*\.claude/skills/council'
-            $out | Should -Match '\[DRY RUN\] symlink .*\.claude/skills/council -> .*ai-agents/shared/skills/council'
+            $out | Should -Match '\[DRY RUN\] symlink .*\.claude/skills/council -> .*ai-agents/skills/council'
         } finally {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
@@ -236,7 +254,7 @@ Describe 'setup.sh relative-link migration safety' {
         $origHome = $env:HOME
         try {
             & bash -c 'ln -s "$1" "$2"' _ `
-                ((Join-Path $script:Repo 'claude/skills/legacy-only') -replace '\\', '/') ((Join-Path $skillsDir 'legacy-only') -replace '\\', '/')
+                ((Join-Path $script:Repo 'ai-agents/claude/skills/legacy-only') -replace '\\', '/') ((Join-Path $skillsDir 'legacy-only') -replace '\\', '/')
             $LASTEXITCODE | Should -Be 0
             & bash -c 'ln -s "$1" "$2"' _ `
                 ($foreign -replace '\\', '/') ((Join-Path $skillsDir 'unmanaged') -replace '\\', '/')
@@ -259,7 +277,7 @@ Describe 'setup.sh relative-link migration safety' {
         $origHome = $env:HOME
         try {
             & bash -c 'ln -s "$(realpath --relative-to="$(dirname "$2")" "$1")" "$2"' _ `
-                ((Join-Path $script:Repo 'ai-agents/shared/skills/council') -replace '\\', '/') ($link -replace '\\', '/')
+                ((Join-Path $script:Repo 'ai-agents/skills/council') -replace '\\', '/') ($link -replace '\\', '/')
             $LASTEXITCODE | Should -Be 0
             $env:HOME = $tmpHome
             $out = & bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String

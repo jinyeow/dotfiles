@@ -10,7 +10,7 @@ never copied by setup.
 Extensions, prompt templates, and themes are projected as their existing whole-directory
 resources. Skills are projected as individual children into `~/.pi/agent/skills/` from:
 
-1. `ai-agents/shared/skills/`;
+1. `ai-agents/skills/`;
 2. `pi/skills/`, with Pi-native names winning collisions.
 
 Setup converts the former repository-managed whole `skills` link only when its resolved
