@@ -10,8 +10,13 @@ If an Azure DevOps MCP server is connected this session, use its tools for all r
 
 ```powershell
 $cfg = Get-Content "$HOME/.claude/skills/azure-boards-organiser/config.json" -Raw | ConvertFrom-Json
+$org = $cfg.org
+if (-not $org) { throw "config.json has no 'org'. Copy config.example.json and set it to your organisation URL." }
 ```
-If `config.json` is missing, stop and tell the user to copy `config.example.json`.
+`--organization $org` goes on every call and is **not** optional: this machine has no `az devops` default
+organisation, so omitting it fails with `--organization must be specified`. `--org` is not accepted by
+`az boards query` either — it fails the same misleading way. If `config.json` is missing, stop and tell the
+user to copy `config.example.json` to `config.json` and fill it in.
 
 ## Usage
 ```
@@ -63,7 +68,7 @@ Ask the user which Area Path to use, or default to `$cfg.areaPathDefault`.
 Ask: "Which sprint should this go into?" Options:
 - Current sprint:
   ```powershell
-  az boards iteration team list --team $cfg.team --project $cfg.project --timeframe current --query '[0].name' -o tsv
+  az boards iteration team list --team $cfg.team --project $cfg.project --organization $org --timeframe current --query '[0].name' -o tsv
   ```
 - Next sprint
 - Backlog (no sprint yet) — set the iteration to `$cfg.iterationRoot` (the root that grooming queries scope `UNDER`), **not** the bare project root, or the PBI won't appear in `/prioritize-backlog` or `/find-stale`.
@@ -120,12 +125,13 @@ $azArgs = @(
   '--type','Product Backlog Item'
   '--area', $cfg.areaPathDefault
   '--iteration', $cfg.iterationRoot   # backlog (groomable); or "$($cfg.iterationRoot)\<SprintName>" for a sprint
+  '--organization', $org
   '--fields'
 ) + $fields
 $created = az @azArgs -o json | ConvertFrom-Json
 ```
 
-Output the created work item ID and a direct URL (resolve org from `az devops configure --list`):
+Output the created work item ID and a direct URL (`$org` from config):
 ```
 ✅ Created PBI #<ID>: <Title>
    https://dev.azure.com/<ORG>/<project>/_workitems/edit/<ID>

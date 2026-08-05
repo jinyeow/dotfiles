@@ -8,8 +8,13 @@ Load this skill's `SKILL.md` (azure-boards-organiser) and resolve config (see SK
 
 ```powershell
 $cfg = Get-Content "$HOME/.claude/skills/azure-boards-organiser/config.json" -Raw | ConvertFrom-Json
+$org = $cfg.org
+if (-not $org) { throw "config.json has no 'org'. Copy config.example.json and set it to your organisation URL." }
 ```
-If `config.json` is missing, stop and tell the user to copy `config.example.json` to `config.json` and fill it in.
+`--organization $org` goes on every call and is **not** optional: this machine has no `az devops` default
+organisation, so omitting it fails with `--organization must be specified`. `--org` is not accepted by
+`az boards query` either — it fails the same misleading way. If `config.json` is missing, stop and tell the
+user to copy `config.example.json` to `config.json` and fill it in.
 
 If an Azure DevOps MCP server is connected this session, use its tools for all reads/writes; otherwise use the PowerShell `az` blocks below.
 
@@ -22,7 +27,7 @@ Usage: `/move-to-done <ID>`.
 ## Step 1: Read the item
 
 ```powershell
-$wi = az boards work-item show --id $Id -o json | ConvertFrom-Json
+$wi = az boards work-item show --id $Id --organization $org -o json | ConvertFrom-Json
 $type  = $wi.fields.'System.WorkItemType'
 $state = $wi.fields.'System.State'
 ```
@@ -42,8 +47,8 @@ FROM WorkItems
 WHERE [System.Parent] = $Id
   AND [System.WorkItemType] = 'Task'
   AND [System.State] <> 'Removed'
-"@   # double-quoted so $Id interpolates
-$openTasks = az boards query --wiql $childWiql --project $cfg.project -o json |
+"@ -replace '\s*\r?\n\s*', ' '   # double-quoted so $Id interpolates
+$openTasks = az boards query --wiql $childWiql --project $cfg.project --organization $org -o json |
   ConvertFrom-Json | Where-Object { $_.fields.'System.State' -ne 'Done' }
 ```
 
@@ -66,7 +71,7 @@ State the move: "Moving <type> <ID> — `<Title>` from `<state>` → Done." Wait
 
 ```powershell
 $fields = @('System.State=Done')
-$azArgs = @('boards','work-item','update','--id', $Id, '--fields') + $fields
+$azArgs = @('boards','work-item','update','--id', $Id, '--fields') + $fields + @('--organization', $org)
 az @azArgs -o json | ConvertFrom-Json | Out-Null
 ```
 

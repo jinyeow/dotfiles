@@ -10,8 +10,13 @@ If an Azure DevOps MCP server is connected this session, use its tools for all r
 
 ```powershell
 $cfg = Get-Content "$HOME/.claude/skills/azure-boards-organiser/config.json" -Raw | ConvertFrom-Json
+$org = $cfg.org
+if (-not $org) { throw "config.json has no 'org'. Copy config.example.json and set it to your organisation URL." }
 ```
-If `config.json` is missing, stop and tell the user to copy `config.example.json`.
+`--organization $org` goes on every call and is **not** optional: this machine has no `az devops` default
+organisation, so omitting it fails with `--organization must be specified`. `--org` is not accepted by
+`az boards query` either — it fails the same misleading way. If `config.json` is missing, stop and tell the
+user to copy `config.example.json` to `config.json` and fill it in.
 
 ## Usage
 ```
@@ -41,8 +46,8 @@ WHERE [System.WorkItemType] = 'Product Backlog Item'
   AND [System.State] = 'Approved'
   AND [System.IterationPath] UNDER '<iterationRoot>'
 ORDER BY [Microsoft.VSTS.Common.BacklogPriority]
-'@ -replace '<iterationRoot>', $cfg.iterationRoot
-$candidates = az boards query --wiql $wiql --project $cfg.project -o json | ConvertFrom-Json
+'@ -replace '<iterationRoot>', $cfg.iterationRoot -replace '\s*\r?\n\s*', ' '
+$candidates = az boards query --wiql $wiql --project $cfg.project --organization $org -o json | ConvertFrom-Json
 ```
 Apply the tag filter client-side if `--tag` was provided (or add `AND [System.Tags] CONTAINS '<tag>'` to the WIQL before the close).
 
@@ -86,7 +91,7 @@ Ask: **"Assign the INCLUDE list to sprint <SprintName>? (yes / no / adjust)"**
 If confirmed, update Iteration Path for each selected item. Pass `--fields` as an array of `Name=Value` strings — never comma-joined. Never set `BacklogPriority` manually (this command assigns the iteration only; it does not reorder the stack rank):
 ```powershell
 $fields = @("System.IterationPath=$($cfg.iterationRoot)\$SprintName")
-$azArgs = @('boards','work-item','update','--id', $Id, '--fields') + $fields
+$azArgs = @('boards','work-item','update','--id', $Id, '--fields') + $fields + @('--organization', $org)
 az @azArgs -o json | ConvertFrom-Json | Out-Null
 ```
 
