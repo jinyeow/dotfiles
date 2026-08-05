@@ -211,7 +211,11 @@ function New-ManagedDirectoryJunction ([string]$Link, [string]$Target, [string[]
             }
         }
         if (-not $managed) {
-            Write-Warn "Preserved unmanaged directory link: $Link"
+            if ($resolvedCurrent -and -not (Test-Path -LiteralPath $resolvedCurrent)) {
+                Write-Warn "Preserved unmanaged directory link (target missing): $Link"
+            } else {
+                Write-Warn "Preserved unmanaged directory link: $Link"
+            }
             return
         }
     }
@@ -978,7 +982,11 @@ function Install-Claude {
                     }
                 }
                 if (-not $isManaged) {
-                    Write-Warn "Preserved unmanaged Claude skill link: $link"
+                    if ($fullExistingTarget -and -not (Test-Path -LiteralPath $fullExistingTarget)) {
+                        Write-Warn "Preserved unmanaged Claude skill link (target missing): $link"
+                    } else {
+                        Write-Warn "Preserved unmanaged Claude skill link: $link"
+                    }
                     continue
                 }
             }
@@ -994,8 +1002,13 @@ function Install-Claude {
     # land straight in the repo. Bodies are self-contained — they can't @import AGENTS.md.
     $agentsSrc = Join-Path $Dotfiles 'ai-agents\agents'
     $historicalAgentsSrc = Join-Path $Dotfiles 'ai-agents\shared\agents'
+    # The original agents source, before the ai-agents-module migration introduced
+    # ai-agents\shared\agents (later itself migrated to ai-agents\agents). Kept as a historical
+    # root indefinitely so a machine whose ~/.claude/agents link predates that migration stays
+    # repairable instead of being permanently misclassified as an unrecognized/dangling link.
+    $originalAgentsSrc = Join-Path $Dotfiles 'claude\agents'
     if (Test-Path $agentsSrc) {
-        New-ManagedDirectoryJunction -Link (Join-Path $claudeDir 'agents') -Target $agentsSrc -HistoricalTargets @($historicalAgentsSrc)
+        New-ManagedDirectoryJunction -Link (Join-Path $claudeDir 'agents') -Target $agentsSrc -HistoricalTargets @($historicalAgentsSrc, $originalAgentsSrc)
     } else {
         Write-Info 'No agents to install (ai-agents/agents/ is missing).'
     }
@@ -1122,7 +1135,11 @@ function Install-Pi {
                 }
             }
             if (-not $isManaged) {
-                Write-Warn "Preserved unmanaged Pi skill link: $link"
+                if ($fullExistingTarget -and -not (Test-Path -LiteralPath $fullExistingTarget)) {
+                    Write-Warn "Preserved unmanaged Pi skill link (target missing): $link"
+                } else {
+                    Write-Warn "Preserved unmanaged Pi skill link: $link"
+                }
                 continue
             }
         }
@@ -1287,7 +1304,11 @@ function Install-Codex {
                     }
                 }
                 if (-not $isManaged) {
-                    Write-Warn "Preserved unmanaged Codex skill link: $link"
+                    if ($fullExistingTarget -and -not (Test-Path -LiteralPath $fullExistingTarget)) {
+                        Write-Warn "Preserved unmanaged Codex skill link (target missing): $link"
+                    } else {
+                        Write-Warn "Preserved unmanaged Codex skill link: $link"
+                    }
                     continue
                 }
             }
