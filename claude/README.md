@@ -47,7 +47,7 @@ not download or change the machine.
 | `ai-agents/skills/<name>/` | `~/.claude/skills/<name>/` | Portable custom skills (also projected to Codex and Pi) |
 | `claude/skills/<name>/` | `~/.claude/skills/<name>/` | Claude-native skills and projected Claude support content |
 | `ai-agents/_shared/` | — | Portable support content; source-only, not projected as a skill |
-| `ai-agents/shared/agents/<name>.md` | `~/.claude/agents/<name>.md` | User-scope subagents (whole dir junctioned/symlinked) |
+| `ai-agents/agents/<name>.md` | `~/.claude/agents/<name>.md` | User-scope subagents (whole dir junctioned/symlinked) |
 | `output-styles/<name>.md` | `~/.claude/output-styles/<name>.md` | Output styles (whole dir junctioned); active style pinned by `outputStyle` in `settings.json` |
 
 **Install method.** `settings.json`, `CLAUDE.md`, `AGENTS.md`,
@@ -232,14 +232,18 @@ table above.
 
 ## Agents
 
-`ai-agents/shared/agents/` holds user-scope [subagents](https://code.claude.com/docs/en/subagents) —
+`ai-agents/agents/` holds user-scope [subagents](https://code.claude.com/docs/en/subagents) —
 each is a single `.md` with YAML frontmatter (`name`, `description`, `tools`, `model`,
 `skills`, …) plus a system-prompt body:
 
 ```
-ai-agents/shared/agents/
+ai-agents/agents/
   pwsh-implementer.md   ← one agent = one self-contained file
 ```
+
+`ai-agents/agents/` is the canonical source. During migration, installers replace only an
+existing whole-directory link that points to the historical `ai-agents/shared/agents/` tree;
+external links, malformed/dangling unknown links, and real user-owned entries are preserved.
 
 Unlike skills (junctioned per-subdirectory), the **whole `agents/` dir is junctioned**
 (Windows) / **symlinked** (Linux) into `~/.claude/agents/`. Agent definitions are flat files

@@ -371,6 +371,64 @@ Describe 'setup.sh relative-link migration safety' {
     }
 }
 
+Describe 'setup.sh Claude agent directory migration' {
+    It 'preserves a user-owned agents directory' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-agents-owned-' + [guid]::NewGuid())
+        $agents = Join-Path $tmpHome '.claude/agents'
+        New-Item -ItemType Directory -Path $agents -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $agents 'custom.md') -Value 'user-owned'
+        $origHome = $env:HOME
+        try {
+            $env:HOME = $tmpHome
+            $out = & bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
+            $out | Should -Match 'Preserved unmanaged directory: .*\.claude/agents'
+            $out | Should -Not -Match '\[DRY RUN\] symlink .*\.claude/agents ->'
+            Get-Content -LiteralPath (Join-Path $agents 'custom.md') | Should -Be 'user-owned'
+        } finally {
+            $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'preserves an external agents link' -Skip:(-not $script:CanCreateSymlink) {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-agents-external-' + [guid]::NewGuid())
+        $foreign = Join-Path $tmpHome 'foreign-agents'
+        $link = Join-Path $tmpHome '.claude/agents'
+        New-Item -ItemType Directory -Path $foreign, (Split-Path $link -Parent) -Force | Out-Null
+        $origHome = $env:HOME
+        try {
+            & bash -c 'ln -s "$1" "$2"' _ ($foreign -replace '\\\\', '/') ($link -replace '\\\\', '/')
+            $LASTEXITCODE | Should -Be 0
+            $env:HOME = $tmpHome
+            $out = & bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
+            $out | Should -Match 'Preserved unmanaged directory link: .*\.claude/agents'
+            $out | Should -Not -Match '\[DRY RUN\] symlink .*\.claude/agents ->'
+        } finally {
+            $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'previews migration of a dangling historical agents link' -Skip:(-not $script:CanCreateSymlink) {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-agents-historical-' + [guid]::NewGuid())
+        $link = Join-Path $tmpHome '.claude/agents'
+        $historical = Join-Path $script:Repo 'ai-agents/shared/agents'
+        New-Item -ItemType Directory -Path (Split-Path $link -Parent) -Force | Out-Null
+        $origHome = $env:HOME
+        try {
+            & bash -c 'ln -s "$1" "$2"' _ ($historical -replace '\\\\', '/') ($link -replace '\\\\', '/')
+            $LASTEXITCODE | Should -Be 0
+            $env:HOME = $tmpHome
+            $out = & bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
+            $out | Should -Match '\[DRY RUN\] symlink .*\.claude/agents -> .*ai-agents/agents'
+            $out | Should -Not -Match 'Preserved unmanaged directory link'
+        } finally {
+            $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 Describe 'setup.sh module list' {
     It 'advertises lazygit and windowsterminal in the header comment and usage text' {
         # Regression: the dispatcher (case statement) supports lazygit/windowsterminal, but the

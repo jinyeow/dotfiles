@@ -108,4 +108,4 @@ Report back in this shape (under ~30 lines), not free-form prose:
 Maintenance: this file intentionally duplicates the downstream-prompting levers and
 orchestration rules from `claude/AGENTS.md` / `claude/CLAUDE.md` because subagents cannot
 import them. Update this file when those sections change, and update the roster table when
-agents are added or removed from `ai-agents/shared/agents/`.
+agents are added or removed from `ai-agents/agents/`.

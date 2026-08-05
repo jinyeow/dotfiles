@@ -48,7 +48,8 @@ skills during both Windows and Linux projection.
 
 ## Agents
 
-Agent definitions under `ai-agents/shared/agents/` remain unchanged in this PR. They use
+Agent definitions under `ai-agents/agents/` are canonical source-owned definitions. They use
 Claude Code's flat agent-file adapter and are projected only to `~/.claude/agents/`; the
-directory name means shared repository ownership, not cross-runtime projection. Codex has no
-separate top-level agent directory, and Pi packages/extensions provide isolation.
+directory is repository ownership, not cross-runtime projection. Installers recognize the
+historical `ai-agents/shared/agents/` target only to safely migrate existing managed links.
+Codex has no separate top-level agent directory, and Pi packages/extensions provide isolation.

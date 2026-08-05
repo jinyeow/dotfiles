@@ -151,6 +151,48 @@ make_symlink() {
     ok "         -> $target"
 }
 
+# Replace only an installer-managed whole-directory link. Real directories, files, external
+# links, and malformed links are preserved. Historical roots are compared lexically so dangling
+# links remain safely repairable after a source move.
+make_managed_directory_symlink() {
+    local target="$1" link="$2" historical resolved_target resolved_link candidate
+    shift 2
+    [[ -d "$target" ]] || { fail "Source directory not found: $target — skipping"; return; }
+    if [[ -e "$link" && ! -L "$link" ]]; then
+        warn "Preserved unmanaged directory: $link"
+        return
+    fi
+    if [[ -L "$link" ]]; then
+        resolved_link="$(resolve_link_target "$link")" || resolved_link=''
+        resolved_target="$(canonical_path "$target")" || resolved_target=''
+        if [[ -n "$resolved_link" && -n "$resolved_target" && "$resolved_link" == "$resolved_target" ]]; then
+            ok "Up to date: $link"
+            return
+        fi
+        local managed=0
+        for historical in "$@"; do
+            candidate="$(canonical_path "$historical")" || candidate=''
+            if [[ -n "$resolved_link" && -n "$candidate" && "$resolved_link" == "$candidate" ]]; then
+                managed=1
+                break
+            fi
+        done
+        if [[ $managed -eq 0 ]]; then
+            warn "Preserved unmanaged directory link: $link"
+            return
+        fi
+    fi
+    if [[ $DRY_RUN -eq 1 ]]; then
+        info "[DRY RUN] symlink $link -> $target"
+        return
+    fi
+    [[ -L "$link" ]] && rm -- "$link"
+    mkdir -p "$(dirname "$link")"
+    ln -s -- "$target" "$link"
+    ok "Symlink:    $link"
+    ok "         -> $target"
+}
+
 # ── Modules ───────────────────────────────────────────────────────────────────
 
 # Config-based hooks ([hook "work-policy"] in gitconfig-work) need Git >= 2.54.
@@ -596,10 +638,12 @@ install_claude() {
     # dir-junction; unlike skills, which link per-subdir). Agent definitions are flat .md files
     # in one dir nothing else writes to, so a whole-dir link preserves the no-drift philosophy
     # and lets agents created via /agents land in the repo. Bodies can't @import AGENTS.md.
-    if [ -d "$DOTFILES/ai-agents/shared/agents" ]; then
-        make_symlink "$DOTFILES/ai-agents/shared/agents" "$HOME/.claude/agents"
+    local agents_src="$DOTFILES/ai-agents/agents"
+    local historical_agents_src="$DOTFILES/ai-agents/shared/agents"
+    if [ -d "$agents_src" ]; then
+        make_managed_directory_symlink "$agents_src" "$HOME/.claude/agents" "$historical_agents_src"
     else
-        info 'No agents to install (ai-agents/shared/agents/ is missing).'
+        info 'No agents to install (ai-agents/agents/ is missing).'
     fi
 }
 

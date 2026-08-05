@@ -84,7 +84,7 @@ See `fzf/`, `ripgrep/`, `lazygit/`, `tig/`, and `nvim/` for tool-specific `READM
 
 ## Claude Code skills
 
-Portable skills live in `ai-agents/skills/`; Claude-native skills live in `claude/skills/`, Codex-native variants in `codex/skills/`, and Pi-native variants in `pi/skills/`. Claude projects portable plus Claude-native skills, Windows Codex projects portable plus Codex-native skills, and Pi projects portable plus Pi-native skills. Claude's `claude/skills/_shared/` support content is projected; portable `ai-agents/_shared/` support content is source-only. User-scope agent definitions remain under `ai-agents/shared/agents/` and are projected to Claude Code.
+Portable skills live in `ai-agents/skills/`; Claude-native skills live in `claude/skills/`, Codex-native variants in `codex/skills/`, and Pi-native variants in `pi/skills/`. Claude projects portable plus Claude-native skills, Windows Codex projects portable plus Codex-native skills, and Pi projects portable plus Pi-native skills. Claude's `claude/skills/_shared/` support content is projected; portable `ai-agents/_shared/` support content is source-only. User-scope agent definitions live under `ai-agents/agents/` and are projected to Claude Code. Installers safely migrate existing whole-directory links from the historical `ai-agents/shared/agents/` path without replacing user-owned entries.
 
 Not sure which one fits? Run `/router` — a manual index that maps these as flows and decision tables. Built-in Claude Code skills (`code-review`, `compact`, `deep-research`, `security-review`, `verify`) are provided by the harness and aren't listed here.
 

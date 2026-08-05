@@ -6,10 +6,11 @@ Describe 'agent skill source layout' {
         $claude = Join-Path $repo 'claude/skills'
         $codex = Join-Path $repo 'codex/skills'
         $pi = Join-Path $repo 'pi/skills'
+        $agents = Join-Path $repo 'ai-agents/agents'
     }
 
     It 'has the approved current source directories and no superseded trees' {
-        foreach ($path in @($portable, $portableSupport, $claude, $codex, $pi)) {
+        foreach ($path in @($portable, $portableSupport, $claude, $codex, $pi, $agents)) {
             Test-Path $path | Should -BeTrue
         }
         foreach ($path in @('ai-agents/shared/skills', 'ai-agents/claude/skills', 'ai-agents/codex/skills')) {
@@ -33,10 +34,10 @@ Describe 'agent skill source layout' {
             Should -Be (@($portableNames + $claudeNames + $codexNames + $piNames).Count)
     }
 
-    It 'stores custom agents in the unchanged shared agent source area' {
-        $agents = Join-Path $repo 'ai-agents/shared/agents'
+    It 'stores custom agents in the canonical agent source area' {
         Test-Path $agents | Should -BeTrue
         @(Get-ChildItem $agents -File -Filter '*.md').Count | Should -BeGreaterThan 0
+        Test-Path (Join-Path $repo 'ai-agents/shared/agents') | Should -BeFalse
         Test-Path (Join-Path $repo 'claude/agents') | Should -BeFalse
     }
 
@@ -87,7 +88,7 @@ Describe 'agent skill source layout' {
     }
 
     It 'does not retain obsolete flat council agents' {
-        Test-Path (Join-Path $repo 'ai-agents/shared/agents/council-critic.md') | Should -BeFalse
-        Test-Path (Join-Path $repo 'ai-agents/shared/agents/council-chair.md') | Should -BeFalse
+        Test-Path (Join-Path $repo 'ai-agents/agents/council-critic.md') | Should -BeFalse
+        Test-Path (Join-Path $repo 'ai-agents/agents/council-chair.md') | Should -BeFalse
     }
 }
