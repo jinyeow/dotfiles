@@ -8,7 +8,9 @@ or orchestration surface. PR #63 changes only source layout, not skill classific
 
 This is the canonical home for runtime-neutral Agent Skills. It is projected to Claude Code,
 Codex CLI, and Pi where each runtime is configured to load it. This includes `council`,
-`council-code`, `council-business`, `council-plan`, and `council-doc`.
+`council-code`, `council-business`, `council-plan`, `council-doc`, and `project-brain` (the
+`SessionStart` auto-injection hook is Claude-specific and stays a `claude/settings.json`
+entry; the skill's resolve-and-read procedure itself is tool-agnostic).
 
 ## Portable support (`ai-agents/_shared/`)
 
@@ -26,7 +28,6 @@ projected support copy and the two directories may diverge.
 - `fix-findings` — consumes Claude-oriented review artifacts
 - `git-guardrails-claude-code` — Claude Code hook/settings installation
 - `handoff` — Claude SessionStart handoff convention and `.claude` state
-- `project-brain` — Claude SessionStart hook integration and Claude global state
 - `review-fix-loop` — consumes Claude-oriented review artifacts
 - `router` — Claude built-in skills and slash-command routing
 - `storm-research` — Claude built-in `Agent`/`Write` workflow
