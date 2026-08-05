@@ -233,7 +233,7 @@ Describe 'setup.ps1 Claude agent directory migration' {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
-            $output | Should -Match 'Preserved unmanaged directory: .*\\.claude[\\/]agents'
+            $output | Should -Match 'Preserved unmanaged directory: .*[\\/]\.claude[\\/]agents'
             Get-Content -LiteralPath (Join-Path $agents 'custom.md') | Should -Be 'user-owned'
         } finally {
             $env:USERPROFILE = $origUP
