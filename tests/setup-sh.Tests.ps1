@@ -485,6 +485,30 @@ Describe 'setup.sh relative-link migration safety' {
         }
     }
 
+    It 'warns distinctly when a preserved unmanaged skill link target is missing (dangling)' -Skip:(-not $script:CanCreateSymlink) {
+        # Regression for issue #67 finding 1: a symlink whose target was never under a managed
+        # or historical skill root (an ad-hoc/dev-worktree path) is "unmanaged — preserve", which
+        # is indistinguishable from a legitimate user link even when the target no longer exists.
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-claude-dangling-' + [guid]::NewGuid())
+        $foreignParent = Join-Path $tmpHome 'foreign-dev-worktree'
+        $foreign = Join-Path $foreignParent 'council'
+        $link = Join-Path $tmpHome '.claude/skills/council'
+        New-Item -ItemType Directory -Path $foreign, (Split-Path $link -Parent) -Force | Out-Null
+        $origHome = $env:HOME
+        try {
+            & bash -c 'ln -s "$1" "$2"' _ ($foreign -replace '\\', '/') ($link -replace '\\', '/')
+            $LASTEXITCODE | Should -Be 0
+            Remove-Item -LiteralPath $foreignParent -Recurse -Force
+            $env:HOME = $tmpHome
+            $out = & bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
+            $out | Should -Match 'Preserved unmanaged Claude skill link \(target missing\): .*\.claude/skills/council'
+            $out | Should -Not -Match '\[DRY RUN\] symlink .*\.claude/skills/council ->'
+        } finally {
+            $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     It 'migrates a legacy claude/skills link to the current projection' -Skip:(-not $script:CanCreateSymlink) {
         # Released installs symlinked ~/.claude/skills/<name> at the old top-level claude/skills
         # source. Those links are repository-managed and must be replaced by the current
@@ -603,6 +627,36 @@ Describe 'setup.sh Claude agent directory migration' {
             $out = & bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
             $out | Should -Match '\[DRY RUN\] symlink .*\.claude/agents -> .*ai-agents/agents'
             $out | Should -Not -Match 'Preserved unmanaged directory link'
+        } finally {
+            $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'recognizes the original claude/agents source as a historical root' {
+        # Regression for issue #67: a live machine's ~/.claude/agents link can predate even
+        # ai-agents/shared/agents — the very first agents source was claude/agents, before the
+        # #54 ai-agents-module migration. That target no longer exists, so a link still pointing
+        # at it must be recognized as historical (repairable), not silently preserved forever.
+        $source = Get-Content -LiteralPath $script:SetupSh -Raw
+        $source | Should -Match 'DOTFILES/claude/agents'
+    }
+
+    It 'warns distinctly when a preserved unmanaged agents link target is missing (dangling)' -Skip:(-not $script:CanCreateSymlink) {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-agents-dangling-' + [guid]::NewGuid())
+        $foreignParent = Join-Path $tmpHome 'foreign-dev-worktree'
+        $foreign = Join-Path $foreignParent 'agents'
+        $link = Join-Path $tmpHome '.claude/agents'
+        New-Item -ItemType Directory -Path $foreign, (Split-Path $link -Parent) -Force | Out-Null
+        $origHome = $env:HOME
+        try {
+            & bash -c 'ln -s "$1" "$2"' _ ($foreign -replace '\\', '/') ($link -replace '\\', '/')
+            $LASTEXITCODE | Should -Be 0
+            Remove-Item -LiteralPath $foreignParent -Recurse -Force
+            $env:HOME = $tmpHome
+            $out = & bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
+            $out | Should -Match 'Preserved unmanaged directory link \(target missing\): .*\.claude/agents'
+            $out | Should -Not -Match '\[DRY RUN\] symlink .*\.claude/agents ->'
         } finally {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue

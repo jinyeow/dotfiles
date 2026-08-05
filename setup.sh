@@ -209,7 +209,11 @@ make_managed_directory_symlink() {
             fi
         done
         if [[ $managed -eq 0 ]]; then
-            warn "Preserved unmanaged directory link: $link"
+            if [[ ! -e "$link" ]]; then
+                warn "Preserved unmanaged directory link (target missing): $link"
+            else
+                warn "Preserved unmanaged directory link: $link"
+            fi
             return
         fi
     fi
@@ -526,7 +530,11 @@ install_pi() {
             return
         fi
         if [[ -L "$project_link" ]] && ! is_managed_skill_link "$project_link" "${managed_skill_roots[@]}"; then
-            warn "Preserved unmanaged Pi skill link: $project_link"
+            if [[ ! -e "$project_link" ]]; then
+                warn "Preserved unmanaged Pi skill link (target missing): $project_link"
+            else
+                warn "Preserved unmanaged Pi skill link: $project_link"
+            fi
             return
         fi
         make_symlink "$source" "$project_link"
@@ -652,7 +660,11 @@ install_claude() {
             return
         fi
         if [[ -L "$project_link" ]] && ! is_managed_skill_link "$project_link" "${managed_skill_roots[@]}"; then
-            warn "Preserved unmanaged Claude skill link: $project_link"
+            if [[ ! -e "$project_link" ]]; then
+                warn "Preserved unmanaged Claude skill link (target missing): $project_link"
+            else
+                warn "Preserved unmanaged Claude skill link: $project_link"
+            fi
             return
         fi
         make_symlink "$source" "$project_link"
@@ -671,8 +683,13 @@ install_claude() {
     # and lets agents created via /agents land in the repo. Bodies can't @import AGENTS.md.
     local agents_src="$DOTFILES/ai-agents/agents"
     local historical_agents_src="$DOTFILES/ai-agents/shared/agents"
+    # The original agents source, before the ai-agents-module migration introduced
+    # ai-agents/shared/agents (later itself migrated to ai-agents/agents). Kept as a historical
+    # root indefinitely so a machine whose ~/.claude/agents link predates that migration stays
+    # repairable instead of being permanently misclassified as an unrecognized/dangling link.
+    local original_agents_src="$DOTFILES/claude/agents"
     if [ -d "$agents_src" ]; then
-        make_managed_directory_symlink "$agents_src" "$HOME/.claude/agents" "$historical_agents_src"
+        make_managed_directory_symlink "$agents_src" "$HOME/.claude/agents" "$historical_agents_src" "$original_agents_src"
     else
         info 'No agents to install (ai-agents/agents/ is missing).'
     fi
@@ -786,7 +803,11 @@ install_codex() {
             return
         fi
         if [[ -L "$project_link" ]] && ! is_managed_skill_link "$project_link" "${managed_skill_roots[@]}"; then
-            warn "Preserved unmanaged Codex skill link: $project_link"
+            if [[ ! -e "$project_link" ]]; then
+                warn "Preserved unmanaged Codex skill link (target missing): $project_link"
+            else
+                warn "Preserved unmanaged Codex skill link: $project_link"
+            fi
             return
         fi
         make_symlink "$source" "$project_link"

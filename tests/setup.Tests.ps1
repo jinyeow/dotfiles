@@ -247,6 +247,31 @@ Describe 'setup.ps1 Claude skill projection safety' {
         }
     }
 
+    It 'warns distinctly when a preserved unmanaged skill link target is missing (dangling)' -Skip:(-not $IsWindows) {
+        # Regression for issue #67 finding 1: a junction whose target was never under a managed
+        # or historical skill root (an ad-hoc/dev-worktree path) is "unmanaged — preserve", which
+        # is indistinguishable from a legitimate user link even when the target no longer exists.
+        # Real-world case: ~/.claude/skills/{grill-me,to-issues,to-prd} pointed at a dev-worktree
+        # path deleted since commit afa79c4 and sat dangling, silently, for months.
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-dangling-link-' + [guid]::NewGuid())
+        $foreignParent = Join-Path $tmpHome 'foreign-dev-worktree'
+        $foreign = Join-Path $foreignParent 'council'
+        $link = Join-Path $tmpHome '.claude\skills\council'
+        New-Item -ItemType Directory -Path $foreign, (Split-Path $link -Parent) -Force | Out-Null
+        New-Item -ItemType Junction -Path $link -Target $foreign | Out-Null
+        Remove-Item -LiteralPath $foreignParent -Recurse -Force
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
+            $output | Should -Match 'Preserved unmanaged Claude skill link \(target missing\): .*\.claude\\skills\\council'
+            $output | Should -Not -Match '\[DRY RUN\] junction .*\.claude\\skills\\council ->'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     It 'migrates a legacy claude\skills link to the current projection' -Skip:(-not $IsWindows) {
         # Released installs junctioned ~/.claude/skills/<name> at the old top-level claude\skills
         # source. Those links are repository-managed and must be replaced by the current
@@ -374,6 +399,61 @@ Describe 'setup.ps1 Claude agent directory migration' {
             $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
             $output | Should -Match '\[DRY RUN\] junction .*\\.claude[\\/]agents -> .*ai-agents[\\/]agents'
             $output | Should -Not -Match 'Preserved unmanaged directory link'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'recognizes the original claude\agents source as a historical root' {
+        # Regression for issue #67: a live machine's ~/.claude/agents junction can predate even
+        # ai-agents/shared/agents — the very first agents source was claude\agents, before the
+        # #54 ai-agents-module migration. That target no longer exists, so a link still pointing
+        # at it must be recognized as historical (repairable), not silently preserved forever.
+        $source = Get-Content -LiteralPath $script:SetupScript -Raw
+        $source | Should -Match 'claude\\agents'
+    }
+
+    It 'migrates a dangling link to the original claude\agents source' -Skip:(-not $IsWindows) {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-agents-original-' + [guid]::NewGuid())
+        $link = Join-Path $tmpHome '.claude\\agents'
+        $repoRoot = Split-Path $script:SetupScript -Parent
+        $originalParent = Join-Path $repoRoot 'claude'
+        $original = Join-Path $originalParent 'agents'
+        New-Item -ItemType Directory -Path $original, (Split-Path $link -Parent) -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            New-Item -ItemType Junction -Path $link -Target $original -ErrorAction Stop | Out-Null
+            Remove-Item -LiteralPath $original -Recurse -Force
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
+            $output | Should -Match '\[DRY RUN\] junction .*\\.claude[\\/]agents -> .*ai-agents[\\/]agents'
+            $output | Should -Not -Match 'Preserved unmanaged directory link'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path $original -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'warns distinctly when a preserved unmanaged agents link target is missing (dangling)' -Skip:(-not $IsWindows) {
+        # Sibling regression to the skill-link dangling-preserve fix (issue #67 finding 1): an
+        # agents directory junction whose target was never a recognized historical root is
+        # "unmanaged — preserve", indistinguishable from a legitimate user link even when the
+        # target no longer exists.
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-agents-dangling-' + [guid]::NewGuid())
+        $foreignParent = Join-Path $tmpHome 'foreign-dev-worktree'
+        $foreign = Join-Path $foreignParent 'agents'
+        $link = Join-Path $tmpHome '.claude\\agents'
+        New-Item -ItemType Directory -Path $foreign, (Split-Path $link -Parent) -Force | Out-Null
+        New-Item -ItemType Junction -Path $link -Target $foreign | Out-Null
+        Remove-Item -LiteralPath $foreignParent -Recurse -Force
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
+            $output | Should -Match 'Preserved unmanaged directory link \(target missing\): .*\\.claude[\\/]agents'
+            $output | Should -Not -Match '\[DRY RUN\] junction .*\\.claude[\\/]agents ->'
         } finally {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
