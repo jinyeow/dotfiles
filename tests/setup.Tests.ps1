@@ -90,7 +90,7 @@ Describe 'setup.ps1 Codex MCP registration gating' {
         Remove-Item -Path $script:ShimDir -Recurse -Force -ErrorAction SilentlyContinue
     }
 
-    It 'skips registration when the claude CLI is present but the Claude settings file is missing' {
+    It 'skips registration when the claude CLI is present but the Claude settings file is missing' -Skip:(-not $IsWindows) {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-mcp-nosettings-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
@@ -109,7 +109,7 @@ Describe 'setup.ps1 Codex MCP registration gating' {
         }
     }
 
-    It 'previews registration only when both the claude CLI and the Claude settings file are present' {
+    It 'previews registration only when both the claude CLI and the Claude settings file are present' -Skip:(-not $IsWindows) {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-mcp-ok-' + [guid]::NewGuid())
         $claudeDir = Join-Path $tmpHome '.claude'
         New-Item -ItemType Directory -Path $claudeDir -Force | Out-Null
@@ -129,7 +129,7 @@ Describe 'setup.ps1 Codex MCP registration gating' {
         }
     }
 
-    It 'skips registration when the claude CLI is not on PATH' {
+    It 'skips registration when the claude CLI is not on PATH' -Skip:(-not $IsWindows) {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-mcp-noclaude-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
