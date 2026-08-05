@@ -10,8 +10,13 @@ If an Azure DevOps MCP server is connected this session, use its tools for all r
 
 ```powershell
 $cfg = Get-Content "$HOME/.claude/skills/azure-boards-organiser/config.json" -Raw | ConvertFrom-Json
+$org = $cfg.org
+if (-not $org) { throw "config.json has no 'org'. Copy config.example.json and set it to your organisation URL." }
 ```
-If `config.json` is missing, stop and tell the user to copy `config.example.json`.
+`--organization $org` goes on every call and is **not** optional: this machine has no `az devops` default
+organisation, so omitting it fails with `--organization must be specified`. `--org` is not accepted by
+`az boards query` either — it fails the same misleading way. If `config.json` is missing, stop and tell the
+user to copy `config.example.json` to `config.json` and fill it in.
 
 ## Usage
 ```
@@ -27,7 +32,7 @@ Optionally append flags:
 
 1. Fetch the full work item (parse JSON, never text):
    ```powershell
-   $wi = az boards work-item show --id $Id -o json | ConvertFrom-Json
+   $wi = az boards work-item show --id $Id --organization $org -o json | ConvertFrom-Json
    ```
    Extract and display the following fields (strip HTML tags from Description and Acceptance Criteria for readability):
    - ID, Title, State, Area Path, Iteration Path
@@ -142,7 +147,7 @@ $fields = @(
   'Microsoft.VSTS.Common.AcceptanceCriteria=<ul><li>Given X, when Y, then Z</li></ul>'
   "System.IterationPath=$($cfg.iterationRoot)\Sprint 42"
 )
-$azArgs = @('boards','work-item','update','--id', $Id, '--fields') + $fields
+$azArgs = @('boards','work-item','update','--id', $Id, '--fields') + $fields + @('--organization', $org)
 az @azArgs -o json | ConvertFrom-Json | Out-Null
 ```
 
@@ -185,8 +190,8 @@ FROM WorkItems
 WHERE [System.Parent] = $Id
   AND [System.WorkItemType] = 'Task'
   AND [System.State] <> 'Removed'
-"@   # double-quoted here-string so $Id interpolates; no other $ in the query
-$existingTitles = az boards query --wiql $childWiql --project $cfg.project -o json |
+"@ -replace '\s*\r?\n\s*', ' '   # double-quoted here-string so $Id interpolates; no other $ in the query
+$existingTitles = az boards query --wiql $childWiql --project $cfg.project --organization $org -o json |
   ConvertFrom-Json | ForEach-Object { $_.fields.'System.Title' }
 ```
 
@@ -212,11 +217,12 @@ $azArgs = @(
   '--type','Task'
   '--area', $wi.fields.'System.AreaPath'        # inherit the parent PBI's Area Path
   '--iteration', $wi.fields.'System.IterationPath'  # inherit the parent PBI's Iteration
+  '--organization', $org
   '--fields'
 ) + $fields
 $created = az @azArgs -o json | ConvertFrom-Json
 # Parent the Task to the PBI via a relation — System.Parent is read-only; set it with relation add, not --fields:
-az boards work-item relation add --id $created.id --relation-type parent --target-id $Id -o json | ConvertFrom-Json | Out-Null
+az boards work-item relation add --id $created.id --relation-type parent --target-id $Id --organization $org -o json | ConvertFrom-Json | Out-Null
 ```
 
 Output a summary table of created Task IDs on completion.

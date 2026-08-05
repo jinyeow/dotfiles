@@ -10,14 +10,19 @@ If an Azure DevOps MCP server is connected this session, use its tools for all r
 
 ```powershell
 $cfg = Get-Content "$HOME/.claude/skills/azure-boards-organiser/config.json" -Raw | ConvertFrom-Json
+$org = $cfg.org
+if (-not $org) { throw "config.json has no 'org'. Copy config.example.json and set it to your organisation URL." }
 ```
-If `config.json` is missing, stop and tell the user to copy `config.example.json`.
+`--organization $org` goes on every call and is **not** optional: this machine has no `az devops` default
+organisation, so omitting it fails with `--organization must be specified`. `--org` is not accepted by
+`az boards query` either — it fails the same misleading way. If `config.json` is missing, stop and tell the
+user to copy `config.example.json` to `config.json` and fill it in.
 
 Accepts an optional sprint name argument: `/sprint-summary <SprintName>`. Resolve it once and reuse it in the queries below:
 ```powershell
 # $SprintName: the /sprint-summary argument if one was given; otherwise the current sprint:
 if (-not $SprintName) {
-  $SprintName = az boards iteration team list --team $cfg.team --project $cfg.project --timeframe current --query '[0].name' -o tsv
+  $SprintName = az boards iteration team list --team $cfg.team --project $cfg.project --organization $org --timeframe current --query '[0].name' -o tsv
 }
 ```
 
@@ -32,8 +37,8 @@ FROM WorkItems
 WHERE [System.WorkItemType] IN ('Product Backlog Item', 'Bug')
   AND [System.IterationPath] = '<iterationRoot>\<SprintName>'
   AND [System.State] <> 'Removed'
-'@ -replace '<iterationRoot>', $cfg.iterationRoot -replace '<SprintName>', $SprintName
-$items = az boards query --wiql $wiql --project $cfg.project -o json | ConvertFrom-Json
+'@ -replace '<iterationRoot>', $cfg.iterationRoot -replace '<SprintName>', $SprintName -replace '\s*\r?\n\s*', ' '
+$items = az boards query --wiql $wiql --project $cfg.project --organization $org -o json | ConvertFrom-Json
 ```
 
 Also fetch all Tasks in the sprint for time tracking totals:
@@ -46,8 +51,8 @@ FROM WorkItems
 WHERE [System.WorkItemType] = 'Task'
   AND [System.IterationPath] = '<iterationRoot>\<SprintName>'
   AND [System.State] <> 'Removed'
-'@ -replace '<iterationRoot>', $cfg.iterationRoot -replace '<SprintName>', $SprintName
-$tasks = az boards query --wiql $taskWiql --project $cfg.project -o json | ConvertFrom-Json
+'@ -replace '<iterationRoot>', $cfg.iterationRoot -replace '<SprintName>', $SprintName -replace '\s*\r?\n\s*', ' '
+$tasks = az boards query --wiql $taskWiql --project $cfg.project --organization $org -o json | ConvertFrom-Json
 ```
 
 ## Step 2: Compute metrics

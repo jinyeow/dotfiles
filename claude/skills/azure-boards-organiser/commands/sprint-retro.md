@@ -8,9 +8,13 @@ Load this skill's `SKILL.md` (azure-boards-organiser) and resolve config (see SK
 
 ```powershell
 $cfg = Get-Content "$HOME/.claude/skills/azure-boards-organiser/config.json" -Raw | ConvertFrom-Json
-# org comes from: az devops configure --list
+$org = $cfg.org
+if (-not $org) { throw "config.json has no 'org'. Copy config.example.json and set it to your organisation URL." }
 ```
-If `config.json` is missing, stop and tell the user to copy `config.example.json` first.
+`--organization $org` goes on every call and is **not** optional: this machine has no `az devops` default
+organisation, so omitting it fails with `--organization must be specified`. `--org` is not accepted by
+`az boards query` either — it fails the same misleading way. If `config.json` is missing, stop and tell the
+user to copy `config.example.json` to `config.json` and fill it in.
 
 If an Azure DevOps MCP server is connected this session, use its tools for all reads/writes; otherwise use the PowerShell `az` blocks below.
 
@@ -18,7 +22,7 @@ Accepts an optional sprint name: `/sprint-retro <SprintName>`. Resolve it (else 
 ```powershell
 # $SprintName: the /sprint-retro argument if given; otherwise the current sprint:
 if (-not $SprintName) {
-  $SprintName = az boards iteration team list --team $cfg.team --project $cfg.project --timeframe current --query '[0].name' -o tsv
+  $SprintName = az boards iteration team list --team $cfg.team --project $cfg.project --organization $org --timeframe current --query '[0].name' -o tsv
 }
 $target = "$($cfg.iterationRoot)\$SprintName"
 ```
@@ -35,8 +39,8 @@ FROM WorkItems
 WHERE [System.WorkItemType] IN ('Product Backlog Item', 'Bug')
   AND [System.IterationPath] = '<TARGET>'
   AND [System.State] <> 'Removed'
-'@ -replace '<TARGET>', $target
-$items = az boards query --wiql $wiql --project $cfg.project -o json | ConvertFrom-Json
+'@ -replace '<TARGET>', $target -replace '\s*\r?\n\s*', ' '
+$items = az boards query --wiql $wiql --project $cfg.project --organization $org -o json | ConvertFrom-Json
 ```
 
 ## Step 2: Compute committed vs done + carry-over
@@ -97,7 +101,7 @@ These are read/report by default — **any write is confirm-first**.
 - `"Move carry-over to next sprint"` → confirm, then update each carry-over item's `System.IterationPath` to the next sprint:
   ```powershell
   $fields = @("System.IterationPath=$($cfg.iterationRoot)\$nextSprint")
-  $azArgs = @('boards','work-item','update','--id', $Id, '--fields') + $fields
+  $azArgs = @('boards','work-item','update','--id', $Id, '--fields') + $fields + @('--organization', $org)
   az @azArgs -o json | ConvertFrom-Json | Out-Null
   ```
 - `"Send carry-over to backlog"` → confirm, then set `System.IterationPath` to `$cfg.iterationRoot` (the groomable backlog root that `/prioritize-backlog` and `/find-stale` scope `UNDER`), **not** the bare project root.

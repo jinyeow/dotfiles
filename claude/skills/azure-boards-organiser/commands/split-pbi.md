@@ -8,9 +8,14 @@ Load this skill's `SKILL.md` (azure-boards-organiser) and resolve config (see SK
 
 ```powershell
 $cfg = Get-Content "$HOME/.claude/skills/azure-boards-organiser/config.json" -Raw | ConvertFrom-Json
+$org = $cfg.org
+if (-not $org) { throw "config.json has no 'org'. Copy config.example.json and set it to your organisation URL." }
 ```
 
-Resolve org from `az devops configure --list`. If `config.json` is missing, **stop** and tell the user to copy `config.example.json` (see SKILL.md → Configuration) — do not guess team/iteration values.
+`--organization $org` goes on every call and is **not** optional: this machine has no `az devops` default
+organisation, so omitting it fails with `--organization must be specified`. `--org` is not accepted by
+`az boards query` either — it fails the same misleading way. If `config.json` is missing, **stop** and tell
+the user to copy `config.example.json` (see SKILL.md → Configuration) — do not guess team/iteration values.
 
 If an Azure DevOps MCP server is connected this session, use its tools for all reads/writes; otherwise use the PowerShell `az` blocks below.
 
@@ -26,7 +31,7 @@ Optionally append:
 ## Step 1: Fetch the PBI
 
 ```powershell
-$wi = az boards work-item show --id $Id -o json | ConvertFrom-Json
+$wi = az boards work-item show --id $Id --organization $org -o json | ConvertFrom-Json
 ```
 
 Strip HTML tags from Description and Acceptance Criteria for display. Show: ID, Title, State, Story Points, Tags, Area Path, Iteration Path, Parent, Description, Acceptance Criteria.
@@ -48,8 +53,8 @@ FROM WorkItems
 WHERE [System.Parent] = $Id
   AND [System.WorkItemType] = 'Product Backlog Item'
   AND [System.State] <> 'Removed'
-"@   # double-quoted so $Id interpolates; filter to child PBIs only
-$childPbis = az boards query --wiql $childWiql --project $cfg.project -o json | ConvertFrom-Json
+"@ -replace '\s*\r?\n\s*', ' '   # double-quoted so $Id interpolates; filter to child PBIs only
+$childPbis = az boards query --wiql $childWiql --project $cfg.project --organization $org -o json | ConvertFrom-Json
 ```
 
 If `$childPbis` is non-empty, **warn the user and ask** whether to add to them or stop — do not duplicate an existing split. The query filters to child *PBIs* only, so existing child Tasks (from `/prepare-pbi`) never falsely block a split.
@@ -122,11 +127,12 @@ $azArgs = @(
   '--type','Product Backlog Item'
   '--area', $wi.fields.'System.AreaPath'
   '--iteration', $wi.fields.'System.IterationPath'
+  '--organization', $org
   '--fields'
 ) + $fields
 $created = az @azArgs -o json | ConvertFrom-Json
 # Parent the child PBI to the original via a relation (System.Parent is read-only — use relation add, not --fields):
-az boards work-item relation add --id $created.id --relation-type parent --target-id $Id -o json | ConvertFrom-Json | Out-Null
+az boards work-item relation add --id $created.id --relation-type parent --target-id $Id --organization $org -o json | ConvertFrom-Json | Out-Null
 ```
 
 **Replacement mode** — create each new PBI as a sibling (same parent as the original, if any), then link it back to the original as Related:
@@ -146,13 +152,14 @@ $azArgs = @(
   '--type','Product Backlog Item'
   '--area', $wi.fields.'System.AreaPath'
   '--iteration', $wi.fields.'System.IterationPath'
+  '--organization', $org
   '--fields'
 ) + $fields
 $created = az @azArgs -o json | ConvertFrom-Json
 
 # Carry the original's parent, if any (System.Parent is read-only — relation add, not --fields):
 if ($wi.fields.'System.Parent') {
-  az boards work-item relation add --id $created.id --relation-type parent --target-id $wi.fields.'System.Parent' -o json | ConvertFrom-Json | Out-Null
+  az boards work-item relation add --id $created.id --relation-type parent --target-id $wi.fields.'System.Parent' --organization $org -o json | ConvertFrom-Json | Out-Null
 }
 
 # Link the new PBI back to the original as Related
@@ -161,6 +168,7 @@ $azArgs = @(
   '--id', $created.id
   '--relation-type','Related'
   '--target-id', $Id
+  '--organization', $org
 )
 az @azArgs -o json | ConvertFrom-Json | Out-Null
 ```
@@ -171,7 +179,7 @@ For **replacement mode**, after creating all siblings, **offer** to set the orig
 # $newIds: collect each sibling's $created.id from the creates above (e.g. $newIds += $created.id).
 # $encodedOriginalDesc: the original's existing Description ($wi.fields.'System.Description', already HTML) — append, don't re-escape.
 $fields = @('System.State=Removed', "System.Description=$encodedOriginalDesc<p>Superseded by #$($newIds -join ', #').</p>")
-$azArgs = @('boards','work-item','update','--id', $Id, '--fields') + $fields
+$azArgs = @('boards','work-item','update','--id', $Id, '--fields') + $fields + @('--organization', $org)
 az @azArgs -o json | ConvertFrom-Json | Out-Null
 ```
 

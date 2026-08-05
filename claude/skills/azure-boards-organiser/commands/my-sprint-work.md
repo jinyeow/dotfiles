@@ -10,8 +10,13 @@ If an Azure DevOps MCP server is connected this session, use its tools for all r
 
 ```powershell
 $cfg = Get-Content "$HOME/.claude/skills/azure-boards-organiser/config.json" -Raw | ConvertFrom-Json
+$org = $cfg.org
+if (-not $org) { throw "config.json has no 'org'. Copy config.example.json and set it to your organisation URL." }
 ```
-If `config.json` is missing, stop and tell the user to copy `config.example.json`.
+`--organization $org` goes on every call and is **not** optional: this machine has no `az devops` default
+organisation, so omitting it fails with `--organization must be specified`. `--org` is not accepted by
+`az boards query` either — it fails the same misleading way. If `config.json` is missing, stop and tell the
+user to copy `config.example.json` to `config.json` and fill it in.
 
 ## Step 1: Get current sprint name
 
@@ -20,6 +25,7 @@ $azArgs = @(
   'boards','iteration','team','list'
   '--team', $cfg.team
   '--project', $cfg.project
+  '--organization', $org
   '--timeframe','current'
   '--query','[0].{name:name,path:path}'
   '-o','json'
@@ -40,8 +46,8 @@ WHERE [System.WorkItemType] = 'Product Backlog Item'
   AND [System.IterationPath] = @CurrentIteration('[<PROJECT>]\<TEAM>')
   AND [System.State] NOT IN ('Done', 'Removed')
 ORDER BY [Microsoft.VSTS.Common.BacklogPriority]
-'@ -replace '<PROJECT>', $cfg.project -replace '<TEAM>', $cfg.team
-$pbis = az boards query --wiql $wiql --project $cfg.project -o json | ConvertFrom-Json
+'@ -replace '<PROJECT>', $cfg.project -replace '<TEAM>', $cfg.team -replace '\s*\r?\n\s*', ' '
+$pbis = az boards query --wiql $wiql --project $cfg.project --organization $org -o json | ConvertFrom-Json
 ```
 
 ## Step 3: Query the child Tasks of my PBIs
@@ -61,8 +67,8 @@ FROM WorkItems
 WHERE [System.WorkItemType] = 'Task'
   AND [System.Parent] IN ($pbiIds)
   AND [System.State] <> 'Removed'
-"@   # double-quoted so $pbiIds interpolates
-  $tasks = az boards query --wiql $taskWiql --project $cfg.project -o json | ConvertFrom-Json
+"@ -replace '\s*\r?\n\s*', ' '   # double-quoted so $pbiIds interpolates
+  $tasks = az boards query --wiql $taskWiql --project $cfg.project --organization $org -o json | ConvertFrom-Json
 }
 ```
 If `$pbis` is empty, skip this step.

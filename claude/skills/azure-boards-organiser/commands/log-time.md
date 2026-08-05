@@ -8,8 +8,13 @@ Load this skill's `SKILL.md` (azure-boards-organiser) and resolve config (see SK
 
 ```powershell
 $cfg = Get-Content "$HOME/.claude/skills/azure-boards-organiser/config.json" -Raw | ConvertFrom-Json
+$org = $cfg.org
+if (-not $org) { throw "config.json has no 'org'. Copy config.example.json and set it to your organisation URL." }
 ```
-If `config.json` is missing, stop and tell the user to copy `config.example.json` to `config.json` and fill it in.
+`--organization $org` goes on every call and is **not** optional: this machine has no `az devops` default
+organisation, so omitting it fails with `--organization must be specified`. `--org` is not accepted by
+`az boards query` either — it fails the same misleading way. If `config.json` is missing, stop and tell the
+user to copy `config.example.json` to `config.json` and fill it in.
 
 If an Azure DevOps MCP server is connected this session, use its tools for all reads/writes; otherwise use the PowerShell `az` blocks below.
 
@@ -26,7 +31,7 @@ Usage: `/log-time <TASK_ID> [hours] [--remaining <h>]`. If `hours` is omitted, a
 ## Step 2: Read the Task
 
 ```powershell
-$wi = az boards work-item show --id $TaskId -o json | ConvertFrom-Json
+$wi = az boards work-item show --id $TaskId --organization $org -o json | ConvertFrom-Json
 $type = $wi.fields.'System.WorkItemType'
 $currentCompleted = [double]($wi.fields.'Microsoft.VSTS.Scheduling.CompletedWork' ?? 0)
 $currentRemaining = [double]($wi.fields.'Microsoft.VSTS.Scheduling.RemainingWork' ?? 0)
@@ -58,7 +63,7 @@ $fields = @(
   "Microsoft.VSTS.Scheduling.CompletedWork=$newCompleted"
   "Microsoft.VSTS.Scheduling.RemainingWork=$newRemaining"
 )
-$azArgs = @('boards','work-item','update','--id', $TaskId, '--fields') + $fields
+$azArgs = @('boards','work-item','update','--id', $TaskId, '--fields') + $fields + @('--organization', $org)
 az @azArgs -o json | ConvertFrom-Json | Out-Null
 ```
 
