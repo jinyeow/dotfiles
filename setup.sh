@@ -508,7 +508,7 @@ ensure_claude_cli() {
     if ! find_claude_cli; then
         fail 'Claude setup stopped before configuration or projection because the CLI is unavailable.'
         info 'Install it manually with: curl -fsSL https://claude.ai/install.sh | bash'
-        info 'Then verify `claude` is on PATH and re-run: ./setup.sh -m claude'
+        info 'Then verify claude is on PATH and re-run: ./setup.sh -m claude'
         return 1
     fi
     ok 'Claude Code CLI installed.'
