@@ -5,8 +5,8 @@ modules, and ownership is expressed by the directory rather than inferred from s
 
 - `skills/` — portable (agent-agnostic) skills projected to supported runtimes.
 - `_shared/` — portable review-support source content; source-only, not a standalone skill.
-- `shared/agents/` — the source of truth for current user-scope agent definitions (unchanged
-  in this layout migration); these are projected to Claude Code.
+- `agents/` — the source of truth for current user-scope agent definitions, projected to
+  Claude Code.
 
 Claude-native skills and projected support content live in `../claude/skills/`; Codex-native
 variants belong in `../codex/skills/`; Pi-native variants remain in `../pi/skills/`.
