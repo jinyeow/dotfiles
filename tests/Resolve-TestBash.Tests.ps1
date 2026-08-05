@@ -31,41 +31,38 @@ Describe 'Resolve-TestBash' {
     }
 
     Context 'Windows, git.exe found under cmd\' {
-        It 'derives Git for Windows bash from the git.exe install root' {
+        # -Skip:(-not $IsWindows), matching this repo's established convention (see the
+        # many Windows-only Contexts in tests/setup.Tests.ps1): forcing $IsWindows can't
+        # make Join-Path/Split-Path treat a 'C:\...' literal as a Windows path on a real
+        # Linux host — Join-Path throws DriveNotFoundException there instead, since drive
+        # letters are PowerShell provider drives, not just a string prefix.
+        It 'derives Git for Windows bash from the git.exe install root' -Skip:(-not $IsWindows) {
             Set-Variable -Name IsWindows -Value $true -Force -Scope Global
-            # Built via Join-Path, not a hardcoded backslash literal, so the expected
-            # value matches production's own Join-Path output regardless of the host
-            # OS's path-separator convention — this test forces $IsWindows to exercise
-            # the Windows branch on any CI host, and a literal would silently mismatch
-            # on a non-Windows runner where Join-Path joins with '/'.
-            [string]$expected = Join-Path 'C:\Program Files\Git' 'bin' 'bash.exe'
             Mock Get-Command {
                 [pscustomobject]@{ Source = 'C:\Program Files\Git\cmd\git.exe' }
             } -ParameterFilter { $Name -eq 'git' -and $CommandType -eq 'Application' }
             Mock Test-Path {
-                $LiteralPath -eq $expected
+                $LiteralPath -eq 'C:\Program Files\Git\bin\bash.exe'
             }
 
-            Resolve-TestBash | Should -Be $expected
+            Resolve-TestBash | Should -Be 'C:\Program Files\Git\bin\bash.exe'
         }
     }
 
     Context 'Windows, git.exe is a shim with no bin\bash.exe' {
-        It 'falls through to the $env:ProgramFiles default install root' {
+        It 'falls through to the $env:ProgramFiles default install root' -Skip:(-not $IsWindows) {
             Set-Variable -Name IsWindows -Value $true -Force -Scope Global
             $origProgramFiles = $env:ProgramFiles
             try {
                 $env:ProgramFiles = 'C:\Program Files'
-                # See the comment in the previous Context — Join-Path-derived, not literal.
-                [string]$expected = Join-Path $env:ProgramFiles 'Git' 'bin' 'bash.exe'
                 Mock Get-Command {
                     [pscustomobject]@{ Source = 'C:\Users\me\scoop\shims\git.exe' }
                 } -ParameterFilter { $Name -eq 'git' -and $CommandType -eq 'Application' }
                 Mock Test-Path {
-                    $LiteralPath -eq $expected
+                    $LiteralPath -eq 'C:\Program Files\Git\bin\bash.exe'
                 }
 
-                Resolve-TestBash | Should -Be $expected
+                Resolve-TestBash | Should -Be 'C:\Program Files\Git\bin\bash.exe'
             } finally {
                 $env:ProgramFiles = $origProgramFiles
             }
@@ -147,20 +144,19 @@ Describe 'Resolve-TestBash' {
     }
 
     Context 'Windows, git resolves to an alias/function (no real .Source)' {
-        It 'falls through instead of returning a broken bash path' {
+        It 'falls through instead of returning a broken bash path' -Skip:(-not $IsWindows) {
             Set-Variable -Name IsWindows -Value $true -Force -Scope Global
             $origProgramFiles = $env:ProgramFiles
             try {
                 $env:ProgramFiles = 'C:\Program Files'
-                [string]$expected = Join-Path $env:ProgramFiles 'Git' 'bin' 'bash.exe'
                 Mock Get-Command {
                     [pscustomobject]@{ Source = '' }
                 } -ParameterFilter { $Name -eq 'git' -and $CommandType -eq 'Application' }
                 Mock Test-Path {
-                    $LiteralPath -eq $expected
+                    $LiteralPath -eq 'C:\Program Files\Git\bin\bash.exe'
                 }
 
-                Resolve-TestBash | Should -Be $expected
+                Resolve-TestBash | Should -Be 'C:\Program Files\Git\bin\bash.exe'
             } finally {
                 $env:ProgramFiles = $origProgramFiles
             }
@@ -190,20 +186,19 @@ Describe 'Resolve-TestBash' {
             }
         }
 
-        It 'still tries the ProgramFiles fallback when git-derivation throws' {
+        It 'still tries the ProgramFiles fallback when git-derivation throws' -Skip:(-not $IsWindows) {
             Set-Variable -Name IsWindows -Value $true -Force -Scope Global
             $origProgramFiles = $env:ProgramFiles
             try {
                 $env:ProgramFiles = 'C:\Program Files'
-                [string]$expected = Join-Path $env:ProgramFiles 'Git' 'bin' 'bash.exe'
                 Mock Get-Command {
                     throw 'simulated git-derivation failure'
                 } -ParameterFilter { $Name -eq 'git' -and $CommandType -eq 'Application' }
                 Mock Test-Path {
-                    $LiteralPath -eq $expected
+                    $LiteralPath -eq 'C:\Program Files\Git\bin\bash.exe'
                 }
 
-                Resolve-TestBash | Should -Be $expected
+                Resolve-TestBash | Should -Be 'C:\Program Files\Git\bin\bash.exe'
             } finally {
                 $env:ProgramFiles = $origProgramFiles
             }
