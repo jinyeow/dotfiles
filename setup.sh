@@ -63,7 +63,9 @@ for m in "${MODULES[@]}"; do
         # 'langservers' has no ordering constraint here: setup.ps1 must run it after 'winget'
         # (which provides Volta), but there is no winget module on this side — Volta is installed
         # by hand, and the module warns and skips if it is absent.
-        MODULES=(neovim vim powershell git bash tig tmux zellij curl claude langservers lazygit windowsterminal pi herdr)
+        # 'codex' runs right after 'claude', mirroring setup.ps1's ordering — install_herdr's
+        # integration loop already wires codex when both herdr and the codex CLI are present.
+        MODULES=(neovim vim powershell git bash tig tmux zellij curl claude codex langservers lazygit windowsterminal pi herdr)
         break
     fi
 done
@@ -116,6 +118,35 @@ is_managed_skill_link() {
         esac
     done
     return 1
+}
+
+# Copy a file into place, backing up any existing destination first. Used where the file must
+# stay a plain copy rather than a symlink so the live copy can drift and be captured explicitly
+# on re-run — same choice setup.ps1 makes for this module via Copy-Dotfile.
+copy_dotfile() {
+    local source="$1"  # path in the dotfiles repo
+    local dest="$2"    # destination on the system
+
+    if [[ ! -e "$source" ]]; then
+        fail "Source file not found: $source — skipping"
+        return
+    fi
+
+    if [[ -f "$dest" ]] && cmp -s "$source" "$dest"; then
+        ok "Up to date: $dest"
+        return
+    fi
+
+    if [[ $DRY_RUN -eq 1 ]]; then
+        info "[DRY RUN] copy $source -> $dest"
+        return
+    fi
+
+    backup "$dest"
+    mkdir -p "$(dirname "$dest")"
+    cp "$source" "$dest"
+    ok "Copied:     $dest"
+    warn "(Re-run setup.sh after editing this file in the repo)"
 }
 
 # Create a symlink, backing up any existing target first.
@@ -647,6 +678,130 @@ install_claude() {
     fi
 }
 
+find_codex_cli() {
+    command -v codex >/dev/null 2>&1
+}
+
+ensure_codex_cli() {
+    if find_codex_cli; then
+        ok 'codex is already installed.'
+        return 0
+    fi
+    if [[ $DRY_RUN -eq 1 ]]; then
+        info '[DRY RUN] would install Codex CLI via https://chatgpt.com/codex/install.sh'
+        return 0
+    fi
+    if ! command -v curl >/dev/null 2>&1; then
+        fail 'Codex CLI bootstrap requires curl — install curl, then re-run: ./setup.sh -m codex'
+        return 1
+    fi
+
+    info 'Codex CLI not found — installing via the native installer...'
+    if ! curl -fsSL https://chatgpt.com/codex/install.sh | bash; then
+        fail 'Codex CLI install failed.'
+    fi
+    if ! find_codex_cli; then
+        fail 'Codex setup stopped before configuration or projection because the CLI is unavailable.'
+        info 'Install it manually with: curl -fsSL https://chatgpt.com/codex/install.sh | bash'
+        info 'Then verify codex is on PATH and re-run: ./setup.sh -m codex'
+        return 1
+    fi
+    ok 'Codex CLI installed.'
+    return 0
+}
+
+install_codex() {
+    echo ''
+    info '=== Codex CLI ==='
+
+    # 1. Install the Codex CLI via OpenAI's native installer (self-updating), mirroring the
+    #    claude module's native-install decision. A failed install stops before any Codex
+    #    configuration or resource projection.
+    if ! ensure_codex_cli; then
+        return
+    fi
+
+    # 2. Global config: standalone posture (workspace-write + on-request). Copied (not
+    #    symlinked) so the live copy can drift — same choice the claude module makes on Windows.
+    copy_dotfile "$DOTFILES/codex/config.toml" "$HOME/.codex/config.toml"
+
+    # 3. Shared conventions — same source the claude module installs to ~/.claude/AGENTS.md.
+    copy_dotfile "$DOTFILES/claude/AGENTS.md" "$HOME/.codex/AGENTS.md"
+
+    # 4. Register Codex as a user-scope, read-only MCP reviewer in Claude Code. The -c overrides
+    #    pin the reviewer read-only and non-interactive regardless of ~/.codex/config.toml.
+    #    Idempotent: remove any prior entry first. Requires the Claude settings file too — its
+    #    absence means the claude module has not run yet.
+    local claude_settings="$HOME/.claude/settings.json"
+    if ! command -v claude >/dev/null 2>&1; then
+        warn 'claude CLI not found — skipping MCP registration. Install the claude module first.'
+    elif [[ ! -f "$claude_settings" ]]; then
+        warn 'Claude settings file not found — skipping MCP registration. Install the claude module first.'
+    elif [[ $DRY_RUN -eq 1 ]]; then
+        info '[DRY RUN] would register user-scope MCP: claude mcp add --scope user codex -- codex mcp-server -c sandbox_mode=read-only -c approval_policy=never -c model_reasoning_effort=medium'
+    else
+        claude mcp remove --scope user codex >/dev/null 2>&1 || true
+        if claude mcp add --scope user --transport stdio codex -- codex mcp-server -c sandbox_mode=read-only -c approval_policy=never -c model_reasoning_effort=medium; then
+            ok 'Registered read-only Codex MCP reviewer (user scope).'
+        else
+            fail 'claude mcp add failed.'
+        fi
+    fi
+
+    # 5. Skills — project portable and Codex-native variants into ~/.codex/skills/.
+    #    Codex's own built-in skills under ~/.codex/skills/.system/ remain untouched.
+    local skills_dst="$HOME/.codex/skills"
+    local portable_skills_root="$DOTFILES/ai-agents/skills"
+    local native_skills_root="$DOTFILES/codex/skills"
+    local historical_shared_root="$DOTFILES/ai-agents/shared/skills"
+    local historical_claude_root="$DOTFILES/ai-agents/claude/skills"
+    local historical_codex_root="$DOTFILES/ai-agents/codex/skills"
+    local managed_skill_roots=("$portable_skills_root" "$native_skills_root" "$historical_shared_root" "$historical_claude_root" "$historical_codex_root" "$DOTFILES/claude/skills")
+    if [[ $DRY_RUN -eq 0 ]]; then mkdir -p "$skills_dst"; fi
+    local skill_dir skill_name link entry entry_name
+    declare -A native_names=() desired_names=()
+    while IFS= read -r -d '' skill_dir; do
+        native_names["$(basename "$skill_dir")"]=1
+        desired_names["$(basename "$skill_dir")"]=1
+    done < <(find "$native_skills_root" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+    while IFS= read -r -d '' skill_dir; do
+        skill_name="$(basename "$skill_dir")"
+        [[ -n "${native_names[$skill_name]:-}" ]] && continue
+        desired_names["$skill_name"]=1
+    done < <(find "$portable_skills_root" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+    if [[ -d "$skills_dst" ]]; then
+        while IFS= read -r -d '' entry; do
+            entry_name="$(basename "$entry")"
+            [[ -n "${desired_names[$entry_name]:-}" ]] && continue
+            is_managed_skill_link "$entry" "${managed_skill_roots[@]}" || continue
+            if [[ $DRY_RUN -eq 1 ]]; then info "[DRY RUN] remove obsolete Codex skill link: $entry"; else rm "$entry"; warn "Removed obsolete Codex skill link: $entry"; fi
+        done < <(find "$skills_dst" -mindepth 1 -maxdepth 1 -type l -print0 2>/dev/null)
+    fi
+    project_codex_skill() {
+        local source="$1" project_name project_link
+        project_name="$(basename "$source")"
+        project_link="$skills_dst/$project_name"
+        if [[ -e "$project_link" && ! -L "$project_link" ]]; then
+            warn "Preserved unmanaged Codex skill: $project_link"
+            return
+        fi
+        if [[ -L "$project_link" ]] && ! is_managed_skill_link "$project_link" "${managed_skill_roots[@]}"; then
+            warn "Preserved unmanaged Codex skill link: $project_link"
+            return
+        fi
+        make_symlink "$source" "$project_link"
+    }
+    while IFS= read -r -d '' skill_dir; do
+        [[ -n "${native_names[$(basename "$skill_dir")]:-}" ]] && continue
+        project_codex_skill "$skill_dir"
+    done < <(find "$portable_skills_root" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+    while IFS= read -r -d '' skill_dir; do
+        project_codex_skill "$skill_dir"
+    done < <(find "$native_skills_root" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
+
+    info 'Next: run codex login (interactive ChatGPT-account OAuth) to authenticate.'
+}
+
 clean_backups() {
     echo ''
     info '=== Cleaning backups ==='
@@ -752,6 +907,7 @@ for module in "${MODULES[@]}"; do
         herdr)      install_herdr      ;;
         curl)       install_curl       ;;
         claude)     install_claude     ;;
+        codex)      install_codex      ;;
         pi)         install_pi         ;;
         langservers) install_langservers ;;
         lazygit)         install_lazygit    ;;
