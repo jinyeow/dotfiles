@@ -17,6 +17,37 @@ Describe 'setup.ps1 argument validation' {
     }
 }
 
+Describe 'setup.ps1 Claude bootstrap boundary' {
+    It 'uses the native installer and gates all Claude projection on the executable' {
+        $source = Get-Content -LiteralPath $script:SetupScript -Raw
+        $source | Should -Match "Invoke-RestMethod -Uri 'https://claude\.ai/install\.ps1'"
+        $source | Should -Match 'irm https://claude\.ai/install\.ps1 \| iex'
+        $source | Should -Match 'Claude setup stopped before configuration or projection because the CLI is unavailable'
+
+        $installStart = $source.IndexOf('function Install-Claude')
+        $installEnd = $source.IndexOf('function Install-Pi', $installStart)
+        $installBody = $source.Substring($installStart, $installEnd - $installStart)
+        $installBody.IndexOf('if (-not (Confirm-ClaudeCli))') | Should -BeGreaterOrEqual 0
+        $installBody.IndexOf('if (-not (Confirm-ClaudeCli))') | Should -BeLessThan $installBody.IndexOf('New-FileSymlink -Link (Join-Path $claudeDir ''settings.json'')')
+    }
+
+    It 'previews the native bootstrap without mutating Claude state in dry-run' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-bootstrap-dryrun-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Match '(Claude Code CLI is already installed|\[DRY RUN\] would install Claude Code CLI via)'
+            Test-Path (Join-Path $tmpHome '.claude') | Should -BeFalse
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 Describe 'setup.ps1 pi module' {
     It 'returns before repository projection when the skills destination is unmanaged' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-pi-unmanaged-' + [guid]::NewGuid())

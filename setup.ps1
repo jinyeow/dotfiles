@@ -809,9 +809,61 @@ function Install-BatCatppuccinTheme ([System.Management.Automation.CommandInfo]$
     }
 }
 
+function Get-ClaudeCli {
+    $command = Get-Command -Name claude -ErrorAction Ignore
+    if ($command) { return $command }
+
+    # The native installer places the executable here, but a running PowerShell process may not
+    # have received the PATH update made by the installer. Refresh this process before gating
+    # configuration so a successful bootstrap is usable immediately.
+    $nativeBin = Join-Path $HOME '.local\bin'
+    $nativeExe = Join-Path $nativeBin 'claude.exe'
+    if (Test-Path -LiteralPath $nativeExe -PathType Leaf) {
+        $pathParts = @($env:PATH -split [IO.Path]::PathSeparator)
+        if ($nativeBin -notin $pathParts) { $env:PATH = "$nativeBin$([IO.Path]::PathSeparator)$env:PATH" }
+        return Get-Command -Name claude -ErrorAction SilentlyContinue
+    }
+    return $null
+}
+
+function Confirm-ClaudeCli {
+    if (Get-ClaudeCli) {
+        Write-Ok 'Claude Code CLI is already installed.'
+        return $true
+    }
+    if ($DryRun) {
+        Write-Info '[DRY RUN] would install Claude Code CLI via https://claude.ai/install.ps1'
+        return $true
+    }
+
+    Write-Info 'Claude Code CLI not found — installing via the native installer...'
+    try {
+        # Supported Windows install path; deliberately do not use npm/Volta.
+        $installer = Invoke-RestMethod -Uri 'https://claude.ai/install.ps1' -ErrorAction Stop
+        if (-not $installer) { throw 'The native installer returned an empty response.' }
+        Invoke-Expression $installer
+    } catch {
+        Write-Fail "Claude Code CLI bootstrap failed: $($_.Exception.Message)"
+    }
+
+    if (-not (Get-ClaudeCli)) {
+        Write-Fail 'Claude setup stopped before configuration or projection because the CLI is unavailable.'
+        Write-Info 'Install it manually with: irm https://claude.ai/install.ps1 | iex'
+        Write-Info 'Then verify `claude` is on PATH and re-run: .\setup.ps1 -Module claude'
+        return $false
+    }
+    Write-Ok 'Claude Code CLI installed.'
+    return $true
+}
+
 function Install-Claude {
     Write-Host ''
     Write-Info '=== Claude Code ==='
+    if ($Backup) {
+        Write-Info 'Backup mode — skipping Claude installation and projection.'
+        return
+    }
+    if (-not (Confirm-ClaudeCli)) { return }
     $claudeDir = Join-Path $env:USERPROFILE '.claude'
     # Symlink the tracked files into the repo so live == repo (no drift, no sync needed).
     # settings.json and CLAUDE.md self-mutate (Claude writes settings; /memory appends), so the
