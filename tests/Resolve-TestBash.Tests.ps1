@@ -89,6 +89,32 @@ Describe 'Resolve-TestBash' {
                 $env:ProgramFiles = $origProgramFiles
             }
         }
+
+        It 'rejects a WindowsApps-rooted candidate even without the exact \Microsoft\WindowsApps\ segment' {
+            Set-Variable -Name IsWindows -Value $true -Force -Scope Global
+            $origProgramFiles = $env:ProgramFiles
+            try {
+                # Empty ProgramFiles so the default-install-root fallback never fires,
+                # keeping this test focused on the PATH-scan exclusion.
+                $env:ProgramFiles = ''
+                Mock Get-Command {
+                    $null
+                } -ParameterFilter { $Name -eq 'git' -and $CommandType -eq 'Application' }
+                Mock Get-Command {
+                    @(
+                        [pscustomobject]@{ Source = 'C:\Users\me\WindowsApps\bash.exe' }
+                        [pscustomobject]@{ Source = 'D:\tools\PortableGit\bin\bash.exe' }
+                    )
+                } -ParameterFilter { $Name -eq 'bash' -and $CommandType -eq 'Application' -and $All }
+                # Both candidates "exist" on disk; only the exclusion logic keeps the
+                # WindowsApps one from being returned.
+                Mock Test-Path { $true }
+
+                Resolve-TestBash | Should -Be 'D:\tools\PortableGit\bin\bash.exe'
+            } finally {
+                $env:ProgramFiles = $origProgramFiles
+            }
+        }
     }
 
     Context 'Windows, nothing found anywhere' {
@@ -135,12 +161,42 @@ Describe 'Resolve-TestBash' {
     Context 'a boundary call throws unexpectedly' {
         It 'never throws — returns $null instead of propagating the exception' {
             Set-Variable -Name IsWindows -Value $true -Force -Scope Global
-            Mock Get-Command {
-                throw 'simulated PATH resolution failure'
-            } -ParameterFilter { $Name -eq 'git' -and $CommandType -eq 'Application' }
+            $origProgramFiles = $env:ProgramFiles
+            try {
+                # Isolate every remaining strategy too, so this test proves the
+                # no-throw contract rather than incidentally finding a real bash
+                # installed on the machine running the suite.
+                $env:ProgramFiles = ''
+                Mock Get-Command {
+                    throw 'simulated PATH resolution failure'
+                } -ParameterFilter { $Name -eq 'git' -and $CommandType -eq 'Application' }
+                Mock Get-Command {
+                    @()
+                } -ParameterFilter { $Name -eq 'bash' -and $CommandType -eq 'Application' -and $All }
 
-            { Resolve-TestBash } | Should -Not -Throw
-            Resolve-TestBash | Should -BeNullOrEmpty
+                { Resolve-TestBash } | Should -Not -Throw
+                Resolve-TestBash | Should -BeNullOrEmpty
+            } finally {
+                $env:ProgramFiles = $origProgramFiles
+            }
+        }
+
+        It 'still tries the ProgramFiles fallback when git-derivation throws' {
+            Set-Variable -Name IsWindows -Value $true -Force -Scope Global
+            $origProgramFiles = $env:ProgramFiles
+            try {
+                $env:ProgramFiles = 'C:\Program Files'
+                Mock Get-Command {
+                    throw 'simulated git-derivation failure'
+                } -ParameterFilter { $Name -eq 'git' -and $CommandType -eq 'Application' }
+                Mock Test-Path {
+                    $LiteralPath -eq 'C:\Program Files\Git\bin\bash.exe'
+                }
+
+                Resolve-TestBash | Should -Be 'C:\Program Files\Git\bin\bash.exe'
+            } finally {
+                $env:ProgramFiles = $origProgramFiles
+            }
         }
     }
 }

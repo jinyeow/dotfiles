@@ -16,12 +16,19 @@ function Resolve-TestBash {
     [OutputType([string])]
     param()
 
-    try {
-        if (-not $IsWindows) {
+    if (-not $IsWindows) {
+        try {
             $bashCmd = Get-Command -Name bash -CommandType Application -ErrorAction Ignore
             return $bashCmd.Source
+        } catch {
+            return $null
         }
+    }
 
+    # Each strategy is isolated in its own try/catch so a failure in one (e.g. an
+    # unexpected Split-Path/Join-Path error) falls through to the next instead of
+    # aborting the whole resolution chain.
+    try {
         $gitCmd = Get-Command -Name git -CommandType Application -ErrorAction Ignore
         if ($gitCmd -and $gitCmd.Source) {
             [string]$gitRoot = Split-Path -Path (Split-Path -Path $gitCmd.Source -Parent) -Parent
@@ -30,29 +37,37 @@ function Resolve-TestBash {
                 return $candidate
             }
         }
+    } catch {
+        # fall through to the next strategy
+    }
 
+    try {
         if ($env:ProgramFiles) {
             [string]$fallback = Join-Path $env:ProgramFiles 'Git' 'bin' 'bash.exe'
             if (Test-Path -LiteralPath $fallback -PathType Leaf) {
                 return $fallback
             }
         }
+    } catch {
+        # fall through to the next strategy
+    }
 
+    try {
         [array]$pathCandidates = Get-Command -Name bash -CommandType Application -All -ErrorAction Ignore
         foreach ($pathCandidate in $pathCandidates) {
             if (-not $pathCandidate.Source) {
                 continue
             }
-            if ($pathCandidate.Source -match '(?i)\\Windows\\System32\\|\\Microsoft\\WindowsApps\\') {
+            if ($pathCandidate.Source -match '(?i)\\Windows\\System32\\|\\WindowsApps\\') {
                 continue
             }
             if (Test-Path -LiteralPath $pathCandidate.Source -PathType Leaf) {
                 return $pathCandidate.Source
             }
         }
-
-        return $null
     } catch {
-        return $null
+        # every strategy has now been tried
     }
+
+    return $null
 }
