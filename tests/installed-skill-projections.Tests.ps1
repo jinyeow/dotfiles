@@ -28,17 +28,17 @@
 # regardless of the real environment. Discovery and Run are separate executions of this file, so
 # BeforeAll below repeats the same assignment (functions defined at top level are also not
 # visible inside It bodies in the Run-phase scope, so the logic is duplicated rather than shared).
-$script:ClaudeSkillsDst = Join-Path $env:USERPROFILE '.claude\skills'
-$script:CodexSkillsDst = Join-Path $env:USERPROFILE '.codex\skills'
-$script:PiSkillsDst = Join-Path $env:USERPROFILE '.pi\agent\skills'
+$script:ClaudeSkillsDst = Join-Path $HOME '.claude/skills'
+$script:CodexSkillsDst = Join-Path $HOME '.codex/skills'
+$script:PiSkillsDst = Join-Path $HOME '.pi/agent/skills'
 $script:HasClaudeCli = [bool](Get-Command claude -ErrorAction Ignore)
 $script:HasCodexCli = [bool](Get-Command codex -ErrorAction Ignore)
 $script:HasPiCli = [bool](Get-Command pi -ErrorAction Ignore)
 
 BeforeAll {
-    $script:ClaudeSkillsDst = Join-Path $env:USERPROFILE '.claude\skills'
-    $script:CodexSkillsDst = Join-Path $env:USERPROFILE '.codex\skills'
-    $script:PiSkillsDst = Join-Path $env:USERPROFILE '.pi\agent\skills'
+    $script:ClaudeSkillsDst = Join-Path $HOME '.claude/skills'
+    $script:CodexSkillsDst = Join-Path $HOME '.codex/skills'
+    $script:PiSkillsDst = Join-Path $HOME '.pi/agent/skills'
     $script:HasClaudeCli = [bool](Get-Command claude -ErrorAction Ignore)
     $script:HasCodexCli = [bool](Get-Command codex -ErrorAction Ignore)
     $script:HasPiCli = [bool](Get-Command pi -ErrorAction Ignore)
