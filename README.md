@@ -24,7 +24,7 @@ Personal dotfiles for Windows (primary) and Linux/WSL.
 | `zellij/` | Zellij terminal multiplexer | Windows + Linux |
 | `psmux/` | psmux config (native-Windows tmux clone, daily-driver multiplexer) | Windows |
 | `yazi/` | Yazi terminal file manager config | Windows |
-| `codex/` | Codex CLI config (read-only second-opinion reviewer) | Windows |
+| `codex/` | Codex CLI config (read-only second-opinion reviewer) | Windows + Linux |
 | `eza/` | eza (`ls` replacement) Catppuccin theme | Windows |
 | `tmux/` | tmux config | Linux / WSL |
 | `nix/` | Nix/Home Manager (legacy snapshot) | Linux |
@@ -55,7 +55,7 @@ cd ~/dotfiles
 ./setup.sh -m all --dry-run    # preview without changes
 ```
 
-Available modules: `neovim`, `vim`, `powershell`, `git`, `bash`, `tig`, `tmux`, `zellij`, `curl`, `claude`, `lazygit`, `windowsterminal`
+Available modules: `neovim`, `vim`, `powershell`, `git`, `bash`, `tig`, `tmux`, `zellij`, `curl`, `claude`, `codex`, `lazygit`, `windowsterminal`
 
 ## Requirements
 
@@ -84,7 +84,7 @@ See `fzf/`, `ripgrep/`, `lazygit/`, `tig/`, and `nvim/` for tool-specific `READM
 
 ## Claude Code skills
 
-Portable skills live in `ai-agents/skills/`; Claude-native skills live in `claude/skills/`, Codex-native variants in `codex/skills/`, and Pi-native variants in `pi/skills/`. Claude projects portable plus Claude-native skills, Windows Codex projects portable plus Codex-native skills, and Pi projects portable plus Pi-native skills. Claude's `claude/skills/_shared/` support content is projected; portable `ai-agents/_shared/` support content is source-only. User-scope agent definitions live under `ai-agents/agents/` and are projected to Claude Code. Installers safely migrate existing whole-directory links from the historical `ai-agents/shared/agents/` path without replacing user-owned entries.
+Portable skills live in `ai-agents/skills/`; Claude-native skills live in `claude/skills/`, Codex-native variants in `codex/skills/`, and Pi-native variants in `pi/skills/`. Claude projects portable plus Claude-native skills, Codex (Windows and Linux) projects portable plus Codex-native skills, and Pi projects portable plus Pi-native skills. Claude's `claude/skills/_shared/` support content is projected; portable `ai-agents/_shared/` support content is source-only. User-scope agent definitions live under `ai-agents/agents/` and are projected to Claude Code. Installers safely migrate existing whole-directory links from the historical `ai-agents/shared/agents/` path without replacing user-owned entries.
 
 Not sure which one fits? Run `/router` — a manual index that maps these as flows and decision tables. Built-in Claude Code skills (`code-review`, `compact`, `deep-research`, `security-review`, `verify`) are provided by the harness and aren't listed here.
 

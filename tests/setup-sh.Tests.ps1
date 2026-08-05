@@ -212,6 +212,187 @@ INSTALL
     }
 }
 
+Describe 'setup.sh Codex bootstrap boundary' {
+    It 'previews the native bootstrap without mutating Codex state in dry-run' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-codex-bootstrap-dryrun-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origHome = $env:HOME
+        try {
+            $env:HOME = $tmpHome
+            $out = & bash $script:SetupSh -m codex --dry-run 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $out | Should -Match '(codex is already installed|\[DRY RUN\] would install Codex CLI via)'
+            (Test-Path (Join-Path $tmpHome '.codex')) | Should -Be $false
+        } finally {
+            $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'never runs codex login' {
+        # 'codex login' appears only as documentation text inside an info message (manual,
+        # never executed) — never as a bare command invocation.
+        $source = Get-Content -LiteralPath $script:SetupSh -Raw
+        $source | Should -Match 'run codex login'
+        $source | Should -Not -Match '(?m)^\s*codex login'
+    }
+
+    It 'fails closed when native Codex bootstrap fails, without creating Codex state' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-codex-bootstrap-fail-' + [guid]::NewGuid())
+        $shim = Join-Path $tmpHome 'bin'
+        New-Item -ItemType Directory -Path $shim -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $shim 'curl') -Value "#!/usr/bin/env bash`nexit 42`n" -Encoding UTF8
+        & $script:Bash -c 'chmod +x "$1"' _ ((Join-Path $shim 'curl') -replace '\\', '/')
+        $shimUnix = & $script:ConvertToUnixPath $shim
+        $shimPath = "${shimUnix}:/usr/bin:/bin"
+
+        $resolved = (& $script:Bash -c 'PATH="$1" command -v curl' _ $shimPath | Out-String).Trim()
+        $resolved | Should -Be "$shimUnix/curl"
+
+        $origHome = $env:HOME
+        try {
+            $env:HOME = $tmpHome
+            $out = & $script:Bash -c 'PATH="$1" bash "$2" -m codex' _ $shimPath $script:SetupSh 2>&1 | Out-String
+            $out | Should -Match 'Codex CLI install failed'
+            $out | Should -Match 'stopped before configuration or projection'
+            (Test-Path (Join-Path $tmpHome '.codex')) | Should -Be $false
+        } finally {
+            $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'bootstraps Codex natively before projecting configuration' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-codex-bootstrap-ok-' + [guid]::NewGuid())
+        $shim = Join-Path $tmpHome 'bin'
+        New-Item -ItemType Directory -Path $shim -Force | Out-Null
+        $shimUnix = & $script:ConvertToUnixPath $shim
+        # The fake installer places `codex` directly into the shim dir (already on PATH for this
+        # invocation), since find_codex_cli — unlike find_claude_cli — has no ~/.local/bin fallback.
+        $curlBody = @"
+#!/usr/bin/env bash
+cat <<INSTALL
+cat > "$shimUnix/codex" <<'CODEX'
+#!/usr/bin/env bash
+exit 0
+CODEX
+chmod +x "$shimUnix/codex"
+INSTALL
+"@
+        Set-Content -LiteralPath (Join-Path $shim 'curl') -Value $curlBody -Encoding UTF8
+        & $script:Bash -c 'chmod +x "$1"' _ ((Join-Path $shim 'curl') -replace '\\', '/')
+        $shimPath = "${shimUnix}:/usr/bin:/bin"
+
+        $resolved = (& $script:Bash -c 'PATH="$1" command -v curl' _ $shimPath | Out-String).Trim()
+        $resolved | Should -Be "$shimUnix/curl"
+
+        $origHome = $env:HOME
+        try {
+            $env:HOME = $tmpHome
+            $out = & $script:Bash -c 'PATH="$1" bash "$2" -m codex' _ $shimPath $script:SetupSh 2>&1 | Out-String
+            $out | Should -Match 'Codex CLI installed'
+            $out | Should -Match '\.codex/config\.toml'
+            $out | Should -Match '\.codex/AGENTS\.md'
+            Test-Path (Join-Path $tmpHome '.codex/config.toml') | Should -BeTrue
+            Test-Path (Join-Path $tmpHome '.codex/AGENTS.md') | Should -BeTrue
+        } finally {
+            $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+Describe 'setup.sh Codex MCP registration gating' {
+    BeforeAll {
+        $script:CodexMcpShim = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-codex-mcp-shim-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $script:CodexMcpShim -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $script:CodexMcpShim 'claude') -Value "#!/usr/bin/env bash`nexit 0`n" -Encoding UTF8
+        & $script:Bash -c 'chmod +x "$1"' _ ((Join-Path $script:CodexMcpShim 'claude') -replace '\\', '/')
+        $script:CodexMcpShimUnix = & $script:ConvertToUnixPath $script:CodexMcpShim
+    }
+
+    AfterAll {
+        Remove-Item -Path $script:CodexMcpShim -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    It 'skips registration when the claude CLI is present but the Claude settings file is missing' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-codex-mcp-nosettings-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $shimPath = "${script:CodexMcpShimUnix}:/usr/bin:/bin"
+        $origHome = $env:HOME
+        try {
+            $env:HOME = $tmpHome
+            $out = & $script:Bash -c 'PATH="$1" bash "$2" -m codex --dry-run' _ $shimPath $script:SetupSh 2>&1 | Out-String
+            $out | Should -Match 'Claude settings file not found — skipping MCP registration'
+            $out | Should -Not -Match 'would register user-scope MCP: claude mcp add --scope user codex'
+        } finally {
+            $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'previews registration only when both the claude CLI and the Claude settings file are present' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-codex-mcp-ok-' + [guid]::NewGuid())
+        $claudeDir = Join-Path $tmpHome '.claude'
+        New-Item -ItemType Directory -Path $claudeDir -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $claudeDir 'settings.json') -Value '{}'
+        $shimPath = "${script:CodexMcpShimUnix}:/usr/bin:/bin"
+        $origHome = $env:HOME
+        try {
+            $env:HOME = $tmpHome
+            $out = & $script:Bash -c 'PATH="$1" bash "$2" -m codex --dry-run' _ $shimPath $script:SetupSh 2>&1 | Out-String
+            $out | Should -Match '\[DRY RUN\] would register user-scope MCP: claude mcp add --scope user codex'
+        } finally {
+            $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'skips registration when the claude CLI is not on PATH' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-codex-mcp-noclaude-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origHome = $env:HOME
+        try {
+            $env:HOME = $tmpHome
+            $out = & $script:Bash -c 'PATH="/usr/bin:/bin" bash "$1" -m codex --dry-run' _ $script:SetupSh 2>&1 | Out-String
+            $out | Should -Match 'claude CLI not found — skipping MCP registration'
+        } finally {
+            $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+Describe 'setup.sh Codex skill projection' {
+    It 'projects portable and Codex-native skills, excluding Claude-only skills' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-codex-skills-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origHome = $env:HOME
+        try {
+            $env:HOME = $tmpHome
+            $out = & bash $script:SetupSh -m codex --dry-run 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc')) {
+                $out | Should -Match "\.codex/skills/$name -> .*ai-agents/skills/$name"
+            }
+            $out | Should -Not -Match '\.codex/skills/codex-review ->'
+            $out | Should -Not -Match '\.codex/skills/handoff ->'
+            $out | Should -Not -Match '\.codex/skills/git-guardrails-claude-code ->'
+        } finally {
+            $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+Describe 'setup.sh module list — codex' {
+    It 'runs codex as a recognized module in the "all" expansion' {
+        $source = Get-Content -LiteralPath $script:SetupSh -Raw
+        $moduleLine = ($source -split "`n" | Where-Object { $_ -match 'MODULES=\(neovim' })
+        $moduleLine | Should -Match '\bcodex\b'
+    }
+}
+
 # These focused dry-run fixtures cover the destructive managed/unmanaged decisions without
 # invoking Pi's real package installer or mutating a runtime home. Non-dry-run Pi bootstrap and
 # package behavior remains outside this suite; it requires an installed/authenticated runtime.

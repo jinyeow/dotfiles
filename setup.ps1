@@ -1160,37 +1160,48 @@ function Remove-ObsoleteManagedSkillLinks ([string]$SkillsDst, [string[]]$Desire
     }
 }
 
+function Confirm-CodexCli {
+    if (Get-Command -Name codex -ErrorAction Ignore) {
+        Write-Ok 'codex is already installed.'
+        return $true
+    }
+    if ($DryRun) {
+        Write-Info '[DRY RUN] would install Codex CLI via native installer (https://chatgpt.com/codex/install.ps1)'
+        return $true
+    }
+
+    Write-Info 'Installing Codex CLI (native installer)...'
+    $installer = Join-Path $env:TEMP 'codex-install.ps1'
+    try {
+        Invoke-RestMethod -Uri 'https://chatgpt.com/codex/install.ps1' -OutFile $installer
+        & $installer
+    } catch {
+        Write-Fail "Codex CLI install failed: $($_.Exception.Message)"
+    } finally {
+        Remove-Item -Path $installer -Force -ErrorAction Ignore
+    }
+
+    if (-not (Get-Command -Name codex -ErrorAction Ignore)) {
+        Write-Fail 'Codex setup stopped before configuration or projection because the executable is unavailable.'
+        Write-Info 'Install it manually with: irm https://chatgpt.com/codex/install.ps1 | iex'
+        Write-Info 'Then verify `codex` is on PATH and re-run: .\setup.ps1 -Module codex'
+        return $false
+    }
+    Write-Ok 'codex installed.'
+    return $true
+}
+
 function Install-Codex {
     Write-Host ''
     Write-Info '=== Codex CLI ==='
 
     # 1. Install the Codex CLI via OpenAI's native installer (self-updating), mirroring the
-    #    claude module's native-install decision. Skip if already present.
+    #    claude module's native-install decision. A failed install stops before any Codex
+    #    configuration or resource projection (see Confirm-CodexCli / Confirm-ClaudeCli).
     if ($Backup) {
         Write-Info 'Backup mode — skipping Codex CLI install.'
-    } elseif (Get-Command -Name codex -ErrorAction Ignore) {
-        Write-Ok 'codex is already installed.'
-    } elseif ($DryRun) {
-        Write-Info '[DRY RUN] would install Codex CLI via native installer (https://chatgpt.com/codex/install.ps1)'
-    } else {
-        Write-Info 'Installing Codex CLI (native installer)...'
-        $installer = Join-Path $env:TEMP 'codex-install.ps1'
-        # A transient network failure here (Invoke-RestMethod, or the installer script itself
-        # shelling out) must not abort the rest of -Module all — catch it, warn, and fall through
-        # to the config/AGENTS.md/MCP/skills steps below, which don't need the CLI to be present.
-        try {
-            Invoke-RestMethod -Uri 'https://chatgpt.com/codex/install.ps1' -OutFile $installer
-            & $installer
-        } catch {
-            Write-Fail "Codex CLI install failed: $($_.Exception.Message)"
-        } finally {
-            Remove-Item -Path $installer -Force -ErrorAction Ignore
-        }
-        if (Get-Command -Name codex -ErrorAction Ignore) {
-            Write-Ok 'codex installed.'
-        } else {
-            Write-Warn 'codex not on PATH yet — open a new shell, or re-run this module, before using it.'
-        }
+    } elseif (-not (Confirm-CodexCli)) {
+        return
     }
 
     # 2. Global config: standalone posture (workspace-write + on-request).
@@ -1212,10 +1223,15 @@ function Install-Codex {
     #    config lives in ~/.claude.json (settings.json does not support mcpServers), so this is
     #    a CLI registration, not a tracked file. The -c overrides pin the reviewer read-only and
     #    non-interactive regardless of ~/.codex/config.toml. Idempotent: remove any prior entry first.
+    #    Requires the Claude settings file too — its absence means the claude module has not run
+    #    yet, so registering now would write ahead of any other Claude-module setup.
+    $claudeSettingsPath = Join-Path $env:USERPROFILE '.claude\settings.json'
     if ($Backup) {
         Write-Info 'Backup mode — skipping MCP registration.'
     } elseif (-not (Get-Command -Name claude -ErrorAction Ignore)) {
         Write-Warn 'claude CLI not found — skipping MCP registration. Install the claude module first.'
+    } elseif (-not (Test-Path -LiteralPath $claudeSettingsPath)) {
+        Write-Warn 'Claude settings file not found — skipping MCP registration. Install the claude module first.'
     } elseif ($DryRun) {
         Write-Info '[DRY RUN] would register user-scope MCP: claude mcp add --scope user codex -- codex mcp-server -c sandbox_mode=read-only -c approval_policy=never -c model_reasoning_effort=medium'
     } else {

@@ -37,8 +37,30 @@ conventions in `claude/AGENTS.md` only; re-run the installer to push the copy.
 | `codex/skills/<name>/` | `~/.codex/skills/<name>/` | Codex-native skills (win on name collision) |
 | `templates/work-AGENTS.md` | — (manual copy) | Drop into an Azure work repo root as `AGENTS.md` |
 
-`config.toml` and the shared `AGENTS.md` are **copied** on Windows (like the claude module),
-so the live `~/.codex` copies can drift — re-run `setup.ps1 -Module codex` to push repo → live.
+`config.toml` and the shared `AGENTS.md` are **copied** on both platforms (like the claude
+module), so the live `~/.codex` copies can drift — re-run the installer (`setup.ps1 -Module
+codex` or `./setup.sh -m codex`) to push repo → live.
+
+## Platform support
+
+Linux/WSL parity is provided by `setup.sh -m codex`: it installs the Codex CLI via OpenAI's
+native installer, copies `config.toml` + `AGENTS.md` into `~/.codex/`, projects skills into
+`~/.codex/skills/`, and registers the MCP reviewer — the same steps as `setup.ps1 -Module
+codex` on Windows.
+
+## Fail-closed install gating
+
+If the native installer fails and `codex` is still not on PATH afterward, setup stops before
+touching any Codex configuration or resources — no `config.toml`/`AGENTS.md` copy, no MCP
+registration, no skill symlinks — and prints an actionable diagnostic (what failed, and the
+manual install/re-run command). A successful install continues through configuration and
+projection as normal. This mirrors the Claude CLI bootstrap gating (see `claude/README.md`).
+
+## Manual login boundary
+
+Setup never runs `codex login` — it only installs the CLI and projects configuration. Running
+`codex login` (interactive ChatGPT-account OAuth) remains a manual, one-time step you run
+yourself, on both platforms.
 
 ## Skills
 
@@ -74,10 +96,12 @@ re-run `setup.ps1 -Module codex`.
 
 ## Install
 
-1. `setup.ps1 -Module codex` — installs the Codex CLI (native installer), copies
-   `config.toml` + `AGENTS.md` into `~/.codex/`, projects portable skills plus any
-   `codex/skills/` variants into `~/.codex/skills/`, and registers
-   the read-only MCP reviewer at user scope in Claude Code.
+1. `setup.ps1 -Module codex` (Windows) or `./setup.sh -m codex` (Linux/WSL) — installs the
+   Codex CLI (native installer), copies `config.toml` + `AGENTS.md` into `~/.codex/`, projects
+   portable skills plus any `codex/skills/` variants into `~/.codex/skills/`, and registers
+   the read-only MCP reviewer at user scope in Claude Code. MCP registration only happens when
+   both the `claude` CLI is on PATH and `~/.claude/settings.json` already exists (i.e. the
+   claude module has run first); otherwise it is skipped with no changes to `~/.claude.json`.
 2. `codex login` — interactive ChatGPT-account OAuth (run this yourself; one-time).
 
 Verify:

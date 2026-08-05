@@ -48,6 +48,109 @@ Describe 'setup.ps1 Claude bootstrap boundary' {
     }
 }
 
+Describe 'setup.ps1 Codex bootstrap boundary' {
+    It 'gates configuration and projection on the Codex executable, and never runs codex login' {
+        $source = Get-Content -LiteralPath $script:SetupScript -Raw
+        $source | Should -Match "Invoke-RestMethod -Uri 'https://chatgpt\.com/codex/install\.ps1'"
+        $source | Should -Match 'Codex setup stopped before configuration or projection because the executable is unavailable'
+        $source | Should -Not -Match '&\s*codex\s+login'
+
+        $installStart = $source.IndexOf('function Install-Codex')
+        $installEnd = $source.IndexOf('function Install-Serena', $installStart)
+        $installBody = $source.Substring($installStart, $installEnd - $installStart)
+        $installBody.IndexOf('if (-not (Confirm-CodexCli))') | Should -BeGreaterOrEqual 0
+        $installBody.IndexOf('if (-not (Confirm-CodexCli))') | Should -BeLessThan $installBody.IndexOf('Copy-Dotfile')
+    }
+
+    It 'previews the native bootstrap without mutating Codex state in dry-run' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-bootstrap-dryrun-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module codex -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Match '(codex is already installed|\[DRY RUN\] would install Codex CLI via)'
+            Test-Path (Join-Path $tmpHome '.codex') | Should -BeFalse
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+Describe 'setup.ps1 Codex MCP registration gating' {
+    BeforeAll {
+        $script:ShimDir = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-mcp-shim-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $script:ShimDir -Force | Out-Null
+        Set-Content -Path (Join-Path $script:ShimDir 'claude.cmd') -Value '@exit /b 0' -Encoding ASCII
+    }
+
+    AfterAll {
+        Remove-Item -Path $script:ShimDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    It 'skips registration when the claude CLI is present but the Claude settings file is missing' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-mcp-nosettings-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        $origPath = $env:PATH
+        try {
+            $env:USERPROFILE = $tmpHome
+            $env:PATH = "$script:ShimDir$([IO.Path]::PathSeparator)$origPath"
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module codex -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Match 'Claude settings file not found — skipping MCP registration'
+            $output | Should -Not -Match 'would register user-scope MCP: claude mcp add --scope user codex'
+        } finally {
+            $env:USERPROFILE = $origUP
+            $env:PATH = $origPath
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'previews registration only when both the claude CLI and the Claude settings file are present' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-mcp-ok-' + [guid]::NewGuid())
+        $claudeDir = Join-Path $tmpHome '.claude'
+        New-Item -ItemType Directory -Path $claudeDir -Force | Out-Null
+        Set-Content -Path (Join-Path $claudeDir 'settings.json') -Value '{}'
+        $origUP = $env:USERPROFILE
+        $origPath = $env:PATH
+        try {
+            $env:USERPROFILE = $tmpHome
+            $env:PATH = "$script:ShimDir$([IO.Path]::PathSeparator)$origPath"
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module codex -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Match '\[DRY RUN\] would register user-scope MCP: claude mcp add --scope user codex'
+        } finally {
+            $env:USERPROFILE = $origUP
+            $env:PATH = $origPath
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'skips registration when the claude CLI is not on PATH' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-mcp-noclaude-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        $origPath = $env:PATH
+        # Resolve pwsh before stripping PATH down to a minimal set without claude on it — the
+        # child-process launch below still needs to find pwsh.exe by full path.
+        $pwshPath = (Get-Command pwsh).Source
+        try {
+            $env:USERPROFILE = $tmpHome
+            $env:PATH = Join-Path $env:SystemRoot 'System32'
+            $output = & $pwshPath -NoProfile -File $script:SetupScript -Module codex -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Match 'claude CLI not found — skipping MCP registration'
+        } finally {
+            $env:USERPROFILE = $origUP
+            $env:PATH = $origPath
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 Describe 'setup.ps1 pi module' {
     It 'returns before repository projection when the skills destination is unmanaged' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-pi-unmanaged-' + [guid]::NewGuid())

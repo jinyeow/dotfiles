@@ -54,7 +54,7 @@ Keep hooks deterministic and fail-open where their source says so. User-scope ag
 and are currently projected to Claude Code. Portable skills live under [`ai-agents/skills/`](ai-agents/skills/) by default; Claude-native
 skills and projected support content live under [`claude/skills/`](claude/skills/), Codex-native
 variants under [`codex/skills/`](codex/skills/), and Pi-native variants under [`pi/skills/`](pi/skills/).
-Claude projects portable plus Claude-native skills; Codex (Windows in this PR) projects portable
+Claude projects portable plus Claude-native skills; Codex (Windows and Linux) projects portable
 plus Codex-native skills; Pi projects portable plus Pi-native skills. `ai-agents/_shared/` is
 source-only portable support content, while `claude/skills/_shared/` is projected with Claude
 skills. Historical source roots remain compatibility identifiers for ownership migration only.
