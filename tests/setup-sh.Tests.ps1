@@ -6,6 +6,19 @@ BeforeAll {
     $script:Repo = Split-Path $PSScriptRoot -Parent
     $script:SetupSh = Join-Path $script:Repo 'setup.sh'
     $script:Bash = (Get-Command bash -ErrorAction Stop).Source
+
+    # Converts a Windows path to MSYS/POSIX form (C:\Users\foo -> /c/Users/foo) for use as a bash
+    # PATH entry. Pure PowerShell -replace, no external tool: on Linux hosts $Path is already
+    # POSIX (no drive-letter prefix), so the regex simply doesn't match and the value passes
+    # through unchanged.
+    $script:ConvertToUnixPath = {
+        param([Parameter(Mandatory)][string]$Path)
+        $unix = $Path -replace '\\', '/'
+        if ($unix -match '^([A-Za-z]):(.*)$') {
+            $unix = "/$($Matches[1].ToLower())$($Matches[2])"
+        }
+        return $unix
+    }
 }
 
 Describe 'setup.sh --clean-backups' {
@@ -78,30 +91,6 @@ Describe 'setup.sh --clean-backups' {
 }
 
 Describe 'setup.sh --dry-run' {
-    # Regression guard for the two fake-curl-shim tests below: on this host's Git Bash, bash.exe
-    # rebuilds PATH at process startup (prepending /mingw64/bin) whenever it is launched with a
-    # PATH env var supplied by a non-MSYS parent (pwsh), so a shimmed curl placed earlier in that
-    # string never actually shadows the real curl. Probe for that behavior once and skip the
-    # affected tests when the shim cannot win, rather than let them silently fall through to a
-    # real network call. This runs directly in the Describe body (not BeforeAll) so the result is
-    # known before Pester binds the -Skip parameter on the It blocks below, at discovery time.
-    $probeBash = (Get-Command bash -ErrorAction Stop).Source
-    $script:CanShimCurl = $false
-    $probeDir = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-curl-shim-probe-' + [guid]::NewGuid())
-    New-Item -ItemType Directory -Path $probeDir -Force | Out-Null
-    $probeOrigPath = $env:PATH
-    try {
-        Set-Content -LiteralPath (Join-Path $probeDir 'curl') -Value "#!/usr/bin/env bash`nexit 0`n" -Encoding UTF8
-        & $probeBash -c 'chmod +x "$1"' _ ((Join-Path $probeDir 'curl') -replace '\\', '/')
-        $probeUnix = & $probeBash -c 'cygpath -u "$1"' _ $probeDir
-        $env:PATH = ("$probeUnix" + ':/usr/bin:/bin')
-        $probeResolved = & $probeBash -c 'command -v curl' | Out-String
-        $script:CanShimCurl = $probeResolved.Trim() -eq "$probeUnix/curl"
-    } finally {
-        $env:PATH = $probeOrigPath
-        Remove-Item -Path $probeDir -Recurse -Force -ErrorAction SilentlyContinue
-    }
-
     It 'previews shared council skills for Pi without mutating the home' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-pi-dryrun-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
@@ -156,30 +145,38 @@ Describe 'setup.sh --dry-run' {
         }
     }
 
-    It 'fails closed when native Claude bootstrap fails, without creating Claude state' -Skip:(-not $script:CanShimCurl) {
+    It 'fails closed when native Claude bootstrap fails, without creating Claude state' {
+        # The shimmed curl is injected via a PATH built and set *inside* the bash -c invocation,
+        # not via the pwsh-supplied $env:PATH — bash.exe rebuilds PATH at startup (prepending
+        # /mingw64/bin) when launched with a PATH env var from a non-MSYS parent, which would
+        # otherwise let the real curl win regardless of shim ordering.
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-claude-bootstrap-fail-' + [guid]::NewGuid())
         $shim = Join-Path $tmpHome 'bin'
         New-Item -ItemType Directory -Path $shim -Force | Out-Null
         Set-Content -LiteralPath (Join-Path $shim 'curl') -Value "#!/usr/bin/env bash`nexit 42`n" -Encoding UTF8
         & $script:Bash -c 'chmod +x "$1"' _ ((Join-Path $shim 'curl') -replace '\\', '/')
-        $shimUnix = & $script:Bash -c 'cygpath -u "$1"' _ $shim
+        $shimUnix = & $script:ConvertToUnixPath $shim
+        $shimPath = "${shimUnix}:/usr/bin:/bin"
+
+        # Guard: confirm the shim actually wins before relying on it, so a host where it doesn't
+        # fails loudly here instead of silently falling through to a real network call below.
+        $resolved = (& $script:Bash -c 'PATH="$1" command -v curl' _ $shimPath | Out-String).Trim()
+        $resolved | Should -Be "$shimUnix/curl"
+
         $origHome = $env:HOME
-        $origPath = $env:PATH
         try {
             $env:HOME = $tmpHome
-            $env:PATH = ("$shimUnix" + ':/usr/bin:/bin')
-            $out = & $script:Bash $script:SetupSh -m claude 2>&1 | Out-String
+            $out = & $script:Bash -c 'PATH="$1" bash "$2" -m claude' _ $shimPath $script:SetupSh 2>&1 | Out-String
             $out | Should -Match 'Claude Code CLI bootstrap failed'
             $out | Should -Match 'stopped before configuration or projection'
             (Test-Path (Join-Path $tmpHome '.claude')) | Should -Be $false
         } finally {
             $env:HOME = $origHome
-            $env:PATH = $origPath
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
 
-    It 'bootstraps Claude natively before projecting configuration' -Skip:(-not $script:CanShimCurl) {
+    It 'bootstraps Claude natively before projecting configuration' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-claude-bootstrap-ok-' + [guid]::NewGuid())
         $shim = Join-Path $tmpHome 'bin'
         New-Item -ItemType Directory -Path $shim -Force | Out-Null
@@ -195,19 +192,21 @@ chmod +x "$HOME/.local/bin/claude"
 INSTALL
 '@ -Encoding UTF8
         & $script:Bash -c 'chmod +x "$1"' _ ((Join-Path $shim 'curl') -replace '\\', '/')
-        $shimUnix = & $script:Bash -c 'cygpath -u "$1"' _ $shim
+        $shimUnix = & $script:ConvertToUnixPath $shim
+        $shimPath = "${shimUnix}:/usr/bin:/bin"
+
+        $resolved = (& $script:Bash -c 'PATH="$1" command -v curl' _ $shimPath | Out-String).Trim()
+        $resolved | Should -Be "$shimUnix/curl"
+
         $origHome = $env:HOME
-        $origPath = $env:PATH
         try {
             $env:HOME = $tmpHome
-            $env:PATH = ("$shimUnix" + ':/usr/bin:/bin')
-            $out = & $script:Bash $script:SetupSh -m claude 2>&1 | Out-String
+            $out = & $script:Bash -c 'PATH="$1" bash "$2" -m claude' _ $shimPath $script:SetupSh 2>&1 | Out-String
             $out | Should -Match 'Claude Code CLI installed'
             $out | Should -Match '\.claude/settings\.json'
             Test-Path (Join-Path $tmpHome '.claude/settings.json') | Should -BeTrue
         } finally {
             $env:HOME = $origHome
-            $env:PATH = $origPath
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
