@@ -18,7 +18,7 @@ function Resolve-TestBash {
 
     if (-not $IsWindows) {
         try {
-            $bashCmd = Get-Command -Name bash -CommandType Application -ErrorAction Ignore
+            $bashCmd = Get-Command -Name bash -CommandType Application -ErrorAction Ignore | Select-Object -First 1
             return $bashCmd.Source
         } catch {
             return $null
