@@ -774,13 +774,11 @@ install_codex() {
     local skills_dst="$HOME/.codex/skills"
     local portable_skills_root="$DOTFILES/ai-agents/skills"
     local native_skills_root="$DOTFILES/codex/skills"
-    local historical_shared_root="$DOTFILES/ai-agents/shared/skills"
-    local historical_codex_root="$DOTFILES/ai-agents/codex/skills"
-    # Scoped to roots the Codex installer itself (current or historical) has ever written into —
-    # claude/skills was the shared source Codex projected from before the ai-agents rehome, and
-    # ai-agents/codex/skills was Codex's own former native root; Codex never wrote into Pi's or
-    # Claude-only ai-agents/claude/skills (see issue #71).
-    local managed_skill_roots=("$portable_skills_root" "$native_skills_root" "$historical_shared_root" "$historical_codex_root" "$DOTFILES/claude/skills")
+    # Scoped to roots install_codex itself has ever written into. install_codex postdates the
+    # ai-agents rehome entirely (added in 57b243d) and has only ever symlinked from
+    # ai-agents/skills and codex/skills — never from claude/skills or any historical
+    # ai-agents/shared or ai-agents/codex root (see issue #71).
+    local managed_skill_roots=("$portable_skills_root" "$native_skills_root")
     if [[ $DRY_RUN -eq 0 ]]; then mkdir -p "$skills_dst"; fi
     local skill_dir skill_name link entry entry_name
     declare -A native_names=() desired_names=()
