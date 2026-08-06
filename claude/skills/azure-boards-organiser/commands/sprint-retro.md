@@ -53,7 +53,7 @@ $items = az boards query --wiql $wiql --project $cfg.project --organization $org
 ## Step 3: Spillover analysis
 
 For each carry-over item, derive *why* it slipped where cheap:
-- **Newly created in-sprint** (approximate): `CreatedDate` later than the sprint start date (resolve the iteration's `startDate` from `az boards iteration team list --team $cfg.team`, compare client-side after `ConvertFrom-Json`). ⚠️ This only catches items *created* after the start — items created earlier but *moved into* this sprint mid-sprint are invisible without iteration-change history (MCP/revisions API). Label it "newly created in-sprint", not "added mid-sprint".
+- **Newly created in-sprint** (approximate): `CreatedDate` later than the sprint start date (resolve the iteration's `startDate` from `az boards iteration team list --team $cfg.team --project $cfg.project --organization $org`, compare client-side after `ConvertFrom-Json`). ⚠️ This only catches items *created* after the start — items created earlier but *moved into* this sprint mid-sprint are invisible without iteration-change history (MCP/revisions API). Label it "newly created in-sprint", not "added mid-sprint".
 - **Oversized**: StoryPoints > 8 (per the "Oversized PBIs" pattern threshold) — likely needed splitting.
 - Otherwise: note as "no cheap signal" — don't speculate.
 
