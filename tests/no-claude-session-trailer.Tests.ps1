@@ -5,10 +5,13 @@
 #
 # The suite needs bash + jq (as the hook does); it skips rather than false-green when absent.
 
-$script:HasBash = [bool](Get-Command bash -ErrorAction SilentlyContinue) -and
+. (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
+$script:HasBash = [bool](Resolve-TestBash) -and
     [bool](Get-Command jq -ErrorAction SilentlyContinue)
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
+    $script:TestBash = Resolve-TestBash
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:Hook = Join-Path $script:RepoRoot 'claude/no-claude-session-trailer.sh'
 
@@ -16,7 +19,7 @@ BeforeAll {
     function Invoke-Hook {
         param([string] $Command)
         $json = @{ tool_input = @{ command = $Command } } | ConvertTo-Json -Compress
-        return ($json | & bash $script:Hook 2>&1 | Out-String)
+        return ($json | & $script:TestBash $script:Hook 2>&1 | Out-String)
     }
 }
 

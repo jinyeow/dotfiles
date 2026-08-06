@@ -6,11 +6,14 @@
 #
 # Drives the real script through bash with the statusline JSON on stdin over a throwaway
 # git repo. Needs bash + jq + git + awk (as the script does); skips rather than false-green.
-$script:HasDeps = [bool](Get-Command bash -ErrorAction SilentlyContinue) -and
+. (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
+$script:HasDeps = [bool](Resolve-TestBash) -and
     [bool](Get-Command jq -ErrorAction SilentlyContinue) -and
     [bool](Get-Command git -ErrorAction SilentlyContinue)
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
+    $script:TestBash = Resolve-TestBash
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:Script = Join-Path $script:RepoRoot 'claude/statusline-command.sh'
     $script:RED = "$([char]27)[91m"
@@ -21,6 +24,7 @@ BeforeAll {
         $repo = Join-Path ([IO.Path]::GetTempPath()) ('slrepo-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $repo -Force | Out-Null
         & git -C $repo init -q
+        & git -C $repo symbolic-ref HEAD refs/heads/master
         & git -C $repo config user.email 't@t.invalid'
         & git -C $repo config user.name 'T'
         Set-Content -LiteralPath (Join-Path $repo 'a.txt') -Value 'x' -Encoding ASCII
@@ -33,7 +37,7 @@ BeforeAll {
     function Invoke-Statusline {
         param([string] $Repo)
         $json = @{ cwd = $Repo } | ConvertTo-Json -Compress
-        return ($json | & bash $script:Script 2>&1 | Out-String)
+        return ($json | & $script:TestBash $script:Script 2>&1 | Out-String)
     }
 }
 
