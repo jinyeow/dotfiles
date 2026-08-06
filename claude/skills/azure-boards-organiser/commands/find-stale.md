@@ -95,6 +95,6 @@ Then per category (ID — Title — Type/State — Owner — days since change):
 ## Step 6: Offer next actions
 
 - **Unpointed / missing AC** → `/prepare-pbi <ID>` to enrich and size.
-- **No owner** → assign an owner (confirm-first `az boards work-item update --id <ID> --fields System.AssignedTo=<upn>`).
+- **No owner** → assign an owner (confirm-first `az boards work-item update --id <ID> --fields System.AssignedTo=<upn> --organization $org`).
 - **Orphans** → `/move-to-done <ID>` for the parent, or close/transition the open children.
 - **Truly dead items** → Remove (confirm-first; `System.State=Removed`).
