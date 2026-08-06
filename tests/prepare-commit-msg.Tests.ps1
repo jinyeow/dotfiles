@@ -22,10 +22,13 @@ $script:Variants = @(
 )
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
+
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:HooksDir = Join-Path $script:RepoRoot 'git/templates/hooks'
     $script:HookPs1  = Join-Path $script:HooksDir 'prepare-commit-msg.ps1'
     $script:HookSh   = Join-Path $script:HooksDir 'prepare-commit-msg.sh'
+    $script:TestBash = Resolve-TestBash
 
     function New-TestRepo {
         $root = Join-Path ([IO.Path]::GetTempPath()) ('pcm-' + [guid]::NewGuid())
@@ -56,7 +59,10 @@ BeforeAll {
             if ($Variant -eq 'ps1') {
                 & pwsh -NoProfile -File $script:HookPs1 $MsgFile $Source 2>&1 | Out-Null
             } else {
-                & bash $script:HookSh $MsgFile $Source 2>&1 | Out-Null
+                if (-not $script:TestBash) {
+                    throw 'No usable bash found; Resolve-TestBash returned $null.'
+                }
+                & $script:TestBash $script:HookSh $MsgFile $Source 2>&1 | Out-Null
             }
         } finally {
             Pop-Location
