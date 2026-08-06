@@ -948,13 +948,14 @@ function Install-Claude {
     $portableSkills = @($portableSkills | Where-Object { $_.Name -notin $nativeNames })
     $skills = @($portableSkills) + @($nativeSkills)
     # Keep repository-relative compatibility roots indefinitely; missing historical roots are
-    # intentionally not recreated; they are only used to recognize old managed links.
+    # intentionally not recreated; they are only used to recognize old managed links. Scoped to
+    # roots the Claude installer itself (current or historical) has ever written into — never
+    # a root only Pi's or Codex's installer wrote (see issue #71).
     $managedSkillRoots = @(
         (Join-Path $Dotfiles 'ai-agents\skills'),
         (Join-Path $Dotfiles 'claude\skills'),
         (Join-Path $Dotfiles 'ai-agents\shared\skills'),
-        (Join-Path $Dotfiles 'ai-agents\claude\skills'),
-        (Join-Path $Dotfiles 'ai-agents\codex\skills')
+        (Join-Path $Dotfiles 'ai-agents\claude\skills')
     )
     if (-not (Test-Path $skillsDst)) {
         if (-not $DryRun) { New-Item -ItemType Directory -Path $skillsDst -Force | Out-Null }
@@ -972,15 +973,7 @@ function Install-Claude {
                 }
                 $existingTarget = if ($existing.LinkTarget) { $existing.LinkTarget } else { @($existing.Target)[0] }
                 $fullExistingTarget = Resolve-LinkTargetPath -Link $link -Target $existingTarget
-                $isManaged = $false
-                foreach ($root in $managedSkillRoots) {
-                    $fullRoot = Resolve-LinkTargetPath -Link $link -Target $root
-                    if ($fullExistingTarget -and $fullRoot -and
-                        $fullExistingTarget.StartsWith($fullRoot.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
-                        $isManaged = $true
-                        break
-                    }
-                }
+                $isManaged = Test-ManagedSkillLink -Link $link -FullTarget $fullExistingTarget -ManagedRoots $managedSkillRoots
                 if (-not $isManaged) {
                     if ($fullExistingTarget -and -not (Test-Path -LiteralPath $fullExistingTarget)) {
                         Write-Warn "Preserved unmanaged Claude skill link (target missing): $link"
@@ -1105,13 +1098,12 @@ function Install-Pi {
     $portableSkills = @(Get-ChildItem -Path (Join-Path $Dotfiles 'ai-agents\skills') -Directory -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -notin $nativeNames })
     $skills = @($portableSkills) + @($nativeSkills)
+    # Scoped to roots the Pi installer itself (current or historical) has ever written into —
+    # Pi never wrote into any Claude- or Codex-only historical root (see issue #71).
     $managedSkillRoots = @(
         (Join-Path $Dotfiles 'ai-agents\skills'),
         (Join-Path $Dotfiles 'pi\skills'),
-        (Join-Path $Dotfiles 'ai-agents\shared\skills'),
-        (Join-Path $Dotfiles 'ai-agents\claude\skills'),
-        (Join-Path $Dotfiles 'ai-agents\codex\skills'),
-        (Join-Path $Dotfiles 'claude\skills')
+        (Join-Path $Dotfiles 'ai-agents\shared\skills')
     )
     $desiredSkillNames = @($skills | ForEach-Object Name)
     Remove-ObsoleteManagedSkillLinks -SkillsDst $skillsDst -DesiredNames $desiredSkillNames -ManagedRoots $managedSkillRoots -Runtime 'Pi'
@@ -1125,15 +1117,7 @@ function Install-Pi {
             }
             $existingTarget = if ($existing.LinkTarget) { $existing.LinkTarget } else { @($existing.Target)[0] }
             $fullExistingTarget = Resolve-LinkTargetPath -Link $link -Target $existingTarget
-            $isManaged = $false
-            foreach ($root in $managedSkillRoots) {
-                $fullRoot = Resolve-LinkTargetPath -Link $link -Target $root
-                if ($fullExistingTarget -and $fullRoot -and
-                    $fullExistingTarget.StartsWith($fullRoot.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
-                    $isManaged = $true
-                    break
-                }
-            }
+            $isManaged = Test-ManagedSkillLink -Link $link -FullTarget $fullExistingTarget -ManagedRoots $managedSkillRoots
             if (-not $isManaged) {
                 if ($fullExistingTarget -and -not (Test-Path -LiteralPath $fullExistingTarget)) {
                     Write-Warn "Preserved unmanaged Pi skill link (target missing): $link"
@@ -1147,6 +1131,21 @@ function Install-Pi {
     }
 }
 
+# A link is repository-managed only when its resolved target is beneath one of the caller's
+# current or historical skill roots. Each root is resolved relative to $Link (not $Dotfiles)
+# so relative link targets stored on disk still match.
+function Test-ManagedSkillLink ([string]$Link, [string]$FullTarget, [string[]]$ManagedRoots) {
+    if (-not $FullTarget) { return $false }
+    foreach ($root in $ManagedRoots) {
+        $fullRoot = Resolve-LinkTargetPath -Link $Link -Target $root
+        if ($fullRoot -and
+            $FullTarget.StartsWith($fullRoot.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+            return $true
+        }
+    }
+    return $false
+}
+
 # Remove obsolete links only when their resolved target is beneath a known current or
 # historical repository skill root. Unmanaged links, malformed links, and real entries stay.
 function Remove-ObsoleteManagedSkillLinks ([string]$SkillsDst, [string[]]$DesiredNames, [string[]]$ManagedRoots, [string]$Runtime) {
@@ -1157,15 +1156,7 @@ function Remove-ObsoleteManagedSkillLinks ([string]$SkillsDst, [string[]]$Desire
         $target = if ($item.LinkTarget) { $item.LinkTarget } else { @($item.Target)[0] }
         if (-not $target) { continue }
         $fullTarget = Resolve-LinkTargetPath -Link $item.FullName -Target $target
-        $isManaged = $false
-        foreach ($root in $ManagedRoots) {
-            $fullRoot = Resolve-LinkTargetPath -Link $item.FullName -Target $root
-            if ($fullTarget -and $fullRoot -and
-                $fullTarget.StartsWith($fullRoot.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
-                $isManaged = $true
-                break
-            }
-        }
+        $isManaged = Test-ManagedSkillLink -Link $item.FullName -FullTarget $fullTarget -ManagedRoots $ManagedRoots
         if ($isManaged -and $item.Name -notin $DesiredNames) {
             if ($DryRun) {
                 Write-Info "[DRY RUN] remove obsolete $Runtime skill junction: $($item.FullName)"
@@ -1274,11 +1265,14 @@ function Install-Codex {
     $codexSkillNames = @($codexSkills.ForEach('Name'))
     $portableSkills = @($portableSkills | Where-Object { $_.Name -notin $codexSkillNames })
     $desiredSkillNames = @($portableSkills | ForEach-Object Name) + @($codexSkills | ForEach-Object Name)
+    # Scoped to roots the Codex installer itself (current or historical) has ever written into —
+    # claude\skills was the shared source Codex projected from before the ai-agents rehome, and
+    # ai-agents\codex\skills was Codex's own former native root; Codex never wrote into Pi's or
+    # Claude-only ai-agents\claude\skills (see issue #71).
     $managedSkillRoots = @(
         (Join-Path $Dotfiles 'ai-agents\skills'),
         (Join-Path $Dotfiles 'codex\skills'),
         (Join-Path $Dotfiles 'ai-agents\shared\skills'),
-        (Join-Path $Dotfiles 'ai-agents\claude\skills'),
         (Join-Path $Dotfiles 'ai-agents\codex\skills'),
         (Join-Path $Dotfiles 'claude\skills')
     )
@@ -1294,15 +1288,7 @@ function Install-Codex {
                 }
                 $existingTarget = if ($existing.LinkTarget) { $existing.LinkTarget } else { @($existing.Target)[0] }
                 $fullExistingTarget = Resolve-LinkTargetPath -Link $link -Target $existingTarget
-                $isManaged = $false
-                foreach ($root in $managedSkillRoots) {
-                    $fullRoot = Resolve-LinkTargetPath -Link $link -Target $root
-                    if ($fullExistingTarget -and $fullRoot -and
-                        $fullExistingTarget.StartsWith($fullRoot.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
-                        $isManaged = $true
-                        break
-                    }
-                }
+                $isManaged = Test-ManagedSkillLink -Link $link -FullTarget $fullExistingTarget -ManagedRoots $managedSkillRoots
                 if (-not $isManaged) {
                     if ($fullExistingTarget -and -not (Test-Path -LiteralPath $fullExistingTarget)) {
                         Write-Warn "Preserved unmanaged Codex skill link (target missing): $link"
