@@ -6,8 +6,14 @@
 # when invoked, so the test can tell whether the real tool generation ran.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
+
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:CtagsHook = Join-Path $script:RepoRoot 'git/templates/hooks/ctags'
+    $script:Bash = Resolve-TestBash
+    if (-not $script:Bash) {
+        throw 'ctags-hook.Tests.ps1: no usable bash found, WSL launchers excluded — install Git for Windows'
+    }
 
     function New-TestRepo {
         $root = Join-Path ([IO.Path]::GetTempPath()) ('ctags-' + [guid]::NewGuid())
@@ -55,7 +61,7 @@ exit 0
         try {
             $env:PATH = $ShimDir + [IO.Path]::PathSeparator + $origPath
             $env:CTAGS_MARKER = $Marker
-            & bash $script:CtagsHook 2>&1 | Out-Null
+            & $script:Bash $script:CtagsHook 2>&1 | Out-Null
             return $LASTEXITCODE
         } finally {
             Pop-Location
