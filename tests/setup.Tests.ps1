@@ -192,6 +192,35 @@ Describe 'setup.ps1 pi module' {
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
+
+    It 'does not classify a link under the Claude-only historical root ai-agents\claude\skills as managed' -Skip:(-not $IsWindows) {
+        # Regression for issue #71: Pi's installer (current or historical) never wrote into
+        # ai-agents\claude\skills — that root belongs only to Claude's projection history. A
+        # link that happens to resolve under it must stay untouched by Pi's cleanup, not be
+        # silently removed as "obsolete managed".
+        $repoRoot = Split-Path $script:SetupScript -Parent
+        $claudeOnlySource = Join-Path $repoRoot 'ai-agents\claude\skills'
+        $claudeOnlySkill = Join-Path $claudeOnlySource 'legacy-only'
+        $createdParent = -not (Test-Path $claudeOnlySource)
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-pi-clauderoot-' + [guid]::NewGuid())
+        $piSkills = Join-Path $tmpHome '.pi\agent\skills'
+        New-Item -ItemType Directory -Path $claudeOnlySkill, $piSkills -Force | Out-Null
+        $link = Join-Path $piSkills 'legacy-only'
+        $origUP = $env:USERPROFILE
+        try {
+            New-Item -ItemType Junction -Path $link -Target $claudeOnlySkill -ErrorAction Stop | Out-Null
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module pi -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Not -Match 'remove obsolete Pi skill junction.*legacy-only'
+            Test-Path -LiteralPath $link | Should -BeTrue
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path $claudeOnlySkill -Recurse -Force -ErrorAction SilentlyContinue
+            if ($createdParent) { Remove-Item -Path $claudeOnlySource -Force -ErrorAction SilentlyContinue }
+        }
+    }
 }
 
 Describe 'setup.ps1 Claude skill projection safety' {
@@ -339,6 +368,63 @@ Describe 'setup.ps1 Claude skill projection safety' {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
             Remove-Item -Path $oldSource -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'does not classify a link under the Codex-only historical root ai-agents\codex\skills as managed' -Skip:(-not $IsWindows) {
+        # Regression for issue #71: Claude's own installer (current or historical) never wrote
+        # into ai-agents\codex\skills — that root belongs only to Codex's projection history.
+        # A link that happens to resolve under it must stay untouched by Claude's cleanup, not
+        # be silently removed as "obsolete managed".
+        $repoRoot = Split-Path $script:SetupScript -Parent
+        $codexOnlySource = Join-Path $repoRoot 'ai-agents\codex\skills'
+        $codexOnlySkill = Join-Path $codexOnlySource 'legacy-only'
+        $createdParent = -not (Test-Path $codexOnlySource)
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-codexroot-' + [guid]::NewGuid())
+        $claudeSkills = Join-Path $tmpHome '.claude\skills'
+        New-Item -ItemType Directory -Path $codexOnlySkill, $claudeSkills -Force | Out-Null
+        $link = Join-Path $claudeSkills 'legacy-only'
+        $origUP = $env:USERPROFILE
+        try {
+            New-Item -ItemType Junction -Path $link -Target $codexOnlySkill -ErrorAction Stop | Out-Null
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Not -Match 'remove obsolete Claude skill junction.*legacy-only'
+            Test-Path -LiteralPath $link | Should -BeTrue
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path $codexOnlySkill -Recurse -Force -ErrorAction SilentlyContinue
+            if ($createdParent) { Remove-Item -Path $codexOnlySource -Force -ErrorAction SilentlyContinue }
+        }
+    }
+
+    It 'does not classify a link under a same-basename-prefix sibling root as managed' -Skip:(-not $IsWindows) {
+        # Regression guard: string-prefix matching without a trailing separator would let
+        # ai-agents\skills-extra be misclassified as inside ai-agents\skills. A directory
+        # separator must terminate the root before the prefix counts as a match.
+        $repoRoot = Split-Path $script:SetupScript -Parent
+        $siblingSource = Join-Path $repoRoot 'ai-agents\skills-extra'
+        $siblingSkill = Join-Path $siblingSource 'legacy-only'
+        $createdParent = -not (Test-Path $siblingSource)
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-prefixguard-' + [guid]::NewGuid())
+        $claudeSkills = Join-Path $tmpHome '.claude\skills'
+        New-Item -ItemType Directory -Path $siblingSkill, $claudeSkills -Force | Out-Null
+        $link = Join-Path $claudeSkills 'legacy-only'
+        $origUP = $env:USERPROFILE
+        try {
+            New-Item -ItemType Junction -Path $link -Target $siblingSkill -ErrorAction Stop | Out-Null
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Not -Match 'remove obsolete Claude skill junction.*legacy-only'
+            Test-Path -LiteralPath $link | Should -BeTrue
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path $siblingSkill -Recurse -Force -ErrorAction SilentlyContinue
+            if ($createdParent) { Remove-Item -Path $siblingSource -Force -ErrorAction SilentlyContinue }
         }
     }
 }
@@ -625,9 +711,11 @@ Describe 'setup.ps1 codex module shared skills' {
 }
 
 Describe 'setup.ps1 Codex skill migration' {
-    It 'previews removal of obsolete managed Claude skill junctions but preserves unmanaged entries' -Skip:(-not $IsWindows) {
+    It 'previews removal of obsolete managed Codex skill junctions but preserves unmanaged entries' -Skip:(-not $IsWindows) {
+        # ai-agents\codex\skills is Codex's own former native-skills root (issue #71) — the root
+        # that is actually historical for Codex's installer, unlike ai-agents\claude\skills.
         $repoRoot = Split-Path $script:SetupScript -Parent
-        $oldSource = Join-Path $repoRoot 'ai-agents\claude\skills'
+        $oldSource = Join-Path $repoRoot 'ai-agents\codex\skills'
         $oldSkill = Join-Path $oldSource 'legacy-only'
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-migration-' + [guid]::NewGuid())
         $codexSkills = Join-Path $tmpHome '.codex\skills'
@@ -645,6 +733,35 @@ Describe 'setup.ps1 Codex skill migration' {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
             Remove-Item -Path $oldSource -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'does not classify a link under the Claude-only historical root ai-agents\claude\skills as managed' -Skip:(-not $IsWindows) {
+        # Regression for issue #71: Codex's installer (current or historical) never wrote into
+        # ai-agents\claude\skills — that root belongs only to Claude's projection history. A
+        # link that happens to resolve under it must stay untouched by Codex's cleanup, not be
+        # silently removed as "obsolete managed".
+        $repoRoot = Split-Path $script:SetupScript -Parent
+        $claudeOnlySource = Join-Path $repoRoot 'ai-agents\claude\skills'
+        $claudeOnlySkill = Join-Path $claudeOnlySource 'legacy-only'
+        $createdParent = -not (Test-Path $claudeOnlySource)
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-clauderoot-' + [guid]::NewGuid())
+        $codexSkills = Join-Path $tmpHome '.codex\skills'
+        New-Item -ItemType Directory -Path $claudeOnlySkill, $codexSkills -Force | Out-Null
+        $link = Join-Path $codexSkills 'legacy-only'
+        $origUP = $env:USERPROFILE
+        try {
+            New-Item -ItemType Junction -Path $link -Target $claudeOnlySkill -ErrorAction Stop | Out-Null
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module codex -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Not -Match 'remove obsolete Codex skill junction.*legacy-only'
+            Test-Path -LiteralPath $link | Should -BeTrue
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path $claudeOnlySkill -Recurse -Force -ErrorAction SilentlyContinue
+            if ($createdParent) { Remove-Item -Path $claudeOnlySource -Force -ErrorAction SilentlyContinue }
         }
     }
 }

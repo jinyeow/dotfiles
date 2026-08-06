@@ -500,7 +500,9 @@ install_pi() {
 
     local skill_dir name link entry entry_name
     local portable_skills_root="$DOTFILES/ai-agents/skills"
-    local managed_skill_roots=("$portable_skills_root" "$DOTFILES/pi/skills" "$DOTFILES/ai-agents/shared/skills" "$DOTFILES/ai-agents/claude/skills" "$DOTFILES/ai-agents/codex/skills" "$DOTFILES/claude/skills")
+    # Scoped to roots the Pi installer itself (current or historical) has ever written into —
+    # Pi never wrote into any Claude- or Codex-only historical root (see issue #71).
+    local managed_skill_roots=("$portable_skills_root" "$DOTFILES/pi/skills" "$DOTFILES/ai-agents/shared/skills")
     declare -A native_names=() desired_names=()
     while IFS= read -r -d '' skill_dir; do
         native_names["$(basename "$skill_dir")"]=1
@@ -630,7 +632,9 @@ install_claude() {
     local native_skills_root="$DOTFILES/claude/skills"
     local historical_shared_root="$DOTFILES/ai-agents/shared/skills"
     local historical_claude_root="$DOTFILES/ai-agents/claude/skills"
-    local managed_skill_roots=("$portable_skills_root" "$native_skills_root" "$historical_shared_root" "$historical_claude_root" "$DOTFILES/ai-agents/codex/skills")
+    # Scoped to roots the Claude installer itself (current or historical) has ever written into —
+    # never a root only Pi's or Codex's installer wrote (see issue #71).
+    local managed_skill_roots=("$portable_skills_root" "$native_skills_root" "$historical_shared_root" "$historical_claude_root")
     if [[ $DRY_RUN -eq 0 ]]; then mkdir -p "$skills_dst"; fi
     local skill_dir skill_name link entry entry_name
     declare -A native_names=() desired_names=()
@@ -770,10 +774,11 @@ install_codex() {
     local skills_dst="$HOME/.codex/skills"
     local portable_skills_root="$DOTFILES/ai-agents/skills"
     local native_skills_root="$DOTFILES/codex/skills"
-    local historical_shared_root="$DOTFILES/ai-agents/shared/skills"
-    local historical_claude_root="$DOTFILES/ai-agents/claude/skills"
-    local historical_codex_root="$DOTFILES/ai-agents/codex/skills"
-    local managed_skill_roots=("$portable_skills_root" "$native_skills_root" "$historical_shared_root" "$historical_claude_root" "$historical_codex_root" "$DOTFILES/claude/skills")
+    # Scoped to roots install_codex itself has ever written into. install_codex postdates the
+    # ai-agents rehome entirely (added in 57b243d) and has only ever symlinked from
+    # ai-agents/skills and codex/skills — never from claude/skills or any historical
+    # ai-agents/shared or ai-agents/codex root (see issue #71).
+    local managed_skill_roots=("$portable_skills_root" "$native_skills_root")
     if [[ $DRY_RUN -eq 0 ]]; then mkdir -p "$skills_dst"; fi
     local skill_dir skill_name link entry entry_name
     declare -A native_names=() desired_names=()
