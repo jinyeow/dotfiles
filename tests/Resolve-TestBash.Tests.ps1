@@ -28,6 +28,18 @@ Describe 'Resolve-TestBash' {
 
             Resolve-TestBash | Should -Be '/usr/bin/bash'
         }
+
+        It 'returns a single path when bash appears multiple times on PATH (e.g. /bin symlinked to /usr/bin)' {
+            Set-Variable -Name IsWindows -Value $false -Force -Scope Global
+            Mock Get-Command {
+                @(
+                    [pscustomobject]@{ Source = '/usr/bin/bash' }
+                    [pscustomobject]@{ Source = '/bin/bash' }
+                )
+            } -ParameterFilter { $Name -eq 'bash' -and $CommandType -eq 'Application' }
+
+            Resolve-TestBash | Should -Be '/usr/bin/bash'
+        }
     }
 
     Context 'Windows, git.exe found under cmd\' {
