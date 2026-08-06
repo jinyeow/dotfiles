@@ -455,6 +455,66 @@ Describe 'setup.sh relative-link migration safety' {
         }
     }
 
+    It 'does not classify a link under the Claude-only historical root ai-agents/claude/skills as managed' -Skip:(-not $script:CanCreateSymlink) {
+        # Regression for issue #71: Pi's installer (current or historical) never wrote into
+        # ai-agents/claude/skills — that root belongs only to Claude's projection history. A
+        # link that happens to resolve under it must stay untouched by Pi's cleanup, not be
+        # silently removed as "obsolete managed".
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-pi-clauderoot-' + [guid]::NewGuid())
+        $piSkills = Join-Path $tmpHome '.pi/agent/skills'
+        $claudeOnlySource = Join-Path $script:Repo 'ai-agents/claude/skills'
+        $claudeOnlySkill = Join-Path $claudeOnlySource 'legacy-only'
+        $createdParent = -not (Test-Path $claudeOnlySource)
+        New-Item -ItemType Directory -Path $piSkills, $claudeOnlySkill -Force | Out-Null
+        $link = Join-Path $piSkills 'legacy-only'
+        $origHome = $env:HOME
+        try {
+            & $script:Bash -c 'ln -s "$1" "$2"' _ `
+                ($claudeOnlySkill -replace '\\', '/') ($link -replace '\\', '/')
+            $LASTEXITCODE | Should -Be 0
+            $env:HOME = $tmpHome
+            $out = & $script:Bash $script:SetupSh -m pi --dry-run 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $out | Should -Not -Match 'remove obsolete Pi skill link.*legacy-only'
+            Test-Path -LiteralPath $link | Should -BeTrue
+        } finally {
+            $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path $claudeOnlySkill -Recurse -Force -ErrorAction SilentlyContinue
+            if ($createdParent) { Remove-Item -Path $claudeOnlySource -Force -ErrorAction SilentlyContinue }
+        }
+    }
+
+    It 'does not classify a Codex link under the Claude-only historical root ai-agents/claude/skills as managed' -Skip:(-not $script:CanCreateSymlink) {
+        # Regression for issue #71: Codex's installer (current or historical) never wrote into
+        # ai-agents/claude/skills — that root belongs only to Claude's projection history. A
+        # link that happens to resolve under it must stay untouched by Codex's cleanup, not be
+        # silently removed as "obsolete managed".
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-codex-clauderoot-' + [guid]::NewGuid())
+        $codexSkills = Join-Path $tmpHome '.codex/skills'
+        $claudeOnlySource = Join-Path $script:Repo 'ai-agents/claude/skills'
+        $claudeOnlySkill = Join-Path $claudeOnlySource 'legacy-only'
+        $createdParent = -not (Test-Path $claudeOnlySource)
+        New-Item -ItemType Directory -Path $codexSkills, $claudeOnlySkill -Force | Out-Null
+        $link = Join-Path $codexSkills 'legacy-only'
+        $origHome = $env:HOME
+        try {
+            & $script:Bash -c 'ln -s "$1" "$2"' _ `
+                ($claudeOnlySkill -replace '\\', '/') ($link -replace '\\', '/')
+            $LASTEXITCODE | Should -Be 0
+            $env:HOME = $tmpHome
+            $out = & $script:Bash $script:SetupSh -m codex --dry-run 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $out | Should -Not -Match 'remove obsolete Codex skill link.*legacy-only'
+            Test-Path -LiteralPath $link | Should -BeTrue
+        } finally {
+            $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path $claudeOnlySkill -Recurse -Force -ErrorAction SilentlyContinue
+            if ($createdParent) { Remove-Item -Path $claudeOnlySource -Force -ErrorAction SilentlyContinue }
+        }
+    }
+
     It 'preserves an unmanaged Claude skill directory instead of planning a replacement' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-claude-unmanaged-dir-' + [guid]::NewGuid())
         $link = Join-Path $tmpHome '.claude/skills/council'
@@ -568,7 +628,9 @@ Describe 'setup.sh relative-link migration safety' {
         # be silently removed as "obsolete managed".
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-claude-codexroot-' + [guid]::NewGuid())
         $skillsDir = Join-Path $tmpHome '.claude/skills'
-        $codexOnlySkill = Join-Path $script:Repo 'ai-agents/codex/skills/legacy-only'
+        $codexOnlySource = Join-Path $script:Repo 'ai-agents/codex/skills'
+        $codexOnlySkill = Join-Path $codexOnlySource 'legacy-only'
+        $createdParent = -not (Test-Path $codexOnlySource)
         New-Item -ItemType Directory -Path $skillsDir, $codexOnlySkill -Force | Out-Null
         $link = Join-Path $skillsDir 'legacy-only'
         $origHome = $env:HOME
@@ -584,7 +646,36 @@ Describe 'setup.sh relative-link migration safety' {
         } finally {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
-            Remove-Item -Path (Join-Path $script:Repo 'ai-agents/codex/skills') -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path $codexOnlySkill -Recurse -Force -ErrorAction SilentlyContinue
+            if ($createdParent) { Remove-Item -Path $codexOnlySource -Force -ErrorAction SilentlyContinue }
+        }
+    }
+
+    It 'does not classify a Codex link under claude/skills as managed' -Skip:(-not $script:CanCreateSymlink) {
+        # Regression for issue #71: install_codex postdates the ai-agents rehome entirely (it was
+        # introduced in 57b243d) and has only ever symlinked from ai-agents/skills and
+        # codex/skills. It never wrote into claude/skills, so a link that happens to resolve
+        # under that root must stay untouched by Codex's cleanup, not be silently removed as
+        # "obsolete managed". Uses an existing claude/skills entry (handoff) as the fixture
+        # source so the test mutates no repo state.
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-codex-claudeskillsroot-' + [guid]::NewGuid())
+        $skillsDir = Join-Path $tmpHome '.codex/skills'
+        $claudeOnlySkill = Join-Path $script:Repo 'claude/skills/handoff'
+        New-Item -ItemType Directory -Path $skillsDir -Force | Out-Null
+        $link = Join-Path $skillsDir 'handoff'
+        $origHome = $env:HOME
+        try {
+            & $script:Bash -c 'ln -s "$1" "$2"' _ `
+                ($claudeOnlySkill -replace '\\', '/') ($link -replace '\\', '/')
+            $LASTEXITCODE | Should -Be 0
+            $env:HOME = $tmpHome
+            $out = & $script:Bash $script:SetupSh -m codex --dry-run 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $out | Should -Not -Match 'remove obsolete Codex skill link.*handoff'
+            Test-Path -LiteralPath $link | Should -BeTrue
+        } finally {
+            $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
 
@@ -594,7 +685,9 @@ Describe 'setup.sh relative-link migration safety' {
         # matches "$resolved_root/"* so a sibling directory prefix alone must not qualify.
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-claude-prefixguard-' + [guid]::NewGuid())
         $skillsDir = Join-Path $tmpHome '.claude/skills'
-        $siblingSkill = Join-Path $script:Repo 'ai-agents/skills-extra/legacy-only'
+        $siblingSource = Join-Path $script:Repo 'ai-agents/skills-extra'
+        $siblingSkill = Join-Path $siblingSource 'legacy-only'
+        $createdParent = -not (Test-Path $siblingSource)
         New-Item -ItemType Directory -Path $skillsDir, $siblingSkill -Force | Out-Null
         $link = Join-Path $skillsDir 'legacy-only'
         $origHome = $env:HOME
@@ -610,7 +703,8 @@ Describe 'setup.sh relative-link migration safety' {
         } finally {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
-            Remove-Item -Path (Join-Path $script:Repo 'ai-agents/skills-extra') -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -Path $siblingSkill -Recurse -Force -ErrorAction SilentlyContinue
+            if ($createdParent) { Remove-Item -Path $siblingSource -Force -ErrorAction SilentlyContinue }
         }
     }
 
