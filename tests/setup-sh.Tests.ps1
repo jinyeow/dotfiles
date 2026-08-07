@@ -973,7 +973,25 @@ Describe 'setup.sh module list' {
         }
     }
 
-    It 'backs up a pre-existing plain CLAUDE.md before migrating it to a symlink' {
+}
+
+Describe 'setup.sh make_symlink backup behavior' {
+    BeforeAll {
+        # Same privilege probe as 'setup.sh relative-link migration safety': ln -s can fail
+        # (no Developer Mode/admin on Windows) without setup.sh's make_symlink reporting it, so
+        # verifying the resulting link is real needs symlink capability confirmed up front.
+        $script:CanCreateSymlink = $false
+        $probeDir = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-make-symlink-probe-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $probeDir -Force | Out-Null
+        try {
+            & $script:Bash -c 'ln -s target "$1/link"' _ ($probeDir -replace '\\', '/') 2>$null
+            $script:CanCreateSymlink = $LASTEXITCODE -eq 0
+        } finally {
+            Remove-Item -Path $probeDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'backs up a pre-existing plain CLAUDE.md before migrating it to a symlink' -Skip:(-not $script:CanCreateSymlink) {
         # AC: existing agent/configuration files are backed up before destructive migration, on
         # the Linux/WSL installer too (mirrors the setup.ps1 New-FileSymlink characterization).
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-claude-backup-' + [guid]::NewGuid())
@@ -988,6 +1006,8 @@ Describe 'setup.sh module list' {
         $claudeMd = Join-Path $claudeDir 'CLAUDE.md'
         Set-Content -LiteralPath $claudeMd -Value 'ORIGINAL CONTENT' -Encoding UTF8
 
+        $repoClaudeMd = Join-Path $script:Repo 'claude\CLAUDE.md'
+
         $origHome = $env:HOME
         try {
             $env:HOME = $tmpHome
@@ -998,6 +1018,14 @@ Describe 'setup.sh module list' {
             $backups = @(Get-ChildItem -Path $claudeDir -Filter 'CLAUDE.md.bak.*')
             $backups.Count | Should -Be 1
             (Get-Content -LiteralPath $backups[0].FullName -Raw).Trim() | Should -Be 'ORIGINAL CONTENT'
+
+            # The backup alone doesn't prove the migration itself succeeded — confirm the new
+            # symlink was actually created and resolves to the expected repo target.
+            $link = Get-Item -LiteralPath $claudeMd -Force
+            ($link.Attributes -band [IO.FileAttributes]::ReparsePoint) | Should -Not -Be 0
+            $resolvedTarget = & $script:Bash -c 'readlink -f "$1"' _ (& $script:ConvertToUnixPath $claudeMd) | Out-String
+            $expectedTarget = & $script:Bash -c 'readlink -f "$1"' _ (& $script:ConvertToUnixPath $repoClaudeMd) | Out-String
+            $resolvedTarget.Trim() | Should -Be $expectedTarget.Trim()
         } finally {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue

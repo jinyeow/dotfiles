@@ -64,8 +64,8 @@ Available modules: `neovim`, `vim`, `powershell`, `git`, `bash`, `tig`, `tmux`, 
 ## Requirements
 
 On Windows, enable Developer Mode (Settings > For developers) before running `setup.ps1` —
-symlink/junction creation fails without it. The `pi` module additionally requires Node.js/npm
-on PATH.
+symlink creation fails without it (junctions do not require it). The `pi` module additionally
+requires Node.js/npm on PATH if Pi is not already installed.
 
 On a fresh machine, run the winget bootstrap first to install all tools at once:
 

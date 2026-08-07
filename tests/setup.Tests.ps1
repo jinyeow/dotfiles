@@ -1019,6 +1019,24 @@ Describe 'New-FileSymlink failure recovery' {
         # it's safe to dot-source in-process to pull New-FileSymlink / Backup-Existing into this
         # Describe's scope without running any of the actual install modules.
         . $script:SetupScript -Module bogus *>$null
+
+        # Probe real symlink privilege (Developer Mode / admin) so a test that exercises the real
+        # New-Item -ItemType SymbolicLink path skips cleanly on an unprivileged host instead of
+        # failing with a misleading assertion — New-FileSymlink itself swallows the privilege
+        # error and rolls back, so a failed backup count would otherwise look like a regression.
+        $script:CanCreateSymlink = $false
+        if ($IsWindows) {
+            $probeDir = Join-Path ([IO.Path]::GetTempPath()) ('setup-symlink-probe-' + [guid]::NewGuid())
+            New-Item -ItemType Directory -Path $probeDir -Force | Out-Null
+            try {
+                New-Item -ItemType SymbolicLink -Path (Join-Path $probeDir 'link') -Target $probeDir -ErrorAction Stop | Out-Null
+                $script:CanCreateSymlink = $true
+            } catch {
+                $script:CanCreateSymlink = $false
+            } finally {
+                Remove-Item -Path $probeDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
     }
 
     BeforeEach {
@@ -1049,7 +1067,7 @@ Describe 'New-FileSymlink failure recovery' {
         @(Get-ChildItem -Path $script:Tmp -Filter '*.bak.*') | Should -BeNullOrEmpty
     }
 
-    It 'backs up a pre-existing plain file before migrating it to a symlink' -Skip:(-not $IsWindows) {
+    It 'backs up a pre-existing plain file before migrating it to a symlink' -Skip:(-not $script:CanCreateSymlink) {
         # AC: existing agent/configuration files (e.g. ~/.claude/CLAUDE.md, AGENTS.md) are backed
         # up before the destructive migration to a symlink, not silently overwritten.
         New-FileSymlink -Link $script:Link -Target $script:Target
