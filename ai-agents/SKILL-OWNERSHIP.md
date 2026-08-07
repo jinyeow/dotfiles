@@ -20,18 +20,54 @@ projected support copy and the two directories may diverge.
 
 ## Claude-native (`claude/skills/`)
 
+The #78 audit (full reasoning: `reports/2026-08-07-skills-portability-audit.md` in the
+dotfiles brain) re-derived each reason below from the current file content rather than
+carrying forward the reasons written when this list was first drafted (some had gone
+stale or were never quite right). It splits "Claude-native" into two causes that need
+different fixes: a skill blocked on a missing upstream capability needs research before
+it can move; a skill that's merely content-coupled or genuinely Claude-specific by design
+needs neither.
+
+**Blocked on an unresearched upstream mechanism** — the skill's core behavior needs a
+capability that may not exist in Codex/Pi; confirming that is a prerequisite before a
+migration ticket is even writable:
+
+- `deep-review`, `fix-findings`, `review-fix-loop` — `deep-review` dispatches one
+  differently-*scoped* subagent per reviewer dimension in parallel (`SKILL.md` line 53);
+  `fix-findings` and `review-fix-loop` inherit the blocker via composition. Research spike:
+  #93.
+- `azure-boards-organiser` — depends on the per-skill `commands/` subfolder convention
+  (`claude/README.md` line 174, 12 files under `commands/`), documented only for Claude
+  Code and unproven elsewhere. (Not just its config path or MCP tool names, which are
+  themselves portable in concept — an earlier pass in this audit missed the `commands/`
+  directory and wrongly called this one portable before catching the mistake.) Research
+  spike: #94.
+- `storm-research` — needs parallel agent spawn with distinct prompts, but not
+  `deep-review`'s per-agent tool-scoping — a lighter, separately-tracked requirement.
+  Research spike: #95.
+
+**Content-coupled or Claude-specific by design** — not blocked on a missing capability,
+no ticket needed:
+
 - `_shared` — Claude review-support resources, projected with Claude skills
-- `azure-boards-organiser` — Claude-specific Azure DevOps MCP tool names and config path
-- `codex-review` — Claude → Codex MCP invocation
-- `deep-review` — Claude-oriented review orchestration and shared review resources
-- `fastmail` — Claude-specific Fastmail MCP tool names
-- `fix-findings` — consumes Claude-oriented review artifacts
-- `git-guardrails-claude-code` — Claude Code hook/settings installation
-- `handoff` — Claude SessionStart handoff convention and `.claude` state
-- `review-fix-loop` — consumes Claude-oriented review artifacts
-- `router` — Claude built-in skills and slash-command routing
-- `storm-research` — Claude built-in `Agent`/`Write` workflow
-- `walkthrough` — Claude-specific learner and project-brain state
+- `codex-review` — links to `claude/skills/_shared/review-rubric.md`, a Claude-scoped
+  copy, not `ai-agents/_shared/`. Not "intrinsically Claude Code" (Pi could equally
+  consult Codex) — just not worth migrating without a concrete reason to run it from Pi.
+- `git-guardrails-claude-code` — installs a Claude Code `PreToolUse` hook; the skill *is*
+  about Claude Code's own hook system.
+- `handoff` — the value is the *next Claude Code session's* `SessionStart` hook
+  auto-picking up `.claude/handoff.md`; a portable version would lose the reason the
+  skill exists, not just its file path.
+- `router` — hardcodes references to skill names that mostly stay Claude-native per this
+  audit; revisit naturally if/when those move, no standalone fix needed now.
+
+**Portable candidates — migration ticket filed, not yet moved:**
+
+- `fastmail` — only coupling is Claude Code's `mcp__fastmail__*` tool-name syntax in the
+  prose; the Fastmail MCP server itself is portable in concept. Migration ticket: #92.
+- `walkthrough` — only coupling is two hardcoded paths (`~/.claude/learner-profile.md`,
+  `.claude/tickets.md`/`.claude/specs/*.md`); already resolves project-brain the portable
+  way. Migration ticket: #91.
 
 Claude-native skills are projected only to Claude Code, while portable skills are projected
 there alongside them. If names collide, the Claude-native variant wins.
