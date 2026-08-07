@@ -43,7 +43,7 @@ cd $HOME/dotfiles
 .\setup.ps1 -Module all -DryRun  # preview without changes
 ```
 
-Available modules: `neovim`, `vim`, `powershell`, `git`, `bash`, `tig`, `tmux`, `zellij`, `psmux`, `yazi`, `curl`, `claude`, `codex`, `pi`, `ai-agents`, `serena`, `context7`, `fastmail`, `lazygit`, `windowsterminal`, `bat`, `vscode`, `winget`
+Available modules: `neovim`, `vim`, `powershell`, `git`, `bash`, `tig`, `tmux`, `zellij`, `psmux`, `yazi`, `curl`, `claude`, `codex`, `pi`, `ai-agents`, `serena`, `context7`, `fastmail`, `langservers`, `herdr`, `lazygit`, `windowsterminal`, `bat`, `vscode`, `winget`
 
 `ai-agents` is a composite that runs `claude`, `codex`, and `pi` in sequence (used by `all` instead of listing the three individually); each remains independently invocable on its own.
 
@@ -57,11 +57,15 @@ cd ~/dotfiles
 ./setup.sh -m all --dry-run    # preview without changes
 ```
 
-Available modules: `neovim`, `vim`, `powershell`, `git`, `bash`, `tig`, `tmux`, `zellij`, `curl`, `claude`, `codex`, `pi`, `ai-agents`, `lazygit`, `windowsterminal`
+Available modules: `neovim`, `vim`, `powershell`, `git`, `bash`, `tig`, `tmux`, `zellij`, `curl`, `claude`, `codex`, `pi`, `ai-agents`, `langservers`, `herdr`, `lazygit`, `windowsterminal`
 
 `ai-agents` is a composite that runs `claude`, `codex`, and `pi` in sequence (used by `all` instead of listing the three individually); each remains independently invocable on its own.
 
 ## Requirements
+
+On Windows, enable Developer Mode (Settings > For developers) before running `setup.ps1` —
+symlink/junction creation fails without it. The `pi` module additionally requires Node.js/npm
+on PATH.
 
 On a fresh machine, run the winget bootstrap first to install all tools at once:
 

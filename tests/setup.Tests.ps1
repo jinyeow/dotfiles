@@ -1048,4 +1048,15 @@ Describe 'New-FileSymlink failure recovery' {
         # No stray .bak file should be left behind once restored.
         @(Get-ChildItem -Path $script:Tmp -Filter '*.bak.*') | Should -BeNullOrEmpty
     }
+
+    It 'backs up a pre-existing plain file before migrating it to a symlink' -Skip:(-not $IsWindows) {
+        # AC: existing agent/configuration files (e.g. ~/.claude/CLAUDE.md, AGENTS.md) are backed
+        # up before the destructive migration to a symlink, not silently overwritten.
+        New-FileSymlink -Link $script:Link -Target $script:Target
+
+        $backups = @(Get-ChildItem -Path $script:Tmp -Filter 'live.conf.bak.*')
+        $backups.Count | Should -Be 1
+        (Get-Content -LiteralPath $backups[0].FullName -Raw).Trim() | Should -Be 'ORIGINAL CONTENT'
+        (Get-Item -LiteralPath $script:Link).Attributes -band [IO.FileAttributes]::ReparsePoint | Should -Not -Be 0
+    }
 }

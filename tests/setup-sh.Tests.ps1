@@ -972,4 +972,35 @@ Describe 'setup.sh module list' {
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
+
+    It 'backs up a pre-existing plain CLAUDE.md before migrating it to a symlink' {
+        # AC: existing agent/configuration files are backed up before destructive migration, on
+        # the Linux/WSL installer too (mirrors the setup.ps1 New-FileSymlink characterization).
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-claude-backup-' + [guid]::NewGuid())
+        $shim = Join-Path $tmpHome 'bin'
+        New-Item -ItemType Directory -Path $shim -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $shim 'claude') -Value "#!/usr/bin/env bash`nexit 0`n" -Encoding UTF8
+        & $script:Bash -c 'chmod +x "$1"' _ ((Join-Path $shim 'claude') -replace '\\', '/')
+        $shimUnix = & $script:ConvertToUnixPath $shim
+
+        $claudeDir = Join-Path $tmpHome '.claude'
+        New-Item -ItemType Directory -Path $claudeDir -Force | Out-Null
+        $claudeMd = Join-Path $claudeDir 'CLAUDE.md'
+        Set-Content -LiteralPath $claudeMd -Value 'ORIGINAL CONTENT' -Encoding UTF8
+
+        $origHome = $env:HOME
+        try {
+            $env:HOME = $tmpHome
+            $shimPath = "${shimUnix}:/usr/bin:/bin"
+            $out = & $script:Bash -c 'PATH="$1" bash "$2" -m claude' _ $shimPath $script:SetupSh 2>&1 | Out-String
+            $out | Should -Match 'Backed up:.*CLAUDE\.md'
+
+            $backups = @(Get-ChildItem -Path $claudeDir -Filter 'CLAUDE.md.bak.*')
+            $backups.Count | Should -Be 1
+            (Get-Content -LiteralPath $backups[0].FullName -Raw).Trim() | Should -Be 'ORIGINAL CONTENT'
+        } finally {
+            $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
 }
