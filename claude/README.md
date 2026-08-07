@@ -25,6 +25,9 @@ or other resources are linked. If bootstrap fails or the executable is still not
 available, setup emits the manual install and re-run commands and stops without
 mutating `~/.claude`. Re-run the module after putting `claude` on `PATH`.
 
+`-Module ai-agents` (`-m ai-agents` on Linux) runs Claude, Codex, and Pi together — see
+the root `README.md` — but `claude` remains independently invocable on its own.
+
 Dry-run mode only previews the native bootstrap and existing projections; it does
 not download or change the machine.
 

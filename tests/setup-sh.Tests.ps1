@@ -391,10 +391,73 @@ Describe 'setup.sh Codex skill projection' {
 }
 
 Describe 'setup.sh module list — codex' {
-    It 'runs codex as a recognized module in the "all" expansion' {
+    It 'runs codex via the ai-agents composite in the "all" expansion (not listed individually)' {
+        # codex, claude, and pi are no longer listed individually in the all-expansion: they run
+        # once each through the ai-agents composite (see 'setup.sh -m ai-agents (composite)').
+        # Listing them here too would run each runtime twice.
         $source = Get-Content -LiteralPath $script:SetupSh -Raw
         $moduleLine = ($source -split "`n" | Where-Object { $_ -match 'MODULES=\(neovim' })
-        $moduleLine | Should -Match '\bcodex\b'
+        $moduleLine | Should -Match '\bai-agents\b'
+        $moduleLine | Should -Not -Match '\bcodex\b'
+        $moduleLine | Should -Not -Match '\bclaude\b'
+        $moduleLine | Should -Not -Match '\bpi\b'
+    }
+}
+
+Describe 'setup.sh -m ai-agents (composite)' {
+    It 'runs the Claude, Codex, and Pi modules in sequence without duplicating any of them' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-ai-agents-composite-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origHome = $env:HOME
+        try {
+            $env:HOME = $tmpHome
+            $out = & $script:Bash $script:SetupSh -m ai-agents --dry-run 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $out | Should -Not -Match "Unknown module 'ai-agents'"
+            @($out | Select-String -Pattern '=== Claude Code ===').Count | Should -Be 1
+            @($out | Select-String -Pattern '=== Codex CLI ===').Count | Should -Be 1
+            @($out | Select-String -Pattern '=== Pi ===').Count | Should -Be 1
+            # install_codex's MCP registration gates on ~/.claude/settings.json already existing
+            # (issue #72), so Claude must project first — proves this isn't just an 'all' alias.
+            $out.IndexOf('=== Claude Code ===') | Should -BeLessThan $out.IndexOf('=== Codex CLI ===')
+            $out.IndexOf('=== Codex CLI ===') | Should -BeLessThan $out.IndexOf('=== Pi ===')
+        } finally {
+            $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'wraps the Pi step so an unhandled Pi failure cannot abort Claude, Codex, or a later module' {
+        # setup.sh runs under `set -euo pipefail`; calling a function as the condition of an
+        # `if` suppresses -e for the duration of that call, which is the isolation mechanism
+        # install_ai_agents relies on for install_pi. Verified structurally here (source
+        # assertion) because install_pi's own anticipated failures already return cleanly, so
+        # there is no cheap way to fault-inject a real crash without mutating a tracked file.
+        $source = Get-Content -LiteralPath $script:SetupSh -Raw
+        $installStart = $source.IndexOf('install_ai_agents()')
+        $installStart | Should -BeGreaterOrEqual 0
+        $installEnd = $source.IndexOf("`n}", $installStart)
+        $installBody = $source.Substring($installStart, $installEnd - $installStart)
+        $installBody | Should -Match 'install_claude'
+        $installBody | Should -Match 'install_codex'
+        $installBody | Should -Match 'if\s*!\s*install_pi\s*;\s*then'
+    }
+
+    It 'runs Claude, Codex, and Pi exactly once via "all" (no duplicate runs)' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-all-composite-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origHome = $env:HOME
+        try {
+            $env:HOME = $tmpHome
+            $out = & $script:Bash $script:SetupSh -m all --dry-run 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            @($out | Select-String -Pattern '=== Claude Code ===').Count | Should -Be 1
+            @($out | Select-String -Pattern '=== Codex CLI ===').Count | Should -Be 1
+            @($out | Select-String -Pattern '=== Pi ===').Count | Should -Be 1
+        } finally {
+            $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
 }
 

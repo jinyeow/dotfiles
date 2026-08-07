@@ -911,6 +911,53 @@ exit /b $ExitCode
     }
 }
 
+Describe 'setup.ps1 -Module ai-agents (composite)' {
+    It 'runs the Claude, Codex, and Pi modules in sequence without duplicating any of them' -Skip:(-not $IsWindows) {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-ai-agents-composite-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            $output = & pwsh -NoProfile -File $script:SetupScript -Module ai-agents -DryRun 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Not -Match "Unknown module 'ai-agents'"
+            @($output | Select-String -Pattern '=== Claude Code ===').Count | Should -Be 1
+            @($output | Select-String -Pattern '=== Codex CLI ===').Count | Should -Be 1
+            @($output | Select-String -Pattern '=== Pi ===').Count | Should -Be 1
+            # Codex's MCP registration gates on ~/.claude/settings.json already existing (issue
+            # #72), so Claude must project first — proves the composite doesn't just alias 'all'.
+            $output.IndexOf('=== Claude Code ===') | Should -BeLessThan $output.IndexOf('=== Codex CLI ===')
+            $output.IndexOf('=== Codex CLI ===') | Should -BeLessThan $output.IndexOf('=== Pi ===')
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    Context 'Pi failure isolation (dot-sourced, functions mocked to fault-inject)' {
+        BeforeAll {
+            # Load real functions into this scope without running the main dispatch (the script
+            # exits 1 for a truly empty -Module, so pass a harmless bogus module — same pattern
+            # as the 'relative reparse-target comparison' Describe block below).
+            . $script:SetupScript -Module bogus -DryRun *>$null
+        }
+
+        It 'does not abort Claude or Codex projection when Pi throws an unanticipated error' -Skip:(-not $IsWindows) {
+            Mock Install-Pi { throw 'simulated unanticipated Pi failure' }
+            $threw = $false
+            try {
+                $output = Install-AiAgents 6>&1 | Out-String
+            } catch {
+                $threw = $true
+            }
+            $threw | Should -BeFalse
+            $output | Should -Match '=== Claude Code ==='
+            $output | Should -Match '=== Codex CLI ==='
+            $output | Should -Match 'simulated unanticipated Pi failure'
+        }
+    }
+}
+
 Describe 'setup.ps1 -Module all' {
     It 'runs the full module set in -DryRun without error (Windows-only)' -Skip:(-not $IsWindows) {
         # Non-Windows hits [Environment]::GetFolderPath('MyDocuments') returning an empty string
@@ -922,6 +969,14 @@ Describe 'setup.ps1 -Module all' {
         $output = & pwsh -NoProfile -File $script:SetupScript -Module all -DryRun 2>&1 | Out-String
         $LASTEXITCODE | Should -Be 0
         $output | Should -Not -Match 'Unknown module'
+    }
+
+    It 'runs Claude, Codex, and Pi exactly once via the ai-agents composite (no duplicate runs)' -Skip:(-not $IsWindows) {
+        $output = & pwsh -NoProfile -File $script:SetupScript -Module all -DryRun 2>&1 | Out-String
+        $LASTEXITCODE | Should -Be 0
+        @($output | Select-String -Pattern '=== Claude Code ===').Count | Should -Be 1
+        @($output | Select-String -Pattern '=== Codex CLI ===').Count | Should -Be 1
+        @($output | Select-String -Pattern '=== Pi ===').Count | Should -Be 1
     }
 
     It 'runs langservers after winget (whose curated set carries Volta) and before herdr' -Skip:(-not $IsWindows) {

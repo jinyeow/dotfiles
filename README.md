@@ -43,7 +43,9 @@ cd $HOME/dotfiles
 .\setup.ps1 -Module all -DryRun  # preview without changes
 ```
 
-Available modules: `neovim`, `vim`, `powershell`, `git`, `bash`, `tig`, `tmux`, `zellij`, `psmux`, `yazi`, `curl`, `claude`, `codex`, `serena`, `context7`, `fastmail`, `lazygit`, `windowsterminal`, `bat`, `vscode`, `winget`
+Available modules: `neovim`, `vim`, `powershell`, `git`, `bash`, `tig`, `tmux`, `zellij`, `psmux`, `yazi`, `curl`, `claude`, `codex`, `pi`, `ai-agents`, `serena`, `context7`, `fastmail`, `lazygit`, `windowsterminal`, `bat`, `vscode`, `winget`
+
+`ai-agents` is a composite that runs `claude`, `codex`, and `pi` in sequence (used by `all` instead of listing the three individually); each remains independently invocable on its own.
 
 ### Linux / WSL
 
@@ -55,7 +57,9 @@ cd ~/dotfiles
 ./setup.sh -m all --dry-run    # preview without changes
 ```
 
-Available modules: `neovim`, `vim`, `powershell`, `git`, `bash`, `tig`, `tmux`, `zellij`, `curl`, `claude`, `codex`, `lazygit`, `windowsterminal`
+Available modules: `neovim`, `vim`, `powershell`, `git`, `bash`, `tig`, `tmux`, `zellij`, `curl`, `claude`, `codex`, `pi`, `ai-agents`, `lazygit`, `windowsterminal`
+
+`ai-agents` is a composite that runs `claude`, `codex`, and `pi` in sequence (used by `all` instead of listing the three individually); each remains independently invocable on its own.
 
 ## Requirements
 

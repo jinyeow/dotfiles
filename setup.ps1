@@ -9,7 +9,10 @@
     before being replaced.
 
 .PARAMETER Module
-    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, zellij, psmux, herdr, yazi, curl, claude, codex, pi, serena, context7, fastmail, langservers, lazygit, windowsterminal, bat, vscode, winget, all.
+    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, zellij, psmux, herdr, yazi, curl, claude, codex, pi, ai-agents, serena, context7, fastmail, langservers, lazygit, windowsterminal, bat, vscode, winget, all.
+    'ai-agents' is a composite that runs claude, codex, and pi in sequence; 'all' uses it
+    instead of listing the three individually. claude, codex, and pi remain independently
+    invocable on their own.
     Optional when -CleanBackups is specified.
 
 .PARAMETER DryRun
@@ -78,7 +81,12 @@ if ($Module -contains 'all') {
     # dependency direction. Note the winget module only PRINTS the bootstrap command — it installs
     # nothing — so on a bare machine Volta is absent until winget/packages.ps1 has actually been
     # run; until then langservers warns and skips, and a re-run afterwards picks it up.
-    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'psmux', 'yazi', 'curl', 'claude', 'codex', 'pi', 'serena', 'context7', 'fastmail', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget', 'langservers', 'herdr')
+    #
+    # 'ai-agents' replaces individually listing 'claude', 'codex', 'pi': it is the composite
+    # module that runs all three in sequence (see Install-AiAgents). Listing both here would run
+    # each runtime twice, since $Module is only deduplicated by name, not by the runtimes a
+    # composite entry fans out to.
+    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'psmux', 'yazi', 'curl', 'ai-agents', 'serena', 'context7', 'fastmail', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget', 'langservers', 'herdr')
 }
 # @() wrapper: `Select-Object -Unique` over an empty array yields $null (and a
 # single value yields a scalar), so without it the `$Module.Count` guard below
@@ -1307,6 +1315,24 @@ function Install-Codex {
     Write-Info 'Next: run `codex login` (interactive ChatGPT-account OAuth) to authenticate.'
 }
 
+function Install-AiAgents {
+    Write-Host ''
+    Write-Info '=== AI Agents (composite: Claude, Codex, Pi) ==='
+    # Orchestrates the existing claude/codex/pi modules without duplicating their projection
+    # logic. Order matters: Install-Codex's MCP registration (step 4) gates on
+    # ~/.claude/settings.json already existing, so Claude must project first.
+    Install-Claude
+    Install-Codex
+    # Pi is the least stable of the three (npm-installed, third-party CLI) — an unanticipated
+    # error here must not take down Claude/Codex projection that already ran, nor abort modules
+    # listed after this one in the same invocation.
+    try {
+        Install-Pi
+    } catch {
+        Write-Fail "Pi setup failed unexpectedly: $($_.Exception.Message)"
+    }
+}
+
 function Install-Serena {
     Write-Host ''
     Write-Info '=== serena (semantic code-intelligence MCP for Claude Code) ==='
@@ -1591,6 +1617,7 @@ foreach ($m in $Module) {
         'claude'     { Install-Claude     }
         'codex'      { Install-Codex      }
         'pi'         { Install-Pi         }
+        'ai-agents'  { Install-AiAgents   }
         'serena'     { Install-Serena     }
         'context7'   { Install-Context7   }
         'fastmail'   { Install-Fastmail   }
