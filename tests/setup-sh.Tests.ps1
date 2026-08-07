@@ -428,19 +428,84 @@ Describe 'setup.sh -m ai-agents (composite)' {
     }
 
     It 'wraps the Pi step so an unhandled Pi failure cannot abort Claude, Codex, or a later module' {
-        # setup.sh runs under `set -euo pipefail`; calling a function as the condition of an
-        # `if` suppresses -e for the duration of that call, which is the isolation mechanism
-        # install_ai_agents relies on for install_pi. Verified structurally here (source
-        # assertion) because install_pi's own anticipated failures already return cleanly, so
-        # there is no cheap way to fault-inject a real crash without mutating a tracked file.
-        $source = Get-Content -LiteralPath $script:SetupSh -Raw
-        $installStart = $source.IndexOf('install_ai_agents()')
-        $installStart | Should -BeGreaterOrEqual 0
-        $installEnd = $source.IndexOf("`n}", $installStart)
-        $installBody = $source.Substring($installStart, $installEnd - $installStart)
-        $installBody | Should -Match 'install_claude'
-        $installBody | Should -Match 'install_codex'
-        $installBody | Should -Match 'if\s*!\s*install_pi\s*;\s*then'
+        # Fault-injects an *unanticipated* crash inside install_pi (not one of its own guarded
+        # fail+return branches): $HOME/.pi/agent is pre-created as a regular file, so the
+        # unguarded `mkdir -p "$skills_dst"` partway through install_pi fails with ENOTDIR.
+        # claude/codex/pi are stubbed directly onto PATH (command -v succeeds) so install_claude
+        # and install_codex short-circuit their bootstrap without any network call, letting this
+        # run outside --dry-run — required because install_pi's mkdir is itself dry-run-guarded.
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-pi-fault-' + [guid]::NewGuid())
+        $shim = Join-Path $tmpHome 'bin'
+        New-Item -ItemType Directory -Path $shim -Force | Out-Null
+        foreach ($cli in @('claude', 'codex', 'pi')) {
+            Set-Content -LiteralPath (Join-Path $shim $cli) -Value "#!/usr/bin/env bash`nexit 0`n" -Encoding UTF8
+            & $script:Bash -c 'chmod +x "$1"' _ ((Join-Path $shim $cli) -replace '\\', '/')
+        }
+        $shimUnix = & $script:ConvertToUnixPath $shim
+        $shimPath = "${shimUnix}:/usr/bin:/bin"
+
+        $resolved = (& $script:Bash -c 'PATH="$1" command -v pi' _ $shimPath | Out-String).Trim()
+        $resolved | Should -Be "$shimUnix/pi"
+
+        New-Item -ItemType Directory -Path (Join-Path $tmpHome '.pi') -Force | Out-Null
+        New-Item -ItemType File -Path (Join-Path $tmpHome '.pi/agent') -Force | Out-Null
+
+        $origHome = $env:HOME
+        try {
+            $env:HOME = $tmpHome
+            $out = & $script:Bash -c 'PATH="$1" bash "$2" -m ai-agents,git' _ $shimPath $script:SetupSh 2>&1 | Out-String
+            # (a) the composite does not abort: every module's output is present, and the whole
+            # invocation still exits 0.
+            $out | Should -Match '=== Claude Code ==='
+            $out | Should -Match '=== Codex CLI ==='
+            $out | Should -Match '=== Pi ==='
+            $LASTEXITCODE | Should -Be 0
+            # (b) the unanticipated failure is reported via fail, not silently swallowed.
+            $out | Should -Match 'Pi setup failed unexpectedly'
+            # (c) a module listed after ai-agents in the same invocation still runs.
+            $out | Should -Match '=== Git ==='
+            $out.IndexOf('Pi setup failed unexpectedly') | Should -BeLessThan $out.IndexOf('=== Git ===')
+            # install_pi must abort at the first unanticipated failure, not cascade past it and
+            # keep attempting further work under the same broken state (the pre-fix bug: mkdir
+            # failed silently and every later `ln`/`make_symlink` call in install_pi kept running
+            # against the same unusable path).
+            $out | Should -Not -Match 'ln: failed to access'
+            $out | Should -Not -Match '\.pi/agent/settings\.json'
+        } finally {
+            $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'does not report a false Pi failure on a real (non-dry-run) success path' {
+        # Regression guard for the fix above: re-enabling errexit inside install_pi's subshell
+        # must not turn a benign `&&`/`||`-guarded non-zero test (e.g. `[[ ... ]] && continue`,
+        # `is_managed_skill_link ... || continue`) into a false abort on an otherwise-successful
+        # run. Same PATH stubs as the fault-injection test above, but without pre-creating
+        # $HOME/.pi/agent as a file, so install_pi runs its real happy path end to end.
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-pi-success-' + [guid]::NewGuid())
+        $shim = Join-Path $tmpHome 'bin'
+        New-Item -ItemType Directory -Path $shim -Force | Out-Null
+        foreach ($cli in @('claude', 'codex', 'pi')) {
+            Set-Content -LiteralPath (Join-Path $shim $cli) -Value "#!/usr/bin/env bash`nexit 0`n" -Encoding UTF8
+            & $script:Bash -c 'chmod +x "$1"' _ ((Join-Path $shim $cli) -replace '\\', '/')
+        }
+        $shimUnix = & $script:ConvertToUnixPath $shim
+        $shimPath = "${shimUnix}:/usr/bin:/bin"
+
+        $origHome = $env:HOME
+        try {
+            $env:HOME = $tmpHome
+            $out = & $script:Bash -c 'PATH="$1" bash "$2" -m ai-agents' _ $shimPath $script:SetupSh 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $out | Should -Match '=== Claude Code ==='
+            $out | Should -Match '=== Codex CLI ==='
+            $out | Should -Match '=== Pi ==='
+            $out | Should -Not -Match 'Pi setup failed unexpectedly'
+        } finally {
+            $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
 
     It 'runs Claude, Codex, and Pi exactly once via "all" (no duplicate runs)' {

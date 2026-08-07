@@ -843,10 +843,22 @@ install_ai_agents() {
     install_codex
     # Pi is the least stable of the three (npm-installed, third-party CLI) — an unhandled error
     # here must not take down Claude/Codex projection that already ran, nor abort modules listed
-    # after this one in the same invocation. Calling install_pi as an `if` condition suppresses
-    # `set -e` for the duration of that call (bash semantics), so a failure inside it is caught
-    # here instead of killing the whole script.
-    if ! install_pi; then
+    # after this one in the same invocation. `errexit` is ignored for the entire compound list
+    # tested by an `if`/`&&`/`||`/`!`, including any subshell inside it — even one that explicitly
+    # re-enables `set -e` — so `if ! ( set -e; install_pi ); then ...` would not help: a failing
+    # command partway through install_pi would still silently continue, exactly like calling
+    # install_pi directly as the condition. Instead, install_pi runs in a subshell as a plain
+    # (non-conditional) statement, with the parent's own `set -e` toggled off just for that
+    # statement so its nonzero exit doesn't abort the parent script. The subshell's own `set -e`
+    # is a fresh, un-exempted context, so a failing command anywhere inside install_pi (or
+    # anything it calls) aborts that subshell immediately, and only its exit status reaches
+    # $pi_status. install_pi's own guarded fail+return paths are unaffected and keep returning
+    # cleanly (0), since they were never relying on this mechanism.
+    set +e
+    ( set -e; install_pi )
+    local pi_status=$?
+    set -e
+    if [[ $pi_status -ne 0 ]]; then
         fail 'Pi setup failed unexpectedly — Claude and Codex projection are unaffected.'
     fi
 }
