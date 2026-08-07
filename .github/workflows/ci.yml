@@ -25,9 +25,17 @@ jobs:
 
       - name: Install PSScriptAnalyzer and Pester
         run: |
-          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
-          Install-Module -Name Pester -MinimumVersion 5.5.0 -Force -Scope CurrentUser -SkipPublisherCheck
+          # windows-latest ships PSScriptAnalyzer and Pester >=5.5.0 preinstalled; skip the
+          # PSGallery round-trip (NuGet provider bootstrap + download) when the image already
+          # satisfies the requirement - this is the majority of this job's runtime otherwise.
+          if (-not (Get-Module -ListAvailable PSScriptAnalyzer)) {
+            Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+            Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+          }
+          if (-not (Get-Module -ListAvailable Pester | Where-Object Version -ge '5.5.0')) {
+            Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+            Install-Module -Name Pester -MinimumVersion 5.5.0 -Force -Scope CurrentUser -SkipPublisherCheck
+          }
           Get-Module -ListAvailable PSScriptAnalyzer, Pester | Select-Object Name, Version
 
       - name: PSScriptAnalyzer (whole tree, repo settings)
@@ -62,8 +70,12 @@ jobs:
 
       - name: Install Pester
         run: |
-          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-          Install-Module -Name Pester -MinimumVersion 5.5.0 -Force -Scope CurrentUser -SkipPublisherCheck
+          # ubuntu-latest ships Pester >=5.5.0 preinstalled; skip the PSGallery round-trip
+          # when the image already satisfies the requirement.
+          if (-not (Get-Module -ListAvailable Pester | Where-Object Version -ge '5.5.0')) {
+            Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+            Install-Module -Name Pester -MinimumVersion 5.5.0 -Force -Scope CurrentUser -SkipPublisherCheck
+          }
           Get-Module -ListAvailable Pester | Select-Object Name, Version
 
       - name: Pester (tests/, platform-agnostic suites)
