@@ -35,7 +35,7 @@ not download or change the machine.
 
 | File / Directory | Installed to | Notes |
 |---|---|---|
-| `settings.json` | `~/.claude/settings.json` | Theme, effort level, editor mode, hooks, statusline, pins `model: "claude-opus-5"` |
+| `settings.json` | `~/.claude/settings.json` | Theme, effort level, editor mode, hooks, statusline, pins `model: "sonnet"` |
 | `CLAUDE.md` | `~/.claude/CLAUDE.md` | Claude-specific instructions; imports `AGENTS.md` via `@AGENTS.md` |
 | `AGENTS.md` | `~/.claude/AGENTS.md` | Shared coding conventions (single source). The `codex` module installs the same file to `~/.codex/AGENTS.md` so Claude Code and Codex CLI agree. See `../codex/README.md`. |
 | `statusline-command.sh` | `~/.claude/statusline-command.sh` | Token usage statusline script |
