@@ -5,7 +5,9 @@
 #   ./setup.sh -m neovim,vim
 #   ./setup.sh -m all --dry-run
 #
-# Modules: neovim, vim, powershell, git, bash, tig, tmux, zellij, herdr, curl, claude, codex, pi, langservers, lazygit, windowsterminal, all
+# Modules: neovim, vim, powershell, git, bash, tig, tmux, zellij, herdr, curl, claude, codex, pi, ai-agents, langservers, lazygit, windowsterminal, all
+#   'ai-agents' is a composite that runs claude, codex, and pi in sequence; 'all' uses it instead
+#   of listing the three individually. claude, codex, and pi remain independently invocable.
 
 set -euo pipefail
 
@@ -20,7 +22,7 @@ MAX_BACKUP_AGE_DAYS=0
 
 usage() {
     echo "Usage: $0 -m <module[,module,...]> [--dry-run] [--clean-backups [--keep-backups N] [--max-backup-age-days N]]"
-    echo "  Modules: neovim, vim, powershell, git, bash, tig, tmux, zellij, herdr, curl, claude, codex, pi, langservers, lazygit, windowsterminal, all"
+    echo "  Modules: neovim, vim, powershell, git, bash, tig, tmux, zellij, herdr, curl, claude, codex, pi, ai-agents, langservers, lazygit, windowsterminal, all"
     echo "  --clean-backups          remove old .bak.TIMESTAMP files from previous runs"
     echo "  --keep-backups N         keep N most recent backups per file (default: 5, 0 = no limit)"
     echo "  --max-backup-age-days N  delete backups older than N days (default: 0 = disabled)"
@@ -55,17 +57,20 @@ done
 # Expand 'all'
 for m in "${MODULES[@]}"; do
     if [[ "$m" == "all" ]]; then
-        # 'herdr' MUST come after 'claude': install_herdr runs `herdr integration install claude`,
-        # which writes a hook registration into ~/.claude/settings.json — a file the claude module
-        # symlinks to the repo. If herdr ran first it would create a real settings.json, then the
-        # claude symlink would replace it, dropping the herdr block. Running herdr last writes
-        # through the established symlink so the block survives (same reasoning as setup.ps1).
+        # 'herdr' MUST come after 'ai-agents': install_herdr runs `herdr integration install
+        # claude` (and wires pi on Linux — pi has no herdr integration on Windows), which writes
+        # a hook registration into ~/.claude/settings.json — a file the claude module symlinks to
+        # the repo. If herdr ran first it would create a real settings.json, then the claude
+        # symlink would replace it, dropping the herdr block. Running herdr last writes through
+        # the established symlink so the block survives (same reasoning as setup.ps1).
         # 'langservers' has no ordering constraint here: setup.ps1 must run it after 'winget'
         # (which provides Volta), but there is no winget module on this side — Volta is installed
         # by hand, and the module warns and skips if it is absent.
-        # 'codex' runs right after 'claude', mirroring setup.ps1's ordering — install_herdr's
-        # integration loop already wires codex when both herdr and the codex CLI are present.
-        MODULES=(neovim vim powershell git bash tig tmux zellij curl claude codex langservers lazygit windowsterminal pi herdr)
+        # 'ai-agents' replaces individually listing 'claude', 'codex', 'pi': it is the composite
+        # module that runs all three in sequence (see install_ai_agents). Listing them here too
+        # would run each runtime twice, since MODULES is not deduplicated by the runtimes a
+        # composite entry fans out to.
+        MODULES=(neovim vim powershell git bash tig tmux zellij curl ai-agents langservers lazygit windowsterminal herdr)
         break
     fi
 done
@@ -828,6 +833,36 @@ install_codex() {
     info 'Next: run codex login (interactive ChatGPT-account OAuth) to authenticate.'
 }
 
+install_ai_agents() {
+    echo ''
+    info '=== AI Agents (composite: Claude, Codex, Pi) ==='
+    # Orchestrates the existing claude/codex/pi modules without duplicating their projection
+    # logic. Order matters: install_codex's MCP registration (step 4) gates on
+    # ~/.claude/settings.json already existing, so Claude must project first.
+    install_claude
+    install_codex
+    # Pi is the least stable of the three (npm-installed, third-party CLI) — an unhandled error
+    # here must not take down Claude/Codex projection that already ran, nor abort modules listed
+    # after this one in the same invocation. `errexit` is ignored for the entire compound list
+    # tested by an `if`/`&&`/`||`/`!`, including any subshell inside it — even one that explicitly
+    # re-enables `set -e` — so `if ! ( set -e; install_pi ); then ...` would not help: a failing
+    # command partway through install_pi would still silently continue, exactly like calling
+    # install_pi directly as the condition. Instead, install_pi runs in a subshell as a plain
+    # (non-conditional) statement, with the parent's own `set -e` toggled off just for that
+    # statement so its nonzero exit doesn't abort the parent script. The subshell's own `set -e`
+    # is a fresh, un-exempted context, so a failing command anywhere inside install_pi (or
+    # anything it calls) aborts that subshell immediately, and only its exit status reaches
+    # $pi_status. install_pi's own guarded fail+return paths are unaffected and keep returning
+    # cleanly (0), since they were never relying on this mechanism.
+    set +e
+    ( set -e; install_pi )
+    local pi_status=$?
+    set -e
+    if [[ $pi_status -ne 0 ]]; then
+        fail 'Pi setup failed unexpectedly — Claude and Codex projection are unaffected.'
+    fi
+}
+
 clean_backups() {
     echo ''
     info '=== Cleaning backups ==='
@@ -935,6 +970,7 @@ for module in "${MODULES[@]}"; do
         claude)     install_claude     ;;
         codex)      install_codex      ;;
         pi)         install_pi         ;;
+        ai-agents)  install_ai_agents  ;;
         langservers) install_langservers ;;
         lazygit)         install_lazygit    ;;
         windowsterminal) warn 'Windows Terminal is Windows-only — skipping.' ;;

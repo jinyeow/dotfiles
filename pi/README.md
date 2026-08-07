@@ -1,7 +1,10 @@
 # Pi
 
 Tracked, non-secret Pi configuration and first-party resources. Install with
-`setup.ps1 -Module pi` on Windows or `setup.sh -m pi` on Linux/WSL.
+`setup.ps1 -Module pi` on Windows or `setup.sh -m pi` on Linux/WSL. `-Module ai-agents`
+(`-m ai-agents` on Linux) runs Claude, Codex, and Pi together — a Pi failure there is
+caught and does not block Claude or Codex — but `pi` remains independently invocable
+on its own.
 
 `settings.json` is authoritative for non-secret preferences and exact package references.
 Pi credentials and session/authentication state remain in Pi's user directory and are

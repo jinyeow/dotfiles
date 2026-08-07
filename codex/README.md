@@ -104,6 +104,10 @@ re-run `setup.ps1 -Module codex`.
    claude module has run first); otherwise it is skipped with no changes to `~/.claude.json`.
 2. `codex login` — interactive ChatGPT-account OAuth (run this yourself; one-time).
 
+`-Module ai-agents` (`-m ai-agents` on Linux) runs Claude, then Codex, then Pi in one
+invocation — Claude first satisfies the MCP-registration gate above — but `codex` remains
+independently invocable on its own.
+
 Verify:
 
 ```powershell

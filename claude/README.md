@@ -25,6 +25,9 @@ or other resources are linked. If bootstrap fails or the executable is still not
 available, setup emits the manual install and re-run commands and stops without
 mutating `~/.claude`. Re-run the module after putting `claude` on `PATH`.
 
+`-Module ai-agents` (`-m ai-agents` on Linux) runs Claude, Codex, and Pi together — see
+the root `README.md` — but `claude` remains independently invocable on its own.
+
 Dry-run mode only previews the native bootstrap and existing projections; it does
 not download or change the machine.
 
@@ -32,7 +35,7 @@ not download or change the machine.
 
 | File / Directory | Installed to | Notes |
 |---|---|---|
-| `settings.json` | `~/.claude/settings.json` | Theme, effort level, editor mode, hooks, statusline, pins `model: "claude-opus-5"` |
+| `settings.json` | `~/.claude/settings.json` | Theme, effort level, editor mode, hooks, statusline, pins `model: "sonnet"` |
 | `CLAUDE.md` | `~/.claude/CLAUDE.md` | Claude-specific instructions; imports `AGENTS.md` via `@AGENTS.md` |
 | `AGENTS.md` | `~/.claude/AGENTS.md` | Shared coding conventions (single source). The `codex` module installs the same file to `~/.codex/AGENTS.md` so Claude Code and Codex CLI agree. See `../codex/README.md`. |
 | `statusline-command.sh` | `~/.claude/statusline-command.sh` | Token usage statusline script |
