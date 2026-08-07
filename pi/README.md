@@ -7,6 +7,12 @@ caught and does not block Claude or Codex — but `pi` remains independently inv
 on its own.
 
 `settings.json` is authoritative for non-secret preferences and exact package references.
+Each entry under `packages` pins an exact version (`npm:<name>@<version>`); Pi does not
+auto-update them. To bump a pin, edit the version in `settings.json`, verify the package still
+behaves as expected, then re-run `setup.ps1 -Module pi` (or `-Module ai-agents`) to project the
+change. The Pi CLI itself (`@mariozechner/pi-coding-agent`) is unpinned but only installed
+once — setup skips the `npm install` when `pi` is already on PATH, so later runs never update
+it; bump it manually with `npm install --global @mariozechner/pi-coding-agent@latest`.
 Pi credentials and session/authentication state remain in Pi's user directory and are
 never copied by setup.
 

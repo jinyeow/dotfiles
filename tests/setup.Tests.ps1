@@ -1013,6 +1013,28 @@ Describe 'relative reparse-target comparison' {
 }
 
 Describe 'New-FileSymlink failure recovery' {
+    # Probe real symlink privilege (Developer Mode / admin) here, directly in the Describe body,
+    # so it runs during Pester's discovery phase — the same phase that evaluates each It's -Skip
+    # parameter below. A probe set inside BeforeAll runs only in the later run phase, after -Skip
+    # has already been evaluated against an unset variable, which would skip these tests
+    # unconditionally regardless of host privilege.
+    #
+    # New-FileSymlink itself swallows the privilege error and rolls back, so a failed backup
+    # count on an unprivileged host would otherwise look like a regression rather than a skip.
+    $script:CanCreateSymlink = $false
+    if ($IsWindows) {
+        $probeDir = Join-Path ([IO.Path]::GetTempPath()) ('setup-symlink-probe-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $probeDir -Force | Out-Null
+        try {
+            New-Item -ItemType SymbolicLink -Path (Join-Path $probeDir 'link') -Target $probeDir -ErrorAction Stop | Out-Null
+            $script:CanCreateSymlink = $true
+        } catch {
+            $script:CanCreateSymlink = $false
+        } finally {
+            Remove-Item -Path $probeDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     BeforeAll {
         # -Module bogus keeps the top-level script from exiting early (`$Module.Count` is 1) and
         # does no real filesystem work (falls to the `default` unknown-module warn branch), so
@@ -1047,5 +1069,16 @@ Describe 'New-FileSymlink failure recovery' {
         (Get-Content -LiteralPath $script:Link -Raw).Trim() | Should -Be 'ORIGINAL CONTENT'
         # No stray .bak file should be left behind once restored.
         @(Get-ChildItem -Path $script:Tmp -Filter '*.bak.*') | Should -BeNullOrEmpty
+    }
+
+    It 'backs up a pre-existing plain file before migrating it to a symlink' -Skip:(-not $script:CanCreateSymlink) {
+        # AC: existing agent/configuration files (e.g. ~/.claude/CLAUDE.md, AGENTS.md) are backed
+        # up before the destructive migration to a symlink, not silently overwritten.
+        New-FileSymlink -Link $script:Link -Target $script:Target
+
+        $backups = @(Get-ChildItem -Path $script:Tmp -Filter 'live.conf.bak.*')
+        $backups.Count | Should -Be 1
+        (Get-Content -LiteralPath $backups[0].FullName -Raw).Trim() | Should -Be 'ORIGINAL CONTENT'
+        (Get-Item -LiteralPath $script:Link).Attributes -band [IO.FileAttributes]::ReparsePoint | Should -Not -Be 0
     }
 }
