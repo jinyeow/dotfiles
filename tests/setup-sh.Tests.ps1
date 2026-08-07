@@ -976,15 +976,25 @@ Describe 'setup.sh module list' {
 }
 
 Describe 'setup.sh make_symlink backup behavior' {
-    BeforeAll {
-        # Same privilege probe as 'setup.sh relative-link migration safety': ln -s can fail
-        # (no Developer Mode/admin on Windows) without setup.sh's make_symlink reporting it, so
-        # verifying the resulting link is real needs symlink capability confirmed up front.
-        $script:CanCreateSymlink = $false
+    # Same privilege probe as 'setup.sh relative-link migration safety', run directly in the
+    # Describe body (not BeforeAll) so it executes during Pester's discovery phase — the same
+    # phase that evaluates the -Skip parameter below. A probe set inside BeforeAll would run only
+    # in the later run phase, after -Skip already saw an unset variable and skipped unconditionally.
+    #
+    # The top-level BeforeAll's $script:Bash isn't populated yet either (BeforeAll is a run-phase
+    # hook), so bash is resolved locally here for use at discovery time.
+    #
+    # ln -s can fail (no Developer Mode/admin on Windows) without setup.sh's make_symlink
+    # reporting it, so verifying the resulting link is real needs symlink capability confirmed
+    # up front.
+    . (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
+    $discoveryBash = Resolve-TestBash
+    $script:CanCreateSymlink = $false
+    if ($discoveryBash) {
         $probeDir = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-make-symlink-probe-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $probeDir -Force | Out-Null
         try {
-            & $script:Bash -c 'ln -s target "$1/link"' _ ($probeDir -replace '\\', '/') 2>$null
+            & $discoveryBash -c 'ln -s target "$1/link"' _ ($probeDir -replace '\\', '/') 2>$null
             $script:CanCreateSymlink = $LASTEXITCODE -eq 0
         } finally {
             Remove-Item -Path $probeDir -Recurse -Force -ErrorAction SilentlyContinue
