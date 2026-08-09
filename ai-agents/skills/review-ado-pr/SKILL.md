@@ -47,12 +47,14 @@ read it, review it across models, and report. Posting anything back to the PR (t
    - It needs a **clean tree**. If dirty, stop and tell the user.
    - It **fails if the PR's source branch already has its own worktree** (the user's own feature
      branches do). In that case don't checkout — review the existing worktree, or `git fetch origin`
-     and review `origin/<target>...origin/<source>` directly (no checkout needed).
+     and review `origin/<target>...origin/<source>` directly (no checkout needed), or
+     `git worktree add --detach <tmp> <prHead-sha>` so the checkout doesn't conflict with the
+     branch's existing worktree.
 
 3. **Read the diff.** `git --no-pager diff origin/<target>...<prHead>` (three-dot = only the PR's
-   changes vs the merge-base). If diffview.nvim is installed, `:DiffviewOpen origin/<target>...HEAD`;
-   otherwise fugitive `:Git difftool` or plain `git diff`. Read the changed files at the PR head, not
-   the local (possibly stale) working tree.
+   changes vs the merge-base). If diffview.nvim (or its `diffview-plus.nvim` fork) is installed,
+   `:DiffviewOpen origin/<target>...HEAD`; otherwise fugitive `:Git difftool` or plain `git diff`.
+   Read the changed files at the PR head, not the local (possibly stale) working tree.
 
 4. **Gate infrastructure-as-code (if the diff is Bicep/ARM).** Run the local gates, don't eyeball:
    - `bicep build` + `bicep lint` with a **standalone** bicep — the az-bundled bicep can be years old
