@@ -1,6 +1,6 @@
 ---
 name: write
-description: "Rewrite and polish English prose to remove AI-sounding wording while preserving the author's intent and voice, for drafts, docs, READMEs, release notes, and long-form articles. Use when asked to de-AI, polish, rewrite, proofread, tighten, or review prose, check paragraph coherence, or draft release notes from commits. Not for code comments, commit messages, or inline docs."
+description: "Rewrite and polish English prose to remove AI-sounding wording while preserving the author's intent and voice, for drafts, docs, READMEs, release notes, long-form articles, PR descriptions, ticket/work-item descriptions, acceptance criteria, and PR/ticket comments. Use when asked to de-AI, polish, rewrite, proofread, tighten, or review prose, check paragraph coherence, or draft release notes from commits. Not for code comments, commit messages, or inline docs."
 ---
 
 # Write: Cut the AI Taste
