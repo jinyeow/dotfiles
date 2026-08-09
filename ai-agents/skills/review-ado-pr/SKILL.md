@@ -60,7 +60,8 @@ read it, review it across models, and report. Posting anything back to the PR (t
 
 5. **Review across models.**
    - Do a multi-dimension pass (correctness, security, IaC-config, conventions) — reach for the
-     `deep-review` skill for anything non-trivial.
+     `quick-review` skill for anything non-trivial, or `deep-review` when the PR's risk earns the
+     full seven-dimension fan-out.
    - Offer a **Codex** second opinion (`codex-review` skill). On ADO the branch may be behind the PR
      head, so write the true PR diff to a file and hand Codex that file plus any context it needs.
    - **Verify every claim against the source file or vendor docs before asserting it.** An API/property
@@ -96,7 +97,7 @@ read it, review it across models, and report. Posting anything back to the PR (t
 
 ## Related
 
-- `bicep-tdd` — the IaC gate for step 4.  ·  `deep-review` / `codex-review` — the review passes in step 5.
+- `bicep-tdd` — the IaC gate for step 4.  ·  `quick-review` / `deep-review` / `codex-review` — the review passes in step 5.
 - `prr` (PowerShell profile helper) — collapses discovery + steps 2–3 from a shell: fzf PR picker →
   review worktree → `nvim "+AdoPrReview <id>"`.
 - The `local-pr-review` brain initiative and `ado-pr.nvim` (a Neovim ADO PR plugin folding steps 2–3

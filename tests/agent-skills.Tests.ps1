@@ -92,3 +92,75 @@ Describe 'agent skill source layout' {
         Test-Path (Join-Path $repo 'ai-agents/agents/council-chair.md') | Should -BeFalse
     }
 }
+
+Describe 'review skill split' {
+    BeforeAll {
+        $repo = Split-Path $PSScriptRoot -Parent
+        $claudeSkills = Join-Path $repo 'claude/skills'
+        $quickReview = Get-Content (Join-Path $claudeSkills 'quick-review/SKILL.md') -Raw -ErrorAction SilentlyContinue
+        $deepReview = Get-Content (Join-Path $claudeSkills 'deep-review/SKILL.md') -Raw
+        $loop = Get-Content (Join-Path $claudeSkills 'review-fix-loop/SKILL.md') -Raw
+        $fixFindings = Get-Content (Join-Path $claudeSkills 'fix-findings/SKILL.md') -Raw
+        $reviewerModels = Get-Content (Join-Path $claudeSkills '_shared/reviewer-models.md') -Raw -ErrorAction SilentlyContinue
+    }
+
+    It 'owns quick-review as a Claude-native skill classified in SKILL-OWNERSHIP' {
+        Test-Path (Join-Path $claudeSkills 'quick-review/SKILL.md') | Should -BeTrue
+        Test-Path (Join-Path $repo 'ai-agents/skills/quick-review') | Should -BeFalse
+        Get-Content (Join-Path $repo 'ai-agents/SKILL-OWNERSHIP.md') -Raw | Should -Match '`quick-review`'
+    }
+
+    It 'folds quick-review onto the existing dimension labels and the shared pipeline' {
+        foreach ($dimension in @('correctness', 'conventions', 'tests')) {
+            $quickReview | Should -Match "``$dimension``"
+        }
+        $quickReview | Should -Match ([regex]::Escape('../_shared/findings-schema.md'))
+        $quickReview | Should -Match ([regex]::Escape('../_shared/dimensions.md'))
+        $quickReview | Should -Not -Match "dimension``?: ``?quick"
+    }
+
+    It 'defaults review-fix-loop to quick-review with an opt-in deep flag' {
+        $loop | Should -Match 'quick-review'
+        $loop | Should -Match ([regex]::Escape('--deep'))
+        $loop | Should -Match ([regex]::Escape('quick-review → fix-findings'))
+        $deepReview | Should -Match 'opt-in'
+    }
+
+    It 'documents --reviewers on the reviewer skills and the loop, resolving the sol alias' {
+        foreach ($content in @($quickReview, $loop, $deepReview)) {
+            $content | Should -Match ([regex]::Escape('--reviewers'))
+        }
+        $reviewerModels | Should -Match 'gpt-5\.6-sol'
+        $reviewerModels | Should -Match 'model_reasoning_effort'
+        $reviewerModels | Should -Match 'reviewer'
+    }
+
+    It 'keeps --reviewers away from fixer model selection' {
+        $fixFindings | Should -Match ([regex]::Escape('`--reviewers` argument does not apply here'))
+        $reviewerModels | Should -Match 'Reviewer-only'
+        $reviewerModels | Should -Match 'never\s+touches fixer model selection'
+    }
+
+    It 'pins fixer models to the current allowed set in both fixer-dispatching skills' {
+        foreach ($content in @($loop, $fixFindings)) {
+            $content | Should -Match 'Opus 4\.8'
+            $content | Should -Match 'Sonnet 5'
+            $content | Should -Match 'never Opus 5'
+            $content | Should -Match 'never Fable'
+        }
+    }
+
+    It 'sets the Codex sandbox and approval policy per call in both reviewer skills' {
+        foreach ($content in @($quickReview, $deepReview)) {
+            $content | Should -Match ([regex]::Escape('approval-policy: never'))
+            $content | Should -Match ([regex]::Escape('sandbox: read-only'))
+        }
+    }
+
+    It 'records quick-review in the routing and standing-consent surfaces' {
+        Get-Content (Join-Path $claudeSkills 'router/SKILL.md') -Raw | Should -Match 'quick-review'
+        Get-Content (Join-Path $repo 'claude/CLAUDE.md') -Raw | Should -Match 'quick-review'
+        Get-Content (Join-Path $repo 'claude/README.md') -Raw | Should -Match 'quick-review'
+        Get-Content (Join-Path $repo 'README.md') -Raw | Should -Match 'quick-review'
+    }
+}

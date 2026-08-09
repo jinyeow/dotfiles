@@ -115,9 +115,10 @@ Not sure which one fits? Run `/router` — a manual index that maps these as flo
 | `improve-codebase-architecture` | mattpocock/skills | Find deepening opportunities; consolidate coupling |
 | `codebase-design` | mattpocock/skills | Deep-module vocabulary for designing a module's shape |
 | `codex-review` | local | Read-only cross-model Codex second opinion on a diff |
-| `deep-review` | local | Multi-dimension cross-model review of a diff/PR → findings store |
-| `fix-findings` | local | Apply deep-review findings — partitioned, one commit per fix-unit |
-| `review-fix-loop` | local | Chain deep-review + fix-findings until the diff passes clean |
+| `quick-review` | local | Default review of a diff/PR — one folded reviewer + Codex → findings store |
+| `deep-review` | local | Opt-in heavy review — all seven dimensions + Codex → findings store |
+| `fix-findings` | local | Apply review findings — partitioned, one commit per fix-unit |
+| `review-fix-loop` | local | Chain quick-review (or `--deep`) + fix-findings until the diff passes clean |
 | `council` | local | Adversarial panel for a non-diff artifact (idea/design/plan/doc) |
 | `council-{code,business,plan,doc}` | local | Thin aliases pinning `council`'s panel by artifact type |
 | `prompt-draft` | local | Draft a new prompt against the 12-lever checklist |

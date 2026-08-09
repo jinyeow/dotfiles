@@ -1,23 +1,25 @@
 ---
 name: deep-review
-description: Multi-dimension cross-model code review of a branch diff or PR. Fans out parallel reviewers (correctness, security, performance, structural, architecture, conventions, tests) plus Codex, adversarially verifies the findings, and writes them to a findings store for fixing. Use when asked to "deep review", "review the branch/PR thoroughly", "multi-dimension review", "find all the issues", or before running a fix loop. Reach for it from review-fix-loop. NOT for non-diff artifacts (ideas, designs-as-docs, plans, presentations) — use the council skill for those.
+description: Heavy multi-dimension cross-model code review of a branch diff or PR — the opt-in deep pass, not the default. Fans out seven parallel reviewers (correctness, security, performance, structural, architecture, conventions, tests) plus Codex, adversarially verifies the findings, and writes them to a findings store for fixing. Use when asked to "deep review", "review the branch/PR thoroughly", "multi-dimension review", "find all the issues", or from review-fix-loop --deep. For a routine review, quick-review is the default. NOT for non-diff artifacts (ideas, designs-as-docs, plans, presentations) — use the council skill for those.
 ---
 
 # Deep Review
 
 Fan out parallel reviewers over a diff, verify what they find, write survivors to the store. This
-skill **emits** findings; it does not fix them (that's `fix-findings`). It is the review half of
-`review-fix-loop` and is independently invocable.
+skill **emits** findings; it does not fix them (that's `fix-findings`). It is the **opt-in** heavy
+review half of `review-fix-loop` (reached via `--deep`; the default is
+[`quick-review`](../quick-review/SKILL.md)) and is independently invocable.
 
 Contracts: the quality bar is [`../_shared/review-rubric.md`](../_shared/review-rubric.md), the seven
 reviewers are [`../_shared/dimensions.md`](../_shared/dimensions.md), the record schema + store
-discipline are [`../_shared/findings-schema.md`](../_shared/findings-schema.md). Read all three before
+discipline are [`../_shared/findings-schema.md`](../_shared/findings-schema.md), and reviewer model
+resolution is [`../_shared/reviewer-models.md`](../_shared/reviewer-models.md). Read them before
 running — they define the output and the rules below depend on them.
 
 ## Quick start
 
 ```
-/deep-review [ref-or-range | --pr <n>] [--floor MEDIUM]
+/deep-review [ref-or-range | --pr <n>] [--floor MEDIUM] [--reviewers <model>[,<model>][:<effort>]]
 ```
 
 Default scope is the current branch vs its merge-base with `main`. See [REFERENCE.md](REFERENCE.md)
@@ -52,7 +54,18 @@ exist, and this cycle's ledger entry is open.
 
 Dispatch **one subagent per enabled reviewer in a single message** (parallel), each with its charter
 from `dimensions.md` and the rubric bar. Include `codex` as a cross-model reviewer over the full
-rubric when its MCP is present (this is the documented standing-consent exception — see CLAUDE.md).
+rubric when its MCP is present (this is the documented standing-consent exception — see CLAUDE.md),
+called with the read-only posture set explicitly per call:
+
+```
+mcp__codex__codex
+  approval-policy: never
+  sandbox: read-only
+  prompt: <full-rubric charter + the diff>
+```
+
+Model and `config: { model_reasoning_effort }` come from `--reviewers` when given — see
+[`../_shared/reviewer-models.md`](../_shared/reviewer-models.md).
 
 Each reviewer returns candidate findings in the schema, each carrying `dimension`, `severity`,
 `confidence`, a proposed `fix_verification`, `summary`, `fix_approach`, `evidence`, and `scope`. The
@@ -109,9 +122,12 @@ and the summary is printed.
 
 ## Notes
 
-- **Emit, don't fix.** Applying fixes is `fix-findings`. Running both in a loop is `review-fix-loop`.
+- **Emit, don't fix.** Applying fixes is `fix-findings`. Running both in a loop is `review-fix-loop`,
+  which reaches this skill only under `--deep`.
 - **Model.** Standalone, reviewers may run on Fable for a light pass. Invoked from `review-fix-loop`,
-  they inherit its constraint — **Opus or Sonnet, never Fable** unless the user explicitly asks.
+  they inherit its reviewer constraint — **Opus or Sonnet, never Fable** unless the user explicitly
+  asks. `--reviewers` overrides both ([`../_shared/reviewer-models.md`](../_shared/reviewer-models.md));
+  it is reviewer-only and never changes which model a fixer runs on.
 - **Sole writer.** Subagents return findings; you write the store. This is what makes parallel
   reviewers safe without locks (findings-schema.md).
 - **Floor affects verify + reporting, not what's stored.** Below-floor findings are still recorded.
