@@ -1,6 +1,6 @@
 ---
 name: quick-review
-description: Light cross-model code review of a branch diff or PR. Runs one folded reviewer (correctness + conventions + tests) plus Codex as a second opinion, verifies what they find, and writes it to the same findings store as deep-review. Use when asked to "review the branch/PR", "review and fix", or before a fix loop — this is the default reviewer for review-fix-loop. Reach for deep-review instead when all seven dimensions (security, performance, structural, architecture) are wanted. NOT for non-diff artifacts (ideas, designs-as-docs, plans, presentations) — use the council skill for those.
+description: The default review pass over a branch diff or PR. Use when asked to "review the diff", "review this branch", "review my changes", "review the PR", or for findings before a fix loop. Runs one folded reviewer (correctness + conventions + tests) plus Codex as a cross-model second opinion, adversarially verifies what they find, and writes it to the same findings store as deep-review. Reach for deep-review only when the heavier seven-dimension fan-out (security, performance, structural, architecture) is explicitly wanted. NOT for non-diff artifacts (ideas, designs-as-docs, plans, presentations) — use the council skill for those.
 ---
 
 # Quick Review
@@ -70,12 +70,18 @@ Dispatch both in a **single message** (parallel):
    Model and `config: { model_reasoning_effort }` come from `--reviewers` when given — see
    [`../_shared/reviewer-models.md`](../_shared/reviewer-models.md).
 
-**Each finding must carry one of the three existing dimension labels** — `correctness`, `conventions`,
-or `tests` — never a `quick` label. The label is load-bearing downstream: `dimensions.md` supplies the
-per-dimension default `fix_verification`, and `fix-findings` keys its TDD gate off that field, so an
-unregistered dimension silently degrades a `test`-verified fix to direct-apply. Codex findings are
-labelled the same way; anything Codex raises outside those three dimensions is still recorded under its
-real dimension (it is a full-rubric reviewer) — the fold narrows the *Claude* reviewer, not the store.
+**Every finding carries a registry dimension label from
+[`../_shared/dimensions.md`](../_shared/dimensions.md)** — never a `quick` label. The label is
+load-bearing downstream: the registry supplies the per-dimension default `fix_verification`, and
+`fix-findings` keys its TDD gate off that field, so an unregistered dimension silently degrades a
+`test`-verified fix to direct-apply.
+
+The folded Claude reviewer only ever emits `correctness`, `conventions`, or `tests`. Codex stays a
+**full-rubric** reviewer — that cross-model breadth is the point of the second participant — so it may
+raise, say, a `security` or `architecture` finding. Record those under their real registry dimension;
+they are stored, verified, reported, and fixable like any other. A `quick-review` snapshot is therefore
+*single-sourced* outside the folded three (one contributor, no Claude cross-check) — say so in the
+summary so the user can escalate to `deep-review` rather than mistake narrow coverage for a clean bill.
 
 **Done when:** both participants have returned. A participant that errors or returns nothing is
 recorded as **run metadata** (`reviewer`, `error`, `cycle_id`) — never as a finding, never silently
@@ -91,6 +97,10 @@ dropped (findings-schema.md). Write all actual candidates to the store at `statu
 | `--floor <sev>` | `MEDIUM` | severity floor for verify + reporting (not for what's stored) |
 | `--reviewers <spec>` | skill defaults | reviewer models + effort ([`../_shared/reviewer-models.md`](../_shared/reviewer-models.md)) |
 
+Here the reviewer set stays two: the **first** Claude alias in `--reviewers` becomes the folded
+reviewer's model and any Codex alias (`sol`, `codex`) becomes Codex's — further Claude aliases are
+rejected with that explanation, since adding participants is `deep-review`, not this skill.
+
 All three are scoping inputs (what gets reviewed / verified / by whom), not logic switches.
 
 ---
@@ -104,7 +114,8 @@ All three are scoping inputs (what gets reviewed / verified / by whom), not logi
   reviewer-only: it never changes which model a fixer runs on.
 - **Sole writer.** Subagents return findings; you write the store. This is what makes parallel
   participants safe without locks (findings-schema.md).
-- **Two participants is the point.** If a review needs security, performance, structural, or
-  architecture coverage, that is `deep-review` — do not widen the fan-out here.
+- **Two participants is the point.** Codex's full-rubric brief is not a licence to add participants:
+  when a diff needs *dedicated* security, performance, structural, or architecture reviewers, that is
+  `deep-review`. Never dispatch a third reviewer here.
 - A failed/empty participant is noted, never silently dropped — an empty result is a finding about the
   reviewer, not proof of clean code.

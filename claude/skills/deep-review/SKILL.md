@@ -1,6 +1,6 @@
 ---
 name: deep-review
-description: Heavy multi-dimension cross-model code review of a branch diff or PR — the opt-in deep pass, not the default. Fans out seven parallel reviewers (correctness, security, performance, structural, architecture, conventions, tests) plus Codex, adversarially verifies the findings, and writes them to a findings store for fixing. Use when asked to "deep review", "review the branch/PR thoroughly", "multi-dimension review", "find all the issues", or from review-fix-loop --deep. For a routine review, quick-review is the default. NOT for non-diff artifacts (ideas, designs-as-docs, plans, presentations) — use the council skill for those.
+description: Heavy multi-dimension cross-model code review of a branch diff or PR — the opt-in deep pass, not the default. Fans out seven parallel reviewers (correctness, security, performance, structural, architecture, conventions, tests) plus Codex, adversarially verifies the findings, and writes them to a findings store for fixing. Use only when asked to "deep review", "review thoroughly", "multi-dimension review", "find all the issues", or from review-fix-loop --deep. A routine "review the diff" is quick-review, the default. NOT for non-diff artifacts (ideas, designs-as-docs, plans, presentations) — use the council skill for those.
 ---
 
 # Deep Review

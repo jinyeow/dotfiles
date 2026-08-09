@@ -14,8 +14,10 @@ fixer on it.
 --reviewers <model>[,<model>...][:<effort>]
 ```
 
-- The comma list is the reviewer set: each entry is dispatched as one reviewer over the same charter.
-  Omitting the flag keeps each skill's documented default set.
+- The comma list names the models the reviewer set runs on. Omitting the flag keeps each skill's
+  documented default. It selects **models, not participant count** — how a list maps onto a skill's
+  reviewers is that skill's business (`quick-review` keeps two participants and rejects a list that
+  would add a third; `deep-review` spreads the list across its seven dimensions).
 - The optional `:<effort>` trails the **whole** list (`fable,sol:high`) and applies to every listed
   model whose runtime accepts an effort setting. Values: `low`, `medium`, `high`.
 

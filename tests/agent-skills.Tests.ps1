@@ -126,6 +126,15 @@ Describe 'review skill split' {
         $deepReview | Should -Match 'opt-in'
     }
 
+    It 'routes routine review phrasing to quick-review, not deep-review' {
+        $quickDescription = [regex]::Match($quickReview, '(?s)^---.*?description:(.*?)\n---').Groups[1].Value
+        $deepDescription = [regex]::Match($deepReview, '(?s)^---.*?description:(.*?)\n---').Groups[1].Value
+        $quickDescription | Should -Match 'default'
+        $quickDescription | Should -Match 'review the diff'
+        $deepDescription | Should -Not -Match 'review and fix'
+        $deepDescription | Should -Match 'quick-review, the default'
+    }
+
     It 'documents --reviewers on the reviewer skills and the loop, resolving the sol alias' {
         foreach ($content in @($quickReview, $loop, $deepReview)) {
             $content | Should -Match ([regex]::Escape('--reviewers'))
