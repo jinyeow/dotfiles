@@ -36,10 +36,10 @@ merge-base of the range is `base_sha`.
 | `ref-or-range` | `main...HEAD` (merge-base) | git refs to review |
 | `--pr <n>` | — | resolve a PR to refs (GitHub/ADO) |
 | `--floor <sev>` | `MEDIUM` | severity floor for verify + reporting (not for what's stored) |
-| `--reviewers <spec>` | the seven dimensions + `codex` | reviewer models + effort ([`../_shared/reviewer-models.md`](../_shared/reviewer-models.md)) |
+| `--reviewers <spec>` | skill defaults | reviewer models + effort ([`../_shared/reviewer-models.md`](../_shared/reviewer-models.md)) |
 
-`--floor` and `--reviewers` are scoping inputs (which findings are verified/reported, and by which
-models), not logic switches.
+`--floor` and `--reviewers` are scoping inputs (which findings are verified/reported, and which models
+the reviewers run on), not logic switches.
 
 This scope + store reference is shared with [`quick-review`](../quick-review/SKILL.md), which resolves
 refs, PRs, and the store identically.

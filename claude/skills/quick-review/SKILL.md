@@ -70,16 +70,20 @@ Dispatch both in a **single message** (parallel):
    Model and `config: { model_reasoning_effort }` come from `--reviewers` when given — see
    [`../_shared/reviewer-models.md`](../_shared/reviewer-models.md).
 
-**Every finding carries a registry dimension label from
-[`../_shared/dimensions.md`](../_shared/dimensions.md)** — never a `quick` label. The label is
-load-bearing downstream: the registry supplies the per-dimension default `fix_verification`, and
-`fix-findings` keys its TDD gate off that field, so an unregistered dimension silently degrades a
-`test`-verified fix to direct-apply.
+**Every finding carries a label the schema already knows** — never an invented one like `quick`:
+either a registry dimension from [`../_shared/dimensions.md`](../_shared/dimensions.md), or `codex` as
+the participant/contributor label (findings-schema.md keeps both in the `dimension` enum, and dedupe
+records `codex` in `contributing_dimensions` like any other contributor). The label matters because the
+registry's `Default fix_verification` column is what a reviewer draws its **proposed** per-finding
+`fix_verification` from, and `fix-findings` gates TDD on that stored field — so a `codex`-labelled
+finding simply means the reviewer states `fix_verification` outright instead of inheriting a registry
+default.
 
 The folded Claude reviewer only ever emits `correctness`, `conventions`, or `tests`. Codex stays a
 **full-rubric** reviewer — that cross-model breadth is the point of the second participant — so it may
-raise, say, a `security` or `architecture` finding. Record those under their real registry dimension;
-they are stored, verified, reported, and fixable like any other. A `quick-review` snapshot is therefore
+raise, say, a `security` or `architecture` finding. Record those under the registry dimension of the
+defect when it maps to one; they are stored, verified, reported, and fixable like any other. A
+`quick-review` snapshot is therefore
 *single-sourced* outside the folded three (one contributor, no Claude cross-check) — say so in the
 summary so the user can escalate to `deep-review` rather than mistake narrow coverage for a clean bill.
 
@@ -101,7 +105,8 @@ Here the reviewer set stays two: the **first** Claude alias in `--reviewers` bec
 reviewer's model and any Codex alias (`sol`, `codex`) becomes Codex's — further Claude aliases are
 rejected with that explanation, since adding participants is `deep-review`, not this skill.
 
-All three are scoping inputs (what gets reviewed / verified / by whom), not logic switches.
+All three are scoping inputs (what gets reviewed, what gets verified, and which models the reviewers
+run on), not logic switches.
 
 ---
 

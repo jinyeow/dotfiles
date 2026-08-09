@@ -43,8 +43,9 @@ and **return** their findings to you; you write every record. Never let a subage
 2. Resolve the snapshot by `review_session_id = repo + base_sha + initial_head_sha + worktree-path`
    (findings-schema.md). On cycle 1, `initial_head_sha = head_sha` and the id is frozen for the whole
    session — later cycles reuse the same snapshot even though HEAD has advanced, so dedupe sees prior
-   findings. Record `reviewers_enabled` (the 7 dimensions, plus `codex` only if its MCP is present —
-   if absent, omit it cleanly; never fail or lower the floor). Append a new per-cycle ledger entry
+   findings. Record `reviewers_enabled`: the 7 dimensions, plus `codex` only if its MCP is present (if
+   absent, omit it cleanly; never fail or lower the floor), plus whatever `--reviewers` resolved to.
+   Append a new per-cycle ledger entry
    (`cycle_id`, this cycle's `head_sha`).
 
 **Done when:** `base_sha` + the frozen `review_session_id` are fixed, the snapshot + `reviewers_enabled`
@@ -97,7 +98,14 @@ adversarially checked).
 
 For each selected cluster, dispatch a verifier subagent (and Codex as a second voice when present)
 **prompted to REFUTE** the finding — default to false-positive if uncertain. Verify the cluster, not
-a lone member.
+a lone member. The Codex second voice carries the same explicit read-only posture as the fan-out call:
+
+```
+mcp__codex__codex
+  approval-policy: never
+  sandbox: read-only
+  prompt: <the cluster + its evidence + a refute-it brief>
+```
 
 - Confirmed → `status: confirmed`, `adversarial_verified: true`.
 - Refuted → `status: not_reproduced` (kept as a record, not deleted).

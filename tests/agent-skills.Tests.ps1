@@ -102,6 +102,7 @@ Describe 'review skill split' {
         $loop = Get-Content (Join-Path $claudeSkills 'review-fix-loop/SKILL.md') -Raw
         $fixFindings = Get-Content (Join-Path $claudeSkills 'fix-findings/SKILL.md') -Raw
         $reviewerModels = Get-Content (Join-Path $claudeSkills '_shared/reviewer-models.md') -Raw -ErrorAction SilentlyContinue
+        $claudeAdapter = Get-Content (Join-Path $repo 'claude/CLAUDE.md') -Raw
     }
 
     It 'owns quick-review as a Claude-native skill classified in SKILL-OWNERSHIP' {
@@ -150,8 +151,8 @@ Describe 'review skill split' {
         $reviewerModels | Should -Match 'never\s+touches fixer model selection'
     }
 
-    It 'pins fixer models to the current allowed set in both fixer-dispatching skills' {
-        foreach ($content in @($loop, $fixFindings)) {
+    It 'pins fixer models to the current allowed set in the fixer-dispatching skills and the Claude adapter' {
+        foreach ($content in @($loop, $fixFindings, $claudeAdapter)) {
             $content | Should -Match 'Opus 4\.8'
             $content | Should -Match 'Sonnet 5'
             $content | Should -Match 'never Opus 5'
@@ -163,6 +164,11 @@ Describe 'review skill split' {
         foreach ($content in @($quickReview, $deepReview)) {
             $content | Should -Match ([regex]::Escape('approval-policy: never'))
             $content | Should -Match ([regex]::Escape('sandbox: read-only'))
+        }
+
+        # deep-review calls Codex twice (fan out + the verify second voice); both call sites carry it.
+        foreach ($token in @('approval-policy: never', 'sandbox: read-only')) {
+            [regex]::Matches($deepReview, [regex]::Escape($token)).Count | Should -BeGreaterOrEqual 2
         }
     }
 

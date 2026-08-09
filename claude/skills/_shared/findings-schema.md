@@ -101,8 +101,10 @@ fingerprint = hash(file + scope + issue_kind + subject)
   from the frozen `initial_head_sha` in the session id.
 - A **current-session pointer** per repo records the active snapshot so a later session (fix tomorrow)
   resolves the right one.
-- The snapshot records **`reviewers_enabled`** (the dimension set + whether `codex` participated) so a
-  resumed run reproduces the same reviewer set rather than silently changing it across machines.
+- The snapshot records **`reviewers_enabled`**: the participant set that ran (the dimensions, plus
+  `codex` when its MCP was present) and, when `--reviewers` was given, the resolved model per
+  participant ([`reviewer-models.md`](reviewer-models.md)). A resumed run therefore reproduces the same
+  reviewers on the same models rather than silently reverting to the defaults.
 
 ### Per-cycle ledger
 

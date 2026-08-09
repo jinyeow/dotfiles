@@ -3,7 +3,8 @@
 Shared by the review skills (`quick-review`, `deep-review`, and via the loop, `review-fix-loop`).
 It defines one thing: how the `--reviewers` argument resolves to real dispatch parameters.
 
-**Reviewer-only.** `--reviewers` selects the models for reviewer and verifier subagents. It never
+**Reviewer-only.** `--reviewers` selects the models for reviewer subagents — the fan-out participants,
+nothing else. It does not select verifier models, and it never
 touches fixer model selection — `fix-findings` fixers stay pinned by their own skill (Opus 4.8/4.7/4.6
 or Sonnet 5 or lower; never Opus 5, never Fable). A `--reviewers` value is not a licence to dispatch a
 fixer on it.
@@ -17,7 +18,9 @@ fixer on it.
 - The comma list names the models the reviewer set runs on. Omitting the flag keeps each skill's
   documented default. It selects **models, not participant count** — how a list maps onto a skill's
   reviewers is that skill's business (`quick-review` keeps two participants and rejects a list that
-  would add a third; `deep-review` spreads the list across its seven dimensions).
+  would add a third; `deep-review` spreads the list round-robin, in listed order, across its seven
+  dimensions in the registry order of `dimensions.md`). A repeated alias is harmless; if more than one
+  Codex alias appears (`sol`, `codex`), the **last one listed** wins for Codex.
 - The optional `:<effort>` trails the **whole** list (`fable,sol:high`) and applies to every listed
   model whose runtime accepts an effort setting. Values: `low`, `medium`, `high`.
 
