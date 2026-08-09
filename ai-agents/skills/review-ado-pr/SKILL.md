@@ -25,6 +25,9 @@ read it, review it across models, and report. Posting anything back to the PR (t
 - A bare-worktree repo layout with a permanent detached **`review`** worktree beside `main`
   (`git worktree add --detach ../review`). This is the standing local-review workflow — see the
   `local-pr-review` brain initiative / the `review-worktree-workflow` memory.
+  No bare-worktree layout? Skip the dedicated `review` worktree — `az repos pr checkout` directly
+  in your clone works the same way, you just accept it moves your current branch instead of
+  staying isolated.
 
 ## Steps
 
