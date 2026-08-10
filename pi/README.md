@@ -33,3 +33,18 @@ before dispatch on a default Pi install because no independent external adapter 
 configured. The shared skill intentionally does not name package-specific tools. Exact Pi
 skill invocation and package result semantics still require a smoke test against the
 installed versions rather than a guessed command example.
+
+`quick-review`, `deep-review`, `review-fix-loop`, and `fix-findings` (the review→fix skill set)
+are portable too, projected here from `ai-agents/skills/` alongside `council`. `deep-review`'s
+seven reviewer dimensions need something `council`'s symmetric critics don't: a distinct
+read-only tool allowlist per dimension. On Pi this is expressed as each spawned child's `tools:`
+frontmatter — confirmed present in the pinned `pi-subagents@0.40.0` shipped source
+(`RunnerSubagentStep.tools?: string[]`) — per the (derived, not transcribed from `dimensions.md`)
+mapping in `ai-agents/skills/deep-review/DISPATCH.md`. Dispatch uses ad-hoc multi-call rather
+than the scripted `runs.all`/`workflowScript` API, reasoned from `council`'s unscripted
+isolated-worker contract plus pinned-source evidence — not from a live Pi run driven this
+session; see DISPATCH.md for the source-verified-vs-live-smoke-tested distinction behind that
+choice. The
+findings store's sole-writer invariant (reviewers/fixers return text, never write the store
+themselves) holds under Pi because a child's `outputMode` defaults to `"inline"` at the pinned
+version, confirmed in source (`package/src/api/preflight.ts`).

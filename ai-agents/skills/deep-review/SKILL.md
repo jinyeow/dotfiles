@@ -13,8 +13,10 @@ review half of `review-fix-loop` (reached via `--deep`; the default is
 Contracts: the quality bar is [`../_shared/review-rubric.md`](../_shared/review-rubric.md), the seven
 reviewers are [`../_shared/dimensions.md`](../_shared/dimensions.md), the record schema + store
 discipline are [`../_shared/findings-schema.md`](../_shared/findings-schema.md), and reviewer model
-resolution is [`../_shared/reviewer-models.md`](../_shared/reviewer-models.md). Read them before
-running — they define the output and the rules below depend on them.
+resolution is [`../_shared/reviewer-models.md`](../_shared/reviewer-models.md) (Claude Code /
+Codex-MCP call shapes; other runtimes select reviewer models through their own defaults). Read them
+before running — they define the output and the rules below depend on them. How workers are launched
+per runtime, including per-dimension tool scoping, is [`DISPATCH.md`](DISPATCH.md).
 
 ## Quick start
 
@@ -33,8 +35,9 @@ for PR resolution (GitHub / Azure DevOps) and arg detail.
 SCOPE → FAN OUT → DEDUPE → VERIFY → EMIT
 ```
 
-The **orchestrator** (you) is the sole writer of the store. Reviewers and verifiers run as subagents
-and **return** their findings to you; you write every record. Never let a subagent write the store.
+The **orchestrator** (you) is the sole writer of the store. Reviewers and verifiers run as fresh
+isolated workers (see [DISPATCH.md](DISPATCH.md)) and **return** their findings to you; you write
+every record. Never let a worker write the store.
 
 ### Step 1 — Scope
 
@@ -53,10 +56,12 @@ exist, and this cycle's ledger entry is open.
 
 ### Step 2 — Fan out
 
-Dispatch **one subagent per enabled reviewer in a single message** (parallel), each with its charter
-from `dimensions.md` and the rubric bar. Include `codex` as a cross-model reviewer over the full
-rubric when its MCP is present (this is the documented standing-consent exception — see CLAUDE.md),
-called with the read-only posture set explicitly per call:
+Launch **one isolated worker per enabled reviewer, together when parallel dispatch is available**
+(see [DISPATCH.md](DISPATCH.md) for per-runtime mechanics and per-dimension tool scoping), each
+with its charter from `dimensions.md` and the rubric bar. Include `codex` as a cross-model reviewer
+over the full rubric when an external Codex adapter is available (on Claude Code this is the
+documented standing-consent exception — see CLAUDE.md; DISPATCH.md covers the call shape per
+runtime), called with the read-only posture set explicitly per call. On Claude Code:
 
 ```
 mcp__codex__codex
@@ -96,9 +101,10 @@ finding the reviewer marked `confidence: low`. Skip verify for everything below 
 the store to be **reported** — `fix-findings` only auto-fixes above-floor findings — it just isn't
 adversarially checked).
 
-For each selected cluster, dispatch a verifier subagent (and Codex as a second voice when present)
+For each selected cluster, dispatch a verifier worker (and Codex as a second voice when available)
 **prompted to REFUTE** the finding — default to false-positive if uncertain. Verify the cluster, not
-a lone member. The Codex second voice carries the same explicit read-only posture as the fan-out call:
+a lone member. The Codex second voice carries the same explicit read-only posture as the fan-out
+call. On Claude Code:
 
 ```
 mcp__codex__codex
@@ -132,12 +138,15 @@ and the summary is printed.
 
 - **Emit, don't fix.** Applying fixes is `fix-findings`. Running both in a loop is `review-fix-loop`,
   which reaches this skill only under `--deep`.
-- **Model.** Standalone, reviewers may run on Fable for a light pass. Invoked from `review-fix-loop`,
-  they inherit its reviewer constraint — **Opus or Sonnet, never Fable** unless the user explicitly
-  asks. `--reviewers` overrides both ([`../_shared/reviewer-models.md`](../_shared/reviewer-models.md));
-  it is reviewer-only and never changes which model a fixer runs on.
-- **Sole writer.** Subagents return findings; you write the store. This is what makes parallel
-  reviewers safe without locks (findings-schema.md).
+- **Model.** On Claude Code, standalone reviewers may run on Fable for a light pass; invoked from
+  `review-fix-loop`, they inherit its reviewer constraint — **Opus or Sonnet, never Fable** unless
+  the user explicitly asks. Other runtimes select reviewer models through their own defaults —
+  no equivalent pin is defined yet. `--reviewers` overrides the default on any runtime
+  ([`../_shared/reviewer-models.md`](../_shared/reviewer-models.md) documents the Claude/Codex-MCP
+  alias table); it is reviewer-only and never changes which model a fixer runs on.
+- **Sole writer.** Workers return findings; you write the store. This is what makes parallel
+  reviewers safe without locks (findings-schema.md; DISPATCH.md verifies this holds under Pi's
+  actual completion-signal mechanism).
 - **Floor affects verify + reporting, not what's stored.** Below-floor findings are still recorded.
 - A failed/empty reviewer is noted, never silently dropped — an empty result is a finding about the
   reviewer, not proof of clean code.

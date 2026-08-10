@@ -5,7 +5,7 @@ description: The default review pass over a branch diff or PR. Use when asked to
 
 # Quick Review
 
-The **default** review pass: two participants instead of eight. One folded reviewer subagent covering
+The **default** review pass: two participants instead of eight. One folded reviewer worker covering
 `correctness` + `conventions` + `tests`, plus Codex as a cross-model second opinion. This skill
 **emits** findings; it does not fix them (that's `fix-findings`). It is the default review half of
 `review-fix-loop` and is independently invocable.
@@ -17,8 +17,11 @@ architecture coverage is actually wanted.
 Contracts: the quality bar is [`../_shared/review-rubric.md`](../_shared/review-rubric.md), the
 dimension charters are [`../_shared/dimensions.md`](../_shared/dimensions.md), the record schema +
 store discipline are [`../_shared/findings-schema.md`](../_shared/findings-schema.md), and reviewer
-model resolution is [`../_shared/reviewer-models.md`](../_shared/reviewer-models.md). Read them before
-running — they define the output and the rules below depend on them.
+model resolution is [`../_shared/reviewer-models.md`](../_shared/reviewer-models.md) (Claude Code /
+Codex-MCP call shapes; other runtimes select reviewer models through their own defaults). Read them
+before running — they define the output and the rules below depend on them. How workers are
+launched per runtime is [`../deep-review/DISPATCH.md`](../deep-review/DISPATCH.md) — the same
+contract, narrowed to two participants here.
 
 ## Quick start
 
@@ -38,8 +41,9 @@ Default scope is the current branch vs its merge-base with `main`. Scope resolut
 SCOPE → FAN OUT (2) → DEDUPE → VERIFY → EMIT
 ```
 
-The **orchestrator** (you) is the sole writer of the store. Reviewers and verifiers run as subagents
-and **return** their findings to you; you write every record. Never let a subagent write the store.
+The **orchestrator** (you) is the sole writer of the store. Reviewers and verifiers run as fresh
+isolated workers and **return** their findings to you; you write every record. Never let a worker
+write the store.
 
 Steps 1, 3, 4 and 5 are `deep-review`'s, unchanged — same frozen `review_session_id`, same fingerprint
 dedupe, same selective adversarial verify, same ledger close and summary. Two differences only:
@@ -53,12 +57,14 @@ dedupe, same selective adversarial verify, same ledger close and summary. Two di
 
 Dispatch both in a **single message** (parallel):
 
-1. **The folded reviewer.** One subagent carrying the `correctness`, `conventions`, and `tests`
-   charters from [`../_shared/dimensions.md`](../_shared/dimensions.md) verbatim, plus the rubric bar.
-   Diff-local — it does not read beyond the diff.
-2. **Codex**, as a cross-model reviewer over the **full** rubric, when its MCP is present (the
-   documented standing-consent exception — see `claude/CLAUDE.md`). Call it with the read-only posture
-   set explicitly per call:
+1. **The folded reviewer.** One isolated worker carrying the `correctness`, `conventions`, and
+   `tests` charters from [`../_shared/dimensions.md`](../_shared/dimensions.md) verbatim, plus the
+   rubric bar. Diff-local — it does not read beyond the diff. Read-only tool scoping:
+   [`../deep-review/DISPATCH.md`](../deep-review/DISPATCH.md).
+2. **Codex**, as a cross-model reviewer over the **full** rubric, when an external Codex adapter is
+   available (on Claude Code this is the documented standing-consent exception — see
+   `claude/CLAUDE.md`; other runtimes: see DISPATCH.md). Call it with the read-only posture set
+   explicitly per call. On Claude Code:
 
    ```
    mcp__codex__codex
@@ -79,13 +85,14 @@ registry's `Default fix_verification` column is what a reviewer draws its **prop
 finding simply means the reviewer states `fix_verification` outright instead of inheriting a registry
 default.
 
-The folded Claude reviewer only ever emits `correctness`, `conventions`, or `tests`. Codex stays a
+The folded reviewer only ever emits `correctness`, `conventions`, or `tests`. Codex stays a
 **full-rubric** reviewer — that cross-model breadth is the point of the second participant — so it may
 raise, say, a `security` or `architecture` finding. Record those under the registry dimension of the
 defect when it maps to one; they are stored, verified, reported, and fixable like any other. A
 `quick-review` snapshot is therefore
-*single-sourced* outside the folded three (one contributor, no Claude cross-check) — say so in the
-summary so the user can escalate to `deep-review` rather than mistake narrow coverage for a clean bill.
+*single-sourced* outside the folded three (one contributor, no cross-check from the host runtime's own
+model) — say so in the summary so the user can escalate to `deep-review` rather than mistake narrow
+coverage for a clean bill.
 
 **Done when:** both participants have returned. A participant that errors or returns nothing is
 recorded as **run metadata** (`reviewer`, `error`, `cycle_id`) — never as a finding, never silently
@@ -114,10 +121,11 @@ run on), not logic switches.
 
 - **Emit, don't fix.** Applying fixes is `fix-findings`. Running both in a loop is `review-fix-loop`,
   which invokes this skill by default.
-- **Model.** Standalone, the folded reviewer may run on Fable for a light pass. Invoked from
-  `review-fix-loop`, it inherits that loop's reviewer constraint. `--reviewers` overrides both — and is
-  reviewer-only: it never changes which model a fixer runs on.
-- **Sole writer.** Subagents return findings; you write the store. This is what makes parallel
+- **Model.** On Claude Code, standalone the folded reviewer may run on Fable for a light pass;
+  invoked from `review-fix-loop`, it inherits that loop's reviewer constraint. Other runtimes select
+  through their own defaults — no equivalent pin is defined yet. `--reviewers` overrides the default
+  on any runtime — and is reviewer-only: it never changes which model a fixer runs on.
+- **Sole writer.** Workers return findings; you write the store. This is what makes parallel
   participants safe without locks (findings-schema.md).
 - **Two participants is the point.** Codex's full-rubric brief is not a licence to add participants:
   when a diff needs *dedicated* security, performance, structural, or architecture reviewers, that is

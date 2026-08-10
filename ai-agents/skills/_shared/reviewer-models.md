@@ -3,6 +3,14 @@
 Shared by the review skills (`quick-review`, `deep-review`, and via the loop, `review-fix-loop`).
 It defines one thing: how the `--reviewers` argument resolves to real dispatch parameters.
 
+**Scope note:** this file's alias table and call shapes describe Claude Code's subagent model
+aliases and its `mcp__codex__codex` MCP tool — the only two dispatch surfaces this contract
+currently covers. It lives under the portable `_shared/` alongside the runtime-neutral
+`dimensions.md` / `findings-schema.md` / `review-rubric.md` because the skills that reference it
+are portable, but its own content is not yet genericized for Codex CLI or Pi — on those runtimes,
+`--reviewers` selects models through the runtime's own defaults, not this table, until a
+Codex/Pi-native equivalent is written.
+
 **Reviewer-only.** `--reviewers` selects the models for reviewer subagents — the fan-out participants,
 nothing else. It does not select verifier models, and it never
 touches fixer model selection — `fix-findings` fixers stay pinned by their own skill (Opus 4.8/4.7/4.6

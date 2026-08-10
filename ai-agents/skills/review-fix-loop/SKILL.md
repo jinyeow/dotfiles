@@ -87,22 +87,25 @@ loop's own gate, rails, or store handling.
 
 ## Notes
 
-- **Reviewer model.** The review child runs on **Opus or Sonnet — never Fable** unless the user
-  explicitly asks. (Fable is fine for a standalone light review or the plan stage, but not for this
-  automated find-and-commit loop.) `--reviewers` overrides this per run —
+- **Reviewer model.** On Claude Code, the review child runs on **Opus or Sonnet — never Fable**
+  unless the user explicitly asks. (Fable is fine for a standalone light review or the plan stage, but
+  not for this automated find-and-commit loop.) Other runtimes select through their own defaults — no
+  equivalent pin is defined yet. `--reviewers` overrides the default on any runtime —
   [`../_shared/reviewer-models.md`](../_shared/reviewer-models.md).
-- **Fixer model.** Fixers apply and commit code, so they stay pinned regardless of `--reviewers`:
-  **Opus 4.8 / 4.7 / 4.6, or Sonnet 5 (or lower) — never Opus 5, never Fable**, for now, unless the
-  user explicitly asks. Dispatch with the `model` param set to a version that satisfies this; the bare
-  `opus` alias resolves to the current default Opus (Opus 5 today) and therefore does **not** satisfy
-  the pin — name the version explicitly, or ask the user rather than guessing.
+- **Fixer model.** On Claude Code, fixers apply and commit code, so they stay pinned regardless of
+  `--reviewers`: **Opus 4.8 / 4.7 / 4.6, or Sonnet 5 (or lower) — never Opus 5, never Fable**, for now,
+  unless the user explicitly asks. Dispatch with the `model` param set to a version that satisfies
+  this; the bare `opus` alias resolves to the current default Opus (Opus 5 today) and therefore does
+  **not** satisfy the pin — name the version explicitly, or ask the user rather than guessing. Other
+  runtimes select through their own defaults — no equivalent pin is defined yet.
 - **Thin.** Reviewing is `quick-review` / `deep-review`; fixing is `fix-findings`. This skill sequences
   them, owns the store's state transitions across cycles, and decides stop-vs-go. Don't reimplement
   review or fix here.
 - **Frozen base.** Capture `base_sha` once on cycle 1; every later cycle re-reviews against it so
   origin classification and the rails stay stable as fixes shift lines.
 - **User interrupt** — any message during the loop stops it at the next safe point: finish the
-  in-flight subagent batch, let the orchestrator write the store + commit any fix-unit already verified
+  in-flight worker batch, let the orchestrator write the store + commit any fix-unit already verified
   green, then stop without starting a new review/fix/commit step. Leaves the worktree + store
   consistent.
-- Working store lives under `~/.claude/`, outside the repo — never committed.
+- Working store lives under the runtime's own config home (`~/.claude/`, `~/.codex/`, or `~/.pi/`),
+  outside the repo — never committed.

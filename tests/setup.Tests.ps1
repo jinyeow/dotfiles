@@ -250,8 +250,15 @@ Describe 'setup.ps1 Claude skill projection safety' {
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match '\.claude\\skills\\council -> .*ai-agents\\skills\\council'
             $output | Should -Match '\.claude\\skills\\codex-review -> .*claude\\skills\\codex-review'
-            $output | Should -Match '\.claude\\skills\\_shared -> .*claude\\skills\\_shared'
+            # _shared moved portable with the review skills (#115): now sourced from
+            # ai-agents\skills\_shared, not the removed claude\skills\_shared, and not the
+            # unrelated, still-source-only ai-agents\_shared (no `skills\` segment).
+            $output | Should -Match '\.claude\\skills\\_shared -> .*ai-agents\\skills\\_shared'
             $output | Should -Not -Match '\.claude\\skills\\_shared -> .*ai-agents\\_shared'
+            $output | Should -Match '\.claude\\skills\\quick-review -> .*ai-agents\\skills\\quick-review'
+            $output | Should -Match '\.claude\\skills\\deep-review -> .*ai-agents\\skills\\deep-review'
+            $output | Should -Match '\.claude\\skills\\review-fix-loop -> .*ai-agents\\skills\\review-fix-loop'
+            $output | Should -Match '\.claude\\skills\\fix-findings -> .*ai-agents\\skills\\fix-findings'
         } finally {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue

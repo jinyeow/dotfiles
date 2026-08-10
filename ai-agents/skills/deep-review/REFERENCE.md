@@ -48,23 +48,25 @@ refs, PRs, and the store identically.
 
 ## Reviewer dispatch
 
-One subagent per enabled reviewer, all in a single message (parallel). Each gets:
+One isolated worker per enabled reviewer, launched together when parallel dispatch is available (see
+[DISPATCH.md](DISPATCH.md) for per-runtime mechanics and per-dimension tool scoping). Each gets:
 
 1. Its charter from [`../_shared/dimensions.md`](../_shared/dimensions.md).
 2. The quality bar from [`../_shared/review-rubric.md`](../_shared/review-rubric.md).
 3. The output schema from [`../_shared/findings-schema.md`](../_shared/findings-schema.md) — the
-   subagent returns findings as structured records; the orchestrator validates each against the schema
+   worker returns findings as structured records; the orchestrator validates each against the schema
    before writing.
 
-`codex` participates when its MCP is present, as a full-rubric cross-model reviewer and a second voice
-in verify. Record whether it ran in the snapshot's `reviewers_enabled`.
+`codex` participates when an external Codex adapter is available (its MCP, on Claude Code — see
+DISPATCH.md for other runtimes), as a full-rubric cross-model reviewer and a second voice in verify.
+Record whether it ran in the snapshot's `reviewers_enabled`.
 
 ---
 
 ## Store
 
-Per [`../_shared/findings-schema.md`](../_shared/findings-schema.md): central dir under `~/.claude/`,
-one snapshot per session keyed by the frozen
+Per [`../_shared/findings-schema.md`](../_shared/findings-schema.md): central dir under the runtime's
+own config home (`~/.claude/`, `~/.codex/`, or `~/.pi/`), one snapshot per session keyed by the frozen
 `review_session_id = repo + base_sha + initial_head_sha + worktree-path`, current-session pointer per
 repo. On resume, check `HEAD` against the latest ledger `head_sha`; HEAD advancing from the loop's own
 commits is expected — only out-of-loop drift requires an explicit choice.
