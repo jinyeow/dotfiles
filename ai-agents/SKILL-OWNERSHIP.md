@@ -8,15 +8,31 @@ or orchestration surface. PR #63 changes only source layout, not skill classific
 
 This is the canonical home for runtime-neutral Agent Skills. It is projected to Claude Code,
 Codex CLI, and Pi where each runtime is configured to load it. This includes `council`,
-`council-code`, `council-business`, `council-plan`, `council-doc`, and `project-brain` (the
+`council-code`, `council-business`, `council-plan`, `council-doc`, `project-brain` (the
 `SessionStart` auto-injection hook is Claude-specific and stays a `claude/settings.json`
-entry; the skill's resolve-and-read procedure itself is tool-agnostic).
+entry; the skill's resolve-and-read procedure itself is tool-agnostic), and, since #115,
+`quick-review`, `deep-review`, `review-fix-loop`, and `fix-findings` — the review→fix skill
+set. `deep-review`'s per-dimension subagent fan-out (previously the blocker below) is proven
+out on Pi via `pi-subagents`' `tools:` frontmatter allowlist (same grain as Claude's named-tool
+allowlist) and on Codex via its coarser `sandbox_mode` scoping; see
+`ai-agents/skills/deep-review/DISPATCH.md`. Codex-native porting of these four skills is
+tracked separately (#116, per `docs/adr/portable-review-skills-migration-sequencing.md`) — they
+project to Codex today via the generic portable-skill projection, but their per-dimension
+tool-scoping is documented for Codex only at the `sandbox_mode` level, not yet a reviewed
+Codex-native equivalent.
 
-## Portable support (`ai-agents/_shared/`)
+## Portable support (`ai-agents/skills/_shared/`)
 
-Source-only portable review support resources live here. The directory has no `SKILL.md` and
-is never projected as a standalone skill. Its files are independently owned from Claude's
-projected support copy and the two directories may diverge.
+Portable review support resources — `dimensions.md`, `findings-schema.md`, `review-rubric.md`,
+`reviewer-models.md` — live here, projected alongside the skills above into every runtime's
+skills directory (`quick-review` and friends reach it via `../_shared/<file>`, resolved at the
+installed destination). Not a standalone skill (no `SKILL.md`). `reviewer-models.md` documents
+only the Claude Code / Codex-MCP dispatch surfaces today — see its own scope note.
+
+A separate, unrelated `ai-agents/_shared/` (no `skills/` in the path) holds an older,
+independently-owned, source-only copy of the same three filenames, predating the #101 split
+of `deep-review` into `quick-review` + `deep-review` — not projected, and not kept in sync.
+No ticket currently tracks consolidating or removing it; do not confuse the two paths.
 
 ## Claude-native (`claude/skills/`)
 
@@ -37,10 +53,6 @@ of the technical facts (see the 2026-08-07 want-check round in the audit report)
 capability that may not exist in Codex/Pi; confirming that is a prerequisite before a
 migration ticket is even writable:
 
-- `deep-review`, `fix-findings` — `deep-review` dispatches one differently-*scoped*
-  subagent per reviewer dimension in parallel; `fix-findings` inherits the blocker via
-  composition. Research spike: #93. (#101 split off `quick-review` as the lightweight
-  default; the full-fan-out dependency described here stayed with `deep-review`.)
 - `azure-boards-organiser` — depends on the per-skill `commands/` subfolder convention
   (`claude/README.md` line 174, 12 files under `commands/`), documented only for Claude
   Code and unproven elsewhere. (Not just its config path or MCP tool names, which are
@@ -57,14 +69,11 @@ migration ticket is even writable:
 **Content-coupled** — depends on a Claude-scoped copy of shared content, not a missing
 mechanism; fixable by repointing the reference:
 
-- `_shared` — Claude review-support resources, projected with Claude skills.
-- `quick-review` — the #101 default review pass. Two participants only, so it does not
-  need `deep-review`'s per-dimension tool-scoping; it is coupled to the Claude-scoped
-  `claude/skills/_shared/` copies (`dimensions.md`, `findings-schema.md`,
-  `review-rubric.md`, `reviewer-models.md`) and shares `deep-review`'s REFERENCE for scope
-  and store resolution, so it moves when that cluster moves. Migration ticket: none yet.
-- `codex-review` — links to `claude/skills/_shared/review-rubric.md`, a Claude-scoped
-  copy, not `ai-agents/_shared/`. Migration ticket: #98.
+- `codex-review` — still lives under `claude/skills/`; its own directory hasn't moved yet.
+  Its `../_shared/review-rubric.md` and `../_shared/dimensions.md` links already resolve to
+  the now-portable `ai-agents/skills/_shared/` copy at the installed destination (#115
+  relocated `_shared/`), so the remaining work is only moving `codex-review` itself to
+  `ai-agents/skills/`. Migration ticket: #98.
 
 **Needs design work** — the skill's value depends on a Claude-only *convenience trigger*
 (not a missing primitive), so portability needs a designed equivalent, not a spike:

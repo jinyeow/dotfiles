@@ -11,8 +11,9 @@ either way, since both write the same schema. It does not review or loop (that's
 It is independently invocable.
 
 Contracts: the record schema + store discipline are
-[`../_shared/findings-schema.md`](../_shared/findings-schema.md); coding conventions are
-`~/.claude/AGENTS.md`. Read the schema first — the partition and TDD rules below key off its fields.
+[`../_shared/findings-schema.md`](../_shared/findings-schema.md); coding conventions are the
+runtime's own `AGENTS.md` (`~/.claude/AGENTS.md`, `~/.codex/AGENTS.md`, or `~/.pi/AGENTS.md`). Read
+the schema first — the partition and TDD rules below key off its fields.
 
 ## Quick start
 
@@ -32,7 +33,7 @@ LOAD → PARTITION → FIX (parallel) → TEST → COMMIT
 ```
 
 The **orchestrator** (you) is the sole writer of the store and the only one that commits. Fixer
-subagents **return** their results to you; they don't write the store or run git.
+workers **return** their results to you; they don't write the store or run git.
 
 ### Step 1 — Load
 
@@ -62,8 +63,8 @@ batches / the serial queue with no two concurrent fixers sharing a file.
 ### Step 3 — Fix (parallel within a batch)
 
 The orchestrator marks every fix-unit in the batch `fixing` in the store **before** launching fixers
-(so a crash mid-batch leaves visible state). Then dispatch one fixer subagent per fix-unit in the
-batch (single message). Each fixer, for its unit:
+(so a crash mid-batch leaves visible state). Then dispatch one fixer worker per fix-unit in the
+batch, together when parallel dispatch is available. Each fixer, for its unit:
 
 1. State a one-sentence "why" (the defect being fixed / invariant enforced) before editing.
 2. **TDD gate on `fix_verification`** (if a unit groups findings of mixed types, the strictest
@@ -117,16 +118,18 @@ store reflects reality.
 ## Notes
 
 - **Introduced only.** Pre-existing findings are reported by `deep-review`, never auto-fixed here.
-- **Model.** Fixers apply code (the implement arm of the loop) — dispatch on **Opus 4.8 / 4.7 / 4.6,
-  or Sonnet 5 (or lower) — never Opus 5, never Fable**, for now, unless the user explicitly asks. The
-  reviewer-side `--reviewers` argument does not apply here: it never selects a fixer model. Set the
-  `model` param to a version that satisfies the pin — the bare `opus` alias resolves to the current
-  default Opus (Opus 5 today) and therefore does **not** satisfy it.
+- **Model.** On Claude Code, fixers apply code (the implement arm of the loop) — dispatch on
+  **Opus 4.8 / 4.7 / 4.6, or Sonnet 5 (or lower) — never Opus 5, never Fable**, for now, unless the
+  user explicitly asks. The reviewer-side `--reviewers` argument does not apply here: it never
+  selects a fixer model. Set the `model` param to a version that satisfies the pin — the bare `opus`
+  alias resolves to the current default Opus (Opus 5 today) and therefore does **not** satisfy it.
+  Other runtimes select through their own defaults — no equivalent pin is defined yet.
 - **Sole writer + committer.** Fixers return results; you write the store and commit — this is what
   makes parallel fixers safe (findings-schema.md).
 - **Conflict-set, not raw file count** — a finding may span files; partition on what each fix touches.
   A diff confined to one file correctly serializes all its fixers; parallelism only kicks in across
   multiple files.
 - Never suppress a linter rule to pass; fix the underlying issue.
-- **Codex (when its MCP is present)** may be consulted read-only for a fix approach on a hard finding
-  before editing; you apply the fix (Codex never edits). If absent, proceed Claude-only — never fail.
+- **Codex (when an external adapter is available — its MCP, on Claude Code)** may be consulted
+  read-only for a fix approach on a hard finding before editing; you apply the fix (Codex never
+  edits). If unavailable, proceed on the host runtime alone — never fail.

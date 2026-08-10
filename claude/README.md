@@ -177,7 +177,10 @@ ai-agents/skills/
 
 The installer junctions (Windows) or symlinks (Linux) each skill directory into
 `~/.claude/skills/`, making it available in every project. To add a portable skill, create its subdirectory under `ai-agents/skills/`; for a
-Claude-native skill, use `claude/skills/`. Claude's `claude/skills/_shared/` is projected support content; portable `ai-agents/_shared/` remains source-only. Re-run `setup.ps1 -Module claude` afterward.
+Claude-native skill, use `claude/skills/`. The review-support contract lives at the portable
+`ai-agents/skills/_shared/` and is projected alongside every other portable skill; the
+independent `ai-agents/_shared/` copy is source-only and may diverge — see `../ai-agents/README.md`.
+Re-run `setup.ps1 -Module claude` afterward.
 
 The codex module projects only portable skill directories into `~/.codex/skills/`,
 so Codex CLI reads portable skills from the same source. Claude-native skills remain private
@@ -215,23 +218,33 @@ close-out (delta shown for veto): general-skill observations in `~/.claude/learn
 (untracked, created on first use), domain-specific ones in the resolved project-brain's
 `learner.md`.
 
-The review→fix skills compose around `_shared/` contracts: **`quick-review`** is the default pass —
-one folded reviewer (correctness + conventions + tests) plus Codex, two participants; **`deep-review`**
-is the opt-in heavy version of the same pipeline, fanning out all seven per-dimension reviewers +
-Codex. Both adversarially verify their findings and emit them to the same findings store.
-**`fix-findings`** consumes that store and applies fixes (parallel, partitioned by conflict-set, one
-commit per fix-unit); **`review-fix-loop`** is the thin orchestrator that chains a review pass with
-the fix pass each cycle and loops to a deterministic clean gate — `quick-review` by default,
-`deep-review` under `--deep`. `--reviewers <model>[,<model>][:<effort>]` picks the reviewer models
-(reviewer-only; fixers stay pinned). `codex-review` is the standalone lightweight Codex
-second-opinion pass.
+The review→fix skills are portable (`ai-agents/skills/`) and compose around the portable
+`_shared/` contract: **`quick-review`** is the default pass — one folded reviewer (correctness +
+conventions + tests) plus Codex, two participants; **`deep-review`** is the opt-in heavy version
+of the same pipeline, fanning out all seven per-dimension reviewers + Codex. Both adversarially
+verify their findings and emit them to the same findings store. **`fix-findings`** consumes that
+store and applies fixes (parallel, partitioned by conflict-set, one commit per fix-unit);
+**`review-fix-loop`** is the thin orchestrator that chains a review pass with the fix pass each
+cycle and loops to a deterministic clean gate — `quick-review` by default, `deep-review` under
+`--deep`. `--reviewers <model>[,<model>][:<effort>]` picks the reviewer models (reviewer-only;
+fixers stay pinned). On Claude Code the fan-out dispatches one `Agent` tool call per reviewer
+dimension, restricted to that dimension's read-only tool allowlist
+(`ai-agents/skills/deep-review/DISPATCH.md`); the same four skills also project to Codex CLI and
+Pi, with Pi's per-dimension scoping expressed via `pi-subagents`' `tools:` frontmatter (see
+DISPATCH.md). `codex-review` is the standalone lightweight Codex second-opinion pass and stays
+Claude-native.
 
-`claude/skills/_shared/` is **not a skill** — it holds Claude support resources shared by multiple skills: `review-rubric.md` (the
-merged AGENTS.md + thermo-nuclear quality bar), `dimensions.md` (the 7-dimension registry + charters
-used whole by `deep-review` and folded to three by `quick-review`), `findings-schema.md` (the JSONL
-finding schema, semantic fingerprint, and store discipline shared by the review→fix skills), and
-`reviewer-models.md` (how `--reviewers` resolves aliases + effort, and the per-call Codex posture). It has no `SKILL.md`, so the harness ignores it as
-a skill; it is still projected with Claude skills so they can reference it via `../_shared/<file>`. The independent `ai-agents/_shared/` copy is portable support source-only and may diverge.
+`ai-agents/skills/_shared/` is **not a skill** — it holds portable review-support resources
+shared by multiple skills, projected alongside them into `~/.claude/skills/_shared/` (and the
+Codex/Pi equivalents): `review-rubric.md` (the merged AGENTS.md + thermo-nuclear quality bar),
+`dimensions.md` (the 7-dimension registry + charters used whole by `deep-review` and folded to
+three by `quick-review`), `findings-schema.md` (the JSONL finding schema, semantic fingerprint,
+and store discipline shared by the review→fix skills), and `reviewer-models.md` (how
+`--reviewers` resolves aliases + effort and the per-call Codex posture — currently documents only
+the Claude Code / Codex-MCP dispatch surfaces). It has no `SKILL.md`, so the harness ignores it
+as a skill; `claude/skills/codex-review/SKILL.md` still reaches it via `../_shared/<file>`,
+resolved at the installed destination. The independent `ai-agents/_shared/` copy (note: not
+`ai-agents/skills/_shared/`) is source-only and may diverge — see `../ai-agents/README.md`.
 
 Built-in Claude Code skills (`code-review`, `compact`, `deep-research`, `security-review`,
 `verify`, etc.) are provided by the harness and do not need to be installed. `handoff` is

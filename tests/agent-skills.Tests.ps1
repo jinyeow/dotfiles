@@ -56,12 +56,24 @@ Describe 'agent skill source layout' {
         }
     }
 
-    It 'keeps Claude support projected and portable support source-only' {
+    It 'keeps the review-support contract portable-projected, plus a separate source-only copy' {
+        # #115: dimensions.md / findings-schema.md / review-rubric.md / reviewer-models.md live at
+        # the portable ai-agents/skills/_shared/ (projected with the review skills below) — the
+        # Claude-scoped claude/skills/_shared/ no longer exists. ai-agents/_shared/ (no `skills/`
+        # segment) is a separate, unrelated, source-only copy that predates the split and is not
+        # projected — the two must not be confused.
+        $portableSkillsShared = Join-Path $portable '_shared'
+        foreach ($name in @('dimensions.md', 'findings-schema.md', 'review-rubric.md', 'reviewer-models.md')) {
+            Test-Path (Join-Path $portableSkillsShared $name) | Should -BeTrue
+        }
+        # ai-agents/_shared/ (source-only, unrelated) predates the #101 skill split and never
+        # picked up reviewer-models.md — only the three original files.
         foreach ($name in @('dimensions.md', 'findings-schema.md', 'review-rubric.md')) {
-            Test-Path (Join-Path $claude "_shared/$name") | Should -BeTrue
             Test-Path (Join-Path $portableSupport $name) | Should -BeTrue
         }
+        Test-Path (Join-Path $portableSkillsShared 'SKILL.md') | Should -BeFalse
         Test-Path (Join-Path $portableSupport 'SKILL.md') | Should -BeFalse
+        Test-Path (Join-Path $claude '_shared') | Should -BeFalse
     }
 
     It 'keeps council aliases thin and linked to the portable contract' {
@@ -97,18 +109,26 @@ Describe 'review skill split' {
     BeforeAll {
         $repo = Split-Path $PSScriptRoot -Parent
         $claudeSkills = Join-Path $repo 'claude/skills'
-        $quickReview = Get-Content (Join-Path $claudeSkills 'quick-review/SKILL.md') -Raw -ErrorAction SilentlyContinue
-        $deepReview = Get-Content (Join-Path $claudeSkills 'deep-review/SKILL.md') -Raw
-        $loop = Get-Content (Join-Path $claudeSkills 'review-fix-loop/SKILL.md') -Raw
-        $fixFindings = Get-Content (Join-Path $claudeSkills 'fix-findings/SKILL.md') -Raw
-        $reviewerModels = Get-Content (Join-Path $claudeSkills '_shared/reviewer-models.md') -Raw -ErrorAction SilentlyContinue
+        $portableSkills = Join-Path $repo 'ai-agents/skills'
+        $quickReview = Get-Content (Join-Path $portableSkills 'quick-review/SKILL.md') -Raw -ErrorAction SilentlyContinue
+        $deepReview = Get-Content (Join-Path $portableSkills 'deep-review/SKILL.md') -Raw
+        $loop = Get-Content (Join-Path $portableSkills 'review-fix-loop/SKILL.md') -Raw
+        $fixFindings = Get-Content (Join-Path $portableSkills 'fix-findings/SKILL.md') -Raw
+        $reviewerModels = Get-Content (Join-Path $portableSkills '_shared/reviewer-models.md') -Raw -ErrorAction SilentlyContinue
         $claudeAdapter = Get-Content (Join-Path $repo 'claude/CLAUDE.md') -Raw
     }
 
-    It 'owns quick-review as a Claude-native skill classified in SKILL-OWNERSHIP' {
-        Test-Path (Join-Path $claudeSkills 'quick-review/SKILL.md') | Should -BeTrue
-        Test-Path (Join-Path $repo 'ai-agents/skills/quick-review') | Should -BeFalse
+    It 'owns quick-review as a portable skill classified in SKILL-OWNERSHIP (#115)' {
+        Test-Path (Join-Path $portableSkills 'quick-review/SKILL.md') | Should -BeTrue
+        Test-Path (Join-Path $claudeSkills 'quick-review') | Should -BeFalse
         Get-Content (Join-Path $repo 'ai-agents/SKILL-OWNERSHIP.md') -Raw | Should -Match '`quick-review`'
+    }
+
+    It 'owns deep-review, review-fix-loop, and fix-findings as portable skills (#115)' {
+        foreach ($name in @('deep-review', 'review-fix-loop', 'fix-findings')) {
+            Test-Path (Join-Path $portableSkills "$name/SKILL.md") | Should -BeTrue
+            Test-Path (Join-Path $claudeSkills $name) | Should -BeFalse
+        }
     }
 
     It 'folds quick-review onto the existing dimension labels and the shared pipeline' {
