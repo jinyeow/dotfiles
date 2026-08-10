@@ -41,12 +41,16 @@ this skill — they belong to a separate skill if one is wanted later.
 
 ## Steps
 
-1. **Branch guard.** Determine the current branch (`git branch --show-current`) and the
-   repo's default branch (`git symbolic-ref refs/remotes/origin/HEAD` or `gh repo view --json
-   defaultBranchRef` / `az repos show --query defaultBranch`). If the current branch **is**
-   the default branch, refuse and stop — do not open a PR from `main`/`master`/the default
-   branch. Point at `AGENTS.md` → "Git worktrees" for the fix (branch into its own worktree)
-   rather than re-explaining the convention here.
+1. **Branch guard.** Determine the current branch (`git branch --show-current` — a bare name,
+   e.g. `main`) and the repo's default branch, then **normalize both to a bare branch name
+   before comparing** — `git symbolic-ref refs/remotes/origin/HEAD` and `az repos show
+   --query defaultBranch` return a ref (`refs/remotes/origin/main` / `refs/heads/main`), and
+   `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name` returns a bare name
+   directly. Strip any `refs/remotes/origin/` or `refs/heads/` prefix before comparing; a raw
+   string compare against the ref form silently never matches and lets the guard pass on
+   `main`. If the current branch **is** the default branch, refuse and stop — do not open a PR
+   from `main`/`master`/the default branch. Point at `AGENTS.md` → "Git worktrees" for the fix
+   (branch into its own worktree) rather than re-explaining the convention here.
 
 2. **Dirty-tree guard.** Run `git status --porcelain`. If it is not clean:
    - Ask whether to stage and commit the outstanding changes, or stop.
@@ -60,7 +64,10 @@ this skill — they belong to a separate skill if one is wanted later.
 4. **Draft the title.** Conventional Commits format (`feat(scope): summary`, `fix: summary`,
    etc.), consistent with this repo's commit convention (see `claude/AGENTS.md` → "Commits" in
    this repo, or the project's own commit convention elsewhere). If the branch has one commit,
-   the title can start from that commit's subject; if several, summarize the net change.
+   the title can start from that commit's subject; if several, summarize the net change. A
+   commit subject can itself contain quotes, backticks, or `$()` — treat the title with the
+   same shell-escaping care as the body (step 9), not as a string safe to interpolate
+   unescaped into a `--title "<title>"` argument.
 
 5. **Check for a PR template.**
    - GitHub: look for `.github/PULL_REQUEST_TEMPLATE.md` (or `.github/PULL_REQUEST_TEMPLATE/`
@@ -78,9 +85,11 @@ this skill — they belong to a separate skill if one is wanted later.
    "looks fine."
 
 7. **Linking — handled per forge, not generically:**
-   - **GitHub**: link via body-text keywords only — `Fixes #N` / `Closes #N` — and only for
-     issues in the **same repository** as the PR. Do not use a numeric flag; `gh pr create`
-     has none for issue linking.
+   - **GitHub**: link via body-text keywords only — `Fixes #N` / `Closes #N`. Default to
+     same-repository issues (`#N` resolves against the PR's own repo); a cross-repo link
+     (`Fixes owner/repo#N`) is possible but only use it when the user explicitly names another
+     repository — don't guess at one. Do not use a numeric flag; `gh pr create` has none for
+     issue linking.
    - **Azure DevOps**: resolve the work item id and pass it on the `--work-items <id>` flag of
      `az repos pr create` (confirmed via `az repos pr create --help`: `--work-items : IDs of
      the work items to link to the new pull request. Space separated.`). An `AB#123` mention

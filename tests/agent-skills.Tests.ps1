@@ -184,7 +184,7 @@ Describe 'to-pullrequest skill' {
     BeforeAll {
         $repo = Split-Path $PSScriptRoot -Parent
         $skillPath = Join-Path $repo 'ai-agents/skills/to-pullrequest/SKILL.md'
-        $toPullrequest = Get-Content $skillPath -Raw -ErrorAction SilentlyContinue
+        $toPullrequest = Get-Content $skillPath -Raw
     }
 
     It 'exists under the portable skill source area' {
@@ -192,7 +192,7 @@ Describe 'to-pullrequest skill' {
     }
 
     It 'auto-fires on pull-request phrasing and carries explicit negative triggers' {
-        $description = [regex]::Match($toPullrequest, '(?s)^---.*?description:(.*?)\n---').Groups[1].Value
+        $description = [regex]::Match($toPullrequest, '(?s)description:\s*"(.*?)"\s*\n').Groups[1].Value
         $description | Should -Match 'open a PR'
         $description | Should -Match 'create a pull request'
         $description | Should -Match 'NOT for reviewing an existing PR'
