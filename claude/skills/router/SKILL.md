@@ -137,5 +137,4 @@ Off the flows entirely.
 
 - **`/prototype`** — a small throwaway program that answers one design question (does this state model feel right; what should this UI look like). Keep the answer, delete the code. The detour in step 2 of the main flow, but reach for it any time a design question is hard to settle on paper.
 - **`/grilling`** — the relentless interview primitive, stateless. The no-codebase path into the main flow, and reachable directly to stress-test any plan.
-- **`/caveman`** — ultra-compressed communication mode; cuts tokens ~75% while keeping technical accuracy.
 - **`/writing-great-skills`** — reference for writing and editing skills well, so a new one is predictable.
