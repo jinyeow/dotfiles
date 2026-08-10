@@ -179,3 +179,54 @@ Describe 'review skill split' {
         Get-Content (Join-Path $repo 'README.md') -Raw | Should -Match 'quick-review'
     }
 }
+
+Describe 'to-pullrequest skill' {
+    BeforeAll {
+        $repo = Split-Path $PSScriptRoot -Parent
+        $skillPath = Join-Path $repo 'ai-agents/skills/to-pullrequest/SKILL.md'
+        $toPullrequest = Get-Content $skillPath -Raw -ErrorAction SilentlyContinue
+    }
+
+    It 'exists under the portable skill source area' {
+        Test-Path $skillPath | Should -BeTrue
+    }
+
+    It 'auto-fires on pull-request phrasing and carries explicit negative triggers' {
+        $description = [regex]::Match($toPullrequest, '(?s)^---.*?description:(.*?)\n---').Groups[1].Value
+        $description | Should -Match 'open a PR'
+        $description | Should -Match 'create a pull request'
+        $description | Should -Match 'NOT for reviewing an existing PR'
+        $description | Should -Match 'NOT for merging'
+    }
+
+    It 'routes the drafted title/body through write before calling gh or az' {
+        $toPullrequest | Should -Match 'the `write` skill'
+        $toPullrequest | Should -Match ([regex]::Escape('gh pr create'))
+        $toPullrequest | Should -Match ([regex]::Escape('az repos pr create'))
+    }
+
+    It 'implements the branch guard, dirty-tree guard, and draft-vs-ready step' {
+        $toPullrequest | Should -Match 'Branch guard'
+        $toPullrequest | Should -Match 'Git worktrees'
+        $toPullrequest | Should -Match 'Dirty-tree guard'
+        $toPullrequest | Should -Match 'Draft vs ready'
+        $toPullrequest | Should -Match ([regex]::Escape('--draft'))
+    }
+
+    It 'passes the PR body by temp file, never inline' {
+        $toPullrequest | Should -Match ([regex]::Escape('--body-file'))
+        $toPullrequest | Should -Not -Match '--body\s+"[^"]*\n'
+    }
+
+    It 'links GitHub issues via body text and Azure DevOps work items via the --work-items flag' {
+        $toPullrequest | Should -Match 'Fixes #N'
+        $toPullrequest | Should -Match 'Closes #N'
+        $toPullrequest | Should -Match ([regex]::Escape('--work-items'))
+    }
+
+    It 'declares CI/merge-gate readiness, review-thread resolution, and auto-complete out of scope' {
+        $toPullrequest | Should -Match 'out of scope'
+        $toPullrequest | Should -Match 'CI/merge-gate'
+        $toPullrequest | Should -Match 'auto-complete'
+    }
+}
