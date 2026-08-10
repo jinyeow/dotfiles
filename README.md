@@ -147,4 +147,3 @@ Not sure which one fits? Run `/router` — a manual index that maps these as flo
 | `writing-great-skills` | mattpocock/skills | Reference for writing and editing skills well |
 | `fastmail` | local | Live inbox + calendar digest |
 | `linkedin-jobs` | local | Parse LinkedIn job-alert emails and InMails into cards |
-| `caveman` | mattpocock/skills | ~75% token-reduction communication mode |

@@ -1,4 +1,6 @@
 > **How to use this file**: it is a catalog of smells, not a checklist to run top to bottom. The principles in `SKILL.md` Core Stance apply here too: over-editing is failure, the author's voice and genre win, and these lists are examples, not find-and-replace. A sentence that already reads natural stays. Match the smell, not the word.
+>
+> This file is the skill's **Tell Catalog** — see `SKILL.md`'s Scope section for where it applies and where it doesn't.
 
 ## English Scenario
 
@@ -184,6 +186,7 @@ After removing table re-reads and structural repetition, scan the remaining pros
 - Any passive voice? Find the actor, make them the subject.
 - Inanimate thing doing a human verb? Name the person.
 - Sentence starts with "Here's"? Cut to the point.
+- Sentence starts with a rhetorical "Why/What/How..." question? State the answer directly instead.
 - Any "not X, it's Y" contrasts? State Y directly.
 - Three consecutive sentences match length? Break one.
 - Paragraph ends with punchy one-liner? Vary it.
@@ -195,5 +198,7 @@ After removing table re-reads and structural repetition, scan the remaining pros
 - Any emoji? Remove it.
 
 ---
+
+Some of the Core Rules and Quick Checks above (filler-cutting, formulaic-structure bans, active voice, the "Wh-" question-start check) draw on Hardik Pandya's stop-slop checklist (MIT license): https://github.com/hardikpandya/stop-slop
 
 **Bottom line: varied, imperfect, specific. Any single trope used once may be fine. The problem is when multiple appear together or one repeats.**

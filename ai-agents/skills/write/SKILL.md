@@ -1,6 +1,6 @@
 ---
 name: write
-description: "Rewrite and polish English prose to remove AI-sounding wording while preserving the author's intent and voice, for drafts, docs, READMEs, release notes, and long-form articles. Use when asked to de-AI, polish, rewrite, proofread, tighten, or review prose, check paragraph coherence, or draft release notes from commits. Not for code comments, commit messages, or inline docs."
+description: "Remove AI-sounding wording from any text another human will read — commit messages, code comments, config comments, CHANGELOG and README entries, in-repo docs, drafts, long-form articles, PR and ticket descriptions, acceptance criteria, and PR/ticket comments — while preserving the author's intent and voice. Use when asked to de-AI, polish, rewrite, proofread, tighten, or review prose, check paragraph coherence, or draft release notes from commits. Not for auto-generated boilerplate, test fixture/sample data, log messages, or error messages."
 ---
 
 # Write: Cut the AI Taste
@@ -24,6 +24,13 @@ This skill is a catalog of smells, not a checklist to run top to bottom. Use it 
 - **Prefer fewer, stronger edits.** Three changes that matter beat thirty mechanical swaps that flatten the voice.
 
 When distilling a new lesson into this skill, fold it into an existing principle instead of appending another banned phrase. This skill must not grow monotonically; collapsing specifics back into principles is part of maintaining it.
+
+## Scope
+
+Two layers, two triggers:
+
+- **Tell Catalog** (`references/write-en.md`): pattern-matching against AI-sounding wording. Applies to any text another human will read — commit messages, code comments, config comments, CHANGELOG and README entries, in-repo docs, drafts, long-form articles, PR and ticket descriptions, acceptance criteria, PR/ticket comments — down to a single sentence. Not for auto-generated boilerplate, test fixture/sample data, log messages, or error messages.
+- **Document Modes** (the four modes below): paragraph coherence, narrative flow, templating, and document review. Fire only on genuine prose documents; do not apply Document Modes to single-line artifacts like commit messages or code comments.
 
 ## Pre-flight
 
