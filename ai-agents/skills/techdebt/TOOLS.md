@@ -1,17 +1,16 @@
 # Stack detection and tool mapping
 
 Reference for step 1 (gather evidence). Detect stack first, then use the named command for
-each category. If a cell has no command for the detected stack, or the stack itself isn't
-covered below, that category is **skipped** — report it, don't fall back to `grep`.
+each category — the category rules themselves (what counts as debt, what to verify) live in
+`SKILL.md`; this file is command mappings only.
 
-Every category below is labeled with its evidence source:
+Each category is labeled by evidence source:
 
 - **Tool-backed** — a real command/report exists; read its output.
-- **Grep-because-no-tool-exists** — no dedicated tool detects this class of thing in any
-  stack (nobody ships a "TODO scanner"), so `git grep` *is* the correct evidence source, not
-  a stand-in for one.
-- **Skip when absent** — genuinely requires a specific tool (package audit, clone detector);
-  with none configured, report the category as not assessed rather than approximating it.
+- **Grep-native** — `git grep` is the actual evidence source for this category in every
+  stack; there is no tool to defer to instead, so this is never skipped.
+- **Skip when absent** — requires a specific tool (package audit, clone detector); with none
+  configured, this category goes to "Not assessed."
 
 ## Detecting the stack
 
@@ -31,15 +30,13 @@ Check for these markers, and note every one that's present — a repo can be mul
 When CI config exists, prefer the exact command it runs over guessing an equivalent — the CI
 step is the authoritative "this is how we lint/test this repo" source. If a stack has a
 linter, run it before anything else: a clean run rules out everything it already covers, so
-only genuinely linter-invisible territory remains for the categories below.
+only genuinely linter-invisible territory remains for category 2.
 
 ## Category → command, by stack
 
-### Dependency health — tool-backed, skip when absent
+### 1. Dependency health — tool-backed, skip when absent
 
-Outdated-or-unsupported and vulnerable are two different commands — run both; the skill
-reports the first as findings and the second only as a count + pointer (see `SKILL.md`,
-category 1: this skill doesn't triage vulnerability severity).
+Outdated/unsupported and vulnerable are two different commands; run both.
 
 | Stack | Outdated/unsupported | Vulnerable (count + pointer only) |
 |---|---|---|
@@ -52,21 +49,18 @@ category 1: this skill doesn't triage vulnerability severity).
 
 No package manager detected → skip, report "no package manager in this repo."
 
-### Dead code (linter-invisible tier) — tool-assisted, hand inspection for the remainder
+### 2. Dead code (linter-invisible tier) — tool-assisted, hand inspection for the remainder
 
-Run the stack's linter first — a clean run (no findings, and no rules disabled by the
-project's own settings file) already rules out everything it covers. What's left after that
-is genuinely linter-invisible: obsolete feature-flag branches, unreferenced exported
-functions with no call site in the repo, shims left after a migration completed. Cross-check
-the "unreferenced" claim before listing (see step 2 of `SKILL.md`) — a clean linter run does
-not by itself prove code is unreachable via reflection/dynamic dispatch/DI.
+Run the stack's linter first (no findings, and no rules disabled by the project's own
+settings file). What's left after that is genuinely linter-invisible: obsolete feature-flag
+branches, unreferenced exported functions with no call site in the repo, shims left after a
+migration completed.
 
-### Stale debt markers — grep-because-no-tool-exists
+### 3. Stale debt markers — grep-native
 
-`git grep -n -E "TODO|FIXME|HACK"`. There is no dedicated "TODO scanner" to defer to instead
-— this is the correct evidence source, not an approximation of one.
+`git grep -n -E "TODO|FIXME|HACK"`.
 
-### Test debt — tool-backed
+### 4. Test debt — tool-backed
 
 | Stack | Command |
 |---|---|
@@ -75,16 +69,15 @@ not by itself prove code is unreachable via reflection/dynamic dispatch/DI.
 | .NET (xUnit) | `dotnet test` output (skipped tests appear in the run summary) |
 | Python (pytest) | `pytest --collect-only -m skip`, `pytest-cov` |
 
-Read the *result*, not the source: a `-Skip`/`.skip()`/`Skip = ...` marker gated on a real
-condition (platform, missing optional dependency) is not debt — only unconditional or
-stale-reason skips are. A raw coverage percentage is not a finding on its own.
+Read the *result*, not the source: a `-Skip`/`.skip()`/`Skip = ...` marker is only debt when
+its own gating condition is stale or unconditional — see `SKILL.md` category 4.
 
-### Duplicated behavior — skip when absent
+### 5. Duplicated behavior — skip when absent
 
 A clone detector if the repo already has one configured (e.g. `jscpd`, `PMD-CPD`); otherwise
-skip rather than approximating with grep, per the skill's "not a scanner" boundary.
+skip.
 
-### Suppressed quality failures — grep-because-no-tool-exists (by design)
+### 6. Suppressed quality failures — grep-native
 
 | Stack | Marker |
 |---|---|
@@ -95,18 +88,16 @@ skip rather than approximating with grep, per the skill's "not a scanner" bounda
 | C#/.NET | `git grep -n "#pragma warning disable"` |
 | Any CI config | disabled/`continue-on-error: true` steps in the workflow file |
 
-A linter's own output never lists its own suppressions — that's the point of a suppression —
-so grep is the only way to find where they live; the linter run itself just confirms nothing
-*unsuppressed* is failing. Cross-check each hit against `docs/adr/` and any inline
-justification before listing — a suppression with a real, current reason isn't debt.
+A linter's own output never lists its own suppressions, so grep is the only way to find
+where they live; the linter run itself just confirms nothing *unsuppressed* is failing.
 
-### Toolchain/platform obsolescence — tool-assisted
+### 7. Toolchain/platform obsolescence — tool-assisted
 
 Read CI config directly for pinned versions (action versions, tool versions, runtime
 versions) and compare against current upstream releases; flag EOL runtimes explicitly
 (e.g. a language version past its support window).
 
-### Documentation/config drift — hand inspection
+### 8. Documentation/config drift — hand inspection
 
 No tool — compare README/doc-stated commands, flags, and file paths against what the repo's
 config/scripts actually contain. Stack-agnostic by nature.

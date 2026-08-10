@@ -219,14 +219,18 @@ Describe 'techdebt skill' {
         $description | Should -Match 'improve-codebase-architecture'
     }
 
-    It 'points to TOOLS.md and the file resolves with a tool-evidence label per category' {
+    It 'points to TOOLS.md and the file resolves with a tool-evidence label per category, stated once' {
         $techdebt | Should -Match ([regex]::Escape('[TOOLS.md](TOOLS.md)'))
         $toolsPath = Join-Path $skillDir 'TOOLS.md'
         Test-Path $toolsPath | Should -BeTrue
         $tools = Get-Content $toolsPath -Raw
-        foreach ($label in @('tool-backed', 'grep-because-no-tool-exists', 'skip when absent')) {
+        foreach ($label in @('tool-backed', 'grep-native', 'skip when absent')) {
             $tools | Should -Match ([regex]::Escape($label))
         }
+        # category-level policy (what counts as debt, what to verify) lives once in SKILL.md;
+        # TOOLS.md carries only stack-command mappings, not a restated copy of the rule
+        $tools | Should -Not -Match 'not a security review'
+        $tools | Should -Not -Match 'genuinely duplicated business logic'
     }
 
     It 'skips categories with no available stack tool instead of approximating with grep' {
@@ -237,7 +241,7 @@ Describe 'techdebt skill' {
     It 'hands off approved findings to to-tickets rather than drafting tickets itself' {
         $techdebt | Should -Match ([regex]::Escape('../to-tickets/SKILL.md'))
         Test-Path (Join-Path $repo 'ai-agents/skills/to-tickets/SKILL.md') | Should -BeTrue
-        $techdebt | Should -Match 'Do not draft tickets directly'
+        $techdebt | Should -Match 'Pass only the findings the user approves'
     }
 }
 
