@@ -38,10 +38,9 @@ capability that may not exist in Codex/Pi; confirming that is a prerequisite bef
 migration ticket is even writable:
 
 - `deep-review`, `fix-findings` — `deep-review` dispatches one differently-*scoped*
-  subagent per reviewer dimension in parallel (`SKILL.md` line 53); `fix-findings`
-  inherits the blocker via composition. Research spike: #93. (`deep-review` is being
-  split into a lightweight default + this opt-in heavy mode — see #101; the dependency
-  described here stays with whichever skill keeps the full fan-out.)
+  subagent per reviewer dimension in parallel; `fix-findings` inherits the blocker via
+  composition. Research spike: #93. (#101 split off `quick-review` as the lightweight
+  default; the full-fan-out dependency described here stayed with `deep-review`.)
 - `azure-boards-organiser` — depends on the per-skill `commands/` subfolder convention
   (`claude/README.md` line 174, 12 files under `commands/`), documented only for Claude
   Code and unproven elsewhere. (Not just its config path or MCP tool names, which are
@@ -59,6 +58,11 @@ migration ticket is even writable:
 mechanism; fixable by repointing the reference:
 
 - `_shared` — Claude review-support resources, projected with Claude skills.
+- `quick-review` — the #101 default review pass. Two participants only, so it does not
+  need `deep-review`'s per-dimension tool-scoping; it is coupled to the Claude-scoped
+  `claude/skills/_shared/` copies (`dimensions.md`, `findings-schema.md`,
+  `review-rubric.md`, `reviewer-models.md`) and shares `deep-review`'s REFERENCE for scope
+  and store resolution, so it moves when that cluster moves. Migration ticket: none yet.
 - `codex-review` — links to `claude/skills/_shared/review-rubric.md`, a Claude-scoped
   copy, not `ai-agents/_shared/`. Migration ticket: #98.
 

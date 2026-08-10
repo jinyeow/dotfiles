@@ -58,9 +58,11 @@ Pick by **what you're reviewing** and **how hard**. Each rung escalates.
 
 - **`/code-review`** (built-in) — the diff, quality axis. Fast standards pass; `/implement` runs it internally before committing.
 - **`/spec-review`** — the diff against its **spec or ticket**: missing requirements, scope creep, requirements built wrong. The conformance axis, not quality.
-- **`/codex-review`** — a read-only **cross-model** (Codex/OpenAI) second opinion on the current changes. Offer-first for ad-hoc use; standing consent only inside `deep-review` and `review-fix-loop`.
-- **`/review-fix-loop`** — the heavy loop: chains **`/deep-review`** (multi-dimension parallel reviewers + Codex, findings adversarially verified into a store) and **`/fix-findings`** (apply + commit, one fix-unit at a time), looping until clean at the severity floor. Reach here for "review and fix until clean"; reach for `/deep-review` alone when you only want the findings.
-- **`/council`** — cost-bounded adversarial panel for **non-diff artifacts**. Quick mode is the default; `--debate` opts into rebuttals and `--codex` explicitly opts into an external seat. It auto-picks the panel; the four `/council-*` aliases pin it. **Not for diffs** — use `/deep-review`.
+- **`/codex-review`** — a read-only **cross-model** (Codex/OpenAI) second opinion on the current changes. Offer-first for ad-hoc use; standing consent only inside `quick-review`, `deep-review`, and `review-fix-loop`.
+- **`/quick-review`** — the **default** findings pass over a diff/PR: one folded reviewer (correctness + conventions + tests) plus Codex, verified into the same findings store. Two participants, not eight.
+- **`/deep-review`** — the **opt-in** heavy version of the same pass: all seven dimensions (adds security, performance, structural, architecture) plus Codex. Reach for it when the diff's risk earns eight participants.
+- **`/review-fix-loop`** — the loop: chains a review pass (**`/quick-review`** by default, **`/deep-review`** under `--deep`) with **`/fix-findings`** (apply + commit, one fix-unit at a time), looping until clean at the severity floor. Reach here for "review and fix until clean"; reach for the review skill alone when you only want the findings. `--reviewers <model>[:<effort>]` picks the reviewer models on both.
+- **`/council`** — cost-bounded adversarial panel for **non-diff artifacts**. Quick mode is the default; `--debate` opts into rebuttals and `--codex` explicitly opts into an external seat. It auto-picks the panel; the four `/council-*` aliases pin it. **Not for diffs** — use `/quick-review`.
 - **`/security-review`** (built-in) — a security-focused pass over the pending changes. **`/verify`** (built-in) — drive the change end-to-end and observe behaviour, not just tests.
 
 *Not a rung: to have a diff **explained to you** rather than judged, use **`/walkthrough`** (see Writing & docs) — it tours the change like a senior pairing with a junior and emits no findings.*
