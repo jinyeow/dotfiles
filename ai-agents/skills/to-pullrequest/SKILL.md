@@ -73,9 +73,10 @@ this skill — they belong to a separate skill if one is wanted later.
    - GitHub: look for `.github/PULL_REQUEST_TEMPLATE.md` (or `.github/PULL_REQUEST_TEMPLATE/`
      for multiple templates). If present, fill it in section by section rather than
      overwriting it with a freeform body.
-   - Azure DevOps: look for the project's configured PR template (commonly
-     `.azuredevops/pull_request_template.md` or a path configured in project settings). If
-     present, fill it in the same way.
+   - Azure DevOps: look for `pull_request_template.md` (or `PULL_REQUEST_TEMPLATE.md`) in the
+     repo root, `.azuredevops/`, or `docs/` — ADO checks all three by default — or a path
+     configured in project settings if none of those are present. If found, fill it in the
+     same way.
    - No template found in either case: draft a freeform body (what changed, why, how to
      verify).
 
