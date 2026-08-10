@@ -200,6 +200,47 @@ Describe 'review skill split' {
     }
 }
 
+Describe 'techdebt skill' {
+    BeforeAll {
+        $repo = Split-Path $PSScriptRoot -Parent
+        $skillDir = Join-Path $repo 'ai-agents/skills/techdebt'
+        $skillPath = Join-Path $skillDir 'SKILL.md'
+        $techdebt = Get-Content $skillPath -Raw
+    }
+
+    It 'exists under the portable skill source area' {
+        Test-Path $skillPath | Should -BeTrue
+    }
+
+    It 'carries frontmatter with a name and a description that names its boundary' {
+        $techdebt | Should -Match '(?s)^---\s*\nname:\s*techdebt\s*\n'
+        $description = [regex]::Match($techdebt, '(?s)description:\s*(.*?)\s*\n---').Groups[1].Value
+        $description | Should -Not -BeNullOrEmpty
+        $description | Should -Match 'improve-codebase-architecture'
+    }
+
+    It 'points to TOOLS.md and the file resolves with a tool-evidence label per category' {
+        $techdebt | Should -Match ([regex]::Escape('[TOOLS.md](TOOLS.md)'))
+        $toolsPath = Join-Path $skillDir 'TOOLS.md'
+        Test-Path $toolsPath | Should -BeTrue
+        $tools = Get-Content $toolsPath -Raw
+        foreach ($label in @('tool-backed', 'grep-because-no-tool-exists', 'skip when absent')) {
+            $tools | Should -Match ([regex]::Escape($label))
+        }
+    }
+
+    It 'skips categories with no available stack tool instead of approximating with grep' {
+        $techdebt | Should -Match 'skipped'
+        $techdebt | Should -Match 'Not assessed'
+    }
+
+    It 'hands off approved findings to to-tickets rather than drafting tickets itself' {
+        $techdebt | Should -Match ([regex]::Escape('../to-tickets/SKILL.md'))
+        Test-Path (Join-Path $repo 'ai-agents/skills/to-tickets/SKILL.md') | Should -BeTrue
+        $techdebt | Should -Match 'Do not draft tickets directly'
+    }
+}
+
 Describe 'to-pullrequest skill' {
     BeforeAll {
         $repo = Split-Path $PSScriptRoot -Parent
