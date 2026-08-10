@@ -37,14 +37,18 @@ only genuinely linter-invisible territory remains for the categories below.
 
 ### Dependency health — tool-backed, skip when absent
 
-| Stack | Command |
-|---|---|
-| Node/npm | `npm outdated` |
-| Node/pnpm | `pnpm outdated` |
-| .NET | `dotnet list package --outdated` |
-| Python (pip) | `pip list --outdated` |
-| Python (poetry) | `poetry show --outdated` |
-| PowerShell module manifest | `Find-Module <name>` per `RequiredModules` entry, diffed against installed version |
+Outdated-or-unsupported and vulnerable are two different commands — run both; the skill
+reports the first as findings and the second only as a count + pointer (see `SKILL.md`,
+category 1: this skill doesn't triage vulnerability severity).
+
+| Stack | Outdated/unsupported | Vulnerable (count + pointer only) |
+|---|---|---|
+| Node/npm | `npm outdated` | `npm audit` |
+| Node/pnpm | `pnpm outdated` | `pnpm audit` |
+| .NET | `dotnet list package --outdated` | `dotnet list package --vulnerable` |
+| Python (pip) | `pip list --outdated` (run against the project's own venv/lockfile-resolved environment, not whatever environment happens to be active) | `pip-audit` |
+| Python (poetry) | `poetry show --outdated` | `poetry audit` (via the `poetry-audit-plugin`) or `pip-audit` |
+| PowerShell module manifest | `Find-Module <name>` per `RequiredModules` entry, diffed against installed version | no standard audit tool — skip |
 
 No package manager detected → skip, report "no package manager in this repo."
 
