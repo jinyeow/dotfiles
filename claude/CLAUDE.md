@@ -16,10 +16,11 @@ Codex CLI follow the same rules. Everything below is Claude-specific.
 
 ## Subagent Orchestration
 
-- **Parallel by default**. Decompose independent work across subagents in one message; relay their conclusions, not their file dumps.
-- **Plan → implement → review loop**. Non-trivial changes run this loop, each stage dispatched to a fit-for-purpose subagent: **plan** — a Fable subagent is fine; **implement** — Opus or Sonnet subagents, never Fable; **review** — a Fable subagent for a light pass, or the `council` skill with Opus/Sonnet seats for a thorough one. The **`review-fix-loop`** (and its `deep-review` / `fix-findings` children) runs on **Opus or Sonnet, never Fable unless I explicitly ask**. This is the general default; `ultracode` is the stricter override below.
-- **Model to task**. Opus remains the pinned default (`settings.json`) for judgement work (design, debugging, review). Reach for Fable per-task via `/model` on routine/fast work, and Sonnet for mechanical work (renames, scaffolding, single-file edits); keep Opus for security/CTF/biology — those domains are fallback-prone. Prefer per-task `/effort` over a model downgrade for routine work. In `ultracode`, never let Sonnet or Fable leak onto judgement stages (find/verify/design/synthesize).
-- **Fable subagents**. Subagents often run Fable even under this pinned Opus main loop, so lever-5 prompting hygiene applies to the prompts you write for them — never demand their private step-by-step reasoning (a standing 'explain your reasoning step by step' trips Fable's `reasoning_extraction` → Opus fallback); ask for short rationale + assumptions + evidence instead. See `AGENTS.md` → "Prompting downstream models" for the full lever set.
+See `AGENTS.md` → "Subagent Orchestration" for the tool-agnostic parallel-dispatch default; the rest below is Claude Code-specific.
+
+- **Plan → implement → review loop**. Non-trivial changes run this loop, each stage dispatched to a fit-for-purpose subagent: **plan** — a Fable subagent is fine; **implement** — Opus or Sonnet subagents, never Fable; **review** — a Fable subagent for a light pass, or the `council` skill with Opus/Sonnet seats for a thorough one. The **`review-fix-loop`** reviews on **Opus or Sonnet, never Fable unless I explicitly ask** (its `--reviewers` flag overrides that per run), and its `fix-findings` children run on **Opus 4.8/4.7/4.6 or Sonnet 5 (or lower) — never Opus 5, never Fable**, for now. This is the general default; `ultracode` is the stricter override below.
+- **Model to task**. Sonnet is the current pinned default (`settings.json`). Reach for Opus per-task via `/model` for judgement work (design, debugging, review) and Fable for routine/fast work; keep Opus for security/CTF/biology — those domains are fallback-prone. Prefer per-task `/effort` over a model downgrade for routine work. In `ultracode`, never let Sonnet or Fable leak onto judgement stages (find/verify/design/synthesize).
+- **Fable subagents**. Subagents often run Fable even under the pinned main-loop model, so lever-5 prompting hygiene applies to the prompts you write for them — never demand their private step-by-step reasoning (a standing 'explain your reasoning step by step' trips Fable's `reasoning_extraction` → Opus fallback); ask for short rationale + assumptions + evidence instead. See `AGENTS.md` → "Prompting downstream models" for the full lever set.
 - **Lock the contract first**. Fix shared schemas/signatures and assign non-overlapping files before fanning out.
 - **Orchestrator stays lean**. Don't redo an agent's work — integrate and verify once at the end.
 - **No writes to shared files without a merge step**.
@@ -38,8 +39,8 @@ cross-model second opinion — its strengths differ from mine, so it catches thi
   Codex for a second opinion before trying a third approach — again, only on my go-ahead.
 - The reviewer is read-only and non-interactive; it returns findings only and cannot edit
   my working tree. Applying fixes is your job (with my approval), not Codex's.
-- **Exception — `deep-review` / `review-fix-loop`:** invoking either skill is standing consent
-  to include Codex as a reviewer/verifier when its MCP is present, without a per-run offer.
+- **Exception — `quick-review` / `deep-review` / `review-fix-loop`:** invoking any of these skills is
+  standing consent to include Codex as a reviewer/verifier when its MCP is present, without a per-run offer.
   Council never implies consent: it includes external Codex only with explicit `--codex`.
   The offer-first rule above still governs all *ad-hoc* Codex use. When a run uses Codex,
   report it visibly in the run summary.

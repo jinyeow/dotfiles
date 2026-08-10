@@ -25,6 +25,9 @@ read it, review it across models, and report. Posting anything back to the PR (t
 - A bare-worktree repo layout with a permanent detached **`review`** worktree beside `main`
   (`git worktree add --detach ../review`). This is the standing local-review workflow — see the
   `local-pr-review` brain initiative / the `review-worktree-workflow` memory.
+  No bare-worktree layout? Skip the dedicated `review` worktree — `az repos pr checkout` directly
+  in your clone works the same way, you just accept it moves your current branch instead of
+  staying isolated.
 
 ## Steps
 
@@ -44,12 +47,14 @@ read it, review it across models, and report. Posting anything back to the PR (t
    - It needs a **clean tree**. If dirty, stop and tell the user.
    - It **fails if the PR's source branch already has its own worktree** (the user's own feature
      branches do). In that case don't checkout — review the existing worktree, or `git fetch origin`
-     and review `origin/<target>...origin/<source>` directly (no checkout needed).
+     and review `origin/<target>...origin/<source>` directly (no checkout needed), or
+     `git worktree add --detach <tmp> <prHead-sha>` so the checkout doesn't conflict with the
+     branch's existing worktree.
 
 3. **Read the diff.** `git --no-pager diff origin/<target>...<prHead>` (three-dot = only the PR's
-   changes vs the merge-base). If diffview.nvim is installed, `:DiffviewOpen origin/<target>...HEAD`;
-   otherwise fugitive `:Git difftool` or plain `git diff`. Read the changed files at the PR head, not
-   the local (possibly stale) working tree.
+   changes vs the merge-base). If diffview.nvim (or its `diffview-plus.nvim` fork) is installed,
+   `:DiffviewOpen origin/<target>...HEAD`; otherwise fugitive `:Git difftool` or plain `git diff`.
+   Read the changed files at the PR head, not the local (possibly stale) working tree.
 
 4. **Gate infrastructure-as-code (if the diff is Bicep/ARM).** Run the local gates, don't eyeball:
    - `bicep build` + `bicep lint` with a **standalone** bicep — the az-bundled bicep can be years old
@@ -60,7 +65,8 @@ read it, review it across models, and report. Posting anything back to the PR (t
 
 5. **Review across models.**
    - Do a multi-dimension pass (correctness, security, IaC-config, conventions) — reach for the
-     `deep-review` skill for anything non-trivial.
+     `quick-review` skill for anything non-trivial, or `deep-review` when the PR's risk earns the
+     full seven-dimension fan-out.
    - Offer a **Codex** second opinion (`codex-review` skill). On ADO the branch may be behind the PR
      head, so write the true PR diff to a file and hand Codex that file plus any context it needs.
    - **Verify every claim against the source file or vendor docs before asserting it.** An API/property
@@ -96,7 +102,7 @@ read it, review it across models, and report. Posting anything back to the PR (t
 
 ## Related
 
-- `bicep-tdd` — the IaC gate for step 4.  ·  `deep-review` / `codex-review` — the review passes in step 5.
+- `bicep-tdd` — the IaC gate for step 4.  ·  `quick-review` / `deep-review` / `codex-review` — the review passes in step 5.
 - `prr` (PowerShell profile helper) — collapses discovery + steps 2–3 from a shell: fzf PR picker →
   review worktree → `nvim "+AdoPrReview <id>"`.
 - The `local-pr-review` brain initiative and `ado-pr.nvim` (a Neovim ADO PR plugin folding steps 2–3

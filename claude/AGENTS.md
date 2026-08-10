@@ -30,6 +30,10 @@ Codex reads this file directly as `~/.codex/AGENTS.md`.
 - **Verify state before asserting it**. Before stating any repo/file/system/config fact — or offering it as a selectable option — run the one cheap command that confirms it (`git status`, `git check-ignore`, `test -f`, `git config --get`). Costs one tool call; prevents presenting a guess as fact or as a real choice. If you haven't run the check, label the claim an assumption rather than dressing it as verified. Integration facts — how code meets *this* environment (paths, preconditions, separators) — live in neither source nor docs: only executing the real path settles them. Never write a procedure into config or docs you haven't run.
 - **Primary artifact over prose**. Vendor docs, issues, subagent reports, and your own memory are leads, not facts — prose describes the common case and silently omits scope conditions ("true, but only for X"); source and execution cannot. Confirm against the source file, the real config, or the actual command output before asserting or acting on it. Spot-check what a subagent reports before relaying it — you, the caller, own the claim.
 
+## Subagent Orchestration
+
+- **Parallel by default**. Decompose independent work across subagents in one message; relay their conclusions, not their file dumps. Claude Code dispatches via its `Agent` tool; Codex CLI's Multi-Agent v2 runtime dispatches via declaratively-defined agents (TOML files under `~/.codex/agents/` or `.codex/agents/`) — same principle, different mechanism per tool.
+
 ## Project brain
 
 Durable cross-repo initiative knowledge (per-initiative `core.md` plus volatile `STATUS.md`, and ADRs/research) lives in a git "brain" repo outside any code repo. Claude Code auto-loads it via a SessionStart hook; Codex has no such hook, so resolve-and-read it manually whenever the session cwd sits in a tracked initiative:

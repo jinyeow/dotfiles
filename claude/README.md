@@ -204,7 +204,7 @@ contracts; there are no named council custom agents. `/council ...` defaults to 
 when an external Codex seat is explicitly wanted. Charter seats are limited to 2–5 and
 normal calls to 12. The four `/council-code`, `/council-business`, `/council-plan`, and
 `/council-doc` aliases pin their panel. Reports use `.agents/council/reports/`. For branch
-diffs/PRs use `deep-review`, not council.
+diffs/PRs use `quick-review` (or `deep-review`), not council.
 
 `walkthrough` is the post-`implement` mentoring stage of the main flow: it walks the user through
 a diff like a senior pairing with a junior (checkpoint tour / overview-then-Q&A / socratic, chosen
@@ -215,17 +215,22 @@ close-out (delta shown for veto): general-skill observations in `~/.claude/learn
 (untracked, created on first use), domain-specific ones in the resolved project-brain's
 `learner.md`.
 
-The review→fix skills compose around `_shared/` contracts: **`deep-review`** fans out parallel
-per-dimension reviewers + Codex over a branch diff/PR, adversarially verifies the findings, and
-emits them to a findings store; **`fix-findings`** consumes that store and applies fixes (parallel,
-partitioned by conflict-set, one commit per fix-unit); **`review-fix-loop`** is the thin orchestrator
-that chains the two each cycle and loops to a deterministic clean gate. `codex-review` is the
-standalone lightweight Codex second-opinion pass.
+The review→fix skills compose around `_shared/` contracts: **`quick-review`** is the default pass —
+one folded reviewer (correctness + conventions + tests) plus Codex, two participants; **`deep-review`**
+is the opt-in heavy version of the same pipeline, fanning out all seven per-dimension reviewers +
+Codex. Both adversarially verify their findings and emit them to the same findings store.
+**`fix-findings`** consumes that store and applies fixes (parallel, partitioned by conflict-set, one
+commit per fix-unit); **`review-fix-loop`** is the thin orchestrator that chains a review pass with
+the fix pass each cycle and loops to a deterministic clean gate — `quick-review` by default,
+`deep-review` under `--deep`. `--reviewers <model>[,<model>][:<effort>]` picks the reviewer models
+(reviewer-only; fixers stay pinned). `codex-review` is the standalone lightweight Codex
+second-opinion pass.
 
 `claude/skills/_shared/` is **not a skill** — it holds Claude support resources shared by multiple skills: `review-rubric.md` (the
 merged AGENTS.md + thermo-nuclear quality bar), `dimensions.md` (the 7-dimension registry + charters
-for `deep-review`), and `findings-schema.md` (the JSONL finding schema, semantic fingerprint, and
-store discipline shared by the review→fix skills). It has no `SKILL.md`, so the harness ignores it as
+used whole by `deep-review` and folded to three by `quick-review`), `findings-schema.md` (the JSONL
+finding schema, semantic fingerprint, and store discipline shared by the review→fix skills), and
+`reviewer-models.md` (how `--reviewers` resolves aliases + effort, and the per-call Codex posture). It has no `SKILL.md`, so the harness ignores it as
 a skill; it is still projected with Claude skills so they can reference it via `../_shared/<file>`. The independent `ai-agents/_shared/` copy is portable support source-only and may diverge.
 
 Built-in Claude Code skills (`code-review`, `compact`, `deep-research`, `security-review`,

@@ -76,5 +76,12 @@ test-quality prompt.
 
 ## Subset filtering
 
-The registry is data-driven, so running a subset is a one-line filter. Exposing that as an arg is a
-flag/mode decision to **raise with the user** per AGENTS.md — not built (YAGNI).
+The registry is data-driven, so running a subset is a one-line filter. That flag/mode decision was
+raised with the user and resolved by splitting the skills rather than adding an arg: `quick-review`
+(the default) runs one folded reviewer over the `correctness` + `conventions` + `tests` charters plus
+Codex, and `deep-review` keeps the full seven. There is still no subset *argument* — a new default
+subset means a new skill, not a mode switch.
+
+A folded reviewer still tags every finding with the registry dimension it belongs to. Downstream keys
+off that label: the `Default fix_verification` column drives `fix-findings`' TDD gate, and dedupe's
+`contributing_dimensions` assumes registry names. Never invent a dimension outside this table.

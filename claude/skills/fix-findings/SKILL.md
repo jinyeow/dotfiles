@@ -1,13 +1,14 @@
 ---
 name: fix-findings
-description: Apply fixes for findings produced by deep-review. Reads the findings store, fixes the introduced findings in parallel (partitioned so no two fixers touch the same file), runs tests and linter, and commits one fix-unit at a time. Use when asked to "fix the findings", "apply the review fixes", "fix the introduced issues", or after a deep-review. Reach for it from review-fix-loop.
+description: Apply fixes for findings produced by quick-review or deep-review. Reads the findings store, fixes the introduced findings in parallel (partitioned so no two fixers touch the same file), runs tests and linter, and commits one fix-unit at a time. Use when asked to "fix the findings", "apply the review fixes", "fix the introduced issues", or after a review pass. Reach for it from review-fix-loop.
 ---
 
 # Fix Findings
 
 Consume the findings store, fix the `introduced` findings, commit. This skill **consumes** a snapshot
-that `deep-review` emitted; it does not review (that's `deep-review`) or loop (that's
-`review-fix-loop`). It is independently invocable.
+that a review skill emitted — `quick-review` (the default) or `deep-review` — and behaves identically
+either way, since both write the same schema. It does not review or loop (that's `review-fix-loop`).
+It is independently invocable.
 
 Contracts: the record schema + store discipline are
 [`../_shared/findings-schema.md`](../_shared/findings-schema.md); coding conventions are
@@ -116,8 +117,11 @@ store reflects reality.
 ## Notes
 
 - **Introduced only.** Pre-existing findings are reported by `deep-review`, never auto-fixed here.
-- **Model.** Fixers apply code (the implement arm of the loop) — dispatch on **Opus or Sonnet, never
-  Fable** unless the user explicitly asks.
+- **Model.** Fixers apply code (the implement arm of the loop) — dispatch on **Opus 4.8 / 4.7 / 4.6,
+  or Sonnet 5 (or lower) — never Opus 5, never Fable**, for now, unless the user explicitly asks. The
+  reviewer-side `--reviewers` argument does not apply here: it never selects a fixer model. Set the
+  `model` param to a version that satisfies the pin — the bare `opus` alias resolves to the current
+  default Opus (Opus 5 today) and therefore does **not** satisfy it.
 - **Sole writer + committer.** Fixers return results; you write the store and commit — this is what
   makes parallel fixers safe (findings-schema.md).
 - **Conflict-set, not raw file count** — a finding may span files; partition on what each fix touches.
