@@ -1,4 +1,6 @@
 > **How to use this file**: it is a catalog of smells, not a checklist to run top to bottom. The principles in `SKILL.md` Core Stance apply here too: over-editing is failure, the author's voice and genre win, and these lists are examples, not find-and-replace. A sentence that already reads natural stays. Match the smell, not the word.
+>
+> This file is the skill's **Tell Catalog** — see `SKILL.md`'s Scope section for where it applies and where it doesn't.
 
 ## English Scenario
 
