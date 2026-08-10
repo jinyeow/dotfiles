@@ -55,9 +55,10 @@ and are currently projected to Claude Code. Portable skills live under [`ai-agen
 skills and projected support content live under [`claude/skills/`](claude/skills/), Codex-native
 variants under [`codex/skills/`](codex/skills/), and Pi-native variants under [`pi/skills/`](pi/skills/).
 Claude projects portable plus Claude-native skills; Codex (Windows and Linux) projects portable
-plus Codex-native skills; Pi projects portable plus Pi-native skills. `ai-agents/_shared/` is
-source-only portable support content, while `claude/skills/_shared/` is projected with Claude
-skills. Historical source roots remain compatibility identifiers for ownership migration only.
+plus Codex-native skills; Pi projects portable plus Pi-native skills. `ai-agents/skills/_shared/`
+is the projected, portable review-support contract shared by `quick-review`, `deep-review`,
+`review-fix-loop`, and `fix-findings`; the separate `ai-agents/_shared/` is source-only and may
+diverge from it. Historical source roots remain compatibility identifiers for ownership migration only.
 Keep runtime projections derived from the canonical `ai-agents/skills/` portable source and runtime-native module sources; do not create a second source tree under a runtime module.
 
 ## Editing conventions
