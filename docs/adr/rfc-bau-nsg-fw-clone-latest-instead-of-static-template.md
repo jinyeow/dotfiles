@@ -20,13 +20,16 @@ or an accepted risk of the skill failing loudly with no values file present.
 
 ## Decision
 
-Instead, the skill finds the most recent BAU RFC (matching NSG/firewall/both scope,
-assigned to the invoking user) already in Azure DevOps and clones its field values at
-runtime, overriding only what must be fresh per run: title, description (edited in
-place, not regenerated), deployment window, parent-work-item relation, PR
-`ArtifactLink` relations, `System.AssignedTo`, and `Custom.Primary`. Every other field —
+Instead, the skill finds the most recent BAU RFC of the exact matching scope (NSG or
+firewall, assigned to the invoking user) already in Azure DevOps and clones its field
+values at runtime, overriding only what must be fresh per run: title, description
+(edited in place, not regenerated), deployment window, parent-work-item relation, the
+PR `ArtifactLink` relation, `System.AssignedTo`, and `Custom.Primary`. Every other field —
 including the SOP URLs, distribution list, and `Custom.Secondary` — is copied verbatim
-from the matched prior RFC.
+from the matched prior RFC. This first version is single-scope and single-PR only: a
+both-scope change, more than one linked PR, or no exact-scope prior RFC are all hard
+stops rather than handled cases; any-scope fallback and both-scope/multi-PR handling are
+deferred to the follow-up ticket ([jinyeow/dotfiles#129](https://github.com/jinyeow/dotfiles/issues/129)).
 
 No confidential literal is ever written into the committed skill file, so no local
 values file, template/example file, or runtime-reference mechanism is needed. There is
