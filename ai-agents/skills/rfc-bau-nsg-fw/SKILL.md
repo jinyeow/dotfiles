@@ -60,7 +60,8 @@ Context-derived, not asked for by default:
 - If the conversation is working from a PR, read its description/commit message for an
   `AB#<id>` reference, or query the PR's linked work items:
   ```powershell
-  az repos pr work-item list --id <prId> -o table
+  az repos pr work-item list --id <prId> -o table `
+    --org https://dev.azure.com/HollardInsuranceRetail
   ```
 - If neither is available, ask for the parent work item ID before continuing — do not
   guess, and do not create the RFC without the parent relation.
@@ -68,15 +69,28 @@ Context-derived, not asked for by default:
 ### 2. Detect scope from the linked PR diff
 
 Find the parent's linked PRs (`ArtifactLink` → `PullRequest` relations on the parent, via
-`az boards work-item show --id <parentId>`, or the PR already in context). **If more than
-one PR is linked, stop** — multi-PR handling is not implemented here.
+`az boards work-item show --id <parentId> --org https://dev.azure.com/HollardInsuranceRetail`,
+or the PR already in context). **If more than one PR is linked, stop** — multi-PR handling
+is not implemented here.
 
-For the single linked PR, list its changed paths:
+For the single linked PR, resolve its latest iteration first — a PR updated by later
+pushes (e.g. review fixes adding a firewall or NSG file) has more than one iteration, and
+`pullrequestiterationchanges` only ever returns the diff for the iteration id you pass:
+
+```powershell
+az devops invoke --area git --resource pullrequestiterations `
+  --route-parameters project=<proj> repositoryId=<repoId> pullRequestId=<prId> `
+  --api-version 7.1 --org https://dev.azure.com/HollardInsuranceRetail
+```
+
+Take the highest `id` from the returned iterations list, then list the changed paths for
+that iteration — not iteration 1 — so the classification below covers the PR's cumulative
+diff:
 
 ```powershell
 az devops invoke --area git --resource pullrequestiterationchanges `
-  --route-parameters project=<proj> repositoryId=<repoId> pullRequestId=<prId> iterationId=1 `
-  --api-version 7.1
+  --route-parameters project=<proj> repositoryId=<repoId> pullRequestId=<prId> iterationId=<latestIterationId> `
+  --api-version 7.1 --org https://dev.azure.com/HollardInsuranceRetail
 ```
 
 Classify each changed path:
@@ -126,9 +140,11 @@ not discriminate scope.
 Do not trust `CONTAINS` to have excluded the both-scope title on its own — if Azure DevOps
 resolves it as a word match rather than a substring match, all three words of
 `BAU NSG Rules` are present in `BAU Firewall and NSG Rules` and the wrong RFC comes back
-with no error. **Re-check the winning candidate's `System.Title` before cloning it**: it
-must start with the expected full prefix and must not contain `Firewall and NSG`. If it
-fails either check, discard it and hard-stop rather than cloning.
+with no error. **Re-check each candidate's `System.Title` before cloning it, newest
+first**: it must start with the expected full prefix and must not contain
+`Firewall and NSG`. If the newest candidate fails either check, discard it and re-check the
+next candidate down the ordered result list, continuing until one passes; clone the first
+one that does. Hard-stop only once every returned candidate has failed the check.
 
 No result → stop, and report that no same-scope RFC assigned to you was found. Do not
 widen the query, do not fall back to any-scope, do not invent a template.
@@ -136,12 +152,14 @@ widen the query, do not fall back to any-scope, do not invent a template.
 Read the matched RFC's full field set:
 
 ```powershell
-az boards work-item show --id <matchedId> -o json
+az boards work-item show --id <matchedId> -o json `
+  --org https://dev.azure.com/HollardInsuranceRetail
 ```
 
 ### 4. Split the cloned fields into copy-verbatim and forced-fresh
 
-**Forced fresh on every run** (never taken from the clone):
+**Forced fresh on every run** (never taken from the clone) — these are the field values
+that go into `$freshFields` in step 8:
 
 | Field | Value |
 |---|---|
@@ -151,8 +169,12 @@ az boards work-item show --id <matchedId> -o json
 | `Custom.ApproveddeploymentEndTime` | window end, step 6 (casing is irregular; use it verbatim) |
 | `System.AssignedTo` | the creating user |
 | `Custom.Primary` | the creating user |
-| parent relation | step 1's parent |
-| PR `ArtifactLink` relation | step 2's PR |
+
+Two more things are always fresh but are **relations, not fields** — they are added via
+`/relations/-` patch entries in step 8, not folded into `$freshFields`:
+
+- the parent relation, from step 1
+- the PR `ArtifactLink` relation, from step 2
 
 Resolve the creating user once and use it for both identity fields:
 
@@ -234,7 +256,9 @@ command line:
 ```powershell
 function P($field, $value) { @{ op = "add"; path = "/fields/$field"; value = $value } }
 
-# $cloneFields = the copy-verbatim set from step 4; $freshFields = the forced-fresh set.
+# $cloneFields = the copy-verbatim set from step 4; $freshFields = the forced-fresh field
+# values only (the step-4 table) — the parent and PR relations are NOT in $freshFields,
+# they are added below as their own /relations/- patch entries.
 $patch = @(
   $cloneFields.GetEnumerator() | ForEach-Object { P $_.Key $_.Value }
   $freshFields.GetEnumerator() | ForEach-Object { P $_.Key $_.Value }
@@ -243,7 +267,7 @@ $patch = @(
       url = "https://dev.azure.com/HollardInsuranceRetail/_apis/wit/workItems/$parentId"
     }
   }
-  # PR artifact id: az repos pr show --id <prId> --query artifactId -o tsv
+  # PR artifact id: az repos pr show --id <prId> --query artifactId -o tsv --org https://dev.azure.com/HollardInsuranceRetail
   @{ op = "add"; path = "/relations/-"; value = @{
       rel        = "ArtifactLink"
       url        = $prArtifactId
@@ -251,16 +275,26 @@ $patch = @(
     }
   }
 ) | ConvertTo-Json -Depth 5
+```
 
-$patchFile = Join-Path $env:TEMP 'rfc_create_patch.json'
+The patch file carries every cloned field value, including the SOP document URLs and the
+distribution list — use a unique filename, not a fixed one, and remove it once the invoke
+completes or fails:
+
+```powershell
+$patchFile = Join-Path $env:TEMP "rfc_create_patch_$([guid]::NewGuid()).json"
 Set-Content -Path $patchFile -Value $patch -Encoding utf8
 
-az devops invoke --area wit --resource workitems `
-  --route-parameters project="TSC Change Control" type="Request for Change RFC" `
-  --http-method POST `
-  --in-file $patchFile `
-  --media-type application/json-patch+json `
-  --api-version 7.1
+try {
+  az devops invoke --area wit --resource workitems `
+    --route-parameters project="TSC Change Control" type="Request for Change RFC" `
+    --http-method POST `
+    --in-file $patchFile `
+    --media-type application/json-patch+json `
+    --api-version 7.1 --org https://dev.azure.com/HollardInsuranceRetail
+} finally {
+  Remove-Item -Path $patchFile -Force
+}
 ```
 
 `--media-type application/json-patch+json` is required — `az devops invoke` defaults to
@@ -281,7 +315,8 @@ Immediately after the create, read the new item back and diff it against the int
 field table from step 7 — including the parent relation and the PR `ArtifactLink`:
 
 ```powershell
-az boards work-item show --id <newId> -o json
+az boards work-item show --id <newId> -o json `
+  --org https://dev.azure.com/HollardInsuranceRetail
 ```
 
 If any field silently did not take (wrong reference name, a picklist rejecting free text,
