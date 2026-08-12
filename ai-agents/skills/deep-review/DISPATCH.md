@@ -60,18 +60,14 @@ read/grep/glob distinction `dimensions.md`'s "reads beyond diff?" column implies
 Codex equivalent — record this as a known gap rather than fabricating one.
 
 **Custom agent definitions live as `[agents.<name>]` tables in `codex/config.toml`**
-(installed to `~/.codex/config.toml`), one per dimension, e.g.:
+(installed to `~/.codex/config.toml`), one per dimension — see that file for the full
+entries, e.g. `[agents.review_correctness]`:
 
 ```toml
 [agents.review_correctness]
-description = "quick-review/deep-review: correctness dimension (read-only)"
-developer_instructions = """
-Apply the `correctness` charter from ~/.codex/skills/_shared/dimensions.md and the bar
-from ~/.codex/skills/_shared/review-rubric.md verbatim. Report findings only — never
-edit, write, or run commands that mutate state.
-"""
 sandbox_mode = "read-only"
 mcp_servers = []
+# developer_instructions: the correctness charter + rubric bar, see codex/config.toml
 ```
 
 `developer_instructions` points at the projected `_shared/` charter files rather than
@@ -80,6 +76,12 @@ DRY reason `quick-review`/`deep-review` already reference `_shared/` by path ins
 copying it. `fix-findings`' fixer role is the one asymmetric case: it needs write access,
 so it gets its own `[agents.fixer]` entry with `sandbox_mode = "workspace-write"` instead
 of `read-only`.
+
+`quick-review` dispatches a single folded reviewer carrying all three of `correctness`,
+`conventions`, and `tests` (never a third participant — see `quick-review/SKILL.md`), so
+its Codex agent is `[agents.review_folded]` in `codex/config.toml`, not the three separate
+per-dimension entries above. `deep-review` uses the seven separate `review_<dimension>`
+agents instead, one per dimension.
 
 Dispatch a dimension by prompting the orchestrating Codex session to call its built-in
 `spawn_agent` tool with `agent_type: "review_<dimension>"` (referencing the config-defined
@@ -100,24 +102,13 @@ treat a separate `.codex/agents/*.toml` file format as unconfirmed at this versi
 
 ### Confirmed smoke test (codex-cli 0.147.0)
 
-Run from a scratch git repo, no custom agent config, `unset CODEX_HOME` (real install):
-
-```
-codex exec -s read-only -c approval_policy=never --json \
-  "Spawn two parallel subagents: one reads correctness.py and reports one line on \
-   correctness, one reads conventions.py and reports one line on naming conventions. \
-   Wait for both, then summarize both findings in your final response, each line \
-   prefixed with the filename."
-```
-
-Result: the primary thread's `--json` event stream showed two `collab_tool_call`
-(`tool: "wait"`) items resolve, then a single `item.completed` `agent_message` containing
-both files' correct, filename-labelled summaries — no intermediate output from the
-children reached stdout directly. This is the "confirmed working" evidence for AC #1's
-smoke test and closes `codex/README.md:83` — see that file for the version/syntax record.
-Not exercised: the full `quick-review`/`deep-review`/`review-fix-loop`/`fix-findings`
-skill bodies end-to-end (this smoke test proves the dispatch primitive, not the skills'
-complete pipelines).
+See `codex/README.md`'s "Skills" section for the full command, JSON-event evidence, and
+version record — not restated here. Result in short: the primary thread's `--json` event
+stream resolves each child as a `collab_tool_call` (`tool: "wait"`) item, then a single
+`item.completed` `agent_message` carries the combined result; no child output reaches
+stdout directly. Not exercised: the full `quick-review`/`deep-review`/`review-fix-loop`/
+`fix-findings` skill bodies end-to-end (this smoke test proves the dispatch primitive, not
+the skills' complete pipelines).
 
 ## Codex as a cross-model reviewer
 
@@ -174,14 +165,25 @@ findings store even if a prompt tried to make them.
 
 The one asymmetric case is `fix-findings`' `fixer` role, which needs `sandbox_mode =
 "workspace-write"` to apply fixes. `workspace-write` confines writes to the session's
-workspace root (plus any directory added via `--add-dir`, per `codex exec --help`); the
-findings store lives under `~/.codex/` (`findings-schema.md`: "central dir under the
-runtime's own config home"), which sits **outside** the workspace root for any review
-target repo. So the invariant holds for the fixer too, as long as the orchestrator never
-passes `--add-dir` covering `~/.codex/` (or wherever `$CODEX_HOME` resolves) — do not do
-that. This was reasoned from `codex exec --help`'s documented `--add-dir` semantics and the
-`sandbox_mode` enum in `codex/config.toml`, not from a live test of a fixer attempting (and
-failing) to write outside the workspace — flag that gap rather than asserting it as tested.
+workspace root plus any directory added via `--add-dir`; the findings store lives under
+`~/.codex/` (`findings-schema.md`: "central dir under the runtime's own config home"),
+outside the workspace root for any review target repo. Live-tested (codex-cli 0.147.0,
+Windows): a `workspace-write` session with no `--add-dir` was denied writing a probe file
+under `%USERPROFILE%\.codex\` — `rejected: blocked by policy`. So the invariant holds for
+the fixer as long as the orchestrator never passes `--add-dir` covering `~/.codex/` (or
+wherever `$CODEX_HOME` resolves) — do not do that.
+
+**Open gap — orchestrator's own write path to the store is unconfirmed.** The orchestrating
+Codex session runs under the same top-level `sandbox_mode = "workspace-write"`
+(`codex/config.toml`), and the same live test above shows that mode denies writes under
+`~/.codex/` without `--add-dir`. Nothing in this skill currently grants the orchestrator
+`--add-dir` covering `~/.codex/`, so as documented today it is unclear how the orchestrator
+itself writes the findings store on a Codex host — the "never `--add-dir`" advice above,
+taken literally, would block the orchestrator's own write, not just the fixer's. Candidate
+fixes (e.g. scoping `--add-dir` to just the store's subpath rather than all of `~/.codex/`,
+or a different writable-roots mechanism) were not tested. Treat this as an open
+implementation gap, not a confirmed-working path, until a live orchestrator write against
+the real store location is exercised.
 
 ## Sole-writer invariant under Pi
 

@@ -109,12 +109,25 @@ edit, write, or run commands that mutate state.
 sandbox_mode = "read-only"
 mcp_servers = []
 
+[agents.review_folded]
+description = "quick-review: folded correctness+conventions+tests reviewer (read-only)"
+developer_instructions = """
+Apply the `correctness`, `conventions`, and `tests` charters from
+~/.codex/skills/_shared/dimensions.md and the bar from
+~/.codex/skills/_shared/review-rubric.md verbatim, checking conventions against
+~/.codex/AGENTS.md. Report findings only — never edit, write, or run commands that
+mutate state.
+"""
+sandbox_mode = "read-only"
+mcp_servers = []
+
 [agents.fixer]
 description = "fix-findings: applies fixes for confirmed, introduced findings (write access)"
 developer_instructions = """
-Fix only the findings assigned in your task. Run the project's tests/linter per
-~/.codex/AGENTS.md before returning. Never write to the findings store yourself —
-return your result to the orchestrator, which is the store's sole writer.
+Fix only the findings assigned in your task. Lint only the files you touched before
+returning — the full test suite and full-tree lint run once, after all fixers return,
+owned by the orchestrator; do not run them yourself. Never write to the findings store
+yourself — return your result to the orchestrator, which is the store's sole writer.
 """
 sandbox_mode = "workspace-write"
 mcp_servers = []
