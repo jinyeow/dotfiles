@@ -47,11 +47,17 @@ with no working read path at all.
   `replace_content`, `replace_in_files`, `create_text_file`, and Serena's project-memory
   tools (`write_memory`/`read_memory`/`list_memories`) have no `LSP`-tool equivalent and
   stay available regardless of language.
-- Two separate Serena MCP registrations exist on this machine — the plugin-managed
-  `plugin:serena:serena` (tools namespaced `mcp__plugin_serena_serena__*`, currently
-  connected) and a user-scope `serena` from `setup.ps1 -Module serena` (tools namespaced
-  `mcp__serena__*`, currently failing to connect). Any tool-name-based rule (deny list or
-  otherwise) must account for both namespaces or it silently only covers one.
+- Only the user-scope `serena` MCP (from `setup.ps1 -Module serena`, tools namespaced
+  `mcp__serena__*`) is installed — the plugin-managed `serena@claude-plugins-official`
+  duplicate was uninstalled (2026-08-12) after it turned out to be the actual source of
+  cross-repo startup errors: its live `git+main` pull had migrated Serena's project-config
+  schema (`languages:` → `language_servers:`) ahead of the pinned `uv tool install`
+  (v1.6.1), so any `.serena/project.yml` the plugin last touched fatal-errored the pinned
+  server with `KeyError: 'languages'` on activation — not scoped to one project, since
+  `--project-from-cwd` loads the whole global registry (`~/.serena/serena_config.yml`) on
+  every startup, so one stale entry broke every directory. Fixed by adding both keys to the
+  affected `project.yml` files; if a `KeyError` on activation recurs, check the file's schema
+  against both key names before assuming the install is broken.
 
 ## Subagent Orchestration
 
