@@ -59,6 +59,24 @@ with no working read path at all.
   affected `project.yml` files; if a `KeyError` on activation recurs, check the file's schema
   against both key names before assuming the install is broken.
 
+## Auto-memory hygiene
+
+Auto-memory (the `~/.claude/projects/<slug>/memory/` store auto-loaded via `MEMORY.md`) is
+Claude-Code-only, so keep it small and prefer a durable, discoverable home over a new memory.
+
+- **Raise the save bar.** Before writing a memory, check whether the fact belongs somewhere
+  more durable: a standing rule/convention → `claude/AGENTS.md` (shared) or `claude/CLAUDE.md`
+  (Claude-specific); cross-repo initiative knowledge → the project brain
+  (`core.md`/`STATUS.md`/ADR); a decision with rejected alternatives → an ADR under `docs/adr/`.
+  Save to auto-memory **only** when it fits none of those — a genuinely session-scoped
+  feedback/gotcha with no better home. When unsure, propose the durable home rather than
+  defaulting to a memory.
+- **Prune on review.** The `memory-review-nudge.ps1` SessionStart hook nudges (every 14 days,
+  current project only) when memories are overdue for review. On "review memory", classify each
+  entry keep / delete (stale or now-false) / migrate to a durable home, apply any moves, then —
+  on every completed review, including one that changed nothing — stamp it by writing an ISO-8601
+  UTC timestamp to the memory dir's `.last-reviewed`, or the nudge repeats every session.
+
 ## Subagent Orchestration
 
 See `AGENTS.md` → "Subagent Orchestration" for the tool-agnostic parallel-dispatch default; the rest below is Claude Code-specific.
