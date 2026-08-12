@@ -66,13 +66,11 @@ module that owns the concept. Reads beyond the diff (slower / costlier — accep
 wshobson `architect-reviewer`.
 
 ### conventions
-Conformance to the runtime's installed conventions file: `~/.claude/AGENTS.md` on Claude Code and
-`~/.codex/AGENTS.md` on Codex CLI, both sourced from this repo's `claude/AGENTS.md` per
-`codex/README.md`; on Pi, there is no installed home-dir copy, so it is the project's own root
-`AGENTS.md`, read directly (per this repo's root `AGENTS.md`) — rubric Layer 1: surgical-changes,
-strict typing, imports at top, DRY, no silent flag/mode params, doc-with-change, commit style.
-Includes the PowerShell
-`foreach ($singular in $plural)` semantic residue the deterministic lint gate can't decide.
+Conformance to the runtime's installed conventions file (per-runtime mapping:
+[`review-rubric.md`](review-rubric.md), Layer 1) — rubric Layer 1: surgical-changes, strict
+typing, imports at top, DRY, no silent flag/mode params, doc-with-change, commit style. Includes
+the PowerShell `foreach ($singular in $plural)` semantic residue the deterministic lint gate can't
+decide.
 
 ### tests
 Reports **missing or weak tests only** (coverage ROI, behavioural-vs-brittle — mock-invocation
