@@ -110,9 +110,12 @@ Codex's own built-in skills live alongside at `~/.codex/skills/.system/` and are
 touched by this installer. Claude-specific frontmatter fields (e.g. `disable-model-invocation`)
 are ignored by Codex.
 
-Unlike Claude, Codex has no separate top-level "agents" concept — an "agent" is just an
-`agents/openai.yaml` file nested inside a skill folder, so there's no separate agents
-junction to wire up; the skills junction covers both.
+"Agent" means two distinct things in Codex's vocabulary. Per-skill identity is an
+`agents/openai.yaml` file nested inside a skill folder — no separate junction needed, the
+skills junction covers it. Separately, `multi_agent` dispatch roles (the read-only
+reviewers and workspace-write fixer used by the review skills above) are `[agents.<name>]`
+tables in `config.toml`, resolved by `spawn_agent`'s `agent_type` — unlike Claude's agents,
+these aren't files, they're config entries.
 
 `codex/skills/` is empty for now — a skill there is only needed when the Codex flavour must
 differ from the portable skill. Create `codex/skills/<name>/SKILL.md` and
