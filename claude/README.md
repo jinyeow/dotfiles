@@ -233,9 +233,12 @@ fixers stay pinned). On Claude Code the fan-out dispatches one `Agent` tool call
 dimension, restricted to that dimension's read-only tool allowlist
 (`ai-agents/skills/deep-review/DISPATCH.md`); the same four skills also project to Codex CLI and
 Pi. Pi's per-dimension scoping is expressed via `pi-subagents`' `tools:` frontmatter; Codex's
-(coarser-grained) is expressed via `sandbox_mode` + `mcp_servers` per `[agents.<name>]` table in
-`codex/config.toml`, dispatched through Codex's native `spawn_agent` tool — see DISPATCH.md for
-both, including the confirmed Codex smoke test. `codex-review` is the standalone lightweight
+`[agents.<name>]` tables in `codex/config.toml` carry description-only spawn guidance — per-role
+`sandbox_mode`/`mcp_servers` turned out unsupported at codex-cli 0.147.0 and are silently
+dropped, so enforcement is the orchestrating session's own top-level `sandbox_mode`, not
+per-dimension — dispatched through Codex's native `spawn_agent` tool; see DISPATCH.md for both,
+including what the Codex smoke test actually confirmed (the `spawn_agent` dispatch primitive,
+not per-role scoping). `codex-review` is the standalone lightweight
 Codex second-opinion pass and stays Claude-native.
 
 `ai-agents/skills/_shared/` is **not a skill** — it holds portable review-support resources

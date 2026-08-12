@@ -14,12 +14,13 @@ entry; the skill's resolve-and-read procedure itself is tool-agnostic), and, sin
 `quick-review`, `deep-review`, `review-fix-loop`, and `fix-findings` — the review→fix skill
 set. `deep-review`'s per-dimension subagent fan-out (previously the blocker below) is proven
 out on Pi via `pi-subagents`' `tools:` frontmatter allowlist (same grain as Claude's named-tool
-allowlist) and on Codex via its coarser `sandbox_mode` scoping; see
-`ai-agents/skills/deep-review/DISPATCH.md`. Codex-native porting of these four skills is
-tracked separately (#116, per `docs/adr/portable-review-skills-migration-sequencing.md`) — they
-project to Codex today via the generic portable-skill projection, but their per-dimension
-tool-scoping is documented for Codex only at the `sandbox_mode` level, not yet a reviewed
-Codex-native equivalent.
+allowlist); see `ai-agents/skills/deep-review/DISPATCH.md`. Codex-native porting of these four
+skills is implemented by #116 (per
+`docs/adr/portable-review-skills-migration-sequencing.md`): `[agents.<name>]` role tables in
+`codex/config.toml` are description-only spawn guidance — per-role `sandbox_mode` scoping is
+unsupported at codex-cli 0.147.0 — dispatched via `spawn_agent`, with the orchestrating
+session's own top-level `sandbox_mode` as the actual enforcement; the orchestrator's
+findings-store write path on Codex hosts remains an open gap.
 
 ## Portable support (`ai-agents/skills/_shared/`)
 

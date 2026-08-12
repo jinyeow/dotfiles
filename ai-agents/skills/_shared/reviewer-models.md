@@ -16,11 +16,11 @@ exist — but this repo's `codex/config.toml` doesn't set them, and nothing in t
 `--reviewers` value onto them; it only defines per-role `[agents.<name>]` tables (e.g.
 `agents.review_correctness`), which at this version recognize just `config_file` / `description` /
 `nickname_candidates`, not a model override. Passing `--reviewers` on Codex CLI therefore falls
-back to whatever model/effort each agent's own `developer_instructions` and Codex's global
-defaults resolve to — the same as if the flag were never passed. Wiring `--reviewers` through
-`agents.default_subagent_model` / `agents.default_subagent_reasoning_effort` is the natural future
-mechanism — available but unwired today, not nonexistent. The `sol` / `codex` external-adapter rows stay Claude-only —
-Codex CLI has no external Codex adapter to call when it is itself the host
+back to Codex's global default model/effort — the same as if the flag were never passed. Wiring
+`--reviewers` through `agents.default_subagent_model` / `agents.default_subagent_reasoning_effort`
+is the natural future mechanism — available but unwired today, not nonexistent. The `sol` /
+`codex` external-adapter rows stay Claude-only — Codex CLI has no external Codex adapter to call
+when it is itself the host
 ([`../deep-review/DISPATCH.md`](../deep-review/DISPATCH.md)).
 
 **Reviewer-only.** `--reviewers` selects the models for reviewer subagents — the fan-out participants,
