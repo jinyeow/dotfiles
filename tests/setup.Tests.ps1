@@ -678,7 +678,7 @@ Describe 'setup.ps1 codex module shared skills' {
             # Patterns anchor on the "link -> target" separator so `tdd` can't false-match a
             # future `tdd-something` skill (`\b` treats the hyphen as a word boundary).
             $output | Should -Match '\[DRY RUN\] junction .*\.codex\\skills\\tdd ->'
-            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc')) {
+            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc', 'quick-review', 'deep-review', 'review-fix-loop', 'fix-findings', '_shared')) {
                 $output | Should -Match "\\.codex\\skills\\$name -> .*ai-agents\\skills\\$name"
             }
             # Claude-only skills are not sourced into Codex.
