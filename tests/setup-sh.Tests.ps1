@@ -384,7 +384,7 @@ Describe 'setup.sh Codex skill projection' {
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m codex --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
-            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc')) {
+            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc', 'quick-review', 'deep-review', 'review-fix-loop', 'fix-findings', '_shared')) {
                 $out | Should -Match "\.codex/skills/$name -> .*ai-agents/skills/$name"
             }
             $out | Should -Not -Match '\.codex/skills/codex-review ->'
