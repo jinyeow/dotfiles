@@ -124,7 +124,8 @@ run on), not logic switches.
 - **Model.** On Claude Code, standalone the folded reviewer may run on Fable for a light pass;
   invoked from `review-fix-loop`, it inherits that loop's reviewer constraint. Other runtimes select
   through their own defaults — no equivalent pin is defined yet. `--reviewers` overrides the default
-  on any runtime — and is reviewer-only: it never changes which model a fixer runs on.
+  on any runtime with a wired resolution (see [`../_shared/reviewer-models.md`](../_shared/reviewer-models.md);
+  currently a no-op on Codex CLI) — and is reviewer-only: it never changes which model a fixer runs on.
 - **Sole writer.** Workers return findings; you write the store. This is what makes parallel
   participants safe without locks (findings-schema.md).
 - **Two participants is the point.** Codex's full-rubric brief is not a licence to add participants:

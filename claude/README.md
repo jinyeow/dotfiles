@@ -245,8 +245,9 @@ Codex/Pi equivalents): `review-rubric.md` (the merged AGENTS.md + thermo-nuclear
 three by `quick-review`), `findings-schema.md` (the JSONL finding schema, semantic fingerprint,
 and store discipline shared by the review→fix skills), and `reviewer-models.md` (how
 `--reviewers` resolves aliases + effort and the per-call Codex-as-MCP posture on Claude Code;
-on Codex CLI itself it resolves through the native `[agents]` config defaults instead — Pi still
-has no native equivalent). It has no `SKILL.md`, so the harness ignores it
+on Codex CLI itself the flag is currently unwired, so Codex's own defaults apply — see
+`reviewer-models.md`'s Scope note for the mechanism; Pi still has no native equivalent). It has
+no `SKILL.md`, so the harness ignores it
 as a skill; `claude/skills/codex-review/SKILL.md` still reaches it via `../_shared/<file>`,
 resolved at the installed destination. The independent `ai-agents/_shared/` copy (note: not
 `ai-agents/skills/_shared/`) is source-only and may diverge — see `../ai-agents/README.md`.
