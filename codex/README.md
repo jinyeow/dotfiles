@@ -80,7 +80,11 @@ orchestration contracts, not installed custom agents: the host must use a Codex 
 whose native delegation can isolate at least two workers, or report
 `unsupported-capability`. Quick mode is the default; debate and external Codex are opt-in.
 On a Codex host, `--codex` is rejected unless a separately configured adapter supplies a
-genuinely independent provider/context.
+genuinely independent provider/context. The review→fix skills' findings-store write path
+on a Codex host is an open gap — a live probe on this machine could not get
+`workspace-write` to engage — so the four stateful skills are not yet proven end-to-end
+on Codex; see `ai-agents/skills/deep-review/DISPATCH.md` ("Sole-writer invariant under
+Codex") for the recorded probe.
 
 **Confirmed minimum version and invocation syntax** (smoke-tested 2026-08-12, closing the
 open item previously here): `codex-cli 0.147.0` is confirmed working — `codex features
