@@ -52,6 +52,13 @@ Applies to every prompt you author for a downstream model — subagent prompts, 
 - **Iterate, don't one-shot**. For artifact-producing prompts (drafts, docs, designs), ask for draft → self-critique → revise, not a single pass.
 - **Never demand the model's private step-by-step reasoning or chain-of-thought**. A prompt like `'explain your reasoning step by step'` can trip Claude Fable 5's `reasoning_extraction` refusal and fall back to Opus (Claude Code shows a transcript notice; the raw API returns `stop_reason: refusal`). Ask for a short rationale + assumptions + evidence instead.
 
+## Authoring agent tooling
+
+Applies when proposing or building new agentic-workflow tooling — skills, commands, standing rules, conventions.
+
+- **Default to agent-agnostic placement.** A new rule, convention, or skill applies to Claude Code, Codex CLI, and Pi alike unless it genuinely depends on one tool's mechanics. Put standing rules in this shared `AGENTS.md`, not the Claude-only `~/.claude/CLAUDE.md`; prefer portable skills under `ai-agents/skills/` over tool-native `claude/skills/`, `codex/skills/`, or `pi/skills/`. Scope to one tool only when the behaviour needs that tool's hooks, skill-invocation model, or subagent tooling the others don't share — otherwise the Claude-only file silently excludes Codex and Pi from a rule with nothing tool-specific about it.
+- **Minimize manually-invoked skills.** Keep the set of skills I must remember to invoke small and mapped to my actual working chain (grill-with-docs → to-spec → to-tickets → implement → review-fix-loop → review-me, plus utilities like board-triage). Before proposing a new standalone manual skill, prefer: folding the behaviour into a skill already in that chain, or making it automatic (a hook or a standing rule that fires without being remembered). A rarely-reached skill I have to remember costs more in recall than it saves, however good the idea; propose a brand-new manual skill only when neither fits and it's a step I'll hit often enough to remember on its own.
+
 ## Surgical changes
 
 - Touch only what you must — every changed line should trace directly to my request.
