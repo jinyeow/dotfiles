@@ -10,8 +10,9 @@ Two layers:
 
 - **Layer 1 is the floor** — conformance to the runtime's installed conventions file
   (`~/.claude/AGENTS.md` on Claude Code, `~/.codex/AGENTS.md` on Codex CLI — both sourced from
-  this repo's `claude/AGENTS.md`, per `codex/README.md`). A change that violates it is a finding,
-  full stop.
+  this repo's `claude/AGENTS.md`, per `codex/README.md`; on Pi, there is no installed home-dir
+  copy, so it is the project's own root `AGENTS.md`, read directly, per this repo's root
+  `AGENTS.md`). A change that violates it is a finding, full stop.
 - **Layer 2 is ambition** — push for structural simplification, not just local cleanup.
   Adapted from Cursor's `thermo-nuclear-code-quality-review`.
 

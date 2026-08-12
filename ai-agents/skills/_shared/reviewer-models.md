@@ -9,11 +9,15 @@ currently covers. It lives under the portable `_shared/` alongside the runtime-n
 `dimensions.md` / `findings-schema.md` / `review-rubric.md` because the skills that reference it
 are portable, but its own content is not yet genericized for Pi — on that runtime, `--reviewers`
 selects models through the runtime's own defaults, not this table, until a Pi-native equivalent is
-written. **On Codex CLI**, `--reviewers` resolves through the native `[agents]` config defaults
-instead of the alias table below: `agents.default_subagent_model` and
-`agents.default_subagent_reasoning_effort` in `codex/config.toml` (confirmed accepted fields,
-`codex --strict-config`). The `sol` / `codex` external-adapter rows stay Claude-only — Codex CLI
-has no external Codex adapter to call when it is itself the host
+written. **On Codex CLI**, `--reviewers` currently has no per-repo override mechanism: this
+repo's `codex/config.toml` defines per-role `[agents.<name>]` tables (e.g.
+`agents.review_correctness`), not a global default-model/effort pair, so there is no field for
+the flag to resolve through today. Passing `--reviewers` on Codex CLI falls back to whatever
+model/effort each agent's own `developer_instructions` and Codex's global defaults resolve to —
+the same as if the flag were never passed. (Adding `agents.default_subagent_model` /
+`agents.default_subagent_reasoning_effort`-style fields to `codex/config.toml` would be a future
+change, not something in place now.) The `sol` / `codex` external-adapter rows stay Claude-only —
+Codex CLI has no external Codex adapter to call when it is itself the host
 ([`../deep-review/DISPATCH.md`](../deep-review/DISPATCH.md)).
 
 **Reviewer-only.** `--reviewers` selects the models for reviewer subagents — the fan-out participants,
