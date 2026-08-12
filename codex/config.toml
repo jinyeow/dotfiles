@@ -33,101 +33,93 @@ hooks = true
 # Per-dimension custom agents for the portable review skills (quick-review / deep-review /
 # review-fix-loop / fix-findings, ai-agents/skills/). Dispatched via the `multi_agent`
 # feature's `spawn_agent` tool with `agent_type: "review_<dimension>"`. See
-# ai-agents/skills/deep-review/DISPATCH.md (Codex CLI section) for the confirmed dispatch
-# shape and the smoke test that verified this table is read. `mcp_servers = []` on every
-# entry is a deliberate decision, not an omission: no MCP server registered in this repo
-# supplies anything a reviewer needs beyond native read/grep.
+# ai-agents/skills/deep-review/DISPATCH.md (Codex CLI section) for the dispatch shape.
+#
+# At the pinned codex-cli 0.147.0 (rust-v0.147.0), an `[agents.<name>]` table only
+# recognizes `config_file`, `description`, and `nickname_candidates` — codex-rs's
+# `config.schema.json` defines `AgentRoleToml` with `additionalProperties: false` limited
+# to those three, and `agent_roles.rs`'s `AgentRoleConfig` carries only the same three.
+# Per-role `sandbox_mode` / `developer_instructions` / `mcp_servers` keys are silently
+# DROPPED: they do not sandbox a reviewer to read-only, inject charter text, or scope MCP
+# servers. `--strict-config` accepting those keys is not evidence they work — it only
+# validates top-level config keys and accepts arbitrary unknown fields inside an
+# `[agents.<name>]` table. The read-only/write-access intent below is carried only in
+# `description` (model-visible spawn guidance the model can choose to follow, not
+# runtime-enforced) and is otherwise enforced solely by the orchestrating session's own
+# top-level `sandbox_mode` above — there is no per-role enforcement at this version.
+# `config_file` is the schema-documented per-role customization channel, but whether a
+# `config_file` layer honors `sandbox_mode`/`developer_instructions` at spawn time is
+# unverified — do not assume it does.
 [agents.review_correctness]
-description = "quick-review/deep-review: correctness dimension (read-only)"
-developer_instructions = """
-Apply the `correctness` charter from ~/.codex/skills/_shared/dimensions.md and the bar
-from ~/.codex/skills/_shared/review-rubric.md verbatim. Report findings only — never
-edit, write, or run commands that mutate state.
+description = """
+quick-review/deep-review: correctness dimension. Read-only reviewer: apply the
+`correctness` charter from ~/.codex/skills/_shared/dimensions.md and the
+~/.codex/skills/_shared/review-rubric.md bar; report findings only, never edit, write,
+or run commands that mutate state.
 """
-sandbox_mode = "read-only"
-mcp_servers = []
 
 [agents.review_security]
-description = "deep-review: security dimension (read-only, reads beyond diff)"
-developer_instructions = """
-Apply the `security` charter from ~/.codex/skills/_shared/dimensions.md and the bar
-from ~/.codex/skills/_shared/review-rubric.md verbatim. Read callers/config beyond the
-diff to confirm exploitability. Report findings only — never edit, write, or run
-commands that mutate state.
+description = """
+deep-review: security dimension. Read-only reviewer: apply the `security` charter from
+~/.codex/skills/_shared/dimensions.md and the ~/.codex/skills/_shared/review-rubric.md
+bar; read callers/config beyond the diff to confirm exploitability. Report findings
+only, never edit, write, or run commands that mutate state.
 """
-sandbox_mode = "read-only"
-mcp_servers = []
 
 [agents.review_performance]
-description = "deep-review: performance dimension (read-only)"
-developer_instructions = """
-Apply the `performance` charter from ~/.codex/skills/_shared/dimensions.md and the bar
-from ~/.codex/skills/_shared/review-rubric.md verbatim. Report findings only — never
-edit, write, or run commands that mutate state.
+description = """
+deep-review: performance dimension. Read-only reviewer: apply the `performance` charter
+from ~/.codex/skills/_shared/dimensions.md and the
+~/.codex/skills/_shared/review-rubric.md bar; report findings only, never edit, write,
+or run commands that mutate state.
 """
-sandbox_mode = "read-only"
-mcp_servers = []
 
 [agents.review_structural]
-description = "deep-review: structural dimension (read-only, diff-local)"
-developer_instructions = """
-Apply the `structural` charter from ~/.codex/skills/_shared/dimensions.md and the bar
-from ~/.codex/skills/_shared/review-rubric.md verbatim. Report findings only — never
-edit, write, or run commands that mutate state.
+description = """
+deep-review: structural dimension. Read-only reviewer: apply the `structural` charter
+from ~/.codex/skills/_shared/dimensions.md and the
+~/.codex/skills/_shared/review-rubric.md bar; report findings only, never edit, write,
+or run commands that mutate state.
 """
-sandbox_mode = "read-only"
-mcp_servers = []
 
 [agents.review_architecture]
-description = "deep-review: architecture dimension (read-only, reads beyond diff)"
-developer_instructions = """
-Apply the `architecture` charter from ~/.codex/skills/_shared/dimensions.md and the bar
-from ~/.codex/skills/_shared/review-rubric.md verbatim. Read beyond the diff for
-cross-system fit. Report findings only — never edit, write, or run commands that
-mutate state.
+description = """
+deep-review: architecture dimension. Read-only reviewer: apply the `architecture`
+charter from ~/.codex/skills/_shared/dimensions.md and the
+~/.codex/skills/_shared/review-rubric.md bar; read beyond the diff for cross-system fit.
+Report findings only, never edit, write, or run commands that mutate state.
 """
-sandbox_mode = "read-only"
-mcp_servers = []
 
 [agents.review_conventions]
-description = "quick-review/deep-review: conventions dimension (read-only)"
-developer_instructions = """
-Apply the `conventions` charter from ~/.codex/skills/_shared/dimensions.md and the bar
-from ~/.codex/skills/_shared/review-rubric.md verbatim, checking against ~/.codex/AGENTS.md.
-Report findings only — never edit, write, or run commands that mutate state.
+description = """
+quick-review/deep-review: conventions dimension. Read-only reviewer: apply the
+`conventions` charter from ~/.codex/skills/_shared/dimensions.md and the
+~/.codex/skills/_shared/review-rubric.md bar, checking against ~/.codex/AGENTS.md.
+Report findings only, never edit, write, or run commands that mutate state.
 """
-sandbox_mode = "read-only"
-mcp_servers = []
 
 [agents.review_tests]
-description = "quick-review/deep-review: tests dimension (read-only)"
-developer_instructions = """
-Apply the `tests` charter from ~/.codex/skills/_shared/dimensions.md and the bar
-from ~/.codex/skills/_shared/review-rubric.md verbatim. Report findings only — never
-edit, write, or run commands that mutate state.
+description = """
+quick-review/deep-review: tests dimension. Read-only reviewer: apply the `tests`
+charter from ~/.codex/skills/_shared/dimensions.md and the
+~/.codex/skills/_shared/review-rubric.md bar; report findings only, never edit, write,
+or run commands that mutate state.
 """
-sandbox_mode = "read-only"
-mcp_servers = []
 
 [agents.review_folded]
-description = "quick-review: folded correctness+conventions+tests reviewer (read-only)"
-developer_instructions = """
-Apply the `correctness`, `conventions`, and `tests` charters from
-~/.codex/skills/_shared/dimensions.md and the bar from
-~/.codex/skills/_shared/review-rubric.md verbatim, checking conventions against
-~/.codex/AGENTS.md. Report findings only — never edit, write, or run commands that
-mutate state.
+description = """
+quick-review: folded correctness+conventions+tests reviewer. Read-only reviewer: apply
+the `correctness`, `conventions`, and `tests` charters from
+~/.codex/skills/_shared/dimensions.md and the ~/.codex/skills/_shared/review-rubric.md
+bar, checking conventions against ~/.codex/AGENTS.md. Report findings only, never edit,
+write, or run commands that mutate state.
 """
-sandbox_mode = "read-only"
-mcp_servers = []
 
 [agents.fixer]
-description = "fix-findings: applies fixes for confirmed, introduced findings (write access)"
-developer_instructions = """
-Fix only the findings assigned in your task. Lint only the files you touched before
-returning — the full test suite and full-tree lint run once, after all fixers return,
-owned by the orchestrator; do not run them yourself. Never write to the findings store
-yourself — return your result to the orchestrator, which is the store's sole writer.
+description = """
+fix-findings: applies fixes for confirmed, introduced findings (write access). Fix only
+the findings assigned in your task. Lint only the files you touched before returning —
+the full test suite and full-tree lint run once, after all fixers return, owned by the
+orchestrator; do not run them yourself. Never write to the findings store yourself —
+return your result to the orchestrator, which is the store's sole writer.
 """
-sandbox_mode = "workspace-write"
-mcp_servers = []

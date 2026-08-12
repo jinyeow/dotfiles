@@ -51,13 +51,18 @@ mutate anything is out of contract.
 
 ### Codex CLI
 
-Scope by `sandbox_mode` on the custom agent, not a named-tool allowlist (coarser grain).
-Every dimension below sets `sandbox_mode = "read-only"`; `mcp_servers = []` for all of
-them — no MCP server currently registered in this repo's `codex/config.toml` supplies
-anything a reviewer needs (filesystem read/grep is native, not MCP-mediated), so the
-explicit decision is "none," not an unconsidered default. The finer read/grep-vs-
-read/grep/glob distinction `dimensions.md`'s "reads beyond diff?" column implies has no
-Codex equivalent — record this as a known gap rather than fabricating one.
+**Per-role `sandbox_mode`/`mcp_servers`/`developer_instructions` are NOT supported at the
+pinned codex-cli 0.147.0.** codex-rs's `config.schema.json` defines `AgentRoleToml` with
+`additionalProperties: false` limited to `config_file`, `description`, and
+`nickname_candidates` (confirmed in `agent_roles.rs`'s `AgentRoleConfig`, same three
+fields). An `[agents.<name>]` table carrying those other keys parses without error, but
+the values are silently dropped — there is no per-role read-only sandbox, no per-role
+charter injection, and no per-role MCP scoping. The finer read/grep-vs-read/grep/glob
+distinction `dimensions.md`'s "reads beyond diff?" column implies has no Codex
+equivalent either — record this as a known gap rather than fabricating one. Scoping in
+practice is coarse: the orchestrating session's own top-level `sandbox_mode` in
+`codex/config.toml` is the only enforcement that actually applies to every spawned
+child, reviewer or fixer alike.
 
 **Custom agent definitions live as `[agents.<name>]` tables in `codex/config.toml`**
 (installed to `~/.codex/config.toml`), one per dimension — see that file for the full
@@ -65,17 +70,24 @@ entries, e.g. `[agents.review_correctness]`:
 
 ```toml
 [agents.review_correctness]
-sandbox_mode = "read-only"
-mcp_servers = []
-# developer_instructions: the correctness charter + rubric bar, see codex/config.toml
+description = """
+... Read-only reviewer: apply the `correctness` charter from
+~/.codex/skills/_shared/dimensions.md and the review-rubric.md bar; report findings
+only, never edit, write, or run commands that mutate state.
+"""
 ```
 
-`developer_instructions` points at the projected `_shared/` charter files rather than
-inlining charter text, so the charter has one source (`dimensions.md`) — the same
-DRY reason `quick-review`/`deep-review` already reference `_shared/` by path instead of
-copying it. `fix-findings`' fixer role is the one asymmetric case: it needs write access,
-so it gets its own `[agents.fixer]` entry with `sandbox_mode = "workspace-write"` instead
-of `read-only`.
+The read-only/report-only intent is carried in `description` — model-visible spawn
+guidance the model can choose to follow, not a runtime-enforced sandbox — because
+`sandbox_mode`/`developer_instructions` under `[agents.<name>]` don't reach the runtime
+at this version (see above). `description` reaching spawn-tool guidance is the one
+per-role customization channel confirmed to work; `config_file` ("path to a
+role-specific config layer") is the schema-documented alternative, but whether a
+`config_file` layer honors `sandbox_mode`/`developer_instructions` at spawn time is
+unverified — do not claim it does without checking. `fix-findings`' fixer role is the
+one asymmetric case: it needs write access, and its `[agents.fixer]` description says so,
+but that too is guidance, not enforcement — the fixer's actual write access comes from
+the orchestrating session's own top-level `sandbox_mode = "workspace-write"`.
 
 `quick-review` dispatches a single folded reviewer carrying all three of `correctness`,
 `conventions`, and `tests` (never a third participant — see `quick-review/SKILL.md`), so
@@ -87,7 +99,11 @@ Dispatch a dimension by prompting the orchestrating Codex session to call its bu
 `spawn_agent` tool with `agent_type: "review_<dimension>"` (referencing the config-defined
 name above) and the diff/cluster as the task. `spawn_agent` is `multi_agent`'s native
 tool surface, not a CLI flag — see "Confirmed smoke test" below for the exact
-end-to-end shape.
+end-to-end shape. `fix-findings` dispatches the same way on a Codex host: for each
+fix-unit, prompt the orchestrating session to call `spawn_agent` with `agent_type:
+"fixer"` (`[agents.fixer]` in `codex/config.toml`) and the fix-unit's findings/files as
+the task — same mechanism, no per-role sandbox beyond what the section above already
+covers.
 
 **Correction to the #93 research report's paraphrase:** that report (based on a
 summarizing WebFetch of vendor docs, not primary source — see its own caveat at
@@ -97,8 +113,16 @@ or project-scoped `.codex/agents/`. Live-tested against the pinned install
 did **not** surface in `codex debug prompt-input`'s model-visible output, while a
 `[agents.<name>]` table passed via `-c` (equivalent to a `config.toml` table) was
 accepted by `--strict-config` and successfully referenced as `agent_type` in a live
-`codex exec` call. Treat the `config.toml`-table mechanism above as the confirmed one;
-treat a separate `.codex/agents/*.toml` file format as unconfirmed at this version.
+`codex exec` call. Treat the `config.toml`-table mechanism above as the confirmed
+name-resolution path; treat a separate `.codex/agents/*.toml` file format as unconfirmed
+at this version. Note what this live test does and does not prove: `--strict-config`
+accepting the table is not evidence its `sandbox_mode`/`developer_instructions`/
+`mcp_servers` fields are honored — the same flag also accepts a wholly bogus field name
+under `[agents.<name>]`, because it only validates top-level config keys. What the test
+confirmed is narrower: the table's **name** resolves as `agent_type` for `spawn_agent`.
+Whether the role's other fields apply anything at spawn is answered by the schema, not
+by this test — see the "Per-role `sandbox_mode`/`mcp_servers`/`developer_instructions`
+are NOT supported" note above.
 
 ### Confirmed smoke test (codex-cli 0.147.0)
 
@@ -158,20 +182,28 @@ collects the subagent results into its final response" (the #93 report's phrasin
 exactly as described; there is no event type in the stream where a child writes anything
 independently of the primary thread's own response.
 
-This is also **structurally enforced**, not just conventional, for the read-only dimension
-roles: every `review_<dimension>` agent runs `sandbox_mode = "read-only"`, under which no
-filesystem write of any kind is permitted — reviewers/verifiers physically cannot write the
-findings store even if a prompt tried to make them.
+This is **conventional, not structurally enforced, for the read-only dimension roles**:
+the per-role `sandbox_mode = "read-only"` these tables used to carry is one of the keys
+`AgentRoleToml` silently drops at codex-cli 0.147.0 (see the Codex CLI section above), so
+a `review_<dimension>` spawn does not run under a role-level read-only sandbox. The only
+sandbox actually in effect for any spawned child, reviewer or fixer, is the orchestrating
+session's own top-level `sandbox_mode` in `codex/config.toml`. If that top-level mode is
+`workspace-write` (the standalone posture), a reviewer child is not physically prevented
+from writing — its read-only posture rests on the `description` guidance and the model
+following it, not on the runtime.
 
-The one asymmetric case is `fix-findings`' `fixer` role, which needs `sandbox_mode =
-"workspace-write"` to apply fixes. `workspace-write` confines writes to the session's
-workspace root plus any directory added via `--add-dir`; the findings store lives under
-`~/.codex/` (`findings-schema.md`: "central dir under the runtime's own config home"),
-outside the workspace root for any review target repo. Live-tested (codex-cli 0.147.0,
-Windows): a `workspace-write` session with no `--add-dir` was denied writing a probe file
-under `%USERPROFILE%\.codex\` — `rejected: blocked by policy`. So the invariant holds for
-the fixer as long as the orchestrator never passes `--add-dir` covering `~/.codex/` (or
-wherever `$CODEX_HOME` resolves) — do not do that.
+The one asymmetric case is `fix-findings`' `fixer` role, which needs write access to
+apply fixes; its `description` says so, but that access — like the reviewers'
+restriction — comes from the orchestrating session's own top-level `sandbox_mode`, not
+from a per-role setting. When that top-level mode is `workspace-write`, writes are
+confined to the session's workspace root plus any directory added via `--add-dir`; the
+findings store lives under `~/.codex/` (`findings-schema.md`: "central dir under the
+runtime's own config home"), outside the workspace root for any review target repo.
+Live-tested (codex-cli 0.147.0, Windows): a `workspace-write` session with no
+`--add-dir` was denied writing a probe file under `%USERPROFILE%\.codex\` —
+`rejected: blocked by policy`. So the findings-store invariant holds for the fixer as
+long as the orchestrator never passes `--add-dir` covering `~/.codex/` (or wherever
+`$CODEX_HOME` resolves) — do not do that.
 
 **Open gap — orchestrator's own write path to the store is unconfirmed.** The orchestrating
 Codex session runs under the same top-level `sandbox_mode = "workspace-write"`
@@ -179,11 +211,27 @@ Codex session runs under the same top-level `sandbox_mode = "workspace-write"`
 `~/.codex/` without `--add-dir`. Nothing in this skill currently grants the orchestrator
 `--add-dir` covering `~/.codex/`, so as documented today it is unclear how the orchestrator
 itself writes the findings store on a Codex host — the "never `--add-dir`" advice above,
-taken literally, would block the orchestrator's own write, not just the fixer's. Candidate
-fixes (e.g. scoping `--add-dir` to just the store's subpath rather than all of `~/.codex/`,
-or a different writable-roots mechanism) were not tested. Treat this as an open
-implementation gap, not a confirmed-working path, until a live orchestrator write against
-the real store location is exercised.
+taken literally, would block the orchestrator's own write, not just the fixer's. A candidate
+fix — scoping `--add-dir` to just the store's subpath rather than all of `~/.codex/` — could
+not be exercised: a probe attempt (codex-cli 0.147.0, Windows, 2026-08-12) never reached a
+usable `workspace-write` session to test it against. `codex exec -s workspace-write -c
+approval_policy=never --add-dir "<store-subdir>" "…write a probe file into <store-subdir>…"`,
+run from an unrelated cwd, reported `sandbox: read-only` in its own banner and failed with
+`patch rejected: writing is blocked by read-only sandbox; rejected by user approval settings`
+— the same denial appeared for a write inside the session's own workspace root and for the
+no-`--add-dir` negative control, and swapping in `-c sandbox_mode=workspace-write` or
+`--approve-for-me` made no difference. Escalating to the sandbox primitive directly,
+bypassing the model and approval layers (`codex sandbox -c sandbox_mode=workspace-write --
+powershell -NoProfile -Command "Set-Content -Path probe.txt -Value ok"`, run from the
+workspace root), was denied the same way (`UnauthorizedAccessException`), so on this host
+`workspace-write` itself does not engage for `codex exec`/`codex sandbox`, independent of
+`--add-dir` — this is a different, host-level failure mode than the fixer's already-confirmed
+"blocked by policy" denial above, not a like-for-like negative control on the same
+mechanism. The `--add-dir`-scoping candidate therefore remains untested rather than
+disproven; retest on a host where `codex exec -s workspace-write` demonstrably grants writes
+within its own workspace before drawing a conclusion. Treat this as an open implementation
+gap, not a confirmed-working path, until a live orchestrator write against the real store
+location is exercised.
 
 ## Sole-writer invariant under Pi
 
