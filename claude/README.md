@@ -41,6 +41,7 @@ not download or change the machine.
 | `statusline-command.sh` | `~/.claude/statusline-command.sh` | Token usage statusline script |
 | `no-claude-session-trailer.sh` | `~/.claude/no-claude-session-trailer.sh` | PreToolUse hook (wired in `settings.json`) that blocks commits carrying the AI session-URL trailer |
 | `inject-handoff.ps1` | `~/.claude/inject-handoff.ps1` | SessionStart hook that injects `.claude/handoff.md` (from the `handoff` skill) into a fresh session |
+| `memory-review-nudge.ps1` | `~/.claude/memory-review-nudge.ps1` | SessionStart hook that nudges when the current project's auto-memory store is overdue (>= 14 days) for review |
 | `block-destructive-vcs.ps1` | `~/.claude/block-destructive-vcs.ps1` | PreToolUse(Bash\|PowerShell) hook that denies destructive git (`push --force`, `reset --hard`, `clean -f`, `branch -D`) |
 | `block-pwsh-in-bash.ps1` | `~/.claude/block-pwsh-in-bash.ps1` | PreToolUse(Bash) hook that denies PowerShell mis-sent to the Bash tool, pointing at the PowerShell tool |
 | `lint-powershell.ps1` | `~/.claude/lint-powershell.ps1` | PostToolUse(Edit\|Write) hook that runs PSScriptAnalyzer on edited `.ps1/.psm1/.psd1` and feeds findings back |
@@ -54,8 +55,8 @@ not download or change the machine.
 | `output-styles/<name>.md` | `~/.claude/output-styles/<name>.md` | Output styles (whole dir junctioned); active style pinned by `outputStyle` in `settings.json` |
 
 **Install method.** `settings.json`, `CLAUDE.md`, `AGENTS.md`,
-`statusline-command.sh`, `no-claude-session-trailer.sh`, and the seven pwsh hook scripts
-(`inject-handoff.ps1`, `block-destructive-vcs.ps1`, `block-pwsh-in-bash.ps1`, `lint-powershell.ps1`,
+`statusline-command.sh`, `no-claude-session-trailer.sh`, and the eight pwsh hook scripts
+(`inject-handoff.ps1`, `memory-review-nudge.ps1`, `block-destructive-vcs.ps1`, `block-pwsh-in-bash.ps1`, `lint-powershell.ps1`,
 `warn-legacy-files.ps1`, `warn-hardcoded-secrets.ps1`, `warn-reasoning-extraction.ps1`) are
 **symlinked** into `~/.claude`, and each skill directory is
 **junctioned** (Windows) / symlinked (Linux). Windows file symlinks require **Developer
@@ -83,7 +84,7 @@ old copy-based install + planned live→repo sync.)
 ## Hooks
 
 Beyond the notification beeps, `settings.json` wires a handoff injector, deterministic
-guardrails, and a lint pass. The seven pwsh hooks read the hook JSON on stdin and are invoked
+guardrails, and a lint pass. The eight pwsh hooks read the hook JSON on stdin and are invoked
 through `bash` (so `~` expands) as `pwsh -NoProfile -File ~/.claude/<script>.ps1`; they need
 **pwsh** on PATH, and the lint hook additionally needs the **PSScriptAnalyzer** module (it
 self-skips if absent). All allow silently and only emit JSON when they act.
@@ -91,6 +92,7 @@ self-skips if absent). All allow silently and only emit JSON when they act.
 | Event / matcher | Script | Behaviour |
 |---|---|---|
 | `SessionStart` | `inject-handoff.ps1` | On a fresh session (`startup`/`clear`), injects the workspace's `.claude/handoff.md` (written by the `handoff` skill) via `additionalContext` so the next agent reads it first, then archives it to `handoff-<timestamp>.consumed.md` so it is delivered once (not replayed into every later session). No-ops if the file is absent or the session was resumed/compacted |
+| `SessionStart` | `memory-review-nudge.ps1` | On a fresh session (`startup`/`clear`), resolves the current project's memory dir from the payload's `transcript_path` and injects a "review due" nudge via `additionalContext` when its memories (ignoring the `MEMORY.md` index) have gone >= 14 days since the last review — the `.last-reviewed` stamp, or the oldest memory when never reviewed. No-ops on resume/compact/fork, when there are no memories, or when not yet due |
 | `SessionStart` | `skills/project-brain/scripts/session-start.ps1` | Resolves the session cwd to a project-brain initiative and injects its `core.md` + `STATUS.md` via `additionalContext`. Lives inside the `project-brain` skill directory (junctioned with the skill, not a top-level symlink); fails safe — any error or no match exits 0 with no output |
 | `PreToolUse` (Bash\|PowerShell) | `no-claude-session-trailer.sh` | Denies a `git commit` carrying the `Claude-Session:` trailer. Matches `git … commit` allowing global flags to carry an argument (`git -C <path> commit`), so a flag-plus-value pair can't slip between `git` and `commit` and evade the check |
 | `PreToolUse` (Bash\|PowerShell) | `block-destructive-vcs.ps1` | Denies destructive **git** — `push --force` (allows `--force-with-lease`), `reset --hard`, `clean -f`, `branch -D`. jj is left ungated (its op-log makes rewrites recoverable). The git-guardrails *skill* only advises; this hook is non-bypassable. Strips quoted substrings before matching (escape-aware, so an escaped quote in a message doesn't mangle the match), except flag-shaped quoted content (`"--force"`) which is unquoted in place rather than deleted, so a quoted flag is still denied |
