@@ -16,15 +16,23 @@ Codex CLI follow the same rules. Everything below is Claude-specific.
 
 ## Code intelligence tools
 
-For code navigation and edits, split by capability rather than picking one tool for everything:
+For code navigation and edits, split by capability — but the built-in `LSP` tool only covers
+what has a language-server *plugin* actually enabled (`claude plugin list`), which today is
+just `csharp-lsp` and `lua-lsp`. There is no marketplace plugin for PowerShell, Python, Go,
+TypeScript, Zig, Gleam, or Bicep, so `LSP` errors outright on those files — Serena's read tools
+are the only working option there, not a redundant fallback. This is documentation-only
+guidance, not a `permissions.deny` block: a hard block would need to be file-extension-aware
+(a `PreToolUse` hook), since blocking Serena's read tools globally would leave those languages
+with no working read path at all.
 
-- **Reading** (go-to-definition, find-references, hover, symbol overview, call hierarchy):
-  use the built-in `LSP` tool. It has no separate process to manage and no bundled/downloaded
-  binaries, so it is the reliable default. Serena's equivalent read tools
-  (`find_symbol`, `find_declaration`, `find_referencing_symbols`, `find_implementations`,
-  `get_symbols_overview`) are denied in `settings.json` so this isn't just a preference —
-  calling them fails, forcing the `LSP` tool instead.
-- **Editing** (symbol-scoped rename/replace/insert/delete): use Serena's
+- **Reading, `.cs`/`.lua` files**: prefer the built-in `LSP` tool (go-to-definition,
+  find-references, hover, symbol overview, call hierarchy) — no separate process, no
+  downloaded binaries. Serena's equivalent read tools (`find_symbol`, `find_declaration`,
+  `find_referencing_symbols`, `find_implementations`, `get_symbols_overview`) are redundant
+  there.
+- **Reading, everything else** (PowerShell, Python, Go, TypeScript, Zig, Gleam, Bicep, …):
+  no `LSP`-tool backend exists — use Serena's read tools.
+- **Editing** (symbol-scoped rename/replace/insert/delete), any language: use Serena's
   `rename_symbol`, `replace_symbol_body`, `insert_before_symbol`, `insert_after_symbol`,
   `safe_delete_symbol` — the built-in `LSP` tool has no edit operations. Trust level is
   language-dependent (checked 2026-08-12): reliable on **C#**, **PowerShell**, **Python**;
@@ -35,8 +43,15 @@ For code navigation and edits, split by capability rather than picking one tool 
 - **Always re-diff after a Serena edit** before treating it as done — its issue tracker
   documents cases where a rename reports success while silently omitting edits in files
   that weren't already open.
-- `get_diagnostics_for_file` and Serena's project-memory tools (`write_memory`/`read_memory`/
-  `list_memories`) have no `LSP`-tool equivalent and stay available.
+- `get_diagnostics_for_file`, `search_for_pattern`, `read_file`, `list_dir`, `find_file`,
+  `replace_content`, `replace_in_files`, `create_text_file`, and Serena's project-memory
+  tools (`write_memory`/`read_memory`/`list_memories`) have no `LSP`-tool equivalent and
+  stay available regardless of language.
+- Two separate Serena MCP registrations exist on this machine — the plugin-managed
+  `plugin:serena:serena` (tools namespaced `mcp__plugin_serena_serena__*`, currently
+  connected) and a user-scope `serena` from `setup.ps1 -Module serena` (tools namespaced
+  `mcp__serena__*`, currently failing to connect). Any tool-name-based rule (deny list or
+  otherwise) must account for both namespaces or it silently only covers one.
 
 ## Subagent Orchestration
 
