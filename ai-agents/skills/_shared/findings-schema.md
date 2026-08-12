@@ -91,7 +91,8 @@ fingerprint = hash(file + scope + issue_kind + subject)
 
 ## Store location + keying
 
-- Central dir under `~/.claude/` (machine-local; persists across sessions).
+- Central dir under the runtime's own config home (`~/.claude/`, `~/.codex/`, or `~/.pi/`;
+  machine-local; persists across sessions).
 - **One snapshot per review session**, keyed by a stable
   `review_session_id = repo + base_sha + initial_head_sha + worktree-path`. The id is **frozen at
   cycle 1** and does NOT change as the loop's commits advance HEAD — this is what lets later cycles

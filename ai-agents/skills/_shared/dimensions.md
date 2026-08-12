@@ -1,7 +1,9 @@
 # Review Dimensions — registry + charters
 
 The dimension registry for `deep-review`. Each row is dispatched as a **parallel reviewer subagent**
-(via Task) with the charter below. All reviewers emit findings in the schema in
+(via the host runtime's isolated-worker dispatch — Claude Code's `Agent` tool, Pi's `pi-subagents`,
+or Codex's `spawn_agent`; see [`../deep-review/DISPATCH.md`](../deep-review/DISPATCH.md) for the
+per-runtime mechanics) with the charter below. All reviewers emit findings in the schema in
 [`findings-schema.md`](findings-schema.md) and judge against the bar in
 [`review-rubric.md`](review-rubric.md). The linter + test suite are deterministic **gates**, not
 reviewers.
@@ -21,9 +23,12 @@ reviewers.
 | 7 | `tests` | no | `test` | Layer 1 testing / TDD |
 
 **`codex`** (conditional 8th) — a cross-model reviewer over the **full** rubric, included
-automatically when the `codex` MCP is present (documented exception to the offer-first rule in
-`claude/CLAUDE.md`). Not a fixed dimension: a parallel second opinion emitting the same schema,
-deduped with the rest. Recorded in the snapshot's `reviewers_enabled` for reproducible resume.
+automatically when an external Codex adapter is available (on Claude Code, the `codex` MCP being
+present is a documented exception to the offer-first rule in `claude/CLAUDE.md` — Claude Code only;
+other runtimes resolve this per [`../deep-review/DISPATCH.md`](../deep-review/DISPATCH.md), and
+Codex CLI itself has no external Codex adapter to call). Not a fixed dimension: a parallel second
+opinion emitting the same schema, deduped with the rest. Recorded in the snapshot's
+`reviewers_enabled` for reproducible resume.
 
 ---
 
@@ -61,7 +66,9 @@ module that owns the concept. Reads beyond the diff (slower / costlier — accep
 wshobson `architect-reviewer`.
 
 ### conventions
-Conformance to `~/.claude/AGENTS.md` (rubric Layer 1): surgical-changes, strict typing, imports at
+Conformance to the runtime's installed conventions file (`~/.claude/AGENTS.md` on Claude Code,
+`~/.codex/AGENTS.md` on Codex CLI — both sourced from the same `claude/AGENTS.md` in this repo,
+per `codex/README.md`) (rubric Layer 1): surgical-changes, strict typing, imports at
 top, DRY, no silent flag/mode params, doc-with-change, commit style. Includes the PowerShell
 `foreach ($singular in $plural)` semantic residue the deterministic lint gate can't decide.
 
