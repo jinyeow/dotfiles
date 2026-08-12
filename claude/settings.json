@@ -20,6 +20,15 @@
         "hooks": [
           {
             "type": "command",
+            "command": "pwsh -NoProfile -File ~/.claude/memory-review-nudge.ps1",
+            "shell": "bash"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
             "command": "pwsh -NoProfile -File ~/.claude/skills/project-brain/scripts/session-start.ps1",
             "shell": "bash"
           }
@@ -131,7 +140,10 @@
     "pr-review-toolkit@claude-plugins-official": false,
     "project-artifact@claude-plugins-official": false,
     "skill-creator@claude-plugins-official": false,
-    "hookify@claude-plugins-official": false
+    "hookify@claude-plugins-official": false,
+    "csharp-lsp@claude-plugins-official": true,
+    "lua-lsp@claude-plugins-official": true,
+    "azure@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "claude-plugins-official": {
