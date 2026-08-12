@@ -74,13 +74,37 @@ per skill), so the installer projects skills into `~/.codex/skills/` from two so
 
 Claude-native skills and Claude support content under `claude/skills/` are never projected to Codex.
 
-The shared `council` skill and its four aliases are available after setup. They are prompt
+The shared `council` skill, its four aliases, and the review→fix skills (`quick-review`,
+`deep-review`, `review-fix-loop`, `fix-findings`) are available after setup. They are prompt
 orchestration contracts, not installed custom agents: the host must use a Codex version
 whose native delegation can isolate at least two workers, or report
 `unsupported-capability`. Quick mode is the default; debate and external Codex are opt-in.
 On a Codex host, `--codex` is rejected unless a separately configured adapter supplies a
-genuinely independent provider/context. Exact invocation syntax and the minimum supported
-Codex CLI version remain to be smoke-tested; this README does not guess a prefix.
+genuinely independent provider/context.
+
+**Confirmed minimum version and invocation syntax** (smoke-tested 2026-08-12, closing the
+open item previously here): `codex-cli 0.147.0` is confirmed working — `codex features
+list` shows `multi_agent` as `stable`/enabled by default on this install. No earlier version
+was tested, so 0.147.0 is the asserted floor, not a verified lower bound. Dispatch is the
+native `multi_agent` tool surface (`spawn_agent`/`wait`/`send_message`), not a CLI flag or
+subcommand; a real end-to-end run from a non-interactive session:
+
+```
+codex exec -s read-only -c approval_policy=never --json \
+  "Spawn two parallel subagents: one reads correctness.py and reports one line on \
+   correctness, one reads conventions.py and reports one line on naming conventions. \
+   Wait for both, then summarize both findings in your final response, each line \
+   prefixed with the filename."
+```
+
+The `--json` event stream showed both children resolve as `collab_tool_call` (`tool:
+"wait"`) items, then a single primary-thread `agent_message` with both files' correct,
+labelled summaries — no child output reached the transcript directly, confirming the
+primary thread is the sole writer of its own final response. Per-dimension custom agents
+(read-only reviewers, a workspace-write fixer) are declared as `[agents.<name>]` tables in
+`config.toml` — see `ai-agents/skills/deep-review/DISPATCH.md` (Codex CLI section) for the
+full mapping and the config-schema evidence. Not exercised by this smoke test: the four
+skills' complete pipelines end-to-end, only the underlying dispatch primitive.
 
 Codex's own built-in skills live alongside at `~/.codex/skills/.system/` and are never
 touched by this installer. Claude-specific frontmatter fields (e.g. `disable-model-invocation`)

@@ -29,3 +29,92 @@ project_doc_max_bytes = 32768
 # not symlinked — so a fresh -Module codex run after herdr would otherwise drop it.
 [features]
 hooks = true
+
+# Per-dimension custom agents for the portable review skills (quick-review / deep-review /
+# review-fix-loop / fix-findings, ai-agents/skills/). Dispatched via the `multi_agent`
+# feature's `spawn_agent` tool with `agent_type: "review_<dimension>"`. See
+# ai-agents/skills/deep-review/DISPATCH.md (Codex CLI section) for the confirmed dispatch
+# shape and the smoke test that verified this table is read. `mcp_servers = []` on every
+# entry is a deliberate decision, not an omission: no MCP server registered in this repo
+# supplies anything a reviewer needs beyond native read/grep.
+[agents.review_correctness]
+description = "quick-review/deep-review: correctness dimension (read-only)"
+developer_instructions = """
+Apply the `correctness` charter from ~/.codex/skills/_shared/dimensions.md and the bar
+from ~/.codex/skills/_shared/review-rubric.md verbatim. Report findings only — never
+edit, write, or run commands that mutate state.
+"""
+sandbox_mode = "read-only"
+mcp_servers = []
+
+[agents.review_security]
+description = "deep-review: security dimension (read-only, reads beyond diff)"
+developer_instructions = """
+Apply the `security` charter from ~/.codex/skills/_shared/dimensions.md and the bar
+from ~/.codex/skills/_shared/review-rubric.md verbatim. Read callers/config beyond the
+diff to confirm exploitability. Report findings only — never edit, write, or run
+commands that mutate state.
+"""
+sandbox_mode = "read-only"
+mcp_servers = []
+
+[agents.review_performance]
+description = "deep-review: performance dimension (read-only)"
+developer_instructions = """
+Apply the `performance` charter from ~/.codex/skills/_shared/dimensions.md and the bar
+from ~/.codex/skills/_shared/review-rubric.md verbatim. Report findings only — never
+edit, write, or run commands that mutate state.
+"""
+sandbox_mode = "read-only"
+mcp_servers = []
+
+[agents.review_structural]
+description = "deep-review: structural dimension (read-only, diff-local)"
+developer_instructions = """
+Apply the `structural` charter from ~/.codex/skills/_shared/dimensions.md and the bar
+from ~/.codex/skills/_shared/review-rubric.md verbatim. Report findings only — never
+edit, write, or run commands that mutate state.
+"""
+sandbox_mode = "read-only"
+mcp_servers = []
+
+[agents.review_architecture]
+description = "deep-review: architecture dimension (read-only, reads beyond diff)"
+developer_instructions = """
+Apply the `architecture` charter from ~/.codex/skills/_shared/dimensions.md and the bar
+from ~/.codex/skills/_shared/review-rubric.md verbatim. Read beyond the diff for
+cross-system fit. Report findings only — never edit, write, or run commands that
+mutate state.
+"""
+sandbox_mode = "read-only"
+mcp_servers = []
+
+[agents.review_conventions]
+description = "quick-review/deep-review: conventions dimension (read-only)"
+developer_instructions = """
+Apply the `conventions` charter from ~/.codex/skills/_shared/dimensions.md and the bar
+from ~/.codex/skills/_shared/review-rubric.md verbatim, checking against ~/.codex/AGENTS.md.
+Report findings only — never edit, write, or run commands that mutate state.
+"""
+sandbox_mode = "read-only"
+mcp_servers = []
+
+[agents.review_tests]
+description = "quick-review/deep-review: tests dimension (read-only)"
+developer_instructions = """
+Apply the `tests` charter from ~/.codex/skills/_shared/dimensions.md and the bar
+from ~/.codex/skills/_shared/review-rubric.md verbatim. Report findings only — never
+edit, write, or run commands that mutate state.
+"""
+sandbox_mode = "read-only"
+mcp_servers = []
+
+[agents.fixer]
+description = "fix-findings: applies fixes for confirmed, introduced findings (write access)"
+developer_instructions = """
+Fix only the findings assigned in your task. Run the project's tests/linter per
+~/.codex/AGENTS.md before returning. Never write to the findings store yourself —
+return your result to the orchestrator, which is the store's sole writer.
+"""
+sandbox_mode = "workspace-write"
+mcp_servers = []

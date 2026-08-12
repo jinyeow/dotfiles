@@ -51,12 +51,73 @@ mutate anything is out of contract.
 
 ### Codex CLI
 
-Scope by `sandbox_mode` on the custom agent, not a named-tool allowlist (coarser grain,
-confirmed via `codex features list` on the locally installed 0.147.0 — see the #93 research
-report). Every dimension above sets `sandbox_mode: read-only`; no `mcp_servers` beyond what
-read-only static analysis needs. The finer read/grep-vs-read/grep/glob distinction has no
-Codex equivalent yet — record this as a known gap rather than fabricating one; Codex-native
-porting is ticket #116 per the migration-sequencing ADR.
+Scope by `sandbox_mode` on the custom agent, not a named-tool allowlist (coarser grain).
+Every dimension below sets `sandbox_mode = "read-only"`; `mcp_servers = []` for all of
+them — no MCP server currently registered in this repo's `codex/config.toml` supplies
+anything a reviewer needs (filesystem read/grep is native, not MCP-mediated), so the
+explicit decision is "none," not an unconsidered default. The finer read/grep-vs-
+read/grep/glob distinction `dimensions.md`'s "reads beyond diff?" column implies has no
+Codex equivalent — record this as a known gap rather than fabricating one.
+
+**Custom agent definitions live as `[agents.<name>]` tables in `codex/config.toml`**
+(installed to `~/.codex/config.toml`), one per dimension, e.g.:
+
+```toml
+[agents.review_correctness]
+description = "quick-review/deep-review: correctness dimension (read-only)"
+developer_instructions = """
+Apply the `correctness` charter from ~/.codex/skills/_shared/dimensions.md and the bar
+from ~/.codex/skills/_shared/review-rubric.md verbatim. Report findings only — never
+edit, write, or run commands that mutate state.
+"""
+sandbox_mode = "read-only"
+mcp_servers = []
+```
+
+`developer_instructions` points at the projected `_shared/` charter files rather than
+inlining charter text, so the charter has one source (`dimensions.md`) — the same
+DRY reason `quick-review`/`deep-review` already reference `_shared/` by path instead of
+copying it. `fix-findings`' fixer role is the one asymmetric case: it needs write access,
+so it gets its own `[agents.fixer]` entry with `sandbox_mode = "workspace-write"` instead
+of `read-only`.
+
+Dispatch a dimension by prompting the orchestrating Codex session to call its built-in
+`spawn_agent` tool with `agent_type: "review_<dimension>"` (referencing the config-defined
+name above) and the diff/cluster as the task. `spawn_agent` is `multi_agent`'s native
+tool surface, not a CLI flag — see "Confirmed smoke test" below for the exact
+end-to-end shape.
+
+**Correction to the #93 research report's paraphrase:** that report (based on a
+summarizing WebFetch of vendor docs, not primary source — see its own caveat at
+lines 69-75) described custom agents as standalone TOML files under `~/.codex/agents/`
+or project-scoped `.codex/agents/`. Live-tested against the pinned install
+(codex-cli 0.147.0, see below): a file dropped at `<CODEX_HOME>/agents/probe-agent.toml`
+did **not** surface in `codex debug prompt-input`'s model-visible output, while a
+`[agents.<name>]` table passed via `-c` (equivalent to a `config.toml` table) was
+accepted by `--strict-config` and successfully referenced as `agent_type` in a live
+`codex exec` call. Treat the `config.toml`-table mechanism above as the confirmed one;
+treat a separate `.codex/agents/*.toml` file format as unconfirmed at this version.
+
+### Confirmed smoke test (codex-cli 0.147.0)
+
+Run from a scratch git repo, no custom agent config, `unset CODEX_HOME` (real install):
+
+```
+codex exec -s read-only -c approval_policy=never --json \
+  "Spawn two parallel subagents: one reads correctness.py and reports one line on \
+   correctness, one reads conventions.py and reports one line on naming conventions. \
+   Wait for both, then summarize both findings in your final response, each line \
+   prefixed with the filename."
+```
+
+Result: the primary thread's `--json` event stream showed two `collab_tool_call`
+(`tool: "wait"`) items resolve, then a single `item.completed` `agent_message` containing
+both files' correct, filename-labelled summaries — no intermediate output from the
+children reached stdout directly. This is the "confirmed working" evidence for AC #1's
+smoke test and closes `codex/README.md:83` — see that file for the version/syntax record.
+Not exercised: the full `quick-review`/`deep-review`/`review-fix-loop`/`fix-findings`
+skill bodies end-to-end (this smoke test proves the dispatch primitive, not the skills'
+complete pipelines).
 
 ## Codex as a cross-model reviewer
 
@@ -95,6 +156,32 @@ parallelizes end-to-end (the #93 research report's local `.pi-subagents/` transc
 36ms apart, is the closest available real-run evidence, from a prior unrelated session). Treat
 the call-shape choice as reasoned from primary source plus that transcript evidence, not as a
 freshly executed smoke test.
+
+## Sole-writer invariant under Codex
+
+`findings-schema.md` requires reviewer/verifier/fixer workers to **return** results — never
+write the store themselves. Verified live (see the smoke test above): the `--json` event
+stream shows children resolve inside `collab_tool_call` (`tool: "wait"`) items and their
+content surfaces only inside the **primary** thread's own `agent_message` — "the main thread
+collects the subagent results into its final response" (the #93 report's phrasing) holds
+exactly as described; there is no event type in the stream where a child writes anything
+independently of the primary thread's own response.
+
+This is also **structurally enforced**, not just conventional, for the read-only dimension
+roles: every `review_<dimension>` agent runs `sandbox_mode = "read-only"`, under which no
+filesystem write of any kind is permitted — reviewers/verifiers physically cannot write the
+findings store even if a prompt tried to make them.
+
+The one asymmetric case is `fix-findings`' `fixer` role, which needs `sandbox_mode =
+"workspace-write"` to apply fixes. `workspace-write` confines writes to the session's
+workspace root (plus any directory added via `--add-dir`, per `codex exec --help`); the
+findings store lives under `~/.codex/` (`findings-schema.md`: "central dir under the
+runtime's own config home"), which sits **outside** the workspace root for any review
+target repo. So the invariant holds for the fixer too, as long as the orchestrator never
+passes `--add-dir` covering `~/.codex/` (or wherever `$CODEX_HOME` resolves) — do not do
+that. This was reasoned from `codex exec --help`'s documented `--add-dir` semantics and the
+`sandbox_mode` enum in `codex/config.toml`, not from a live test of a fixer attempting (and
+failing) to write outside the workspace — flag that gap rather than asserting it as tested.
 
 ## Sole-writer invariant under Pi
 
