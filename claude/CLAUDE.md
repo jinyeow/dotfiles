@@ -14,6 +14,51 @@ Codex CLI follow the same rules. Everything below is Claude-specific.
 - If you are unsure, inspect the codebase instead of inventing patterns
 - When project instructions include test or lint commands, run them before finishing
 
+## Code intelligence tools
+
+For code navigation and edits, split by capability — but the built-in `LSP` tool only covers
+what has a language-server *plugin* actually enabled (`claude plugin list`), which today is
+just `csharp-lsp` and `lua-lsp`. There is no marketplace plugin for PowerShell, Python, Go,
+TypeScript, Zig, Gleam, or Bicep, so `LSP` errors outright on those files — Serena's read tools
+are the only working option there, not a redundant fallback. This is documentation-only
+guidance, not a `permissions.deny` block: a hard block would need to be file-extension-aware
+(a `PreToolUse` hook), since blocking Serena's read tools globally would leave those languages
+with no working read path at all.
+
+- **Reading, `.cs`/`.lua` files**: prefer the built-in `LSP` tool (go-to-definition,
+  find-references, hover, symbol overview, call hierarchy) — no separate process, no
+  downloaded binaries. Serena's equivalent read tools (`find_symbol`, `find_declaration`,
+  `find_referencing_symbols`, `find_implementations`, `get_symbols_overview`) are redundant
+  there.
+- **Reading, everything else** (PowerShell, Python, Go, TypeScript, Zig, Gleam, Bicep, …):
+  no `LSP`-tool backend exists — use Serena's read tools.
+- **Editing** (symbol-scoped rename/replace/insert/delete), any language: use Serena's
+  `rename_symbol`, `replace_symbol_body`, `insert_before_symbol`, `insert_after_symbol`,
+  `safe_delete_symbol` — the built-in `LSP` tool has no edit operations. Trust level is
+  language-dependent (checked 2026-08-12): reliable on **C#**, **PowerShell**, **Python**;
+  treat **Go**/**TypeScript** results with suspicion (both have had Windows-specific
+  silent-failure issues upstream — an empty result can mean the backend died, not that
+  there's nothing to find); never use on **Zig** (its `zls` backend hard-errors on Windows);
+  **Bicep** has no Serena backend at all.
+- **Always re-diff after a Serena edit** before treating it as done — its issue tracker
+  documents cases where a rename reports success while silently omitting edits in files
+  that weren't already open.
+- `get_diagnostics_for_file`, `search_for_pattern`, `read_file`, `list_dir`, `find_file`,
+  `replace_content`, `replace_in_files`, `create_text_file`, and Serena's project-memory
+  tools (`write_memory`/`read_memory`/`list_memories`) have no `LSP`-tool equivalent and
+  stay available regardless of language.
+- Only the user-scope `serena` MCP (from `setup.ps1 -Module serena`, tools namespaced
+  `mcp__serena__*`) is installed — the plugin-managed `serena@claude-plugins-official`
+  duplicate was uninstalled (2026-08-12) after it turned out to be the actual source of
+  cross-repo startup errors: its live `git+main` pull had migrated Serena's project-config
+  schema (`languages:` → `language_servers:`) ahead of the pinned `uv tool install`
+  (v1.6.1), so any `.serena/project.yml` the plugin last touched fatal-errored the pinned
+  server with `KeyError: 'languages'` on activation — not scoped to one project, since
+  `--project-from-cwd` loads the whole global registry (`~/.serena/serena_config.yml`) on
+  every startup, so one stale entry broke every directory. Fixed by adding both keys to the
+  affected `project.yml` files; if a `KeyError` on activation recurs, check the file's schema
+  against both key names before assuming the install is broken.
+
 ## Auto-memory hygiene
 
 Auto-memory (the `~/.claude/projects/<slug>/memory/` store auto-loaded via `MEMORY.md`) is
