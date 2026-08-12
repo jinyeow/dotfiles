@@ -14,6 +14,30 @@ Codex CLI follow the same rules. Everything below is Claude-specific.
 - If you are unsure, inspect the codebase instead of inventing patterns
 - When project instructions include test or lint commands, run them before finishing
 
+## Code intelligence tools
+
+For code navigation and edits, split by capability rather than picking one tool for everything:
+
+- **Reading** (go-to-definition, find-references, hover, symbol overview, call hierarchy):
+  use the built-in `LSP` tool. It has no separate process to manage and no bundled/downloaded
+  binaries, so it is the reliable default. Serena's equivalent read tools
+  (`find_symbol`, `find_declaration`, `find_referencing_symbols`, `find_implementations`,
+  `get_symbols_overview`) are denied in `settings.json` so this isn't just a preference —
+  calling them fails, forcing the `LSP` tool instead.
+- **Editing** (symbol-scoped rename/replace/insert/delete): use Serena's
+  `rename_symbol`, `replace_symbol_body`, `insert_before_symbol`, `insert_after_symbol`,
+  `safe_delete_symbol` — the built-in `LSP` tool has no edit operations. Trust level is
+  language-dependent (checked 2026-08-12): reliable on **C#**, **PowerShell**, **Python**;
+  treat **Go**/**TypeScript** results with suspicion (both have had Windows-specific
+  silent-failure issues upstream — an empty result can mean the backend died, not that
+  there's nothing to find); never use on **Zig** (its `zls` backend hard-errors on Windows);
+  **Bicep** has no Serena backend at all.
+- **Always re-diff after a Serena edit** before treating it as done — its issue tracker
+  documents cases where a rename reports success while silently omitting edits in files
+  that weren't already open.
+- `get_diagnostics_for_file` and Serena's project-memory tools (`write_memory`/`read_memory`/
+  `list_memories`) have no `LSP`-tool equivalent and stay available.
+
 ## Subagent Orchestration
 
 See `AGENTS.md` → "Subagent Orchestration" for the tool-agnostic parallel-dispatch default; the rest below is Claude Code-specific.
