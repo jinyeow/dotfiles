@@ -28,9 +28,10 @@ Two tickets, one per target runtime, both blocked-by #101:
 Pi goes first: its `tools:` allowlist is the same grain as Claude's existing per-tool
 restrictions, making it the lower-risk runtime to prove out the new `_shared/` location
 and the general portable-review-skill shape. Codex's coarser sandbox/MCP-server scoping
-is real design work, better done second against an already-proven `_shared/`, and Codex
-separately carries an unconfirmed minimum-CLI-version/invocation-syntax risk
-(`codex/README.md:83`) that would otherwise compound with the `_shared/` relocation.
+is real design work, better done second against an already-proven `_shared/`, and at
+decision time Codex separately carried an unconfirmed minimum-CLI-version/invocation-syntax
+risk (since closed by the #116 smoke test — see codex/README.md, "Confirmed minimum version
+and invocation syntax") that would otherwise have compounded with the `_shared/` relocation.
 
 ## Rejected alternatives
 
