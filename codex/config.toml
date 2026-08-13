@@ -39,7 +39,8 @@ hooks = true
 # `description`, and `nickname_candidates` — per-role `sandbox_mode` / `developer_instructions`
 # / `mcp_servers` keys are silently DROPPED. The read-only/write-access intent below is carried
 # only in `description` (model-visible spawn guidance, not runtime-enforced); real enforcement
-# is the orchestrating session's own top-level `sandbox_mode` above. See
+# is the orchestrating session's own top-level `sandbox_mode` above — which may itself be
+# `workspace-write`, in which case nothing enforces a reviewer's read-only posture. See
 # ai-agents/skills/deep-review/DISPATCH.md (Codex CLI section) for the full schema evidence.
 [agents.review_correctness]
 description = """

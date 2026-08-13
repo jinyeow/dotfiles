@@ -19,7 +19,8 @@ skills is implemented by #116 (per
 `docs/adr/portable-review-skills-migration-sequencing.md`): `[agents.<name>]` role tables in
 `codex/config.toml` are description-only spawn guidance — per-role `sandbox_mode`/
 `developer_instructions`/`mcp_servers` are unsupported at codex-cli 0.147.0, so enforcement
-is the orchestrating session's own top-level `sandbox_mode` — see
+is the orchestrating session's own top-level `sandbox_mode` — which may itself be
+`workspace-write`, in which case nothing enforces a reviewer's read-only posture — see
 `ai-agents/skills/deep-review/DISPATCH.md` for the schema evidence; the orchestrator's
 findings-store write path on Codex hosts remains an open gap.
 

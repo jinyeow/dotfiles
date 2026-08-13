@@ -114,7 +114,8 @@ as `[agents.<name>]` tables in `config.toml`, resolved by name as `agent_type` �
 `ai-agents/skills/deep-review/DISPATCH.md` (Codex CLI section) for the full mapping.
 Per-role `sandbox_mode`/`developer_instructions`/`mcp_servers` are unsupported at the
 pinned codex-cli 0.147.0 (`description` is the only working per-role channel); real
-enforcement is the orchestrating session's own top-level `sandbox_mode` — see
+enforcement is the orchestrating session's own top-level `sandbox_mode` — which may itself
+be `workspace-write`, in which case nothing enforces a reviewer's read-only posture — see
 DISPATCH.md for the schema evidence and the live test that confirmed table names
 resolve as `agent_type`. Not exercised by this smoke test: the four skills' complete
 pipelines end-to-end, named custom roles, or per-role sandbox enforcement — only the

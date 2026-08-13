@@ -236,9 +236,11 @@ dimension, restricted to that dimension's read-only tool allowlist
 Pi. Pi's per-dimension scoping is expressed via `pi-subagents`' `tools:` frontmatter; Codex's
 `[agents.<name>]` tables in `codex/config.toml` carry description-only spawn guidance —
 per-role `sandbox_mode`/`mcp_servers` are unsupported at codex-cli 0.147.0, so enforcement
-is the orchestrating session's own top-level `sandbox_mode` — dispatched through Codex's
-native `spawn_agent` tool; see DISPATCH.md for the schema evidence and what the Codex smoke
-test actually confirmed (the `spawn_agent` dispatch primitive, not per-role scoping).
+is the orchestrating session's own top-level `sandbox_mode` (which may itself be
+`workspace-write`, in which case nothing enforces a reviewer's read-only posture) —
+dispatched through Codex's native `spawn_agent` tool; see DISPATCH.md for the schema
+evidence and what the Codex smoke test actually confirmed (the `spawn_agent` dispatch
+primitive, not per-role scoping).
 `codex-review` is the standalone lightweight Codex second-opinion pass and stays
 Claude-native.
 
