@@ -35,24 +35,15 @@ hooks = true
 # feature's `spawn_agent` tool with `agent_type: "review_<dimension>"`. See
 # ai-agents/skills/deep-review/DISPATCH.md (Codex CLI section) for the dispatch shape.
 #
-# At the pinned codex-cli 0.147.0 (rust-v0.147.0), an `[agents.<name>]` table only
-# recognizes `config_file`, `description`, and `nickname_candidates` — codex-rs's
-# `config.schema.json` defines `AgentRoleToml` with `additionalProperties: false` limited
-# to those three, and `agent_roles.rs`'s `AgentRoleConfig` carries only the same three.
-# Per-role `sandbox_mode` / `developer_instructions` / `mcp_servers` keys are silently
-# DROPPED: they do not sandbox a reviewer to read-only, inject charter text, or scope MCP
-# servers. `--strict-config` accepting those keys is not evidence they work — it only
-# validates top-level config keys and accepts arbitrary unknown fields inside an
-# `[agents.<name>]` table. The read-only/write-access intent below is carried only in
-# `description` (model-visible spawn guidance the model can choose to follow, not
-# runtime-enforced) and is otherwise enforced solely by the orchestrating session's own
-# top-level `sandbox_mode` above — there is no per-role enforcement at this version.
-# `config_file` is the schema-documented per-role customization channel, but whether a
-# `config_file` layer honors `sandbox_mode`/`developer_instructions` at spawn time is
-# unverified — do not assume it does.
+# At the pinned codex-cli 0.147.0, an `[agents.<name>]` table only recognizes `config_file`,
+# `description`, and `nickname_candidates` — per-role `sandbox_mode` / `developer_instructions`
+# / `mcp_servers` keys are silently DROPPED. The read-only/write-access intent below is carried
+# only in `description` (model-visible spawn guidance, not runtime-enforced); real enforcement
+# is the orchestrating session's own top-level `sandbox_mode` above. See
+# ai-agents/skills/deep-review/DISPATCH.md (Codex CLI section) for the full schema evidence.
 [agents.review_correctness]
 description = """
-quick-review/deep-review: correctness dimension. Read-only reviewer: apply the
+deep-review: correctness dimension. Read-only reviewer: apply the
 `correctness` charter from ~/.codex/skills/_shared/dimensions.md and the
 ~/.codex/skills/_shared/review-rubric.md bar; report findings only, never edit, write,
 or run commands that mutate state.
@@ -92,7 +83,7 @@ Report findings only, never edit, write, or run commands that mutate state.
 
 [agents.review_conventions]
 description = """
-quick-review/deep-review: conventions dimension. Read-only reviewer: apply the
+deep-review: conventions dimension. Read-only reviewer: apply the
 `conventions` charter from ~/.codex/skills/_shared/dimensions.md and the
 ~/.codex/skills/_shared/review-rubric.md bar, checking against ~/.codex/AGENTS.md.
 Report findings only, never edit, write, or run commands that mutate state.
@@ -100,7 +91,7 @@ Report findings only, never edit, write, or run commands that mutate state.
 
 [agents.review_tests]
 description = """
-quick-review/deep-review: tests dimension. Read-only reviewer: apply the `tests`
+deep-review: tests dimension. Read-only reviewer: apply the `tests`
 charter from ~/.codex/skills/_shared/dimensions.md and the
 ~/.codex/skills/_shared/review-rubric.md bar; report findings only, never edit, write,
 or run commands that mutate state.
