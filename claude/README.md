@@ -38,6 +38,7 @@ not download or change the machine.
 | `settings.json` | `~/.claude/settings.json` | Theme, effort level, editor mode, hooks, statusline, pins `model: "sonnet"` |
 | `CLAUDE.md` | `~/.claude/CLAUDE.md` | Claude-specific instructions; imports `AGENTS.md` via `@AGENTS.md` |
 | `AGENTS.md` | `~/.claude/AGENTS.md` | Shared coding conventions (single source). The `codex` module installs the same file to `~/.codex/AGENTS.md` so Claude Code and Codex CLI agree. See `../codex/README.md`. |
+| `AGENTS.d/` | `~/.claude/AGENTS.d/` | Progressive-disclosure satellite files `AGENTS.md` links out to on demand (e.g. git worktrees, project brain), junctioned whole-dir. Also copied to `~/.codex/AGENTS.d/`. |
 | `statusline-command.sh` | `~/.claude/statusline-command.sh` | Token usage statusline script |
 | `no-claude-session-trailer.sh` | `~/.claude/no-claude-session-trailer.sh` | PreToolUse hook (wired in `settings.json`) that blocks commits carrying the AI session-URL trailer |
 | `inject-handoff.ps1` | `~/.claude/inject-handoff.ps1` | SessionStart hook that injects `.claude/handoff.md` (from the `handoff` skill) into a fresh session |
