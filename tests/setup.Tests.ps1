@@ -739,6 +739,12 @@ Describe 'codex/config.toml agents table' {
             'review_correctness', 'review_security', 'review_performance', 'review_structural',
             'review_architecture', 'review_conventions', 'review_tests', 'review_folded', 'fixer'
         )
+
+        # Exact-multiset check: membership alone would still pass a duplicate
+        # [agents.<name>] table (invalid TOML) or an unexpected extra role.
+        $agentNames.Count | Should -Be $expectedAgents.Count -Because 'no duplicate or unexpected [agents.*] tables'
+        ($agentNames | Select-Object -Unique).Count | Should -Be $agentNames.Count -Because 'no duplicate agent names'
+
         foreach ($name in $expectedAgents) {
             $agentNames | Should -Contain $name
 
