@@ -723,15 +723,16 @@ Describe 'codex/config.toml agents table' {
         # *toml* module in Get-Module -ListAvailable). Falling back to a regex-based
         # section-header extraction, which is not a full TOML parser but does catch the
         # failure mode this test targets: an unbalanced triple-quoted `description = """..."""`
-        # block (odd `"""` count) or a malformed `[agents.<name>]` header.
+        # block (odd `"""` count), a malformed `[agents.<name>]` header, or a role that lost
+        # its whole description block.
         $repoRoot = Split-Path $script:SetupScript -Parent
-        $configPath = Join-Path $repoRoot 'codex\config.toml'
+        $configPath = Join-Path $repoRoot 'codex' 'config.toml'
         $content = Get-Content -LiteralPath $configPath -Raw
 
         $tripleQuoteCount = ([regex]::Matches($content, '"""')).Count
         $tripleQuoteCount % 2 | Should -Be 0
 
-        $agentNames = [regex]::Matches($content, '(?m)^\[agents\.([a-zA-Z0-9_]+)\]$') |
+        $agentNames = [regex]::Matches($content, '(?m)^\[agents\.([a-zA-Z0-9_]+)\]\r?$') |
             ForEach-Object { $_.Groups[1].Value }
 
         $expectedAgents = @(
@@ -740,6 +741,19 @@ Describe 'codex/config.toml agents table' {
         )
         foreach ($name in $expectedAgents) {
             $agentNames | Should -Contain $name
+
+            # Per-role check: the block between this role's header and the next
+            # `[agents.*]` header (or EOF) must contain a non-empty triple-quoted
+            # description. Catches a role whose entire description block (both
+            # delimiters) was deleted, which the global quote-parity count above
+            # would not detect.
+            $blockPattern = "(?ms)^\[agents\.$([regex]::Escape($name))\]\r?\n(.*?)(?=^\[agents\.|\z)"
+            $blockMatch = [regex]::Match($content, $blockPattern)
+            $blockMatch.Success | Should -BeTrue -Because "agents.$name section should exist"
+
+            $descMatch = [regex]::Match($blockMatch.Groups[1].Value, '(?s)description\s*=\s*"""(.*?)"""')
+            $descMatch.Success | Should -BeTrue -Because "agents.$name should have a description block"
+            $descMatch.Groups[1].Value.Trim() | Should -Not -BeNullOrEmpty -Because "agents.$name description should not be empty"
         }
     }
 }
