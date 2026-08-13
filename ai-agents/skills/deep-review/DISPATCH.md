@@ -233,6 +233,28 @@ within its own workspace before drawing a conclusion. Treat this as an open impl
 gap, not a confirmed-working path, until a live orchestrator write against the real store
 location is exercised.
 
+**Root cause identified (2026-08-13): this is a known upstream bug, not a local
+misconfiguration.** Re-ran the same probe shape (`codex exec`, `codex -s workspace-write
+exec`, and `-c sandbox_mode="workspace-write"`, each against both a scratch `CODEX_HOME`
+and the real one) — every variant still reported `sandbox: read-only` in its own banner
+and denied the write, matching the 2026-08-12 result exactly. `codex doctor` on the same
+host reports a healthy `restricted fs + restricted network` sandbox for normal
+interactive use, so the host's sandbox plumbing itself is not broken — only `codex
+exec`'s (and `codex sandbox`'s) workspace-write path is. Found the open upstream report
+matching this exactly: **[openai/codex#34961](https://github.com/openai/codex/issues/34961)**,
+"Windows: `codex exec --sandbox workspace-write` remains read-only" (filed 2026-07-23,
+labels `bug`/`windows-os`/`sandbox`/`exec`, still open as of 2026-08-13, no fix landed).
+Its repro is the same shape as ours: `workspace-write` requested, host process launches
+directly (no external sandbox wrapper), exits 0, but the effective inner sandbox stays
+read-only and the expected file is never created. Consequence for this skill: **the
+config_file per-role discriminating test (spawn a `sandbox_mode = "read-only"` role
+against a `sandbox_mode = "workspace-write"` role and diff their write outcomes) cannot
+be run on Windows at all** — there is no working `workspace-write` baseline on this
+platform to compare a role's write against, so a role-level write denial and a
+host-level write denial are indistinguishable here. Retest on Linux or macOS, where
+`workspace-write` is not known to be broken for `codex exec`, before concluding either
+way whether `config_file` honors per-role `sandbox_mode`.
+
 ## Sole-writer invariant under Pi
 
 `findings-schema.md` requires reviewer/verifier/fixer workers to **return** results — never
