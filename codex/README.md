@@ -33,6 +33,7 @@ conventions in `claude/AGENTS.md` only; re-run the installer to push the copy.
 |---|---|---|
 | `config.toml` | `~/.codex/config.toml` | Model + standalone permissions |
 | `claude/AGENTS.md` (shared) | `~/.codex/AGENTS.md` | Personal conventions (sourced from the claude module) |
+| `claude/AGENTS.d/` (shared) | `~/.codex/AGENTS.d/` | Progressive-disclosure satellite files `AGENTS.md` links out to on demand (sourced from the claude module) |
 | `ai-agents/skills/<name>/` (portable) | `~/.codex/skills/<name>/` | Portable global skills |
 | `codex/skills/<name>/` | `~/.codex/skills/<name>/` | Codex-native skills (win on name collision) |
 | `templates/work-AGENTS.md` | — (manual copy) | Drop into an Azure work repo root as `AGENTS.md` |
@@ -124,7 +125,8 @@ anonymous-subagent dispatch primitive.
 
 Codex's own built-in skills live alongside at `~/.codex/skills/.system/` and are never
 touched by this installer. Claude-specific frontmatter fields (e.g. `disable-model-invocation`)
-are ignored by Codex.
+are ignored by Codex — the per-skill equivalent is a sibling `agents/openai.yaml` with
+`policy: { allow_implicit_invocation: false }` (see `refactor-agents-md` for an example).
 
 "Agent" means two distinct things in Codex's vocabulary. Per-skill identity is an
 `agents/openai.yaml` file nested inside a skill folder — no separate junction needed, the
