@@ -17,9 +17,10 @@ out on Pi via `pi-subagents`' `tools:` frontmatter allowlist (same grain as Clau
 allowlist); see `ai-agents/skills/deep-review/DISPATCH.md`. Codex-native porting of these four
 skills is implemented by #116 (per
 `docs/adr/portable-review-skills-migration-sequencing.md`): `[agents.<name>]` role tables in
-`codex/config.toml` are description-only spawn guidance — per-role `sandbox_mode` scoping is
-unsupported at codex-cli 0.147.0 — dispatched via `spawn_agent`, with the orchestrating
-session's own top-level `sandbox_mode` as the actual enforcement; the orchestrator's
+`codex/config.toml` are description-only spawn guidance — per-role `sandbox_mode`/
+`developer_instructions`/`mcp_servers` are unsupported at codex-cli 0.147.0, so enforcement
+is the orchestrating session's own top-level `sandbox_mode` — see
+`ai-agents/skills/deep-review/DISPATCH.md` for the schema evidence; the orchestrator's
 findings-store write path on Codex hosts remains an open gap.
 
 ## Portable support (`ai-agents/skills/_shared/`)

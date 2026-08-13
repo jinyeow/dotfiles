@@ -111,17 +111,14 @@ proves the `spawn_agent`/`wait` dispatch primitive, not per-role behavior.
 
 Per-dimension custom agents (read-only reviewers, a workspace-write fixer) are declared
 as `[agents.<name>]` tables in `config.toml`, resolved by name as `agent_type` — see
-`ai-agents/skills/deep-review/DISPATCH.md` (Codex CLI section) for the full mapping. At
-the pinned codex-cli 0.147.0 these tables carry identity and `description` only:
-`sandbox_mode`/`developer_instructions`/`mcp_servers` under `[agents.<name>]` are not
-part of the supported schema and are silently dropped, so there is no per-role sandbox
-or MCP scoping — a reviewer's read-only posture is conveyed via `description` (spawn
-guidance the model can follow) and is otherwise bounded only by whatever top-level
-`sandbox_mode` the orchestrating session itself runs under. See DISPATCH.md for the
-schema evidence and the live test that separately confirmed table names resolve as
-`agent_type`. Not exercised by this smoke test: the four skills' complete pipelines
-end-to-end, named custom roles, or per-role sandbox enforcement — only the underlying
-anonymous-subagent dispatch primitive.
+`ai-agents/skills/deep-review/DISPATCH.md` (Codex CLI section) for the full mapping.
+Per-role `sandbox_mode`/`developer_instructions`/`mcp_servers` are unsupported at the
+pinned codex-cli 0.147.0 (`description` is the only working per-role channel); real
+enforcement is the orchestrating session's own top-level `sandbox_mode` — see
+DISPATCH.md for the schema evidence and the live test that confirmed table names
+resolve as `agent_type`. Not exercised by this smoke test: the four skills' complete
+pipelines end-to-end, named custom roles, or per-role sandbox enforcement — only the
+underlying anonymous-subagent dispatch primitive.
 
 Codex's own built-in skills live alongside at `~/.codex/skills/.system/` and are never
 touched by this installer. Claude-specific frontmatter fields (e.g. `disable-model-invocation`)
