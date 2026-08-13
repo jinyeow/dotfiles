@@ -931,6 +931,9 @@ function Install-Claude {
     # Shared coding conventions. CLAUDE.md imports this via `@AGENTS.md` (resolves to
     # ~/.claude/AGENTS.md). The codex module installs the same source to ~/.codex/AGENTS.md.
     New-FileSymlink -Link (Join-Path $claudeDir 'AGENTS.md') -Target (Join-Path $Dotfiles 'claude\AGENTS.md')
+    # Progressive-disclosure satellite files AGENTS.md links out to on demand (e.g. git worktrees,
+    # project brain) — junctioned whole-dir like output-styles/agents so the links resolve live.
+    New-Junction -Link (Join-Path $claudeDir 'AGENTS.d') -Target (Join-Path $Dotfiles 'claude\AGENTS.d')
     New-FileSymlink -Link (Join-Path $claudeDir 'statusline-command.sh') -Target (Join-Path $Dotfiles 'claude\statusline-command.sh')
     # PreToolUse hook wired in settings.json; blocks commits carrying the AI session-URL trailer.
     New-FileSymlink -Link (Join-Path $claudeDir 'no-claude-session-trailer.sh') -Target (Join-Path $Dotfiles 'claude\no-claude-session-trailer.sh')
@@ -1236,6 +1239,16 @@ function Install-Codex {
         Source = Join-Path $Dotfiles 'claude\AGENTS.md'
     }
     Copy-Dotfile @params
+
+    # Progressive-disclosure satellite files AGENTS.md links out to on demand. Codex has no
+    # directory-junction path for this dir (config.toml/AGENTS.md are copied, not symlinked),
+    # so copy each file individually — same as the claude module's AGENTS.d junction covers.
+    $agentsDSrc = Join-Path $Dotfiles 'claude\AGENTS.d'
+    if (Test-Path $agentsDSrc) {
+        foreach ($file in Get-ChildItem -Path $agentsDSrc -File) {
+            Copy-Dotfile -Dest (Join-Path $codexDir "AGENTS.d\$($file.Name)") -Source $file.FullName
+        }
+    }
 
     # 4. Register Codex as a user-scope, read-only MCP reviewer in Claude Code. User-scope MCP
     #    config lives in ~/.claude.json (settings.json does not support mcpServers), so this is

@@ -30,12 +30,7 @@ Codex reads this file directly as `~/.codex/AGENTS.md`.
 
 ## Project brain
 
-Durable cross-repo initiative knowledge (per-initiative `core.md` plus volatile `STATUS.md`, and ADRs/research) lives in a git "brain" repo outside any code repo. Claude Code auto-loads it via a SessionStart hook; Codex has no such hook, so resolve-and-read it manually whenever the session cwd sits in a tracked initiative:
-1. If an ancestor of cwd has `.claude/brain/core.md`, that is the brain (self-contained). Otherwise read `~/.claude/project-brain/brains.json` and pick the entry whose `scope` is the longest ancestor of cwd.
-2. Read that brain's `registry.json`, find the initiative whose `dirs` glob matches cwd, and read its `core.md` and `STATUS.md` (read `research/`, `adr/`, `reports/` only on demand).
-3. If `STATUS.md`'s `updated:` is more than 7 days old, flag that before trusting it.
-
-The full contract (record decisions as ADRs, file research/reports, refresh STATUS, append to the brain log on session close) is in `~/.claude/skills/project-brain/SKILL.md`.
+See [`AGENTS.d/project-brain.md`](AGENTS.d/project-brain.md) — only applies when the session is inside a tracked cross-repo initiative.
 
 ## Prompting downstream models
 
@@ -120,12 +115,7 @@ Applies when proposing or building new agentic-workflow tooling — skills, comm
 
 ## Git worktrees
 
-Applies when the repo uses the **bare-worktree layout**: the parent directory holds `.bare/` plus one directory per branch (e.g. `E:\Personal Projects\dotfiles\{.bare, main}`). **Check before creating a branch** — look for a sibling `.bare/`, or run `git worktree list`. In a normal clone, branch as usual and ignore the rest of this section.
-
-- **A new branch means a new worktree. Never `git checkout -b` inside the `main` worktree.** From the parent dir: `git worktree add ../<branch-dir> -b <branch>` (flatten any `/` in the branch name for the directory), then change the working directory to that worktree and do the work there.
-- **Why:** the point of the layout is that every worktree is a stable, always-available checkout of its branch. `main` must stay on `main` so it remains browsable and buildable while feature work happens elsewhere — and so anything pointing at that path (tooling, another session, a live config) keeps seeing main.
-- **After the PR is merged:** change back to the main worktree → `git pull` → `git worktree remove <dir>` (drops the registration *and* the directory) → **then** delete the branch. That order is forced: git refuses to delete a branch while a worktree still holds it, so the worktree always goes first.
-- **Squash-merged PRs need `-D`, not `-d`.** GitHub's squash-merge rewrites the branch's commits, so `git branch -d` refuses with "not fully merged" even though every change landed. Verify nothing is lost with `git diff main <branch> --stat` (empty ⇒ safe), then force-delete. `git branch -D` is denied by a Claude Code deny hook, so ask me to run that one.
+See [`AGENTS.d/git-worktrees.md`](AGENTS.d/git-worktrees.md) — only applies to repos using the bare-worktree layout.
 
 ## Commits
 
