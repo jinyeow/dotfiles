@@ -717,6 +717,33 @@ Describe 'setup.ps1 codex module shared skills' {
     }
 }
 
+Describe 'codex/config.toml agents table' {
+    It 'defines the expected agents.* roles with well-formed multi-line descriptions' {
+        # No TOML-parsing module is available in this Pester environment (verified: no
+        # *toml* module in Get-Module -ListAvailable). Falling back to a regex-based
+        # section-header extraction, which is not a full TOML parser but does catch the
+        # failure mode this test targets: an unbalanced triple-quoted `description = """..."""`
+        # block (odd `"""` count) or a malformed `[agents.<name>]` header.
+        $repoRoot = Split-Path $script:SetupScript -Parent
+        $configPath = Join-Path $repoRoot 'codex\config.toml'
+        $content = Get-Content -LiteralPath $configPath -Raw
+
+        $tripleQuoteCount = ([regex]::Matches($content, '"""')).Count
+        $tripleQuoteCount % 2 | Should -Be 0
+
+        $agentNames = [regex]::Matches($content, '(?m)^\[agents\.([a-zA-Z0-9_]+)\]$') |
+            ForEach-Object { $_.Groups[1].Value }
+
+        $expectedAgents = @(
+            'review_correctness', 'review_security', 'review_performance', 'review_structural',
+            'review_architecture', 'review_conventions', 'review_tests', 'review_folded', 'fixer'
+        )
+        foreach ($name in $expectedAgents) {
+            $agentNames | Should -Contain $name
+        }
+    }
+}
+
 Describe 'setup.ps1 Codex skill migration' {
     It 'previews removal of obsolete managed Codex skill junctions but preserves unmanaged entries' -Skip:(-not $IsWindows) {
         # ai-agents\codex\skills is Codex's own former native-skills root (issue #71) — the root
