@@ -201,9 +201,15 @@ findings store lives under `~/.codex/` (`findings-schema.md`: "central dir under
 runtime's own config home"), outside the workspace root for any review target repo.
 Live-tested (codex-cli 0.147.0, Windows): a `workspace-write` session with no
 `--add-dir` was denied writing a probe file under `%USERPROFILE%\.codex\` —
-`rejected: blocked by policy`. So the findings-store invariant holds for the fixer as
-long as the orchestrator never passes `--add-dir` covering `~/.codex/` (or wherever
-`$CODEX_HOME` resolves) — do not do that.
+`rejected: blocked by policy`. Given the #34961 root cause documented below — on this
+host `workspace-write` never genuinely engages for `codex exec`/`codex sandbox` at all,
+so every write is denied regardless of `--add-dir` — this denial cannot be told apart
+from that host-level bug: whether it reflects real per-path scoping or is just another
+instance of "everything is effectively read-only" is unverified on Windows. So the
+findings-store invariant holding for the fixer as long as the orchestrator never passes
+`--add-dir` covering `~/.codex/` (or wherever `$CODEX_HOME` resolves) remains an
+untested assumption, not a confirmed conclusion — retest on Linux/macOS before relying
+on it; still avoid passing that `--add-dir` in the meantime as a precaution.
 
 **Open gap — orchestrator's own write path to the store is unconfirmed.** The orchestrating
 Codex session runs under the same top-level `sandbox_mode = "workspace-write"`
