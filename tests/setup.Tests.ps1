@@ -746,7 +746,10 @@ Describe 'codex/config.toml agents table' {
         ($agentNames | Select-Object -Unique).Count | Should -Be $agentNames.Count -Because 'no duplicate agent names'
 
         foreach ($name in $expectedAgents) {
-            $agentNames | Should -Contain $name
+            # Case-sensitive: Should -Contain is case-insensitive, which would let a
+            # case-only rename (e.g. review_tests -> REVIEW_TESTS) pass here despite
+            # breaking Codex's case-sensitive agent_type resolution.
+            ($agentNames -ccontains $name) | Should -BeTrue -Because "agents.$name should exist with exact casing"
 
             # Per-role check: the block between this role's header and the next
             # `[agents.*]` header (or EOF) must contain a non-empty triple-quoted
