@@ -12,7 +12,8 @@ It is independently invocable.
 
 Contracts: the record schema + store discipline are
 [`../_shared/findings-schema.md`](../_shared/findings-schema.md); coding conventions are the
-runtime's own `AGENTS.md` (`~/.claude/AGENTS.md`, `~/.codex/AGENTS.md`, or `~/.pi/AGENTS.md`). Read
+runtime's own `AGENTS.md` (`~/.claude/AGENTS.md`, `~/.codex/AGENTS.md`, or — on Pi, which has no
+installed home-dir copy — the project's own root `AGENTS.md`, read directly). Read
 the schema first — the partition and TDD rules below key off its fields.
 
 ## Quick start
