@@ -35,6 +35,19 @@ Describe 'worktree-janitor skill' {
         $content | Should -Match 'dev\.azure\.com'
     }
 
+    It 'verifies the matched PR head SHA against the branch tip before trusting a merged/completed PR signal' {
+        $content = Get-Content $skillPath -Raw
+        $content | Should -Match 'branch name only, not by commit'
+        $content | Should -Match ([regex]::Escape('git rev-parse "<branch>"'))
+        $content | Should -Match 'stale'
+    }
+
+    It 'verifies merge-base ancestry before trusting git branch -d as a safety signal' {
+        $content = Get-Content $skillPath -Raw
+        $content | Should -Match ([regex]::Escape('git merge-base --is-ancestor "<branch>" main'))
+        $content | Should -Match 'not a sufficient safety signal'
+    }
+
     It 'falls back to the project-brain STATUS.md when a worktree has no remote' {
         $content = Get-Content $skillPath -Raw
         $content | Should -Match 'No remote'

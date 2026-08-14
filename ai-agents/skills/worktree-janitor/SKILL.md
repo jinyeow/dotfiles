@@ -42,12 +42,19 @@ worktree/branch once its merge/completion status (or, for local-only work, its p
 
 2. **Per remaining worktree, resolve a merge/completion signal — remote first.**
    - Has a remote? Run `git remote get-url origin` in that worktree and route by host:
-     - `github.com` → `gh pr list --state merged --head <branch>` — a result means the branch
-       merged.
+     - `github.com` → `gh pr list --state merged --head <branch>` — a result means *a* PR from
+       that branch name merged.
      - `dev.azure.com` / `visualstudio.com` → `az repos pr list --status completed
-       --source-branch <branch>` — a non-empty result means the PR completed.
-   - Treat a merged/completed PR as the primary, harder-evidence signal — prefer it over the
-     `STATUS.md` fallback below even if both happen to be present.
+       --source-branch <branch>` — a non-empty result means *a* PR from that source branch
+       completed.
+   - **Both queries match by branch name only, not by commit** — a reused branch name with an
+     old merged/completed PR gives a false "merged" signal for new, unrelated commits pushed to
+     that name afterward. Before treating either result as the signal, confirm the matched
+     PR's head/source commit SHA equals the branch's current local tip
+     (`git rev-parse "<branch>"`). If they differ, the matched PR is stale — treat it as no
+     signal and fall through to step 3.
+   - Treat a merged/completed PR (with a matching head SHA) as the primary, harder-evidence
+     signal — prefer it over the `STATUS.md` fallback below even if both happen to be present.
 
 3. **No remote (local-only work) → fall back to the project-brain `STATUS.md`.** Resolve the
    initiative for that worktree's directory via the `project-brain` skill's resolve-and-read
@@ -65,9 +72,15 @@ worktree/branch once its merge/completion status (or, for local-only work, its p
    - `git pull` — bring `main` current before removing anything.
    - `git worktree remove "<dir>"` — drops the registration and the directory (git refuses to
      delete a branch while a worktree still holds it, so this always goes first).
+   - Before running `-d`, confirm `git merge-base --is-ancestor "<branch>" main` exits `0`.
+     `git branch -d` itself only requires the branch's commits to be reachable from *some*
+     configured upstream — it can exit successfully without the branch actually being merged
+     into `main`, so its own exit code is not a sufficient safety signal on its own. If the
+     ancestor check fails, treat this the same as `-d`'s refusal in step 6, not as "already
+     safe."
    - `git branch -d "<branch>"` (non-force). This succeeds for a normal/fast-forward merge and
      is itself fully automated — no confirmation needed once step 2–4 already established
-     safety.
+     safety and the ancestor check above passed.
 
    **Quote every dynamic path or branch name.** `<dir>` and `<branch>` are values you
    substitute in per worktree — always wrap them in double quotes (PowerShell string quoting,
