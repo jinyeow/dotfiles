@@ -31,7 +31,7 @@ conventions in `claude/AGENTS.md` only; re-run the installer to push the copy.
 
 | File / Directory | Installed to | Notes |
 |---|---|---|
-| `config.toml` | `~/.codex/config.toml` | Model + standalone permissions |
+| `config.toml` | `~/.codex/config.toml` | Model + standalone permissions; also registers the `bicep` MCP server (`[mcp_servers.bicep]`, `Azure.Bicep.McpServer` via `dnx`) for diagnostics, formatting, decompile, resource-type schemas, and best-practices lookup — no symbol navigation |
 | `claude/AGENTS.md` (shared) | `~/.codex/AGENTS.md` | Personal conventions (sourced from the claude module) |
 | `claude/AGENTS.d/` (shared) | `~/.codex/AGENTS.d/` | Progressive-disclosure satellite files `AGENTS.md` links out to on demand (sourced from the claude module) |
 | `ai-agents/skills/<name>/` (portable) | `~/.codex/skills/<name>/` | Portable global skills |
