@@ -141,9 +141,10 @@ and the summary is printed.
 - **Model.** On Claude Code, standalone reviewers may run on Fable for a light pass; invoked from
   `review-fix-loop`, they inherit its reviewer constraint — **Opus or Sonnet, never Fable** unless
   the user explicitly asks. Other runtimes select reviewer models through their own defaults —
-  no equivalent pin is defined yet. `--reviewers` overrides the default on any runtime
-  ([`../_shared/reviewer-models.md`](../_shared/reviewer-models.md) documents the Claude/Codex-MCP
-  alias table); it is reviewer-only and never changes which model a fixer runs on.
+  no equivalent pin is defined yet. `--reviewers` overrides the default on any runtime with a wired
+  resolution ([`../_shared/reviewer-models.md`](../_shared/reviewer-models.md) documents the
+  Claude/Codex-MCP alias table; currently a no-op on Codex CLI); it is reviewer-only and never
+  changes which model a fixer runs on.
 - **Sole writer.** Workers return findings; you write the store. This is what makes parallel
   reviewers safe without locks (findings-schema.md; DISPATCH.md verifies this holds under Pi's
   actual completion-signal mechanism).

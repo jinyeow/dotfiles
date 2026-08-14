@@ -90,7 +90,8 @@ loop's own gate, rails, or store handling.
 - **Reviewer model.** On Claude Code, the review child runs on **Opus or Sonnet — never Fable**
   unless the user explicitly asks. (Fable is fine for a standalone light review or the plan stage, but
   not for this automated find-and-commit loop.) Other runtimes select through their own defaults — no
-  equivalent pin is defined yet. `--reviewers` overrides the default on any runtime —
+  equivalent pin is defined yet. `--reviewers` overrides the default on any runtime with a wired
+  resolution (currently a no-op on Codex CLI) —
   [`../_shared/reviewer-models.md`](../_shared/reviewer-models.md).
 - **Fixer model.** On Claude Code, fixers apply and commit code, so they stay pinned regardless of
   `--reviewers`: **Opus 4.8 / 4.7 / 4.6, or Sonnet 5 (or lower) — never Opus 5, never Fable**, for now,

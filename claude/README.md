@@ -233,9 +233,14 @@ cycle and loops to a deterministic clean gate — `quick-review` by default, `de
 fixers stay pinned). On Claude Code the fan-out dispatches one `Agent` tool call per reviewer
 dimension, restricted to that dimension's read-only tool allowlist
 (`ai-agents/skills/deep-review/DISPATCH.md`); the same four skills also project to Codex CLI and
-Pi, with Pi's per-dimension scoping expressed via `pi-subagents`' `tools:` frontmatter (see
-DISPATCH.md). `codex-review` is the standalone lightweight Codex second-opinion pass and stays
-Claude-native.
+Pi. Pi's per-dimension scoping is expressed via `pi-subagents`' `tools:` frontmatter; Codex's
+`[agents.<name>]` tables in `codex/config.toml` carry description-only spawn guidance — per-role
+`sandbox_mode`/`mcp_servers` turned out unsupported at codex-cli 0.147.0 and are silently
+dropped, so enforcement is the orchestrating session's own top-level `sandbox_mode`, not
+per-dimension — dispatched through Codex's native `spawn_agent` tool; see DISPATCH.md for both,
+including what the Codex smoke test actually confirmed (the `spawn_agent` dispatch primitive,
+not per-role scoping). `codex-review` is the standalone lightweight
+Codex second-opinion pass and stays Claude-native.
 
 `ai-agents/skills/_shared/` is **not a skill** — it holds portable review-support resources
 shared by multiple skills, projected alongside them into `~/.claude/skills/_shared/` (and the
@@ -243,8 +248,10 @@ Codex/Pi equivalents): `review-rubric.md` (the merged AGENTS.md + thermo-nuclear
 `dimensions.md` (the 7-dimension registry + charters used whole by `deep-review` and folded to
 three by `quick-review`), `findings-schema.md` (the JSONL finding schema, semantic fingerprint,
 and store discipline shared by the review→fix skills), and `reviewer-models.md` (how
-`--reviewers` resolves aliases + effort and the per-call Codex posture — currently documents only
-the Claude Code / Codex-MCP dispatch surfaces). It has no `SKILL.md`, so the harness ignores it
+`--reviewers` resolves aliases + effort and the per-call Codex-as-MCP posture on Claude Code;
+on Codex CLI itself the flag is currently unwired, so Codex's own defaults apply — see
+`reviewer-models.md`'s Scope note for the mechanism; Pi still has no native equivalent). It has
+no `SKILL.md`, so the harness ignores it
 as a skill; `claude/skills/codex-review/SKILL.md` still reaches it via `../_shared/<file>`,
 resolved at the installed destination. The independent `ai-agents/_shared/` copy (note: not
 `ai-agents/skills/_shared/`) is source-only and may diverge — see `../ai-agents/README.md`.

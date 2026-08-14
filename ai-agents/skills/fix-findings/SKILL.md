@@ -64,7 +64,9 @@ batches / the serial queue with no two concurrent fixers sharing a file.
 
 The orchestrator marks every fix-unit in the batch `fixing` in the store **before** launching fixers
 (so a crash mid-batch leaves visible state). Then dispatch one fixer worker per fix-unit in the
-batch, together when parallel dispatch is available. Each fixer, for its unit:
+batch, together when parallel dispatch is available. How workers are launched per runtime is
+[`../deep-review/DISPATCH.md`](../deep-review/DISPATCH.md) — on Codex, fix-unit fixers dispatch as
+`agent_type: "fixer"`. Each fixer, for its unit:
 
 1. State a one-sentence "why" (the defect being fixed / invariant enforced) before editing.
 2. **TDD gate on `fix_verification`** (if a unit groups findings of mixed types, the strictest

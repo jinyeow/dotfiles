@@ -7,9 +7,21 @@ It defines one thing: how the `--reviewers` argument resolves to real dispatch p
 aliases and its `mcp__codex__codex` MCP tool — the only two dispatch surfaces this contract
 currently covers. It lives under the portable `_shared/` alongside the runtime-neutral
 `dimensions.md` / `findings-schema.md` / `review-rubric.md` because the skills that reference it
-are portable, but its own content is not yet genericized for Codex CLI or Pi — on those runtimes,
-`--reviewers` selects models through the runtime's own defaults, not this table, until a
-Codex/Pi-native equivalent is written.
+are portable, but its own content is not yet genericized for Pi — on that runtime, `--reviewers`
+selects models through the runtime's own defaults, not this table, until a Pi-native equivalent is
+written. **On Codex CLI**, `--reviewers` currently has no wired resolution: Codex's own config
+schema (`AgentsToml`, as of `rust-v0.147.0`) defines `agents.default_subagent_model` and
+`agents.default_subagent_reasoning_effort` as a global default-model/effort pair — the fields
+exist — but this repo's `codex/config.toml` doesn't set them, and nothing in these skills maps a
+`--reviewers` value onto them; it only defines per-role `[agents.<name>]` tables (e.g.
+`agents.review_correctness`), which at this version recognize just `config_file` / `description` /
+`nickname_candidates`, not a model override. Passing `--reviewers` on Codex CLI therefore falls
+back to Codex's global default model/effort — the same as if the flag were never passed. Wiring
+`--reviewers` through `agents.default_subagent_model` / `agents.default_subagent_reasoning_effort`
+is the natural future mechanism — available but unwired today, not nonexistent. The `sol` /
+`codex` external-adapter rows stay Claude-only — Codex CLI has no external Codex adapter to call
+when it is itself the host
+([`../deep-review/DISPATCH.md`](../deep-review/DISPATCH.md)).
 
 **Reviewer-only.** `--reviewers` selects the models for reviewer subagents — the fan-out participants,
 nothing else. It does not select verifier models, and it never

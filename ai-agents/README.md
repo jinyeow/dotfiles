@@ -18,8 +18,11 @@ Claude-native skills and projected support content live in `../claude/skills/`; 
 variants belong in `../codex/skills/`; Pi-native variants remain in `../pi/skills/`.
 
 Codex has no separate top-level agent directory; Codex-specific agent metadata belongs in a
-skill's `agents/openai.yaml`. Pi has no built-in custom-agent directory; use a Pi package or
-extension when a custom agent needs runtime integration.
+skill's `agents/openai.yaml`. The review skills' per-dimension `multi_agent` custom agents
+(a different mechanism — `spawn_agent` role definitions, not skill-level identity) are
+declared as `[agents.<name>]` tables in `codex/config.toml` instead; see
+`ai-agents/skills/deep-review/DISPATCH.md`. Pi has no built-in custom-agent directory; use a
+Pi package or extension when a custom agent needs runtime integration.
 
 Installer projections consume these current source areas. The released historical roots
 `ai-agents/shared/skills/`, `ai-agents/claude/skills/`, and `ai-agents/codex/skills/` remain

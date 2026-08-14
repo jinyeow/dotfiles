@@ -8,8 +8,11 @@ bar; those map it onto dimensions and a store.
 
 Two layers:
 
-- **Layer 1 is the floor** — conformance to `~/.claude/AGENTS.md`. A change that violates it
-  is a finding, full stop.
+- **Layer 1 is the floor** — conformance to the runtime's installed conventions file
+  (`~/.claude/AGENTS.md` on Claude Code, `~/.codex/AGENTS.md` on Codex CLI — both sourced from
+  this repo's `claude/AGENTS.md`, per `codex/README.md`; on Pi, there is no installed home-dir
+  copy, so it is the project's own root `AGENTS.md`, read directly, per this repo's root
+  `AGENTS.md`). A change that violates it is a finding, full stop.
 - **Layer 2 is ambition** — push for structural simplification, not just local cleanup.
   Adapted from Cursor's `thermo-nuclear-code-quality-review`.
 
@@ -19,7 +22,8 @@ Apply both to the diff under review. Default to **findings only** unless the ski
 
 ## Layer 1 — AGENTS.md conformance (the floor)
 
-Check every change against `~/.claude/AGENTS.md`. Flag where the diff breaks these:
+Check every change against the runtime's installed conventions file (see above). Flag where the
+diff breaks these:
 
 - **Surgical changes.** Lines that don't trace to the stated request. Unrelated refactors,
   reformatting, or "improvements" to untouched code. Deletion of unrelated dead code (note it,
