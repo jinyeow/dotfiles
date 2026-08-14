@@ -57,8 +57,9 @@ approves it.
      old merged/completed PR gives a false "merged" signal for new, unrelated commits pushed to
      that name afterward. Before treating either result as the signal, confirm the matched
      PR's head/source commit SHA equals the branch's current local tip
-     (`git rev-parse "<branch>"`). If they differ, the matched PR is stale — treat it as no
-     signal and fall through to step 3.
+     (`git rev-parse "refs/heads/<branch>"` — fully-qualified so a same-named tag can't resolve
+     ahead of the branch). If they differ, the matched PR is stale — treat it as no signal and
+     fall through to step 3.
    - Treat a merged/completed PR (with a matching head SHA) as the primary, harder-evidence
      signal — prefer it over the `STATUS.md` fallback below even if both happen to be present.
 
@@ -85,8 +86,10 @@ approves it.
    anything, then clean up fully automated:**
    - Switch to the **main** worktree.
    - `git pull` — bring `main` current before removing anything.
-   - Confirm `git merge-base --is-ancestor "<branch>" main` exits `0` **before** running
-     `git worktree remove` — not just before `git branch -d`. The step 2 merge/completion
+   - Confirm `git merge-base --is-ancestor "refs/heads/<branch>" "refs/heads/main"` exits `0`
+     **before** running `git worktree remove` — not just before `git branch -d`.
+     Fully-qualified refs so a same-named tag can't resolve ahead of either branch. The step 2
+     merge/completion
      signal (`gh pr list` / `az repos pr list`) only proves *a* PR from that branch name merged
      into *some* target, not specifically `main` — a PR merged into a different base branch
      (e.g. `develop`) would otherwise let the worktree get removed before anything catches it.
@@ -115,9 +118,10 @@ approves it.
    squash-merge rewrites the branch's commits, so the branch's tip is never an ancestor of
    `main` even though every change landed — this is also where a merge/completion signal that
    matched a PR into a different base branch (not `main`) ends up. Verify nothing is lost:
-   `git diff main "<branch>" --stat` — **empty** output means every change already landed on
-   `main`, so it is safe to remove: `git worktree remove "<dir>"` (same dirty-refusal handling
-   as step 5), then add the branch to the batched `-D` list below — `git branch -d` would still
+   `git diff "refs/heads/main" "refs/heads/<branch>" --stat` (fully-qualified so a same-named
+   tag can't resolve ahead of either branch) — **empty** output means every change already
+   landed on `main`, so it is safe to remove: `git worktree remove "<dir>"` (same dirty-refusal
+   handling as step 5), then add the branch to the batched `-D` list below — `git branch -d` would still
    refuse on it since the ancestor check failed. **Non-empty** output means real, unlanded
    divergence — stop, surface the diff to the user, and do not remove the worktree or add that
    branch to the batch.
@@ -143,8 +147,8 @@ for any pending squash-merged branches — or state there were none.
 | Proposed removing `main` or the bare entry | Step 1 excludes bare, main, detached, and `.claude/worktrees/` entries before anything else runs |
 | Ran `git branch -D` directly | Never — always print the batched command for the user; the hook denies it for a reason |
 | Deleted a branch on a guess when no PR/STATUS signal existed | Step 4 is mandatory: prompt and wait for explicit approval |
-| Worktree removed before confirming the branch actually merged into `main` | Step 5 runs `git merge-base --is-ancestor "<branch>" main` *before* `git worktree remove` — the step 2 PR/completion signal only proves a merge into *some* target, not specifically `main` |
-| Ancestor check failure treated as "unmerged, leave it" without checking | Squash merges always fail the ancestor check; verify with `git diff main "<branch>" --stat` — empty ⇒ safe to remove and batch for `-D`, non-empty ⇒ real divergence, stop and surface it to the user |
+| Worktree removed before confirming the branch actually merged into `main` | Step 5 runs `git merge-base --is-ancestor "refs/heads/<branch>" "refs/heads/main"` *before* `git worktree remove` — the step 2 PR/completion signal only proves a merge into *some* target, not specifically `main` |
+| Ancestor check failure treated as "unmerged, leave it" without checking | Squash merges always fail the ancestor check; verify with `git diff "refs/heads/main" "refs/heads/<branch>" --stat` — empty ⇒ safe to remove and batch for `-D`, non-empty ⇒ real divergence, stop and surface it to the user |
 
 ## Related
 

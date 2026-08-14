@@ -51,13 +51,15 @@ Describe 'worktree-janitor skill' {
     It 'verifies the matched PR head SHA against the branch tip before trusting a merged/completed PR signal' {
         $content = Get-Content $skillPath -Raw
         $content | Should -Match 'branch name only, not by commit'
-        $content | Should -Match ([regex]::Escape('git rev-parse "<branch>"'))
+        $content | Should -Match ([regex]::Escape('git rev-parse "refs/heads/<branch>"'))
+        $content | Should -Not -Match ([regex]::Escape('git rev-parse "<branch>"'))
         $content | Should -Match 'stale'
     }
 
     It 'verifies merge-base ancestry before trusting git branch -d as a safety signal' {
         $content = Get-Content $skillPath -Raw
-        $content | Should -Match 'merge-base --is-ancestor'
+        $content | Should -Match ([regex]::Escape('git merge-base --is-ancestor "refs/heads/<branch>" "refs/heads/main"'))
+        $content | Should -Not -Match ([regex]::Escape('--is-ancestor "<branch>" main'))
         $content | Should -Match 'not a sufficient safety signal'
     }
 
@@ -111,8 +113,8 @@ Describe 'worktree-janitor skill' {
 
     It 'batches pending squash-merged branches into one printed git branch -D command, never runs it itself' {
         $content = Get-Content $skillPath -Raw
-        $content | Should -Match ([regex]::Escape('git diff main'))
-        $content | Should -Match ([regex]::Escape('--stat'))
+        $content | Should -Match ([regex]::Escape('git diff "refs/heads/main" "refs/heads/<branch>" --stat'))
+        $content | Should -Not -Match ([regex]::Escape('git diff main "'))
         $content | Should -Match 'Do \*\*not\*\* run `git branch -D` yourself'
         $content | Should -Match ([regex]::Escape('git branch -D "branch-a" "branch-b" "branch-c"'))
     }
