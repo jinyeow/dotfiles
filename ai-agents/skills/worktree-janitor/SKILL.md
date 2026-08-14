@@ -63,22 +63,32 @@ worktree/branch once its merge/completion status (or, for local-only work, its p
 5. **Once confirmed safe (by signal or explicit approval), clean up fully automated:**
    - Switch to the **main** worktree.
    - `git pull` — bring `main` current before removing anything.
-   - `git worktree remove <dir>` — drops the registration and the directory (git refuses to
+   - `git worktree remove "<dir>"` — drops the registration and the directory (git refuses to
      delete a branch while a worktree still holds it, so this always goes first).
-   - `git branch -d <branch>` (non-force). This succeeds for a normal/fast-forward merge and is
-     itself fully automated — no confirmation needed once step 2–4 already established safety.
+   - `git branch -d "<branch>"` (non-force). This succeeds for a normal/fast-forward merge and
+     is itself fully automated — no confirmation needed once step 2–4 already established
+     safety.
+
+   **Quote every dynamic path or branch name.** `<dir>` and `<branch>` are values you
+   substitute in per worktree — always wrap them in double quotes (PowerShell string quoting,
+   since this repo's tooling is PowerShell-primary) in every command you run yourself. A
+   worktree path can contain spaces (this repo's own path does, e.g.
+   `E:\Personal Projects\dotfiles\...`), and an unusual branch name can carry shell
+   metacharacters; an unquoted substitution breaks or misparses on either.
 
 6. **`-d` refuses ("not fully merged") → squash-merge case, never force it yourself.**
    GitHub's squash-merge rewrites the branch's commits, so `-d` refuses even though every
-   change landed. Verify nothing is lost: `git diff main <branch> --stat` — **empty** output
+   change landed. Verify nothing is lost: `git diff main "<branch>" --stat` — **empty** output
    means every change already landed on `main`, so it is safe to add the branch to the batched
    `-D` list. **Non-empty** output means real, unlanded divergence (`-d`'s refusal is telling
    the truth) — stop, surface the diff to the user, and do not add that branch to the batch.
    Do **not** run `git branch -D` yourself — it is denied by a Claude Code hook, and forcing a
    branch delete is an outward, irreversible action this skill never takes unilaterally.
    Instead, collect every branch confirmed safe (empty diff) across the whole sweep and, at the
-   end, print one batched command for the user to run themselves:
-   `git branch -D branch-a branch-b branch-c`.
+   end, print one batched command for the user to run themselves, **quoting each branch name in
+   the printed command too** — it is copy-pasted verbatim, so an unquoted name is just as much a
+   risk there as in a command you run yourself:
+   `git branch -D "branch-a" "branch-b" "branch-c"`.
 
 ## Report
 

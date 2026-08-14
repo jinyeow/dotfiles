@@ -51,9 +51,14 @@ Describe 'worktree-janitor skill' {
     It 'fully automates worktree remove and git branch -d for non-squash-merged branches' {
         $content = Get-Content $skillPath -Raw
         $content | Should -Match ([regex]::Escape('git pull'))
-        $content | Should -Match ([regex]::Escape('git worktree remove <dir>'))
-        $content | Should -Match ([regex]::Escape('git branch -d <branch>'))
+        $content | Should -Match ([regex]::Escape('git worktree remove "<dir>"'))
+        $content | Should -Match ([regex]::Escape('git branch -d "<branch>"'))
         $content | Should -Match 'fully automated'
+    }
+
+    It 'instructs quoting every dynamic path or branch name in both executed and printed commands' {
+        $content = Get-Content $skillPath -Raw
+        $content | Should -Match 'Quote every dynamic path or branch name'
     }
 
     It 'batches pending squash-merged branches into one printed git branch -D command, never runs it itself' {
@@ -61,7 +66,7 @@ Describe 'worktree-janitor skill' {
         $content | Should -Match ([regex]::Escape('git diff main'))
         $content | Should -Match ([regex]::Escape('--stat'))
         $content | Should -Match 'Do \*\*not\*\* run `git branch -D` yourself'
-        $content | Should -Match ([regex]::Escape('git branch -D branch-a branch-b branch-c'))
+        $content | Should -Match ([regex]::Escape('git branch -D "branch-a" "branch-b" "branch-c"'))
     }
 
     It 'treats an empty squash-merge diff as safe to batch and a non-empty diff as unlanded divergence to stop on' {
