@@ -45,3 +45,6 @@ testResults.xml
 .font-glyph-test.png
 .font-liga-test.html
 .font-liga-test.png
+
+# Pi subagent runtime artifacts (worker/reviewer transcripts, progress logs)
+.pi-subagents/
