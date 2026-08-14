@@ -1003,6 +1003,15 @@ exit /b $ExitCode
     }
 }
 
+Describe 'setup.ps1 biceptools module' {
+    It 'names the dotnet global tool package in a dry run' {
+        $output = & pwsh -NoProfile -File $script:SetupScript -Module biceptools -DryRun 2>&1 | Out-String
+        $LASTEXITCODE | Should -Be 0
+        $output | Should -Match 'dotnet tool install --global Azure\.Bicep\.LangServer'
+        $output | Should -Not -Match "Unknown module 'biceptools'"
+    }
+}
+
 Describe 'setup.ps1 -Module ai-agents (composite)' {
     It 'runs the Claude, Codex, and Pi modules in sequence without duplicating any of them' -Skip:(-not $IsWindows) {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-ai-agents-composite-' + [guid]::NewGuid())
