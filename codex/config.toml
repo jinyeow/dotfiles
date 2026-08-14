@@ -30,6 +30,16 @@ project_doc_max_bytes = 32768
 [features]
 hooks = true
 
+# Official Bicep MCP server (Azure.Bicep.McpServer), run via the .NET SDK's `dnx` tool
+# runner. Buys file diagnostics, formatting, decompile, resource-type schemas, and
+# best-practices lookup for .bicep files — not symbol-level go-to-definition/references,
+# which stays out of scope (see .claude/specs/bicep-code-intelligence.md, Track D). Not
+# registered for Claude Code: the Azure MCP plugin's `bicepschema` tool plus the
+# self-authored LSP plugin already cover that ground there.
+[mcp_servers.bicep]
+command = "dnx"
+args = ["-y", "Azure.Bicep.McpServer"]
+
 # Per-dimension custom agents for the portable review skills (quick-review / deep-review /
 # review-fix-loop / fix-findings, ai-agents/skills/). Dispatched via the `multi_agent`
 # feature's `spawn_agent` tool with `agent_type: "review_<dimension>"`. See
