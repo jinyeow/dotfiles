@@ -37,6 +37,17 @@ startup/resume/compact). In any tool, follow this **resolve-and-read** procedure
 3. Read that initiative's `core.md` + `STATUS.md`. Read `research/`, `adr/`, `reports/` only on demand
    (their index is in `core.md`'s map section). If `STATUS.md`'s `updated:` is >7 days old, say so before trusting it.
 
+**Fallback when no dir glob matches (cwd resolves to nothing, or the auto-load hook is silent):** don't
+treat that as "no initiative exists". A follow-up PBI whose work needed no code change in a given repo
+(e.g. a config re-sync, not a file edit) never gets a dedicated worktree/glob there, so a session sitting
+in a repo's default worktree (`main`, `trunk`) will never auto-match even though an initiative already
+covers it. This is common, not an edge case. Before running fresh discovery (a tracker/ADO/Jira search,
+re-deriving context from code) on a request that names an entity — a PBI/ticket number, a named person, a
+resource — or that references prior-session continuity ("last session", "we were working on", "our
+troubleshooting"), grep the brain's `log.md` and `registry.json` (titles + notes) for that keyword first.
+An initiative may already own it under a different key (e.g. a follow-up PBI tracked as a continuation of
+an earlier one's initiative, not its own).
+
 ## Update contract
 
 **On resume (usually automatic):** trust the injected `core.md` + `STATUS.md`; check the staleness date;
@@ -74,7 +85,10 @@ in-repo under `.claude/brain/`):
 3. Key it `<PBI-id>-<slug>` (bare slug if no PBI). Create `initiatives/<id>/` from `templates/` (`core.md`,
    `STATUS.md`, `adr/`, `research/index.md`, `reports/index.md`).
 4. Add a `registry.json` entry: `"<id>": { "title", "status": "active", "dirs": ["<glob>", ...] }`, where
-   each glob matches (`-like`, forward slashes) the cwd of a spanned directory.
+   each glob matches (`-like`, forward slashes) the cwd of a spanned directory. If a later follow-up PBI
+   continues this same initiative under a different ID, append `— aka PBI <id>, <short reason>` to
+   `title` (both here and in `index.md`'s row) rather than leaving the original title as the only
+   findable string — the loading fallback above greps `title`, not just the registry key.
 5. Add a row to the brain's `index.md`; append to `log.md`; commit.
 
 **New area** (a whole new brain, e.g. personal projects): propose the common ancestor as the `scope` root
