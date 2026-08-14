@@ -57,8 +57,8 @@ autocmd({ 'BufNewFile', 'BufRead' }, {
 vim.treesitter.language.register('yaml', 'azure-pipelines')
 
 -- Bicep filetype detection. Unconditional (unlike the bicep LSP, which stays
--- gated on bicep_lsp_path in lsp.lua) so the already-installed Treesitter
--- bicep parser highlights/indents these files even with no server configured.
+-- gated on the `bicep-ls` executable in lsp.lua) so the already-installed
+-- Treesitter bicep parser highlights/indents these files even with no server configured.
 autocmd({ 'BufNewFile', 'BufRead' }, {
   group = augroup,
   pattern = '*.bicep',
