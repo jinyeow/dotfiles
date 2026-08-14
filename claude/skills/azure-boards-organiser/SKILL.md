@@ -145,6 +145,28 @@ Pick the backend per operation, in this order:
 
 ---
 
+## Prose Quality Pass
+
+Before finalizing a **create or substantive-edit** call that writes Description, Acceptance
+Criteria, Repro Steps, or a comment on a PBI, Bug, or Task, run the drafted plain-text
+through the `write` skill first — the same pattern `to-pullrequest` uses for PR bodies
+(see its "Draft the body, then run it through `write`" step).
+
+- Applies to: drafting or editing a PBI/Bug/Task's Description, Acceptance Criteria, Repro
+  Steps, or a comment — `/new-pbi`, `/prepare-pbi`, `/split-pbi`, and any other command that
+  authors this text fresh or substantively rewrites it.
+- Does NOT apply to read-only operations — sprint summaries, WIQL lookups, standup views,
+  `/blocked-work`, `/find-stale` reports — nothing that only reads and reports back.
+- Run `write` on the draft **before presenting it to the user for confirmation/review**, not
+  after. What the user approves must be exactly what gets submitted — never rewrite the text
+  with `write` between approval and the API call.
+- Run `write` on the plain/markdown draft **before** the HTML field handling step above
+  (escaping and wrapping): `write` operates on prose, not on already-escaped HTML.
+- Full ordering: `write` the draft → present it for user confirmation → HTML-escape/wrap →
+  make the create/update API call.
+
+---
+
 ## Critical: Iteration Scoping
 
 **ALWAYS** scope WIQL queries to the current or target iteration unless the user explicitly asks for all sprints.
