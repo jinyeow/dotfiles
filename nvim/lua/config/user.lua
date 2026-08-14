@@ -39,8 +39,7 @@ end
 _G.user_config = {
   profile = profile,
 
-  -- LSP tool paths (full profile only; silently skipped when empty)
-  bicep_lsp_path = '', -- e.g. 'C:/tools/bicep-langserver/Bicep.LangServer.dll'
+  -- LSP tool path (full profile only; silently skipped when empty)
   pwsh_bundle_path = find_pwsh_bundle(),
 
   -- Sunrise/sunset hours used as fallback when OS dark-mode detection fails.

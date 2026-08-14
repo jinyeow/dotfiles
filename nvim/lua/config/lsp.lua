@@ -154,13 +154,12 @@ if vim.fn.executable('lua-language-server') == 1 then
   vim.lsp.enable('lua_ls')
 end
 
--- Bicep (only if path is set). Filetype detection itself is unconditional;
--- see autocmds.lua. bicep-params buffers don't attach yet — adding that
--- filetype (and the bicep-ls PATH gate) is #143's scope.
-if _G.user_config.bicep_lsp_path ~= '' then
+-- Bicep (only if bicep-ls is on PATH, same gate shape as marksman above).
+-- Filetype detection itself is unconditional; see autocmds.lua.
+if vim.fn.executable('bicep-ls') == 1 then
   vim.lsp.config('bicep', {
-    cmd = { 'dotnet', _G.user_config.bicep_lsp_path },
-    filetypes = { 'bicep' },
+    cmd = { 'bicep-ls' },
+    filetypes = { 'bicep', 'bicep-params' },
   })
   vim.lsp.enable('bicep')
 end
