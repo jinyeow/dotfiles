@@ -786,7 +786,7 @@ Describe 'codex/config.toml mcp_servers.bicep table' {
 
         $argsMatch = [regex]::Match($blockMatch.Groups[1].Value, '(?m)^args\s*=\s*\[(.*?)\]')
         $argsMatch.Success | Should -BeTrue -Because 'mcp_servers.bicep should set args'
-        $argsMatch.Groups[1].Value | Should -Match 'Azure\.Bicep\.McpServer'
+        $argsMatch.Groups[1].Value.Trim() | Should -BeExactly '"-y", "Azure.Bicep.McpServer"' -Because 'the -y flag must be present so dnx never prompts interactively and hangs MCP startup'
     }
 }
 
