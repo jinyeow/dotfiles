@@ -179,6 +179,9 @@ Describe 'review skill split' {
         $deepReview | Should -Not -Match ([regex]::Escape('no-op on Codex CLI'))
         $reviewerModels | Should -Match ([regex]::Escape('actionable error'))
         $reviewerModels | Should -Not -Match ([regex]::Escape('no wired resolution'))
+        foreach ($content in @($quickReview, $deepReview, $deepReviewReference, $loop)) {
+            $content | Should -Match ([regex]::Escape('actionable error'))
+        }
     }
 
     It 'keeps --reviewers away from fixer model selection' {
