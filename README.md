@@ -43,9 +43,15 @@ cd $HOME/dotfiles
 .\setup.ps1 -Module all -DryRun  # preview without changes
 ```
 
-Available modules: `neovim`, `vim`, `powershell`, `git`, `bash`, `tig`, `tmux`, `zellij`, `psmux`, `yazi`, `curl`, `claude`, `codex`, `pi`, `ai-agents`, `serena`, `context7`, `fastmail`, `langservers`, `herdr`, `lazygit`, `windowsterminal`, `bat`, `vscode`, `winget`
+Available modules: `neovim`, `vim`, `powershell`, `git`, `bash`, `tig`, `tmux`, `zellij`, `psmux`, `yazi`, `curl`, `claude`, `codex`, `pi`, `ai-agents`, `serena`, `context7`, `fastmail`, `langservers`, `biceptools`, `herdr`, `lazygit`, `windowsterminal`, `bat`, `vscode`, `winget`
 
 `ai-agents` is a composite that runs `claude`, `codex`, and `pi` in sequence (used by `all` instead of listing the three individually); each remains independently invocable on its own.
+
+`biceptools` installs the Bicep language server (`dotnet tool install --global
+Azure.Bicep.LangServer`) so `bicep-ls` is on PATH. Like `langservers`, it depends on a toolchain
+from the curated winget set (here, the .NET SDK) that the `winget` module only prints the
+bootstrap command for — on a bare machine it warns and skips until `winget/packages.ps1` has
+actually been run, then a re-run of `setup.ps1` picks it up.
 
 ### Linux / WSL
 
