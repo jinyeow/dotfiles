@@ -80,7 +80,7 @@ Work the **frontier**: any ticket whose blockers are all done. For a purely line
 
 **Blocked by:** the titles of the tickets that gate this one, or "None — can start immediately".
 
-**Likely files** *(optional)*: files or directories this ticket is predicted to touch.
+**Likely files** *(optional)*: files or directories this ticket is predicted to touch (launcher metadata for worktree-overlap checks — may be stale, not a scope restriction).
 
 - [ ] Acceptance criterion 1
 - [ ] Acceptance criterion 2
@@ -112,7 +112,7 @@ The end-to-end behaviour this ticket makes work, from the user's perspective —
 
 ## Likely files (optional)
 
-Files or directories this ticket is predicted to touch.
+Files or directories this ticket is predicted to touch (launcher metadata for worktree-overlap checks — may be stale, not a scope restriction).
 
 </issue-template>
 
