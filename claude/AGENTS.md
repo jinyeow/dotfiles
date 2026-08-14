@@ -26,7 +26,7 @@ Codex reads this file directly as `~/.codex/AGENTS.md`.
 
 ## Subagent Orchestration
 
-- **Parallel by default**. Decompose independent work across subagents in one message; relay their conclusions, not their file dumps. Claude Code dispatches via its `Agent` tool; Codex CLI's Multi-Agent v2 runtime dispatches via declaratively-defined agents (TOML files under `~/.codex/agents/` or `.codex/agents/`) — same principle, different mechanism per tool.
+- **Parallel by default**. Decompose independent work across subagents in one message; relay their conclusions, not their file dumps. Claude Code dispatches via its `Agent` tool; Codex CLI's Multi-Agent v2 runtime dispatches via `[agents.<name>]` tables in `codex/config.toml` (installed to `~/.codex/config.toml`), resolved by table name as `spawn_agent`'s `agent_type` — same principle, different mechanism per tool.
 
 ## Project brain
 
