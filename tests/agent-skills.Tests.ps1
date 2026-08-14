@@ -115,6 +115,7 @@ Describe 'review skill split' {
         $loop = Get-Content (Join-Path $portableSkills 'review-fix-loop/SKILL.md') -Raw
         $fixFindings = Get-Content (Join-Path $portableSkills 'fix-findings/SKILL.md') -Raw
         $reviewerModels = Get-Content (Join-Path $portableSkills '_shared/reviewer-models.md') -Raw -ErrorAction SilentlyContinue
+        $deepReviewReference = Get-Content (Join-Path $portableSkills 'deep-review/REFERENCE.md') -Raw
         $claudeAdapter = Get-Content (Join-Path $repo 'claude/CLAUDE.md') -Raw
     }
 
@@ -163,6 +164,12 @@ Describe 'review skill split' {
         $reviewerModels | Should -Match 'gpt-5\.6-sol'
         $reviewerModels | Should -Match 'model_reasoning_effort'
         $reviewerModels | Should -Match 'reviewer'
+    }
+
+    It 'flags --reviewers as unsupported on Codex CLI on the reviewer skills Args tables and the loop' {
+        foreach ($content in @($quickReview, $deepReviewReference, $loop)) {
+            $content | Should -Match ([regex]::Escape('unsupported on Codex CLI'))
+        }
     }
 
     It 'keeps --reviewers away from fixer model selection' {
