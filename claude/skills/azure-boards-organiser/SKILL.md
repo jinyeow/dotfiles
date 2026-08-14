@@ -124,10 +124,11 @@ Pick the backend per operation, in this order:
 | Created Date | System.CreatedDate | |
 | Changed Date | System.ChangedDate | |
 | Parent | System.Parent | Work item ID of parent. Queryable but **read-only** — set parentage via `az boards work-item relation add --id <child> --relation-type parent --target-id <parent>`, never through `--fields`. |
-| Time Spent (Completed Work) | Microsoft.VSTS.Scheduling.CompletedWork | Hours (cumulative total — see below) |
+| Completed Work | Microsoft.VSTS.Scheduling.CompletedWork | Hours (cumulative total — see below). Standard Scrum field, visible on Tasks. |
+| Time Spent (PBI form) | Custom.TimeSpent | **PBI/Bug-only custom field, distinct from `CompletedWork`** — this org's PBI form labels it "Time Spent" but it is a separate field, not an alias. Verified via `az devops invoke --area wit --resource workitemtypes --route-parameters type="Product Backlog Item" ...` → `referenceName: Custom.TimeSpent`. Setting `CompletedWork` on a PBI does NOT update this field — set both explicitly if the PBI form's "Time Spent" box needs a value. |
 | Activity | Microsoft.VSTS.Common.Activity | Task: Development/Testing/… |
 
-> **`CompletedWork` is a cumulative total, not an append log.** To "log 2h", read the current value, add 2, write the sum — never overwrite with the delta. See `/log-time`.
+> **`CompletedWork` (and `Custom.TimeSpent`) are cumulative totals, not append logs.** To "log 2h", read the current value, add 2, write the sum — never overwrite with the delta. See `/log-time`.
 
 ---
 
