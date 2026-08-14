@@ -5,7 +5,7 @@ end
 local ss_ok, schemastore = pcall(require, 'schemastore')
 
 -- Cleared augroup so re-sourcing this module replaces its autocmds (LspAttach
--- keymaps, bicep filetype) instead of stacking duplicate handlers.
+-- keymaps) instead of stacking duplicate handlers.
 local augroup = vim.api.nvim_create_augroup('config.lsp', { clear = true })
 
 -- Shared LSP keymaps, attached per buffer on LspAttach
@@ -154,15 +154,10 @@ if vim.fn.executable('lua-language-server') == 1 then
   vim.lsp.enable('lua_ls')
 end
 
--- Bicep (only if path is set)
+-- Bicep (only if path is set). Filetype detection itself is unconditional;
+-- see autocmds.lua. bicep-params buffers don't attach yet — adding that
+-- filetype (and the bicep-ls PATH gate) is #143's scope.
 if _G.user_config.bicep_lsp_path ~= '' then
-  vim.api.nvim_create_autocmd({ 'BufNewFile', 'BufRead' }, {
-    group = augroup,
-    pattern = '*.bicep',
-    callback = function()
-      vim.bo.filetype = 'bicep'
-    end,
-  })
   vim.lsp.config('bicep', {
     cmd = { 'dotnet', _G.user_config.bicep_lsp_path },
     filetypes = { 'bicep' },
