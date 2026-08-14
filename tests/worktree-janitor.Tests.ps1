@@ -58,9 +58,18 @@ Describe 'worktree-janitor skill' {
 
     It 'batches pending squash-merged branches into one printed git branch -D command, never runs it itself' {
         $content = Get-Content $skillPath -Raw
-        $content | Should -Match ([regex]::Escape('git diff main <branch> --stat'))
+        $content | Should -Match ([regex]::Escape('git diff main'))
+        $content | Should -Match ([regex]::Escape('--stat'))
         $content | Should -Match 'Do \*\*not\*\* run `git branch -D` yourself'
         $content | Should -Match ([regex]::Escape('git branch -D branch-a branch-b branch-c'))
+    }
+
+    It 'treats an empty squash-merge diff as safe to batch and a non-empty diff as unlanded divergence to stop on' {
+        $content = Get-Content $skillPath -Raw
+        # empty diff => safe/batch, stated without the "non-" prefix
+        $content | Should -Match '(?<!non-)(?i)\bempty\b[^\n]{0,80}\b(safe|batch)'
+        # non-empty diff => stop/surface to the user, real divergence -- not batched
+        $content | Should -Match '(?i)non-empty[^\n]{0,80}\b(stop|surface|not batch|do not batch|divergence)'
     }
 
     It 'is registered in the root README skills table' {

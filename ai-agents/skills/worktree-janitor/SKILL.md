@@ -70,11 +70,13 @@ worktree/branch once its merge/completion status (or, for local-only work, its p
 
 6. **`-d` refuses ("not fully merged") → squash-merge case, never force it yourself.**
    GitHub's squash-merge rewrites the branch's commits, so `-d` refuses even though every
-   change landed. Verify nothing is lost: `git diff main <branch> --stat` — non-empty output
-   paired with `-d`'s refusal is exactly the squash-merge signature (real changes, but not a
-   fast-forward ancestor). Do **not** run `git branch -D` yourself — it is denied by a Claude
-   Code hook, and forcing a branch delete is an outward, irreversible action this skill never
-   takes unilaterally. Instead, collect every such branch across the whole sweep and, at the
+   change landed. Verify nothing is lost: `git diff main <branch> --stat` — **empty** output
+   means every change already landed on `main`, so it is safe to add the branch to the batched
+   `-D` list. **Non-empty** output means real, unlanded divergence (`-d`'s refusal is telling
+   the truth) — stop, surface the diff to the user, and do not add that branch to the batch.
+   Do **not** run `git branch -D` yourself — it is denied by a Claude Code hook, and forcing a
+   branch delete is an outward, irreversible action this skill never takes unilaterally.
+   Instead, collect every branch confirmed safe (empty diff) across the whole sweep and, at the
    end, print one batched command for the user to run themselves:
    `git branch -D branch-a branch-b branch-c`.
 
@@ -92,7 +94,7 @@ for any pending squash-merged branches — or state there were none.
 | Proposed removing `main` or the bare entry | Step 1 excludes bare, main, detached, and `.claude/worktrees/` entries before anything else runs |
 | Ran `git branch -D` directly | Never — always print the batched command for the user; the hook denies it for a reason |
 | Deleted a branch on a guess when no PR/STATUS signal existed | Step 4 is mandatory: prompt and wait for explicit approval |
-| `-d` failure treated as "unmerged, leave it" without checking | Squash merges always fail `-d`; verify with `git diff main <branch> --stat` before batching for `-D` |
+| `-d` failure treated as "unmerged, leave it" without checking | Squash merges always fail `-d`; verify with `git diff main <branch> --stat` — empty ⇒ safe to batch for `-D`, non-empty ⇒ real divergence, stop and surface it to the user |
 
 ## Related
 
