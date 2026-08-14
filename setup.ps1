@@ -9,7 +9,7 @@
     before being replaced.
 
 .PARAMETER Module
-    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, zellij, psmux, herdr, yazi, curl, claude, codex, pi, ai-agents, serena, context7, fastmail, langservers, lazygit, windowsterminal, bat, vscode, winget, all.
+    One or more modules to install: neovim, vim, powershell, git, bash, tig, tmux, zellij, psmux, herdr, yazi, curl, claude, codex, pi, ai-agents, serena, context7, fastmail, langservers, biceptools, lazygit, windowsterminal, bat, vscode, winget, all.
     'ai-agents' is a composite that runs claude, codex, and pi in sequence; 'all' uses it
     instead of listing the three individually. claude, codex, and pi remain independently
     invocable on their own.
@@ -82,11 +82,15 @@ if ($Module -contains 'all') {
     # nothing — so on a bare machine Volta is absent until winget/packages.ps1 has actually been
     # run; until then langservers warns and skips, and a re-run afterwards picks it up.
     #
+    # 'biceptools' carries the same two-run caveat as 'langservers', against the .NET SDK instead
+    # of Volta (both are part of the curated winget set): it must come after 'winget' and before
+    # 'herdr' (below), which must stay last.
+    #
     # 'ai-agents' replaces individually listing 'claude', 'codex', 'pi': it is the composite
     # module that runs all three in sequence (see Install-AiAgents). Listing both here would run
     # each runtime twice, since $Module is only deduplicated by name, not by the runtimes a
     # composite entry fans out to.
-    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'psmux', 'yazi', 'curl', 'ai-agents', 'serena', 'context7', 'fastmail', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget', 'langservers', 'herdr')
+    $Module = @('neovim', 'vim', 'powershell', 'git', 'bash', 'tig', 'tmux', 'zellij', 'psmux', 'yazi', 'curl', 'ai-agents', 'serena', 'context7', 'fastmail', 'lazygit', 'windowsterminal', 'bat', 'vscode', 'winget', 'langservers', 'biceptools', 'herdr')
 }
 # @() wrapper: `Select-Object -Unique` over an empty array yields $null (and a
 # single value yields a scalar), so without it the `$Module.Count` guard below
@@ -1541,6 +1545,52 @@ function Install-Langservers {
     }
 }
 
+function Install-BicepTools {
+    Write-Host ''
+    Write-Info '=== Bicep tools (language server) ==='
+
+    # Microsoft publishes the Bicep language server as a .NET global tool (learn.microsoft.com/
+    # azure/azure-resource-manager/bicep/install), documented for AI coding tools and other LSP
+    # clients — this is binary-only: it installs bicep-ls and nothing else. Agent registration
+    # (Claude/Codex/Pi) is a separate, later slice; see .claude/specs/bicep-code-intelligence.md.
+    $package = 'Azure.Bicep.LangServer'
+
+    if ($Backup) {
+        Write-Info 'Backup mode — skipping Bicep tools install.'
+        return
+    }
+
+    if ($DryRun) {
+        Write-Info "[DRY RUN] would run: dotnet tool install --global $package"
+        return
+    }
+
+    # Warn and skip, never fail: one missing toolchain must not abort an otherwise good -Module all.
+    # On a bare machine the winget module only PRINTS the .NET SDK bootstrap command — it installs
+    # nothing — so `dotnet` is absent until winget/packages.ps1 has actually been run; a re-run of
+    # this module afterwards picks it up, same as the langservers/Volta two-run caveat.
+    if (-not (Get-Command -Name dotnet -ErrorAction Ignore)) {
+        Write-Warn 'dotnet not found — install the winget module first (the .NET SDK), then re-run this module.'
+        return
+    }
+
+    # Idempotency via `dotnet tool list --global`, not `Get-Command bicep-ls` — a PATH probe
+    # conflates "installed" with "discoverable in this shell", so a rerun in a shell with a stale
+    # PATH would attempt a reinstall of an already-installed tool.
+    $installedTools = & dotnet tool list --global 2>$null | Out-String
+    if ($installedTools -match [regex]::Escape($package.ToLowerInvariant())) {
+        Write-Ok "Bicep language server: $package (already installed)"
+        return
+    }
+
+    & dotnet tool install --global $package
+    if ($LASTEXITCODE -eq 0) {
+        Write-Ok "Bicep language server: installed $package"
+    } else {
+        Write-Fail "dotnet tool install --global $package failed (exit $LASTEXITCODE)."
+    }
+}
+
 function Remove-OldBackups {
     Write-Host ''
     Write-Info '=== Cleaning backups ==='
@@ -1637,6 +1687,7 @@ foreach ($m in $Module) {
         'context7'   { Install-Context7   }
         'fastmail'   { Install-Fastmail   }
         'langservers' { Install-Langservers }
+        'biceptools'  { Install-BicepTools  }
         'lazygit'        { Install-Lazygit        }
         'windowsterminal' { Install-WindowsTerminal }
         default          { Write-Warn "Unknown module '$m' — skipping." }

@@ -1003,6 +1003,103 @@ exit /b $ExitCode
     }
 }
 
+Describe 'setup.ps1 biceptools module' {
+    It 'names the dotnet global tool package in a dry run' {
+        $output = & pwsh -NoProfile -File $script:SetupScript -Module biceptools -DryRun 2>&1 | Out-String
+        $LASTEXITCODE | Should -Be 0
+        $output | Should -Match 'dotnet tool install --global Azure\.Bicep\.LangServer'
+        $output | Should -Not -Match "Unknown module 'biceptools'"
+    }
+
+    It 'warns and skips rather than failing when the .NET toolchain is absent' {
+        # Simulating a missing toolchain means REPLACING PATH with an empty directory, not
+        # shimming something into it (you cannot shim absence) — same technique as langservers.
+        $emptyDir = Join-Path ([IO.Path]::GetTempPath()) ('setup-biceptools-nopath-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $emptyDir -Force | Out-Null
+        $pwshName = if ($IsWindows) { 'pwsh.exe' } else { 'pwsh' }
+        $pwshExe = Join-Path $PSHOME $pwshName
+        $origPath = $env:PATH
+        try {
+            $env:PATH = $emptyDir
+            $output = & $pwshExe -NoProfile -File $script:SetupScript -Module biceptools 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Match 'dotnet not found'
+        } finally {
+            $env:PATH = $origPath
+            Remove-Item -Path $emptyDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    # Both tests above return before the install loop (one at the -DryRun branch, one at the
+    # dotnet guard), so without this the loop itself — the `dotnet tool list --global` idempotency
+    # check and the install exit-code check — is never executed by the suite. Driven against a fake
+    # `dotnet` on a stripped PATH, the same shim technique the langservers suite uses for volta.
+    Context 'install loop, driven against a shimmed dotnet' -Skip:(-not $IsWindows) {
+        BeforeAll {
+            $script:PwshExe = Join-Path $PSHOME 'pwsh.exe'
+
+            # Writes a dotnet.cmd that echoes the args it was handed (so a test can assert WHICH
+            # subcommand ran), reports $AlreadyInstalled via `tool list --global` output, and exits
+            # `tool install --global` with $InstallExitCode. Must be declared `function script:`
+            # inside BeforeAll — a bare `function` in a Context body is not in scope for its It
+            # blocks under Pester 5.
+            function script:New-DotnetShim ([bool]$AlreadyInstalled, [int]$InstallExitCode) {
+                $dir = Join-Path ([IO.Path]::GetTempPath()) ('setup-biceptools-shim-' + [guid]::NewGuid())
+                New-Item -ItemType Directory -Path $dir -Force | Out-Null
+                $listOutput = if ($AlreadyInstalled) {
+                    'echo Package Id                Version      Commands' + "`r`n" +
+                    'echo azure.bicep.langserver     1.0.0        bicep-ls'
+                } else {
+                    'echo Package Id                Version      Commands'
+                }
+                Set-Content -Path (Join-Path $dir 'dotnet.cmd') -Encoding ASCII -Value @"
+@echo off
+echo SHIM-CALLED %*
+if "%1"=="tool" if "%2"=="list" (
+$listOutput
+    exit /b 0
+)
+if "%1"=="tool" if "%2"=="install" (
+    exit /b $InstallExitCode
+)
+exit /b 0
+"@
+                return $dir
+            }
+        }
+
+        It 'skips the install when the package already shows in `dotnet tool list --global`' {
+            $shimDir = New-DotnetShim -AlreadyInstalled $true -InstallExitCode 0
+            $origPath = $env:PATH
+            try {
+                $env:PATH = $shimDir
+                $output = & $script:PwshExe -NoProfile -File $script:SetupScript -Module biceptools 2>&1 | Out-String
+                $LASTEXITCODE | Should -Be 0
+                $output | Should -Match '\(already installed\)'
+                $output | Should -Not -Match 'SHIM-CALLED tool install'
+            } finally {
+                $env:PATH = $origPath
+                Remove-Item -Path $shimDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+
+        It 'reports a failure rather than success when the install exits non-zero' {
+            $shimDir = New-DotnetShim -AlreadyInstalled $false -InstallExitCode 1
+            $origPath = $env:PATH
+            try {
+                $env:PATH = $shimDir
+                $output = & $script:PwshExe -NoProfile -File $script:SetupScript -Module biceptools 2>&1 | Out-String
+                $output | Should -Match 'SHIM-CALLED tool install --global Azure\.Bicep\.LangServer'
+                $output | Should -Match 'dotnet tool install --global Azure\.Bicep\.LangServer failed \(exit 1\)'
+                $output | Should -Not -Match 'installed Azure\.Bicep\.LangServer'
+            } finally {
+                $env:PATH = $origPath
+                Remove-Item -Path $shimDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+}
+
 Describe 'setup.ps1 -Module ai-agents (composite)' {
     It 'runs the Claude, Codex, and Pi modules in sequence without duplicating any of them' -Skip:(-not $IsWindows) {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-ai-agents-composite-' + [guid]::NewGuid())
@@ -1083,6 +1180,17 @@ Describe 'setup.ps1 -Module all' {
         $winget      | Should -BeGreaterThan -1
         $langservers | Should -BeGreaterThan $winget
         $herdr       | Should -BeGreaterThan $langservers
+    }
+
+    It 'runs biceptools after winget (whose curated set carries the .NET SDK) and before herdr' -Skip:(-not $IsWindows) {
+        # Same two ordering constraints as langservers, above, against the .NET SDK instead of Volta.
+        $output = & pwsh -NoProfile -File $script:SetupScript -Module all -DryRun 2>&1 | Out-String
+        $winget     = $output.IndexOf('=== winget packages')
+        $biceptools = $output.IndexOf('=== Bicep tools')
+        $herdr      = $output.IndexOf('=== Herdr')
+        $winget     | Should -BeGreaterThan -1
+        $biceptools | Should -BeGreaterThan $winget
+        $herdr      | Should -BeGreaterThan $biceptools
     }
 }
 
