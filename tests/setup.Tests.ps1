@@ -1181,6 +1181,17 @@ Describe 'setup.ps1 -Module all' {
         $langservers | Should -BeGreaterThan $winget
         $herdr       | Should -BeGreaterThan $langservers
     }
+
+    It 'runs biceptools after winget (whose curated set carries the .NET SDK) and before herdr' -Skip:(-not $IsWindows) {
+        # Same two ordering constraints as langservers, above, against the .NET SDK instead of Volta.
+        $output = & pwsh -NoProfile -File $script:SetupScript -Module all -DryRun 2>&1 | Out-String
+        $winget     = $output.IndexOf('=== winget packages')
+        $biceptools = $output.IndexOf('=== Bicep tools')
+        $herdr      = $output.IndexOf('=== Herdr')
+        $winget     | Should -BeGreaterThan -1
+        $biceptools | Should -BeGreaterThan $winget
+        $herdr      | Should -BeGreaterThan $biceptools
+    }
 }
 
 Describe 'relative reparse-target comparison' {
