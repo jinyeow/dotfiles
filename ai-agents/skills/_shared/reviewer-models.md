@@ -14,7 +14,8 @@ confirmed parameters are `agent_type` and the task only (live-tested against cod
 [`../deep-review/DISPATCH.md`](../deep-review/DISPATCH.md)) — there is no per-call model field.
 The only settable knobs are Codex's global `agents.default_subagent_model` /
 `agents.default_subagent_reasoning_effort`, which are session-wide, not per-invocation — wiring
-`--reviewers` to them was rejected as out of scope
+`--reviewers` to them was rejected because it would mutate model selection for every subsequently
+spawned subagent in that Codex session, not just the review participants
 (`docs/adr/reviewers-flag-unsupported-on-codex-cli.md`).
 When the host runtime is Codex CLI and `--reviewers` is passed, the orchestrating skill must
 refuse it with an actionable error rather than silently falling back to defaults. The `sol` /

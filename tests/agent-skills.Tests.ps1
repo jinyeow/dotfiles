@@ -169,7 +169,10 @@ Describe 'review skill split' {
     It 'flags --reviewers as unsupported on Codex CLI on the reviewer skills Args tables and the loop' {
         foreach ($content in @($quickReview, $deepReviewReference, $loop)) {
             $content | Should -Match ([regex]::Escape('unsupported on Codex CLI'))
+            $content | Should -Not -Match ([regex]::Escape('no-op on Codex CLI'))
         }
+        $reviewerModels | Should -Match ([regex]::Escape('actionable error'))
+        $reviewerModels | Should -Not -Match ([regex]::Escape('no wired resolution'))
     }
 
     It 'keeps --reviewers away from fixer model selection' {
