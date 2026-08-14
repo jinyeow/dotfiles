@@ -175,13 +175,17 @@ Falls back to sunrise/sunset window if detection fails.
 | yamlls | YAML | `setup.ps1/setup.sh -Module langservers` |
 | azure_pipelines_ls | Azure Pipelines YAML | `setup.ps1/setup.sh -Module langservers` |
 | marksman | Markdown | Elsewhere (install manually / via package manager) |
-| bicep | Bicep (requires `bicep_lsp_path` in user.lua) | Elsewhere |
+| bicep | Bicep (requires `bicep_lsp_path` in user.lua) | Binary: `setup.ps1 -Module biceptools` (Windows); Neovim wiring stays manual |
 | powershell_es | PowerShell (requires `pwsh_bundle_path` in user.lua) | Elsewhere |
 | roslyn | C# / .NET (auto-enabled when `dotnet` is on PATH) | `dotnet tool install -g roslyn-language-server --prerelease` |
 
-The first three are the only servers this repo provisions: the `langservers` installer module
+The first three are provisioned by the `langservers` installer module, which
 installs them as npm packages through Volta (`vscode-langservers-extracted` supplies the JSON
-server; the YAML and Azure Pipelines servers are their own packages). Their three
+server; the YAML and Azure Pipelines servers are their own packages). The Bicep server
+*binary* is provisioned on Windows by the `biceptools` module (`Azure.Bicep.LangServer`
+dotnet global tool, providing `bicep-ls`), but its Neovim gate is unchanged: `bicep_lsp_path`
+in `user.lua` must still be set manually (editor wiring is a separate slice of
+`.claude/specs/bicep-code-intelligence.md`). Those three
 `vim.lsp.enable` calls are deliberately **ungated** — JSON and YAML support is baseline, not
 machine-dependent, so a missing binary should produce Neovim's loud spawn-failure warning
 rather than silently degrading schema validation. The remaining servers are gated on a
