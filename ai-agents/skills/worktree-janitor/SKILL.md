@@ -81,20 +81,25 @@ approves it.
    was checked (remote host queried / brain lookup attempted) so the user can decide with full
    context. Never remove a worktree on an assumption when both signals are absent.
 
-5. **Once confirmed safe (by signal or explicit approval), clean up fully automated:**
+5. **Once confirmed safe (by signal or explicit approval), verify main-ancestry before touching
+   anything, then clean up fully automated:**
    - Switch to the **main** worktree.
    - `git pull` — bring `main` current before removing anything.
-   - `git worktree remove "<dir>"` — drops the registration and the directory (git refuses to
-     delete a branch while a worktree still holds it, so this always goes first). If this
-     refuses because the worktree is dirty (uncommitted or untracked changes), that refusal
-     means real local work would be lost — report the worktree and its dirty state to the user
-     and stop there; never escalate to `--force`.
-   - Before running `-d`, confirm `git merge-base --is-ancestor "<branch>" main` exits `0`.
+   - Confirm `git merge-base --is-ancestor "<branch>" main` exits `0` **before** running
+     `git worktree remove` — not just before `git branch -d`. The step 2 merge/completion
+     signal (`gh pr list` / `az repos pr list`) only proves *a* PR from that branch name merged
+     into *some* target, not specifically `main` — a PR merged into a different base branch
+     (e.g. `develop`) would otherwise let the worktree get removed before anything catches it.
      `git branch -d` itself only requires the branch's commits to be reachable from *some*
      configured upstream — it can exit successfully without the branch actually being merged
      into `main`, so its own exit code is not a sufficient safety signal on its own. If the
-     ancestor check fails, treat this the same as `-d`'s refusal in step 6, not as "already
-     safe."
+     ancestor check fails, do not remove the worktree — fall through to step 6 to determine
+     whether it is a squash-merge candidate or needs manual approval.
+   - Ancestor check passed → `git worktree remove "<dir>"` — drops the registration and the
+     directory (git refuses to delete a branch while a worktree still holds it, so this goes
+     before `-d`). If this refuses because the worktree is dirty (uncommitted or untracked
+     changes), that refusal means real local work would be lost — report the worktree and its
+     dirty state to the user and stop there; never escalate to `--force`.
    - `git branch -d "<branch>"` (non-force). This succeeds for a normal/fast-forward merge and
      is itself fully automated — no confirmation needed once step 2–4 already established
      safety and the ancestor check above passed.
@@ -106,12 +111,16 @@ approves it.
    `E:\Personal Projects\dotfiles\...`), and an unusual branch name can carry shell
    metacharacters; an unquoted substitution breaks or misparses on either.
 
-6. **`-d` refuses ("not fully merged") → squash-merge case, never force it yourself.**
-   GitHub's squash-merge rewrites the branch's commits, so `-d` refuses even though every
-   change landed. Verify nothing is lost: `git diff main "<branch>" --stat` — **empty** output
-   means every change already landed on `main`, so it is safe to add the branch to the batched
-   `-D` list. **Non-empty** output means real, unlanded divergence (`-d`'s refusal is telling
-   the truth) — stop, surface the diff to the user, and do not add that branch to the batch.
+6. **Ancestor check failed → squash-merge case, never force it yourself.** GitHub's
+   squash-merge rewrites the branch's commits, so the branch's tip is never an ancestor of
+   `main` even though every change landed — this is also where a merge/completion signal that
+   matched a PR into a different base branch (not `main`) ends up. Verify nothing is lost:
+   `git diff main "<branch>" --stat` — **empty** output means every change already landed on
+   `main`, so it is safe to remove: `git worktree remove "<dir>"` (same dirty-refusal handling
+   as step 5), then add the branch to the batched `-D` list below — `git branch -d` would still
+   refuse on it since the ancestor check failed. **Non-empty** output means real, unlanded
+   divergence — stop, surface the diff to the user, and do not remove the worktree or add that
+   branch to the batch.
    Do **not** run `git branch -D` yourself — it is denied by a Claude Code hook, and forcing a
    branch delete is an outward, irreversible action this skill never takes unilaterally.
    Instead, collect every branch confirmed safe (empty diff) across the whole sweep and, at the
@@ -134,7 +143,8 @@ for any pending squash-merged branches — or state there were none.
 | Proposed removing `main` or the bare entry | Step 1 excludes bare, main, detached, and `.claude/worktrees/` entries before anything else runs |
 | Ran `git branch -D` directly | Never — always print the batched command for the user; the hook denies it for a reason |
 | Deleted a branch on a guess when no PR/STATUS signal existed | Step 4 is mandatory: prompt and wait for explicit approval |
-| `-d` failure treated as "unmerged, leave it" without checking | Squash merges always fail `-d`; verify with `git diff main <branch> --stat` — empty ⇒ safe to batch for `-D`, non-empty ⇒ real divergence, stop and surface it to the user |
+| Worktree removed before confirming the branch actually merged into `main` | Step 5 runs `git merge-base --is-ancestor "<branch>" main` *before* `git worktree remove` — the step 2 PR/completion signal only proves a merge into *some* target, not specifically `main` |
+| Ancestor check failure treated as "unmerged, leave it" without checking | Squash merges always fail the ancestor check; verify with `git diff main "<branch>" --stat` — empty ⇒ safe to remove and batch for `-D`, non-empty ⇒ real divergence, stop and surface it to the user |
 
 ## Related
 

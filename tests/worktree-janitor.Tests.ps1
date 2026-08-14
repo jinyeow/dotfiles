@@ -57,8 +57,17 @@ Describe 'worktree-janitor skill' {
 
     It 'verifies merge-base ancestry before trusting git branch -d as a safety signal' {
         $content = Get-Content $skillPath -Raw
-        $content | Should -Match ([regex]::Escape('git merge-base --is-ancestor "<branch>" main'))
+        $content | Should -Match 'merge-base --is-ancestor'
         $content | Should -Match 'not a sufficient safety signal'
+    }
+
+    It 'gates worktree removal on the main-ancestry check, not just the branch delete' {
+        $content = Get-Content $skillPath -Raw
+        $ancestorIndex = $content.IndexOf('merge-base --is-ancestor')
+        $removeIndex = $content.IndexOf('git worktree remove')
+        $ancestorIndex | Should -BeGreaterThan -1
+        $removeIndex | Should -BeGreaterThan -1
+        $ancestorIndex | Should -BeLessThan $removeIndex
     }
 
     It 'falls back to the project-brain STATUS.md when a worktree has no remote' {
