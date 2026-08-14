@@ -192,9 +192,10 @@ machine-specific prerequisite in `user.lua` (or on `dotnet`) and are installed b
 | Pattern | Filetype |
 |---|---|
 | `*.bicep` | `bicep` |
+| `*.bicepparam` | `bicep-params` |
 | `*.azure-pipelines.yml` / `*.yaml` | `azure-pipelines` |
 
-The `azure-pipelines` filetype has no Treesitter grammar of its own, so `autocmds.lua` registers it against the `yaml` parser (`vim.treesitter.language.register('yaml', 'azure-pipelines')`) — highlighting and indent fall back to YAML while `azure_pipelines_ls` still attaches exclusively via the dedicated filetype.
+The `azure-pipelines` filetype has no Treesitter grammar of its own, so `autocmds.lua` registers it against the `yaml` parser (`vim.treesitter.language.register('yaml', 'azure-pipelines')`) — highlighting and indent fall back to YAML while `azure_pipelines_ls` still attaches exclusively via the dedicated filetype. The `bicep-params` filetype similarly has no grammar of its own and is registered against the `bicep` parser.
 
 ## Key mappings
 

@@ -73,6 +73,7 @@ local filetypes = {
   'azure-pipelines',
   'ps1',
   'bicep',
+  'bicep-params',
   'cs',
 }
 

@@ -154,15 +154,9 @@ if vim.fn.executable('lua-language-server') == 1 then
   vim.lsp.enable('lua_ls')
 end
 
--- Bicep (only if path is set)
+-- Bicep (only if path is set). Filetype detection itself is unconditional;
+-- see autocmds.lua.
 if _G.user_config.bicep_lsp_path ~= '' then
-  vim.api.nvim_create_autocmd({ 'BufNewFile', 'BufRead' }, {
-    group = augroup,
-    pattern = '*.bicep',
-    callback = function()
-      vim.bo.filetype = 'bicep'
-    end,
-  })
   vim.lsp.config('bicep', {
     cmd = { 'dotnet', _G.user_config.bicep_lsp_path },
     filetypes = { 'bicep' },
