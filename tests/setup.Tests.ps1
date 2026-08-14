@@ -767,6 +767,29 @@ Describe 'codex/config.toml agents table' {
     }
 }
 
+Describe 'codex/config.toml mcp_servers.bicep table' {
+    It 'registers the bicep MCP server via dnx with the expected args' {
+        $repoRoot = Split-Path $script:SetupScript -Parent
+        $configPath = Join-Path $repoRoot 'codex' 'config.toml'
+        $content = Get-Content -LiteralPath $configPath -Raw
+
+        $tableMatches = [regex]::Matches($content, '(?m)^\[mcp_servers\.bicep\]\r?$')
+        $tableMatches.Count | Should -Be 1 -Because 'exactly one [mcp_servers.bicep] table should exist'
+
+        $blockPattern = '(?ms)^\[mcp_servers\.bicep\]\r?\n(.*?)(?=^\[|\z)'
+        $blockMatch = [regex]::Match($content, $blockPattern)
+        $blockMatch.Success | Should -BeTrue -Because 'mcp_servers.bicep section should exist'
+
+        $commandMatch = [regex]::Match($blockMatch.Groups[1].Value, '(?m)^command\s*=\s*"([^"]*)"')
+        $commandMatch.Success | Should -BeTrue -Because 'mcp_servers.bicep should set a command'
+        $commandMatch.Groups[1].Value | Should -Be 'dnx'
+
+        $argsMatch = [regex]::Match($blockMatch.Groups[1].Value, '(?m)^args\s*=\s*\[(.*?)\]')
+        $argsMatch.Success | Should -BeTrue -Because 'mcp_servers.bicep should set args'
+        $argsMatch.Groups[1].Value | Should -Match 'Azure\.Bicep\.McpServer'
+    }
+}
+
 Describe 'setup.ps1 Codex skill migration' {
     It 'previews removal of obsolete managed Codex skill junctions but preserves unmanaged entries' -Skip:(-not $IsWindows) {
         # ai-agents\codex\skills is Codex's own former native-skills root (issue #71) — the root
