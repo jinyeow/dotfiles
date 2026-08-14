@@ -167,10 +167,16 @@ Describe 'review skill split' {
     }
 
     It 'flags --reviewers as unsupported on Codex CLI on the reviewer skills Args tables and the loop' {
+        # Row-specific: assert against the Args table row itself, not the whole file, so a
+        # regression in that row can't hide behind matching wording elsewhere in the file.
         foreach ($content in @($quickReview, $deepReviewReference, $loop)) {
-            $content | Should -Match ([regex]::Escape('unsupported on Codex CLI'))
-            $content | Should -Not -Match ([regex]::Escape('no-op on Codex CLI'))
+            $row = @($content -split "`n" | Where-Object { $_ -match '\|.*--reviewers.*\|' })
+            $row | Should -Not -BeNullOrEmpty
+            $row | Should -Match ([regex]::Escape('unsupported on Codex CLI'))
+            $row | Should -Not -Match ([regex]::Escape('no-op on Codex CLI'))
         }
+        $deepReview | Should -Match ([regex]::Escape('unsupported on Codex CLI'))
+        $deepReview | Should -Not -Match ([regex]::Escape('no-op on Codex CLI'))
         $reviewerModels | Should -Match ([regex]::Escape('actionable error'))
         $reviewerModels | Should -Not -Match ([regex]::Escape('no wired resolution'))
     }
