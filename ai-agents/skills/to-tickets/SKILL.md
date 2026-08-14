@@ -22,6 +22,8 @@ If you have not already explored the codebase, do so to understand the current s
 
 Look for opportunities to prefactor the code to make the implementation easier. "Make the change easy, then make the easy change."
 
+While exploring, note the files and directories each prospective ticket is likely to touch. Carry these into the "Likely files" field on each ticket (see the templates below) — a rough prediction is enough, it does not need to be exhaustive or re-verified.
+
 ### 3. Draft vertical slices
 
 Break the work into **tracer bullet** tickets.
@@ -78,6 +80,8 @@ Work the **frontier**: any ticket whose blockers are all done. For a purely line
 
 **Blocked by:** the titles of the tickets that gate this one, or "None — can start immediately".
 
+**Likely files** *(optional)*: files or directories this ticket is predicted to touch.
+
 - [ ] Acceptance criterion 1
 - [ ] Acceptance criterion 2
 
@@ -106,8 +110,14 @@ The end-to-end behaviour this ticket makes work, from the user's perspective —
 
 - A reference to each blocking ticket, or "None — can start immediately".
 
+## Likely files (optional)
+
+Files or directories this ticket is predicted to touch.
+
 </issue-template>
 
-In either form, avoid specific file paths or code snippets — they go stale fast. Exception: if a prototype produced a snippet that encodes a decision more precisely than prose can (state machine, reducer, schema, type shape), inline it and note briefly that it came from a prototype. Trim to the decision-rich parts — not a working demo, just the important bits.
+In the ticket body (What to build, Acceptance criteria), avoid specific file paths or code snippets — they go stale fast. Exception: if a prototype produced a snippet that encodes a decision more precisely than prose can (state machine, reducer, schema, type shape), inline it and note briefly that it came from a prototype. Trim to the decision-rich parts — not a working demo, just the important bits.
+
+The "Likely files" field is the one deliberate exception: it exists to hold file paths. It is **launcher-only metadata** for a pre-launch overlap check across a worktree fleet, not part of the ticket's contract — it is never passed to the implementer as a scope restriction, and it is allowed to go stale (the paths drift as the codebase changes; that staleness is an accepted tradeoff, not a bug to fix).
 
 Work the frontier one ticket at a time with `/implement`, clearing context between tickets.
