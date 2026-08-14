@@ -58,10 +58,18 @@ worktree/branch once its merge/completion status (or, for local-only work, its p
 
 3. **No remote (local-only work) → fall back to the project-brain `STATUS.md`.** Resolve the
    initiative for that worktree's directory via the `project-brain` skill's resolve-and-read
-   procedure, then read its `STATUS.md` for a "done" signal (e.g. `Now`/`Next action` stating
-   the work landed or closed, or the initiative already moved to `initiatives/_archive/`). No
-   brain, no matching initiative, or an inconclusive `STATUS.md` all count as "no signal" —
-   fall through to step 4, don't guess.
+   procedure, then read its `STATUS.md` for a "done" signal. The signal only counts if:
+   - the entry **explicitly names this branch or this worktree's work** as done, merged, or
+     closed — a generic "resolved" note elsewhere in the file about a different piece of work
+     does not transfer to this branch;
+   - or the initiative has already moved to `initiatives/_archive/` (archival is itself a
+     done signal for everything under it).
+   - the `STATUS.md`'s `updated:` field is **7 days old or less**, per the `project-brain`
+     skill's own staleness convention. A stale `STATUS.md` (>7 days) is inconclusive even if it
+     otherwise names the branch as done — treat it the same as no signal.
+
+   No brain, no matching initiative, an entry that doesn't name this branch/work, or a stale
+   `STATUS.md` all count as "no signal" — fall through to step 4, don't guess.
 
 4. **Neither signal exists → prompt for manual approval.** State the worktree, branch, and what
    was checked (remote host queried / brain lookup attempted) so the user can decide with full
@@ -71,7 +79,10 @@ worktree/branch once its merge/completion status (or, for local-only work, its p
    - Switch to the **main** worktree.
    - `git pull` — bring `main` current before removing anything.
    - `git worktree remove "<dir>"` — drops the registration and the directory (git refuses to
-     delete a branch while a worktree still holds it, so this always goes first).
+     delete a branch while a worktree still holds it, so this always goes first). If this
+     refuses because the worktree is dirty (uncommitted or untracked changes), that refusal
+     means real local work would be lost — report the worktree and its dirty state to the user
+     and stop there; never escalate to `--force`.
    - Before running `-d`, confirm `git merge-base --is-ancestor "<branch>" main` exits `0`.
      `git branch -d` itself only requires the branch's commits to be reachable from *some*
      configured upstream — it can exit successfully without the branch actually being merged

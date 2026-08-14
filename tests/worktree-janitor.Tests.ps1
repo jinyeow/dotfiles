@@ -55,6 +55,19 @@ Describe 'worktree-janitor skill' {
         $content | Should -Match 'STATUS\.md'
     }
 
+    It 'requires the STATUS.md entry to explicitly name this branch and treats a stale entry as inconclusive' {
+        $content = Get-Content $skillPath -Raw
+        $content | Should -Match 'explicitly names this branch or this worktree'
+        $content | Should -Match '7 days'
+        $content | Should -Match 'stale'
+    }
+
+    It 'reports a dirty worktree-remove refusal to the user instead of forcing it' {
+        $content = Get-Content $skillPath -Raw
+        $content | Should -Match 'dirty'
+        $content | Should -Match 'never escalate to `--force`'
+    }
+
     It 'prompts for manual approval when neither signal is available' {
         $content = Get-Content $skillPath -Raw
         $content | Should -Match 'Neither signal exists'
