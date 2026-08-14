@@ -77,7 +77,7 @@ Reappearance + no-progress are defined on **fingerprints**, not line numbers (fi
 | `--floor <sev>` | `MEDIUM` | gate + verify floor |
 | `--cap <n>` | `8` | max cycles before escalating |
 | `--deep` | off | run `deep-review` (7 dimensions + Codex) instead of the default `quick-review` |
-| `--reviewers <spec>` | reviewer-skill defaults | reviewer models + effort, passed through ([`../_shared/reviewer-models.md`](../_shared/reviewer-models.md)) |
+| `--reviewers <spec>` | reviewer-skill defaults | reviewer models + effort, passed through ([`../_shared/reviewer-models.md`](../_shared/reviewer-models.md)); unsupported on Codex CLI |
 
 Floor, cap, and reviewers are scoping inputs (which findings gate / how many cycles / which models),
 not logic switches. `--deep` selects which review skill the loop composes with; it does not change the
@@ -91,7 +91,8 @@ loop's own gate, rails, or store handling.
   unless the user explicitly asks. (Fable is fine for a standalone light review or the plan stage, but
   not for this automated find-and-commit loop.) Other runtimes select through their own defaults — no
   equivalent pin is defined yet. `--reviewers` overrides the default on any runtime with a wired
-  resolution (currently a no-op on Codex CLI) —
+  resolution — unsupported on Codex CLI: if the host runtime is Codex CLI and `--reviewers` was
+  passed, stop and report an actionable error instead of proceeding —
   [`../_shared/reviewer-models.md`](../_shared/reviewer-models.md).
 - **Fixer model.** On Claude Code, fixers apply and commit code, so they stay pinned regardless of
   `--reviewers`: **Opus 4.8 / 4.7 / 4.6, or Sonnet 5 (or lower) — never Opus 5, never Fable**, for now,
