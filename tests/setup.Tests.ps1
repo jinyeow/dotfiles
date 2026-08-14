@@ -1010,6 +1010,25 @@ Describe 'setup.ps1 biceptools module' {
         $output | Should -Match 'dotnet tool install --global Azure\.Bicep\.LangServer'
         $output | Should -Not -Match "Unknown module 'biceptools'"
     }
+
+    It 'warns and skips rather than failing when the .NET toolchain is absent' {
+        # Simulating a missing toolchain means REPLACING PATH with an empty directory, not
+        # shimming something into it (you cannot shim absence) — same technique as langservers.
+        $emptyDir = Join-Path ([IO.Path]::GetTempPath()) ('setup-biceptools-nopath-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $emptyDir -Force | Out-Null
+        $pwshName = if ($IsWindows) { 'pwsh.exe' } else { 'pwsh' }
+        $pwshExe = Join-Path $PSHOME $pwshName
+        $origPath = $env:PATH
+        try {
+            $env:PATH = $emptyDir
+            $output = & $pwshExe -NoProfile -File $script:SetupScript -Module biceptools 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $output | Should -Match 'dotnet not found'
+        } finally {
+            $env:PATH = $origPath
+            Remove-Item -Path $emptyDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
 }
 
 Describe 'setup.ps1 -Module ai-agents (composite)' {
