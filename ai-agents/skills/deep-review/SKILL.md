@@ -71,7 +71,7 @@ mcp__codex__codex
 ```
 
 Model and `config: { model_reasoning_effort }` come from `--reviewers` when given — see
-[`../_shared/reviewer-models.md`](../_shared/reviewer-models.md).
+[`../_shared/reviewer-models.md`](../_shared/reviewer-models.md); unsupported on Codex CLI.
 
 Each reviewer returns candidate findings in the schema, each carrying `dimension`, `severity`,
 `confidence`, a proposed `fix_verification`, `summary`, `fix_approach`, `evidence`, and `scope`. The
@@ -143,8 +143,9 @@ and the summary is printed.
   the user explicitly asks. Other runtimes select reviewer models through their own defaults —
   no equivalent pin is defined yet. `--reviewers` overrides the default on any runtime with a wired
   resolution ([`../_shared/reviewer-models.md`](../_shared/reviewer-models.md) documents the
-  Claude/Codex-MCP alias table; currently a no-op on Codex CLI); it is reviewer-only and never
-  changes which model a fixer runs on.
+  Claude/Codex-MCP alias table; unsupported on Codex CLI — if the host runtime is Codex CLI and
+  `--reviewers` was passed, stop and report an actionable error instead of proceeding); it is
+  reviewer-only and never changes which model a fixer runs on.
 - **Sole writer.** Workers return findings; you write the store. This is what makes parallel
   reviewers safe without locks (findings-schema.md; DISPATCH.md verifies this holds under Pi's
   actual completion-signal mechanism).

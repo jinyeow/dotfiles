@@ -9,16 +9,16 @@ currently covers. It lives under the portable `_shared/` alongside the runtime-n
 `dimensions.md` / `findings-schema.md` / `review-rubric.md` because the skills that reference it
 are portable, but its own content is not yet genericized for Pi — on that runtime, `--reviewers`
 selects models through the runtime's own defaults, not this table, until a Pi-native equivalent is
-written. **On Codex CLI**, `--reviewers` currently has no wired resolution: Codex's own config
-schema (`AgentsToml`, as of `rust-v0.147.0`) defines `agents.default_subagent_model` and
-`agents.default_subagent_reasoning_effort` as a global default-model/effort pair — the fields
-exist — but this repo's `codex/config.toml` doesn't set them, and nothing in these skills maps a
-`--reviewers` value onto them; it only defines per-role `[agents.<name>]` tables (e.g.
-`agents.review_correctness`), which at this version recognize just `config_file` / `description` /
-`nickname_candidates`, not a model override. Passing `--reviewers` on Codex CLI therefore falls
-back to Codex's global default model/effort — the same as if the flag were never passed. Wiring
-`--reviewers` through `agents.default_subagent_model` / `agents.default_subagent_reasoning_effort`
-is the natural future mechanism — available but unwired today, not nonexistent. The `sol` /
+written. **On Codex CLI**, `--reviewers` is unsupported, not a documented no-op: `spawn_agent`'s
+confirmed parameters are `agent_type` and the task only (live-tested against codex-cli 0.147.0,
+[`../deep-review/DISPATCH.md`](../deep-review/DISPATCH.md)) — there is no per-call model field.
+The only settable knobs are Codex's global `agents.default_subagent_model` /
+`agents.default_subagent_reasoning_effort`, which are session-wide, not per-invocation — wiring
+`--reviewers` to them was rejected because it would mutate model selection for every subsequently
+spawned subagent in that Codex session, not just the review participants
+(`docs/adr/reviewers-flag-unsupported-on-codex-cli.md`).
+When the host runtime is Codex CLI and `--reviewers` is passed, the orchestrating skill must
+refuse it with an actionable error rather than silently falling back to defaults. The `sol` /
 `codex` external-adapter rows stay Claude-only — Codex CLI has no external Codex adapter to call
 when it is itself the host
 ([`../deep-review/DISPATCH.md`](../deep-review/DISPATCH.md)).

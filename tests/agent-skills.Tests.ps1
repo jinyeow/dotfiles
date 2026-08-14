@@ -115,6 +115,7 @@ Describe 'review skill split' {
         $loop = Get-Content (Join-Path $portableSkills 'review-fix-loop/SKILL.md') -Raw
         $fixFindings = Get-Content (Join-Path $portableSkills 'fix-findings/SKILL.md') -Raw
         $reviewerModels = Get-Content (Join-Path $portableSkills '_shared/reviewer-models.md') -Raw -ErrorAction SilentlyContinue
+        $deepReviewReference = Get-Content (Join-Path $portableSkills 'deep-review/REFERENCE.md') -Raw
         $claudeAdapter = Get-Content (Join-Path $repo 'claude/CLAUDE.md') -Raw
     }
 
@@ -163,6 +164,24 @@ Describe 'review skill split' {
         $reviewerModels | Should -Match 'gpt-5\.6-sol'
         $reviewerModels | Should -Match 'model_reasoning_effort'
         $reviewerModels | Should -Match 'reviewer'
+    }
+
+    It 'flags --reviewers as unsupported on Codex CLI on the reviewer skills Args tables and the loop' {
+        # Row-specific: assert against the Args table row itself, not the whole file, so a
+        # regression in that row can't hide behind matching wording elsewhere in the file.
+        foreach ($content in @($quickReview, $deepReviewReference, $loop)) {
+            $row = @($content -split "`n" | Where-Object { $_ -match '\|.*--reviewers.*\|' })
+            $row | Should -Not -BeNullOrEmpty
+            $row | Should -Match ([regex]::Escape('unsupported on Codex CLI'))
+            $row | Should -Not -Match ([regex]::Escape('no-op on Codex CLI'))
+        }
+        $deepReview | Should -Match ([regex]::Escape('unsupported on Codex CLI'))
+        $deepReview | Should -Not -Match ([regex]::Escape('no-op on Codex CLI'))
+        $reviewerModels | Should -Match ([regex]::Escape('actionable error'))
+        $reviewerModels | Should -Not -Match ([regex]::Escape('no wired resolution'))
+        foreach ($content in @($quickReview, $deepReview, $deepReviewReference, $loop)) {
+            $content | Should -Match 'stop and\s+report an actionable error'
+        }
     }
 
     It 'keeps --reviewers away from fixer model selection' {

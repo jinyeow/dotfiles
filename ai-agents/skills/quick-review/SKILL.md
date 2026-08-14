@@ -106,7 +106,7 @@ dropped (findings-schema.md). Write all actual candidates to the store at `statu
 |---|---|---|
 | `ref-or-range` / `--pr <n>` | `main...HEAD` (merge-base) | git refs to review (see deep-review's REFERENCE) |
 | `--floor <sev>` | `MEDIUM` | severity floor for verify + reporting (not for what's stored) |
-| `--reviewers <spec>` | skill defaults | reviewer models + effort ([`../_shared/reviewer-models.md`](../_shared/reviewer-models.md)) |
+| `--reviewers <spec>` | skill defaults | reviewer models + effort ([`../_shared/reviewer-models.md`](../_shared/reviewer-models.md)); unsupported on Codex CLI |
 
 Here the reviewer set stays two: the **first** Claude alias in `--reviewers` becomes the folded
 reviewer's model and any Codex alias (`sol`, `codex`) becomes Codex's — further Claude aliases are
@@ -125,7 +125,9 @@ run on), not logic switches.
   invoked from `review-fix-loop`, it inherits that loop's reviewer constraint. Other runtimes select
   through their own defaults — no equivalent pin is defined yet. `--reviewers` overrides the default
   on any runtime with a wired resolution (see [`../_shared/reviewer-models.md`](../_shared/reviewer-models.md);
-  currently a no-op on Codex CLI) — and is reviewer-only: it never changes which model a fixer runs on.
+  unsupported on Codex CLI — if the host runtime is Codex CLI and `--reviewers` was passed, stop and
+  report an actionable error instead of proceeding) — and is reviewer-only: it never changes which
+  model a fixer runs on.
 - **Sole writer.** Workers return findings; you write the store. This is what makes parallel
   participants safe without locks (findings-schema.md).
 - **Two participants is the point.** Codex's full-rubric brief is not a licence to add participants:
