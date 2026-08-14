@@ -47,8 +47,8 @@ if #missing > 0 then
 end
 
 -- main no longer ships master's filetype->language table; register the non-identity
--- mappings we rely on. azure-pipelines->yaml is registered in autocmds.lua; help->vimdoc
--- is known to core.
+-- mappings we rely on. azure-pipelines->yaml and bicep-params->bicep are registered
+-- in autocmds.lua; help->vimdoc is known to core.
 vim.treesitter.language.register('powershell', 'ps1')
 vim.treesitter.language.register('c_sharp', 'cs')
 vim.treesitter.language.register('bash', 'sh')

@@ -66,6 +66,9 @@ autocmd({ 'BufNewFile', 'BufRead' }, {
     vim.bo.filetype = 'bicep'
   end,
 })
+
+-- .bicepparam parameter files get their own filetype, matching the languageId
+-- nvim-lspconfig's bicep config expects for them.
 autocmd({ 'BufNewFile', 'BufRead' }, {
   group = augroup,
   pattern = '*.bicepparam',
@@ -74,8 +77,11 @@ autocmd({ 'BufNewFile', 'BufRead' }, {
   end,
 })
 
--- bicep-params has no Treesitter grammar of its own; map it to the bicep
--- parser so highlighting/indent work, same aliasing as azure-pipelines->yaml above.
+-- bicep-params has no Treesitter grammar of its own; map it to the bicep parser.
+-- Unlike azure-pipelines->yaml (a lossless superset), this is partial: the grammar
+-- parses `using` clean but errors on `param x = value` assignments (the value node
+-- lands in an ERROR/type subtree), so those lines mis-highlight. Partial beats none;
+-- indent queries work.
 vim.treesitter.language.register('bicep', 'bicep-params')
 
 -- Reload buffer when file changes externally (autoread is on by default in Neovim;

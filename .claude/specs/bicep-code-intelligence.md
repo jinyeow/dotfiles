@@ -1,7 +1,12 @@
 # Bicep code intelligence: Neovim LSP plus agent tooling (Claude Code, Codex CLI, Pi)
 
-Status: plan, not yet implemented. Researched 2026-08-14; reviewed by a Fable subagent and
-a Codex cross-model pass the same day, findings incorporated.
+Status: Track A implemented (#140, the PR carrying this spec); the Problem Statement
+describes the state before it and stays as historical context. Other tracks not yet
+implemented. Researched 2026-08-14; reviewed by a Fable subagent and a Codex cross-model
+pass the same day, findings incorporated. Two research claims corrected during Track A:
+Neovim 0.12 core already detects both filetypes (the explicit autocmds are kept for
+version-independence), and the bicep-params Treesitter alias is a partial fallback —
+the grammar errors on `param x = value` assignments, unlike azure-pipelines→yaml.
 
 ## Problem Statement
 
