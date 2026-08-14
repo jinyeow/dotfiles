@@ -119,7 +119,6 @@ Edit `lua/config/user.lua` before first launch to set machine-specific paths:
 ```lua
 _G.user_config = {
   profile          = vim.env.NVIM_PROFILE or 'full',
-  bicep_lsp_path   = '', -- path to Bicep.LangServer.dll
   pwsh_bundle_path = '', -- path to PowerShellEditorServices bundle
   sunrise_hour     = 6,
   sunset_hour      = 18,
@@ -175,21 +174,21 @@ Falls back to sunrise/sunset window if detection fails.
 | yamlls | YAML | `setup.ps1/setup.sh -Module langservers` |
 | azure_pipelines_ls | Azure Pipelines YAML | `setup.ps1/setup.sh -Module langservers` |
 | marksman | Markdown | Elsewhere (install manually / via package manager) |
-| bicep | Bicep (requires `bicep_lsp_path` in user.lua) | Binary: `setup.ps1 -Module biceptools` (Windows); Neovim wiring stays manual |
+| bicep | Bicep (gated on `bicep-ls` being on PATH) | `setup.ps1 -Module biceptools` (Windows) |
 | powershell_es | PowerShell (requires `pwsh_bundle_path` in user.lua) | Elsewhere |
 | roslyn | C# / .NET (auto-enabled when `dotnet` is on PATH) | `dotnet tool install -g roslyn-language-server --prerelease` |
 
 The first three are provisioned by the `langservers` installer module, which
 installs them as npm packages through Volta (`vscode-langservers-extracted` supplies the JSON
-server; the YAML and Azure Pipelines servers are their own packages). The Bicep server
-*binary* is provisioned on Windows by the `biceptools` module (`Azure.Bicep.LangServer`
-dotnet global tool, providing `bicep-ls`), but its Neovim gate is unchanged: `bicep_lsp_path`
-in `user.lua` must still be set manually (editor wiring is a separate slice of
-`.claude/specs/bicep-code-intelligence.md`). Those three
+server; the YAML and Azure Pipelines servers are their own packages). Those three
 `vim.lsp.enable` calls are deliberately **ungated** — JSON and YAML support is baseline, not
 machine-dependent, so a missing binary should produce Neovim's loud spawn-failure warning
-rather than silently degrading schema validation. The remaining servers are gated on a
-machine-specific prerequisite in `user.lua` (or on `dotnet`) and are installed by other means.
+rather than silently degrading schema validation. The Bicep server is provisioned on
+Windows by the `biceptools` module (`Azure.Bicep.LangServer` dotnet global tool, providing
+`bicep-ls`), and its Neovim gate mirrors `marksman`'s: `vim.fn.executable('bicep-ls') == 1`,
+so a machine without the tool degrades to Treesitter-only instead of erroring. The
+remaining servers are gated on a machine-specific prerequisite in `user.lua` (or on
+`dotnet`) and are installed by other means.
 
 ## Filetype detection
 
