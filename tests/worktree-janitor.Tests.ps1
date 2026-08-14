@@ -1,0 +1,69 @@
+Describe 'worktree-janitor skill' {
+    BeforeAll {
+        $repo = Split-Path $PSScriptRoot -Parent
+        $skillPath = Join-Path $repo 'ai-agents/skills/worktree-janitor/SKILL.md'
+    }
+
+    It 'exists under the portable skill source area' {
+        Test-Path $skillPath | Should -BeTrue
+    }
+
+    It 'carries frontmatter naming the skill with trigger phrasing and explicit negative triggers' {
+        $content = Get-Content $skillPath -Raw
+        $content | Should -Match '(?s)^---\s*\nname:\s*worktree-janitor\s*\n'
+        $description = [regex]::Match($content, '(?s)description:\s*"(.*?)"\s*\n').Groups[1].Value
+        $description | Should -Not -BeNullOrEmpty
+        $description | Should -Match 'clean up (my )?worktrees'
+        $description | Should -Match 'NOT for'
+    }
+
+    It 'scans all worktrees via git worktree list in one sweep and excludes non-candidates' {
+        $content = Get-Content $skillPath -Raw
+        $content | Should -Match ([regex]::Escape('git worktree list'))
+        $content | Should -Match 'bare'
+        $content | Should -Match 'main'
+        $content | Should -Match 'detached'
+        $content | Should -Match ([regex]::Escape('.claude/worktrees/'))
+    }
+
+    It 'routes to gh pr list or az repos pr list based on the remote host per worktree' {
+        $content = Get-Content $skillPath -Raw
+        $content | Should -Match ([regex]::Escape('git remote get-url origin'))
+        $content | Should -Match ([regex]::Escape('gh pr list --state merged'))
+        $content | Should -Match ([regex]::Escape('az repos pr list --status completed'))
+        $content | Should -Match 'github\.com'
+        $content | Should -Match 'dev\.azure\.com'
+    }
+
+    It 'falls back to the project-brain STATUS.md when a worktree has no remote' {
+        $content = Get-Content $skillPath -Raw
+        $content | Should -Match 'No remote'
+        $content | Should -Match '`project-brain`'
+        $content | Should -Match 'STATUS\.md'
+    }
+
+    It 'prompts for manual approval when neither signal is available' {
+        $content = Get-Content $skillPath -Raw
+        $content | Should -Match 'Neither signal exists'
+        $content | Should -Match 'prompt for manual approval'
+    }
+
+    It 'fully automates worktree remove and git branch -d for non-squash-merged branches' {
+        $content = Get-Content $skillPath -Raw
+        $content | Should -Match ([regex]::Escape('git pull'))
+        $content | Should -Match ([regex]::Escape('git worktree remove <dir>'))
+        $content | Should -Match ([regex]::Escape('git branch -d <branch>'))
+        $content | Should -Match 'fully automated'
+    }
+
+    It 'batches pending squash-merged branches into one printed git branch -D command, never runs it itself' {
+        $content = Get-Content $skillPath -Raw
+        $content | Should -Match ([regex]::Escape('git diff main <branch> --stat'))
+        $content | Should -Match 'Do \*\*not\*\* run `git branch -D` yourself'
+        $content | Should -Match ([regex]::Escape('git branch -D branch-a branch-b branch-c'))
+    }
+
+    It 'is registered in the root README skills table' {
+        Get-Content (Join-Path $repo 'README.md') -Raw | Should -Match '`worktree-janitor`'
+    }
+}
