@@ -8,10 +8,12 @@ metadata:
 
 # Worktree janitor
 
-Automates the post-merge worktree cleanup ritual documented in root `AGENTS.md`'s "Git
-worktrees" section, without accidentally deleting work still needed. Only ever removes a
-worktree/branch once its merge/completion status (or, for local-only work, its project-brain
-`STATUS.md`) confirms it is safe, or the user explicitly approves it.
+Automates the post-merge worktree cleanup ritual documented in the global `AGENTS.md` →
+"Git worktrees" section (in this dotfiles repo that section lives in `claude/AGENTS.md`, the
+file projected as the installed global `AGENTS.md`), without accidentally deleting work still
+needed. Only ever removes a worktree/branch once its merge/completion status (or, for
+local-only work, its project-brain `STATUS.md`) confirms it is safe, or the user explicitly
+approves it.
 
 ## When to use
 
@@ -46,7 +48,11 @@ worktree/branch once its merge/completion status (or, for local-only work, its p
        that branch name merged.
      - `dev.azure.com` / `visualstudio.com` → `az repos pr list --status completed
        --source-branch <branch>` — a non-empty result means *a* PR from that source branch
-       completed.
+       completed. **Unverified:** `--source-branch`'s accepted ref form (bare branch name vs
+       `refs/heads/<branch>`) is not confirmed against the locally installed `az`/azure-devops
+       extension version — its `--help` text doesn't state which form it expects. Verify
+       against your installed version before relying on this in an automated run, per the
+       "verify CLI flags against the locally installed version" convention.
    - **Both queries match by branch name only, not by commit** — a reused branch name with an
      old merged/completed PR gives a false "merged" signal for new, unrelated commits pushed to
      that name afterward. Before treating either result as the signal, confirm the matched

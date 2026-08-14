@@ -17,6 +17,19 @@ Describe 'worktree-janitor skill' {
         $description | Should -Match 'NOT for'
     }
 
+    It 'cites the global AGENTS.md Git worktrees convention without claiming this repo''s own root AGENTS.md has that section' {
+        $content = Get-Content $skillPath -Raw
+        $content | Should -Not -Match 'root `AGENTS\.md`'
+        $content | Should -Match 'global `AGENTS\.md`'
+        $content | Should -Match ([regex]::Escape('claude/AGENTS.md'))
+    }
+
+    It 'flags the az repos pr list --source-branch ref form as unverified against the installed CLI version' {
+        $content = Get-Content $skillPath -Raw
+        $content | Should -Match 'Unverified:.*--source-branch'
+        $content | Should -Match 'locally installed'
+    }
+
     It 'scans all worktrees via git worktree list in one sweep and excludes non-candidates' {
         $content = Get-Content $skillPath -Raw
         $content | Should -Match ([regex]::Escape('git worktree list'))
