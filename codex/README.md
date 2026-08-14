@@ -31,7 +31,7 @@ conventions in `claude/AGENTS.md` only; re-run the installer to push the copy.
 
 | File / Directory | Installed to | Notes |
 |---|---|---|
-| `config.toml` | `~/.codex/config.toml` | Model + standalone permissions; also registers the `bicep` MCP server (`[mcp_servers.bicep]`, `Azure.Bicep.McpServer` via `dnx`) for diagnostics, formatting, decompile, resource-type schemas, and best-practices lookup — no symbol navigation |
+| `config.toml` | `~/.codex/config.toml` | Model + standalone permissions; also registers the `bicep` MCP server (`[mcp_servers.bicep]` — scope and rationale in the file's comments) |
 | `claude/AGENTS.md` (shared) | `~/.codex/AGENTS.md` | Personal conventions (sourced from the claude module) |
 | `claude/AGENTS.d/` (shared) | `~/.codex/AGENTS.d/` | Progressive-disclosure satellite files `AGENTS.md` links out to on demand (sourced from the claude module) |
 | `ai-agents/skills/<name>/` (portable) | `~/.codex/skills/<name>/` | Portable global skills |
@@ -47,7 +47,10 @@ codex` or `./setup.sh -m codex`) to push repo → live.
 Linux/WSL parity is provided by `setup.sh -m codex`: it installs the Codex CLI via OpenAI's
 native installer, copies `config.toml` + `AGENTS.md` into `~/.codex/`, projects skills into
 `~/.codex/skills/`, and registers the MCP reviewer — the same steps as `setup.ps1 -Module
-codex` on Windows.
+codex` on Windows. One caveat: the `bicep` MCP server in `config.toml` needs `dnx` from a
+.NET 10 SDK, which neither installer provisions on Linux — without it the server fails at
+session start and Codex degrades to a session without Bicep tools (the entry is not
+`required`, so startup itself is unaffected).
 
 ## Fail-closed install gating
 
