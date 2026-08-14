@@ -180,7 +180,7 @@ Describe 'review skill split' {
         $reviewerModels | Should -Match ([regex]::Escape('actionable error'))
         $reviewerModels | Should -Not -Match ([regex]::Escape('no wired resolution'))
         foreach ($content in @($quickReview, $deepReview, $deepReviewReference, $loop)) {
-            $content | Should -Match ([regex]::Escape('actionable error'))
+            $content | Should -Match 'stop and\s+report an actionable error'
         }
     }
 
