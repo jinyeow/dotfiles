@@ -42,8 +42,9 @@ Describe 'worktree-janitor skill' {
     It 'routes to gh pr list or az repos pr list based on the remote host per worktree' {
         $content = Get-Content $skillPath -Raw
         $content | Should -Match ([regex]::Escape('git remote get-url origin'))
-        $content | Should -Match ([regex]::Escape('gh pr list --state merged'))
+        $content | Should -Match ([regex]::Escape('gh pr list --state merged --head "<branch>"'))
         $content | Should -Match ([regex]::Escape('az repos pr list --status completed'))
+        $content | Should -Match ([regex]::Escape('--source-branch "<branch>"'))
         $content | Should -Match 'github\.com'
         $content | Should -Match 'dev\.azure\.com'
     }

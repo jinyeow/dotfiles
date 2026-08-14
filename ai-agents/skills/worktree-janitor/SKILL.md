@@ -44,10 +44,10 @@ approves it.
 
 2. **Per remaining worktree, resolve a merge/completion signal — remote first.**
    - Has a remote? Run `git remote get-url origin` in that worktree and route by host:
-     - `github.com` → `gh pr list --state merged --head <branch>` — a result means *a* PR from
+     - `github.com` → `gh pr list --state merged --head "<branch>"` — a result means *a* PR from
        that branch name merged.
      - `dev.azure.com` / `visualstudio.com` → `az repos pr list --status completed
-       --source-branch <branch>` — a non-empty result means *a* PR from that source branch
+       --source-branch "<branch>"` — a non-empty result means *a* PR from that source branch
        completed. **Unverified:** `--source-branch`'s accepted ref form (bare branch name vs
        `refs/heads/<branch>`) is not confirmed against the locally installed `az`/azure-devops
        extension version — its `--help` text doesn't state which form it expects. Verify
