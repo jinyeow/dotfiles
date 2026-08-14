@@ -160,6 +160,18 @@ if vim.fn.executable('bicep-ls') == 1 then
   vim.lsp.config('bicep', {
     cmd = { 'bicep-ls' },
     filetypes = { 'bicep', 'bicep-params' },
+    -- bicep-ls 0.46.1's `initialize` response omits hoverProvider,
+    -- definitionProvider, and documentFormattingProvider, so Neovim's standard
+    -- entry points (K, gd, format) refuse to dispatch even though the server
+    -- answers those exact LSP methods correctly when queried directly
+    -- (verified with raw client:request() calls). Patch the advertised
+    -- capabilities after init so dispatch works; see dotfiles#157. Drop this
+    -- once a bicep-ls release fixes the advertisement upstream.
+    on_init = function(client)
+      client.server_capabilities.hoverProvider = true
+      client.server_capabilities.definitionProvider = true
+      client.server_capabilities.documentFormattingProvider = true
+    end,
   })
   vim.lsp.enable('bicep')
 end
