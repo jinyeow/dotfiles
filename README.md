@@ -120,6 +120,7 @@ Not sure which one fits? Run `/router` — a manual index that maps these as flo
 | `wayfinder` | mattpocock/skills | Chart a huge, foggy effort as a map of investigation tickets |
 | `improve-codebase-architecture` | mattpocock/skills | Find deepening opportunities; consolidate coupling |
 | `techdebt` | local | Inventory non-architectural tech debt from existing tool output; hand off to `to-tickets` |
+| `worktree-janitor` | local | Post-merge worktree cleanup — merge/completion or STATUS.md signal, then remove + branch delete |
 | `codebase-design` | mattpocock/skills | Deep-module vocabulary for designing a module's shape |
 | `codex-review` | local | Read-only cross-model Codex second opinion on a diff |
 | `quick-review` | local | Default review of a diff/PR — one folded reviewer + Codex → findings store |
