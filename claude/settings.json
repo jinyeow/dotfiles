@@ -167,6 +167,12 @@
   "skipWorkflowUsageWarning": true,
   "permissions": {
     "defaultMode": "auto",
+    "allow": [
+      "PowerShell(Register-ScheduledTask:*)",
+      "PowerShell(New-ScheduledTaskAction:*)",
+      "PowerShell(New-ScheduledTaskTrigger:*)",
+      "PowerShell(Get-ScheduledTask:*)"
+    ],
     "deny": [
       "DesignSync",
       "EnterPlanMode",
