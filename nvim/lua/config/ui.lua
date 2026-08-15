@@ -133,7 +133,14 @@ end
 -- fzf-lua: 'fzf-vim' profile recreates :Files/:Rg/:Buffers/:Commands/:Lines
 local fzf_ok, fzf_lua = pcall(require, 'fzf-lua')
 if fzf_ok then
-  fzf_lua.setup({ 'fzf-vim', oldfiles = { include_current_session = true } })
+  fzf_lua.setup({
+    'fzf-vim',
+    oldfiles = { include_current_session = true },
+    -- Default builtin previewer re-highlights (syntax + treesitter) on nearly every
+    -- candidate change while typing (delay=20, syntax_delay=0) - felt as input lag on
+    -- <leader>ff. Debounce the preview redraw instead of disabling it.
+    winopts = { preview = { delay = 100 } },
+  })
 end
 
 -- nvim-surround: ys{motion}{char} add, ds{char} delete, cs{old}{new} change
