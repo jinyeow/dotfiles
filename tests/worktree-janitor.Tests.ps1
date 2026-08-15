@@ -137,6 +137,12 @@ Describe 'worktree-janitor skill' {
         $content | Should -Match '(?i)non-empty[^\n]{0,80}\b(stop|surface|not batch|do not batch|divergence)'
     }
 
+    It 'requires checking the git diff command exited 0, not just that stdout was empty, before trusting the squash-merge safety signal' {
+        $content = Get-Content $skillPath -Raw
+        $content | Should -Match '(?i)exit(ed)? (code )?0'
+        $content | Should -Match '(?i)(fail|error)[^\n]{0,120}\bnot\b[^\n]{0,40}\bsafe\b'
+    }
+
     It 'is registered in the root README skills table' {
         Get-Content (Join-Path $repo 'README.md') -Raw | Should -Match '`worktree-janitor`'
     }

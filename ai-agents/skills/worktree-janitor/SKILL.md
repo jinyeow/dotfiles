@@ -123,12 +123,14 @@ approves it.
    `main` even though every change landed — this is also where a merge/completion signal that
    matched a PR into a different base branch (not `main`) ends up. Verify nothing is lost:
    `git diff 'refs/heads/main' 'refs/heads/<branch>' --stat` (fully-qualified so a same-named
-   tag can't resolve ahead of either branch) — **empty** output means every change already
-   landed on `main`, so it is safe to remove: `git worktree remove '<dir>'` (same dirty-refusal
-   handling as step 5), then add the branch to the batched `-D` list below — `git branch -d` would still
-   refuse on it since the ancestor check failed. **Non-empty** output means real, unlanded
-   divergence — stop, surface the diff to the user, and do not remove the worktree or add that
-   branch to the batch.
+   tag can't resolve ahead of either branch) — check **both** the command's own exit code and its
+   stdout: exited 0 with **empty** output means every change already landed on `main`, so it is
+   safe to remove: `git worktree remove '<dir>'` (same dirty-refusal handling as step 5), then add
+   the branch to the batched `-D` list below — `git branch -d` would still refuse on it since the
+   ancestor check failed. A **non-zero exit code** (bad ref, git error) is not a safe signal even
+   with empty stdout — treat it as an error and stop, don't infer "safe to remove" from empty
+   output alone. **Non-empty** output on a 0 exit means real, unlanded divergence — stop, surface
+   the diff to the user, and do not remove the worktree or add that branch to the batch.
    Do **not** run `git branch -D` yourself — it is denied by a Claude Code hook, and forcing a
    branch delete is an outward, irreversible action this skill never takes unilaterally.
    Instead, collect every branch confirmed safe (empty diff) across the whole sweep and, at the
