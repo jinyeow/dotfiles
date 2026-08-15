@@ -161,6 +161,11 @@ Describe 'worktree-janitor skill' {
         $content | Should -Match '(?i)archiv\w*[^\n]{0,120}\bregardless of\b[^\n]{0,40}\b(age|staleness)\b'
     }
 
+    It 'frames step 3 so it is reachable from a stale/non-matching PR fallthrough, not only the no-remote case' {
+        $content = Get-Content $skillPath -Raw
+        $content | Should -Match '(?i)3\.\s+\*\*No remote[^\n]*\bstale\b'
+    }
+
     It 'is registered in the root README skills table' {
         Get-Content (Join-Path $repo 'README.md') -Raw | Should -Match '`worktree-janitor`'
     }

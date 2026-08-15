@@ -63,7 +63,8 @@ approves it.
    - Treat a merged/completed PR (with a matching head SHA) as the primary, harder-evidence
      signal — prefer it over the `STATUS.md` fallback below even if both happen to be present.
 
-3. **No remote (local-only work) → fall back to the project-brain `STATUS.md`.** Resolve the
+3. **No remote (local-only work), or a stale/non-matching PR match on step 2 → fall back to the
+   project-brain `STATUS.md`.** Resolve the
    initiative for that worktree's directory via the `project-brain` skill's resolve-and-read
    procedure, then read its `STATUS.md` for a "done" signal. Two independent signals count:
    - the entry **explicitly names this branch or this worktree's work** as done, merged, or
