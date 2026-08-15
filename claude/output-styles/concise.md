@@ -1,5 +1,5 @@
 ---
-# Keep these rules in sync with claude/AGENTS.md — "Working style" / "Output contract
+# Keep these rules in sync with ai-agents/AGENTS.md — "Working style" / "Output contract
 # for action turns". This style enforces at system-prompt level what AGENTS.md can
 # only advise; activated via "outputStyle": "concise" in settings.json.
 name: concise

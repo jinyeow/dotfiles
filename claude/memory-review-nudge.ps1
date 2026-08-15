@@ -58,7 +58,7 @@ if (($now - $refTime).TotalDays -lt $ReviewIntervalDays) { exit 0 }
 $noun = if ($mems.Count -eq 1) { 'memory' } else { 'memories' }
 $message = "Memory review due for this project: $($mems.Count) $noun, oldest ${oldestDays}d, " +
     "last reviewed $reviewedInfo. Say 'review memory' to audit — classify each entry keep / " +
-    "delete (stale or now-false) / migrate to a durable home (claude/AGENTS.md, the project brain, " +
+    "delete (stale or now-false) / migrate to a durable home (ai-agents/AGENTS.md, the project brain, " +
     "or an ADR under docs/adr/), then stamp the review by writing an ISO-8601 UTC timestamp to " +
     "``$marker``."
 

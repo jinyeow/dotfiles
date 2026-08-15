@@ -18,22 +18,22 @@ Two permission postures, one config file:
 
 ## Shared conventions (single source)
 
-Your personal coding conventions live in **`claude/AGENTS.md`** (sibling to `CLAUDE.md`),
-not here. Both tools read the same content:
+Your personal coding conventions live in **`ai-agents/AGENTS.md`**, not here. Both tools
+read the same content:
 
-- Claude Code: `~/.claude/CLAUDE.md` imports it via `@AGENTS.md`.
+- Claude Code: `~/.claude/CLAUDE.md` imports it via `@../ai-agents/AGENTS.md`.
 - Codex: it is installed to `~/.codex/AGENTS.md`, which Codex reads for every project.
 
-So `setup.ps1 -Module codex` copies `claude/AGENTS.md` → `~/.codex/AGENTS.md`. Edit the
-conventions in `claude/AGENTS.md` only; re-run the installer to push the copy.
+So `setup.ps1 -Module codex` copies `ai-agents/AGENTS.md` → `~/.codex/AGENTS.md`. Edit the
+conventions in `ai-agents/AGENTS.md` only; re-run the installer to push the copy.
 
 ## Files
 
 | File / Directory | Installed to | Notes |
 |---|---|---|
 | `config.toml` | `~/.codex/config.toml` | Model + standalone permissions; also registers the `bicep` MCP server (`[mcp_servers.bicep]` — scope and rationale in the file's comments) |
-| `claude/AGENTS.md` (shared) | `~/.codex/AGENTS.md` | Personal conventions (sourced from the claude module) |
-| `claude/AGENTS.d/` (shared) | `~/.codex/AGENTS.d/` | Progressive-disclosure satellite files `AGENTS.md` links out to on demand (sourced from the claude module) |
+| `../ai-agents/AGENTS.md` (shared) | `~/.codex/AGENTS.md` | Personal conventions (sourced from the ai-agents module) |
+| `../ai-agents/AGENTS.d/` (shared) | `~/.codex/AGENTS.d/` | Progressive-disclosure satellite files `AGENTS.md` links out to on demand (sourced from the ai-agents module) |
 | `ai-agents/skills/<name>/` (portable) | `~/.codex/skills/<name>/` | Portable global skills |
 | `codex/skills/<name>/` | `~/.codex/skills/<name>/` | Codex-native skills (win on name collision) |
 | `templates/work-AGENTS.md` | — (manual copy) | Drop into an Azure work repo root as `AGENTS.md` |

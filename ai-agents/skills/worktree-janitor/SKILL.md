@@ -9,7 +9,7 @@ metadata:
 # Worktree janitor
 
 Automates the post-merge worktree cleanup ritual documented in the global `AGENTS.md` →
-"Git worktrees" section (in this dotfiles repo that section lives in `claude/AGENTS.md`, the
+"Git worktrees" section (in this dotfiles repo that section lives in `ai-agents/AGENTS.md`, the
 file projected as the installed global `AGENTS.md`), without accidentally deleting work still
 needed. Only ever removes a worktree/branch once its merge/completion status (or, for
 local-only work, its project-brain `STATUS.md`) confirms it is safe, or the user explicitly

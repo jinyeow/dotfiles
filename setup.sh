@@ -611,8 +611,8 @@ install_claude() {
     fi
     make_symlink "$DOTFILES/claude/settings.json"          "$HOME/.claude/settings.json"
     make_symlink "$DOTFILES/claude/CLAUDE.md"              "$HOME/.claude/CLAUDE.md"
-    # Shared conventions — CLAUDE.md imports this via `@AGENTS.md` (resolves to ~/.claude/AGENTS.md).
-    make_symlink "$DOTFILES/claude/AGENTS.md"              "$HOME/.claude/AGENTS.md"
+    # Shared conventions — CLAUDE.md imports this via `@../ai-agents/AGENTS.md` (resolves to ~/.claude/AGENTS.md).
+    make_symlink "$DOTFILES/ai-agents/AGENTS.md" "$HOME/.claude/AGENTS.md"
     make_symlink "$DOTFILES/claude/statusline-command.sh"  "$HOME/.claude/statusline-command.sh"
     # PreToolUse hook wired in settings.json; blocks commits carrying the AI session-URL trailer.
     make_symlink "$DOTFILES/claude/no-claude-session-trailer.sh" "$HOME/.claude/no-claude-session-trailer.sh"
@@ -752,7 +752,7 @@ install_codex() {
     copy_dotfile "$DOTFILES/codex/config.toml" "$HOME/.codex/config.toml"
 
     # 3. Shared conventions — same source the claude module installs to ~/.claude/AGENTS.md.
-    copy_dotfile "$DOTFILES/claude/AGENTS.md" "$HOME/.codex/AGENTS.md"
+    copy_dotfile "$DOTFILES/ai-agents/AGENTS.md" "$HOME/.codex/AGENTS.md"
 
     # 4. Register Codex as a user-scope, read-only MCP reviewer in Claude Code. The -c overrides
     #    pin the reviewer read-only and non-interactive regardless of ~/.codex/config.toml.

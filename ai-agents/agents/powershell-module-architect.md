@@ -114,6 +114,6 @@ unwritten behaviour + tests in your report for the caller to dispatch to `pwsh-i
 
 ---
 
-Maintenance: this file intentionally duplicates selected rules from `claude/AGENTS.md`
+Maintenance: this file intentionally duplicates selected rules from `ai-agents/AGENTS.md`
 because subagents cannot import it; it also delegates implementation to `pwsh-implementer`.
 Update both when changing module, typing, or conventions guidance.

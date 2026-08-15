@@ -1,8 +1,8 @@
 # Claude Code — global user instructions
 
-@AGENTS.md
+@../ai-agents/AGENTS.md
 
-The shared coding conventions live in `AGENTS.md` (imported above), so Claude Code and
+The shared coding conventions live in `ai-agents/AGENTS.md` (imported above), so Claude Code and
 Codex CLI follow the same rules. Everything below is Claude-specific.
 
 ## Claude Code Workflow
@@ -65,7 +65,7 @@ Auto-memory (the `~/.claude/projects/<slug>/memory/` store auto-loaded via `MEMO
 Claude-Code-only, so keep it small and prefer a durable, discoverable home over a new memory.
 
 - **Raise the save bar.** Before writing a memory, check whether the fact belongs somewhere
-  more durable: a standing rule/convention → `claude/AGENTS.md` (shared) or `claude/CLAUDE.md`
+  more durable: a standing rule/convention → `ai-agents/AGENTS.md` (shared) or `claude/CLAUDE.md`
   (Claude-specific); cross-repo initiative knowledge → the project brain
   (`core.md`/`STATUS.md`/ADR); a decision with rejected alternatives → an ADR under `docs/adr/`.
   Save to auto-memory **only** when it fits none of those — a genuinely session-scoped

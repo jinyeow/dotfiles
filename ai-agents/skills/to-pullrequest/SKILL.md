@@ -34,7 +34,7 @@ this skill — they belong to a separate skill if one is wanted later.
 - `gh` CLI authenticated (GitHub) or `az` CLI with the azure-devops extension, logged in
   (`az login`) (Azure DevOps).
 - A bare-worktree repo layout uses the convention in the project's `AGENTS.md` → "Git
-  worktrees" section (in this dotfiles repo that section lives in `claude/AGENTS.md`, the
+  worktrees" section (in this dotfiles repo that section lives in `ai-agents/AGENTS.md`, the
   file projected as the installed global `AGENTS.md`): branch work happens in its own
   worktree, never in `main`. In a normal (non-worktree) clone, the branch guard below still
   applies — it just means "not the default branch."
@@ -62,7 +62,7 @@ this skill — they belong to a separate skill if one is wanted later.
    title and body. Do not draft from memory of the conversation alone.
 
 4. **Draft the title.** Conventional Commits format (`feat(scope): summary`, `fix: summary`,
-   etc.), consistent with this repo's commit convention (see `claude/AGENTS.md` → "Commits" in
+   etc.), consistent with this repo's commit convention (see `ai-agents/AGENTS.md` → "Commits" in
    this repo, or the project's own commit convention elsewhere). If the branch has one commit,
    the title can start from that commit's subject; if several, summarize the net change. A
    commit subject can itself contain quotes, backticks, or `$()` — treat the title with the

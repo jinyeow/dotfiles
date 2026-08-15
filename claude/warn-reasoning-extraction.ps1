@@ -2,7 +2,7 @@
 # UserPromptSubmit + PreToolUse(Edit|Write) hook: detect reasoning-extraction phrasing
 # ("explain your reasoning step by step", "show your chain of thought", ...) that can trip
 # Claude Fable 5's `reasoning_extraction` refusal and cause a fallback to Opus (see
-# claude/AGENTS.md -> "Prompting downstream models", lever 5). Dispatches on hook_event_name:
+# ai-agents/AGENTS.md -> "Prompting downstream models", lever 5). Dispatches on hook_event_name:
 #   - UserPromptSubmit: advisory only - emits `additionalContext` asking Claude to interpret the
 #     phrasing as a request for short rationale + assumptions + evidence, and to mention it to the
 #     user. Never denies a user prompt.

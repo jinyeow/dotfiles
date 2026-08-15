@@ -21,7 +21,7 @@ Describe 'worktree-janitor skill' {
         $content = Get-Content $skillPath -Raw
         $content | Should -Not -Match 'root `AGENTS\.md`'
         $content | Should -Match 'global `AGENTS\.md`'
-        $content | Should -Match ([regex]::Escape('claude/AGENTS.md'))
+        $content | Should -Match ([regex]::Escape('ai-agents/AGENTS.md'))
     }
 
     It 'flags the az repos pr list --source-branch ref form as unverified against the installed CLI version' {
