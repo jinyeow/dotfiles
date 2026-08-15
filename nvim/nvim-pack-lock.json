@@ -20,6 +20,10 @@
       "rev": "8edd468af4d63212b84d69b2ddb5ffc9023ef5eb",
       "src": "https://github.com/catppuccin/nvim"
     },
+    "nvim-autopairs": {
+      "rev": "7b9923abad60b903ece7c52940e1321d39eccc79",
+      "src": "https://github.com/windwp/nvim-autopairs"
+    },
     "nvim-dap": {
       "rev": "9e848e09a697ee95302a3ef2dd43fd6eb709e570",
       "src": "https://github.com/mfussenegger/nvim-dap"

@@ -90,8 +90,14 @@ vim.api.nvim_create_autocmd('FileType', {
     if not pcall(vim.treesitter.start, ev.buf) then
       return
     end
-    -- Experimental upstream, same status as master's indent module.
-    vim.bo[ev.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+    -- Experimental upstream, same status as master's indent module. Only wire it up
+    -- when the parser actually ships an indents.scm (missing for c_sharp and vim as
+    -- of nvim-treesitter main) - otherwise this overwrites the runtime ftplugin's
+    -- working indentexpr (e.g. indent/cs.vim's GetCSIndent) with a no-op.
+    local lang = vim.treesitter.language.get_lang(vim.bo[ev.buf].filetype)
+    if lang and vim.treesitter.query.get(lang, 'indents') then
+      vim.bo[ev.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+    end
   end,
 })
 

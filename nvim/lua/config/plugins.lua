@@ -48,6 +48,8 @@ local specs = {
   -- Editor Services in -DebugServiceOnly mode over a named pipe — no debugger
   -- plugin needed, PSES *is* the debug server (same one VS Code uses).
   'https://github.com/mfussenegger/nvim-dap',
+  -- Bracket/quote auto-pairing; config/autopairs.lua wires check_ts to nvim-treesitter.
+  'https://github.com/windwp/nvim-autopairs',
 }
 
 -- load=true: sources plugin/ and ftdetect/ files immediately so subsequent

@@ -35,6 +35,7 @@ nvim/
     ├── keymaps.lua
     ├── autocmds.lua
     ├── treesitter.lua
+    ├── autopairs.lua
     ├── orgmode.lua    # agenda + capture templates (task / PBI / journal)
     ├── lsp.lua
     ├── dap.lua        # PowerShell debugging via PSES (DebugServiceOnly + pipe)
@@ -43,7 +44,7 @@ nvim/
 ```
 
 Load order: `performance` → `user` → `plugins` → `options` → `keymaps` →
-`autocmds` → `treesitter` → `orgmode` → `lsp` → `dap` → `gitsigns` → `ui`
+`autocmds` → `treesitter` → `autopairs` → `orgmode` → `lsp` → `dap` → `gitsigns` → `ui`
 
 ## Install
 
