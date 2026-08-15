@@ -65,18 +65,23 @@ approves it.
 
 3. **No remote (local-only work) → fall back to the project-brain `STATUS.md`.** Resolve the
    initiative for that worktree's directory via the `project-brain` skill's resolve-and-read
-   procedure, then read its `STATUS.md` for a "done" signal. The signal only counts if:
+   procedure, then read its `STATUS.md` for a "done" signal. Two independent signals count:
    - the entry **explicitly names this branch or this worktree's work** as done, merged, or
      closed — a generic "resolved" note elsewhere in the file about a different piece of work
-     does not transfer to this branch;
-   - or the initiative has already moved to `initiatives/_archive/` (archival is itself a
-     done signal for everything under it).
-   - the `STATUS.md`'s `updated:` field is **7 days old or less**, per the `project-brain`
-     skill's own staleness convention. A stale `STATUS.md` (>7 days) is inconclusive even if it
-     otherwise names the branch as done — treat it the same as no signal.
+     does not transfer to this branch. This signal only counts if the `STATUS.md`'s `updated:`
+     field is **7 days old or less**, per the `project-brain` skill's own staleness convention;
+     a stale `STATUS.md` (>7 days) is inconclusive even if it otherwise names the branch as
+     done — treat it the same as no signal.
+   - the initiative has already moved to `initiatives/_archive/` — archival is itself a done signal for everything under it, unconditionally, regardless of STATUS.md age. The
+     7-day staleness rule above scopes only to the explicit-naming signal; an archived
+     initiative's `STATUS.md` is almost always older than 7 days, so applying that rule here
+     would nullify this signal entirely. An archived initiative has no `registry.json` entry,
+     so the normal resolve-and-read procedure can't locate it — look it up directly under
+     `initiatives/_archive/<name>/` instead.
 
    No brain, no matching initiative, an entry that doesn't name this branch/work, or a stale
-   `STATUS.md` all count as "no signal" — fall through to step 4, don't guess.
+   `STATUS.md` (for the explicit-naming signal) all count as "no signal" — fall through to
+   step 4, don't guess.
 
 4. **Neither signal exists → prompt for manual approval.** State the worktree, branch, and what
    was checked (remote host queried / brain lookup attempted) so the user can decide with full

@@ -143,6 +143,24 @@ Describe 'worktree-janitor skill' {
         $content | Should -Match '(?i)(fail|error)[^\n]{0,120}\bnot\b[^\n]{0,40}\bsafe\b'
     }
 
+    It 'directs to a direct lookup under initiatives/_archive/<name>/ since an archived initiative has no registry.json entry' {
+        $content = Get-Content $skillPath -Raw
+        $content | Should -Match ([regex]::Escape('initiatives/_archive/<name>/'))
+        $content | Should -Match '(?i)registry\.json'
+    }
+
+    It 'scopes the 7-day staleness rule to the explicit-branch-named-done signal only, not the already-archived signal' {
+        $content = Get-Content $skillPath -Raw
+        $archivedIndex = $content.IndexOf('already moved to `initiatives/_archive/`')
+        $staleRuleIndex = $content.IndexOf('7 days old or less')
+        $archivedIndex | Should -BeGreaterThan -1
+        $staleRuleIndex | Should -BeGreaterThan -1
+        # the staleness sentence must come before the archived-signal bullet so it reads as
+        # scoped to the explicit-naming bullet, not applying to both
+        $staleRuleIndex | Should -BeLessThan $archivedIndex
+        $content | Should -Match '(?i)archiv\w*[^\n]{0,120}\bregardless of\b[^\n]{0,40}\b(age|staleness)\b'
+    }
+
     It 'is registered in the root README skills table' {
         Get-Content (Join-Path $repo 'README.md') -Raw | Should -Match '`worktree-janitor`'
     }
