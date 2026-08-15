@@ -864,7 +864,7 @@ Describe 'setup.ps1 claude module output styles' {
 }
 
 Describe 'setup.ps1 claude module AGENTS.d' {
-    It 'junctions claude/AGENTS.d into ~/.claude/AGENTS.d' -Skip:(-not $IsWindows) {
+    It 'junctions ai-agents/AGENTS.d into ~/.claude/AGENTS.d' -Skip:(-not $IsWindows) {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-agentsd-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
@@ -881,7 +881,7 @@ Describe 'setup.ps1 claude module AGENTS.d' {
 }
 
 Describe 'setup.ps1 codex module AGENTS.d' {
-    It 'copies each claude/AGENTS.d file into ~/.codex/AGENTS.d' -Skip:(-not $IsWindows) {
+    It 'copies each ai-agents/AGENTS.d file into ~/.codex/AGENTS.d' -Skip:(-not $IsWindows) {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-agentsd-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
@@ -889,8 +889,8 @@ Describe 'setup.ps1 codex module AGENTS.d' {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module codex -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
-            $output | Should -Match '\[DRY RUN\] copy .*claude\\AGENTS\.d\\git-worktrees\.md .*\.codex\\AGENTS\.d\\git-worktrees\.md'
-            $output | Should -Match '\[DRY RUN\] copy .*claude\\AGENTS\.d\\project-brain\.md .*\.codex\\AGENTS\.d\\project-brain\.md'
+            $output | Should -Match '\[DRY RUN\] copy .*ai-agents\\AGENTS\.d\\git-worktrees\.md .*\.codex\\AGENTS\.d\\git-worktrees\.md'
+            $output | Should -Match '\[DRY RUN\] copy .*ai-agents\\AGENTS\.d\\project-brain\.md .*\.codex\\AGENTS\.d\\project-brain\.md'
         } finally {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue

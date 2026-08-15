@@ -37,13 +37,13 @@ These are repository paths, so this routing works without runtime-specific impor
 | Yazi | [`yazi/yazi.toml`](yazi/yazi.toml); [`yazi/keymap.toml`](yazi/keymap.toml); [`yazi/theme.toml`](yazi/theme.toml); [`yazi/package.toml`](yazi/package.toml) |
 | Setup and installers | [`setup.ps1`](setup.ps1); [`setup.sh`](setup.sh); [`tests/setup.Tests.ps1`](tests/setup.Tests.ps1); [`tests/setup-sh.Tests.ps1`](tests/setup-sh.Tests.ps1) |
 | Agent workflow configuration | [`.agents/workflow.md`](.agents/workflow.md); [`ai-agents/skills/setup-agent-skills/SKILL.md`](ai-agents/skills/setup-agent-skills/SKILL.md) |
-| Claude Code hooks and agents | [`claude/README.md`](claude/README.md); [`claude/AGENTS.md`](claude/AGENTS.md); [`claude/settings.json`](claude/settings.json); [`ai-agents/agents/`](ai-agents/agents/) |
+| Claude Code hooks and agents | [`claude/README.md`](claude/README.md); [`ai-agents/AGENTS.md`](ai-agents/AGENTS.md); [`claude/settings.json`](claude/settings.json); [`ai-agents/agents/`](ai-agents/agents/) |
 | Codex CLI | [`codex/README.md`](codex/README.md); [`codex/config.toml`](codex/config.toml); [`codex/templates/`](codex/templates/) |
 | Pi | [`pi/README.md`](pi/README.md); [`pi/settings.json`](pi/settings.json); [`pi/extensions/`](pi/extensions/); [`pi/skills/`](pi/skills/) |
 
 ## Shared agent configuration boundaries
 
-[`claude/AGENTS.md`](claude/AGENTS.md) is the global coding-conventions source installed
+[`ai-agents/AGENTS.md`](ai-agents/AGENTS.md) is the global coding-conventions source installed
 for Claude Code and Codex CLI. [`claude/CLAUDE.md`](claude/CLAUDE.md) is its
 Claude-specific adapter. This root guide is project guidance, not a replacement for
 either. Pi reads this project guide directly; its tracked configuration is under

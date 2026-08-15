@@ -16,7 +16,7 @@ Personal dotfiles for Windows (primary) and Linux/WSL.
 | `curl/` | Global curl defaults | Windows + Linux |
 | `ripgrep/` | ripgrep config | Windows + Linux |
 | `lazygit/` | lazygit config + Catppuccin themes | Windows + Linux |
-| `claude/` | Claude Code settings, statusline, hooks, agents, AGENTS.md, global skills | Windows + Linux |
+| `claude/` | Claude Code settings, statusline, hooks, agents, global skills | Windows + Linux |
 | `windowsterminal/` | Windows Terminal settings | Windows |
 | `bat/` | bat syntax highlighter config | Windows + Linux |
 | `vscode/` | VSCode settings snapshot | Windows |

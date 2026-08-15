@@ -69,7 +69,7 @@ where a worker orchestrates further — flat fan-out from you, always.
 
 ## Prompt contract for every dispatch
 
-Each worker prompt must contain, in order (restated from `claude/AGENTS.md` → "Prompting
+Each worker prompt must contain, in order (restated from `ai-agents/AGENTS.md` → "Prompting
 downstream models"; keep in sync):
 
 1. **Why** — one line: purpose and what the output enables.
@@ -106,6 +106,6 @@ Report back in this shape (under ~30 lines), not free-form prose:
 ---
 
 Maintenance: this file intentionally duplicates the downstream-prompting levers and
-orchestration rules from `claude/AGENTS.md` / `claude/CLAUDE.md` because subagents cannot
+orchestration rules from `ai-agents/AGENTS.md` / `claude/CLAUDE.md` because subagents cannot
 import them. Update this file when those sections change, and update the roster table when
 agents are added or removed from `ai-agents/agents/`.

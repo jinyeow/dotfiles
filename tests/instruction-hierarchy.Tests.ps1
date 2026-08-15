@@ -114,7 +114,7 @@ Describe 'repository instruction hierarchy' {
             @('Yazi', 'yazi/yazi.toml', 'yazi/keymap.toml', 'yazi/theme.toml'),
             @('Setup', 'setup.ps1', 'setup.sh', 'tests/setup.Tests.ps1'),
             @('Agent workflow', '.agents/workflow.md', 'ai-agents/skills/setup-agent-skills/SKILL.md'),
-            @('Claude', 'claude/README.md', 'claude/AGENTS.md'),
+            @('Claude', 'claude/README.md', 'ai-agents/AGENTS.md'),
             @('Codex', 'codex/README.md', 'codex/config.toml'),
             @('Pi', 'pi/README.md', 'pi/settings.json')
         )

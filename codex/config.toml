@@ -18,7 +18,7 @@ approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 
 # Personal coding conventions shared with Claude Code live in ~/.codex/AGENTS.md
-# (sourced from dotfiles claude/AGENTS.md). Cap the instruction chain generously so the
+# (sourced from dotfiles ai-agents/AGENTS.md). Cap the instruction chain generously so the
 # full conventions file is always read.
 project_doc_max_bytes = 32768
 

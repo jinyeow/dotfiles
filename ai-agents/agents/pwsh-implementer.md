@@ -139,6 +139,6 @@ Report back in this shape (under ~20 lines total), not free-form prose:
 
 ---
 
-Maintenance: this file intentionally duplicates selected rules from `claude/AGENTS.md`
+Maintenance: this file intentionally duplicates selected rules from `ai-agents/AGENTS.md`
 because subagents cannot import it. Update both when changing PowerShell, TDD, or
 error-handling conventions.

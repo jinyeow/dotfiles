@@ -932,12 +932,12 @@ function Install-Claude {
     # link lets those edits land straight in the repo. Needs Developer Mode (see New-FileSymlink).
     New-FileSymlink -Link (Join-Path $claudeDir 'settings.json') -Target (Join-Path $Dotfiles 'claude\settings.json')
     New-FileSymlink -Link (Join-Path $claudeDir 'CLAUDE.md') -Target (Join-Path $Dotfiles 'claude\CLAUDE.md')
-    # Shared coding conventions. CLAUDE.md imports this via `@AGENTS.md` (resolves to
-    # ~/.claude/AGENTS.md). The codex module installs the same source to ~/.codex/AGENTS.md.
-    New-FileSymlink -Link (Join-Path $claudeDir 'AGENTS.md') -Target (Join-Path $Dotfiles 'claude\AGENTS.md')
+    # Shared coding conventions. CLAUDE.md imports this via `@../ai-agents/AGENTS.md` (resolves
+    # to ~/.claude/AGENTS.md). The codex module installs the same source to ~/.codex/AGENTS.md.
+    New-FileSymlink -Link (Join-Path $claudeDir 'AGENTS.md') -Target (Join-Path $Dotfiles 'ai-agents\AGENTS.md')
     # Progressive-disclosure satellite files AGENTS.md links out to on demand (e.g. git worktrees,
     # project brain) — junctioned whole-dir like output-styles/agents so the links resolve live.
-    New-Junction -Link (Join-Path $claudeDir 'AGENTS.d') -Target (Join-Path $Dotfiles 'claude\AGENTS.d')
+    New-Junction -Link (Join-Path $claudeDir 'AGENTS.d') -Target (Join-Path $Dotfiles 'ai-agents\AGENTS.d')
     New-FileSymlink -Link (Join-Path $claudeDir 'statusline-command.sh') -Target (Join-Path $Dotfiles 'claude\statusline-command.sh')
     # PreToolUse hook wired in settings.json; blocks commits carrying the AI session-URL trailer.
     New-FileSymlink -Link (Join-Path $claudeDir 'no-claude-session-trailer.sh') -Target (Join-Path $Dotfiles 'claude\no-claude-session-trailer.sh')
@@ -1240,14 +1240,14 @@ function Install-Codex {
     # 3. Shared conventions — same source the claude module installs to ~/.claude/AGENTS.md.
     $params = @{
         Dest = Join-Path $codexDir 'AGENTS.md'
-        Source = Join-Path $Dotfiles 'claude\AGENTS.md'
+        Source = Join-Path $Dotfiles 'ai-agents\AGENTS.md'
     }
     Copy-Dotfile @params
 
     # Progressive-disclosure satellite files AGENTS.md links out to on demand. Codex has no
     # directory-junction path for this dir (config.toml/AGENTS.md are copied, not symlinked),
     # so copy each file individually — same as the claude module's AGENTS.d junction covers.
-    $agentsDSrc = Join-Path $Dotfiles 'claude\AGENTS.d'
+    $agentsDSrc = Join-Path $Dotfiles 'ai-agents\AGENTS.d'
     if (Test-Path $agentsDSrc) {
         foreach ($file in Get-ChildItem -Path $agentsDSrc -File) {
             Copy-Dotfile -Dest (Join-Path $codexDir "AGENTS.d\$($file.Name)") -Source $file.FullName
