@@ -612,7 +612,7 @@ install_claude() {
     make_symlink "$DOTFILES/claude/settings.json"          "$HOME/.claude/settings.json"
     make_symlink "$DOTFILES/claude/CLAUDE.md"              "$HOME/.claude/CLAUDE.md"
     # Shared conventions — CLAUDE.md imports this via `@../ai-agents/AGENTS.md` (resolves to ~/.claude/AGENTS.md).
-    make_symlink "$DOTFILES/ai-agents/AGENTS.md"           "$HOME/.claude/AGENTS.md"
+    make_symlink "$DOTFILES/ai-agents/AGENTS.md" "$HOME/.claude/AGENTS.md"
     make_symlink "$DOTFILES/claude/statusline-command.sh"  "$HOME/.claude/statusline-command.sh"
     # PreToolUse hook wired in settings.json; blocks commits carrying the AI session-URL trailer.
     make_symlink "$DOTFILES/claude/no-claude-session-trailer.sh" "$HOME/.claude/no-claude-session-trailer.sh"

@@ -25,9 +25,10 @@ the source tree, so `AGENTS.d/` moves with it.
 Move `claude/AGENTS.md` and `claude/AGENTS.d/` to `ai-agents/AGENTS.md` and
 `ai-agents/AGENTS.d/`, keeping the two as siblings so the file's own relative links stay
 valid. Every reference is repointed at the new source path; the installed destinations
-(`~/.claude/AGENTS.md`, `~/.claude/AGENTS.d/`, `~/.codex/AGENTS.md`,
-`~/.codex/AGENTS.d/`) are unchanged, since only the repo source moved, not the projection
-targets.
+are unchanged, since only the repo source moved, not the projection targets:
+`~/.claude/AGENTS.md` and `~/.codex/AGENTS.md` on both platforms, plus
+`~/.claude/AGENTS.d/` and `~/.codex/AGENTS.d/` on Windows only — `setup.sh` has never
+projected `AGENTS.d/` on Linux, a pre-existing gap this change does not touch.
 
 `claude/CLAUDE.md`'s import changes from `@AGENTS.md` to `@../ai-agents/AGENTS.md`.
 Claude Code resolves `@`-imports relative to the real (symlink-resolved) directory of the
