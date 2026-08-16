@@ -20,6 +20,13 @@ default_shell = "pwsh"
 # Keep per-pane scrollback history across sessions.
 pane_history = true
 
+[keys]
+# Cycle focus between active agent panes. Bracket keys are unused by any other
+# default Herdr binding (see herdr --default-config), so this pair is collision-free
+# within Herdr's own prefix namespace. See herdr/README.md for the rationale.
+previous_agent = "prefix+["
+next_agent = "prefix+]"
+
 [ui]
 show_agent_labels_on_pane_borders = true
 
