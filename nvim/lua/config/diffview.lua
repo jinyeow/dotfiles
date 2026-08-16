@@ -12,6 +12,9 @@ diffview.setup({
   view = {
     default = { layout = 'diff2_horizontal' },
     merge_tool = { layout = 'diff3_horizontal' },
+    cycle_layouts = {
+      default = { 'diff2_horizontal', 'diff2_vertical', 'diff1_inline' },
+    },
   },
   file_panel = {
     listing_style = 'tree',
