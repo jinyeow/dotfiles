@@ -8,7 +8,7 @@ needs the workflow configuration.
 A private `.agents/workflow.local.md` takes precedence when present. Run
 `/setup-agent-skills` before changing either file.
 
-- **Specs**: `.claude/specs/`
+- **Specs**: `.agents/specs/`
 - **High-level designs**: `docs/design/`
 - **Tickets**: GitHub Issues in `jinyeow/dotfiles`
 - **Labels**: `spec-ready`, `design-ready`, `triaged`, `ready`, `needs-info`, `wontfix`

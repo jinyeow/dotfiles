@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 This skill takes the current conversation context and codebase understanding and produces a spec (you may know this document as a PRD). Do NOT interview the user — just synthesize what you already know.
 
-Resolve output location and any tracker target from repository-root `.agents/workflow.local.md` when present, otherwise repository-root `.agents/workflow.md`; run `/setup-agent-skills` if neither exists. Default: write `.claude/specs/<slug>.md` (`<slug>` = kebab-cased title, no date prefix).
+Resolve output location and any tracker target from repository-root `.agents/workflow.local.md` when present, otherwise repository-root `.agents/workflow.md`; run `/setup-agent-skills` if neither exists. Default: write `.agents/specs/<slug>.md` (`<slug>` = kebab-cased title, no date prefix). A legacy `.claude/specs/` directory from before this convention moved stays honored — if it exists and `.agents/specs/` does not, write new specs there instead of starting `.agents/specs/`.
 
 ## Process
 
@@ -17,7 +17,7 @@ Resolve output location and any tracker target from repository-root `.agents/wor
 Check with the user that these modules and seams match their expectations.
 
 3. Write the spec using the template below, then output it:
-   - Default → write `.claude/specs/<slug>.md`.
+   - Default → write `.agents/specs/<slug>.md` (or the legacy `.claude/specs/` directory if that already exists for this repo).
    - If config names a tracker → publish there and apply the `spec-ready` label.
 
 <spec-template>

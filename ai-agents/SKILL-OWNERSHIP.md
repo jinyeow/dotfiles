@@ -92,8 +92,10 @@ mechanism; fixable by repointing the reference:
 - `fastmail` — only coupling is Claude Code's `mcp__fastmail__*` tool-name syntax in the
   prose; the Fastmail MCP server itself is portable in concept. Migration ticket: #92.
 - `walkthrough` — only coupling is two hardcoded paths (`~/.claude/learner-profile.md`,
-  `.claude/tickets.md`/`.claude/specs/*.md`); already resolves project-brain the portable
-  way. Migration ticket: #91.
+  `.claude/tickets.md`/`.claude/specs/*.md` — the pre-#114 default; `to-tickets`/`to-spec`
+  now default to `.agents/tickets.md`/`.agents/specs/`, keeping `.claude/` only as a legacy
+  fallback for already-set-up repos); already resolves project-brain the portable way.
+  Migration ticket: #91.
 
 Claude-native skills are projected only to Claude Code, while portable skills are projected
 there alongside them. If names collide, the Claude-native variant wins.

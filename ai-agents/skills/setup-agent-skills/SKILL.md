@@ -12,9 +12,9 @@ One-time per-repo configuration for the spec → design → tickets → implemen
 
 Confirm where each artifact lands (defaults in bold; detect an existing `docs/` tree first and prefer it):
 
-- Specs → **`.claude/specs/`**
+- Specs → **`.agents/specs/`**
 - High-level designs → **`docs/design/`**
-- Tickets → a tracker (below) or **local `.claude/tickets.md`**
+- Tickets → a tracker (below) or **local `.agents/tickets.md`**
 
 ## 2. Issue tracker (optional)
 
@@ -59,3 +59,5 @@ Ask whether the configuration is private to this checkout or intentionally share
 - **Shared** — write repository-root `.agents/workflow.md`, which may be committed for the team.
 
 Capture the five sections under an `# Agent workflow` heading. Downstream skills (`to-spec`, `to-hld`, `to-tickets`, `triage`, `wayfinder`) resolve `.agents/workflow.local.md` first, then `.agents/workflow.md`; if neither exists, they fall back to the bold defaults (and `wayfinder` to the local-markdown tracker). Do not duplicate this configuration under `.claude/`, `.codex/`, or `.pi/`, and do not store it in `CLAUDE.md` or `AGENTS.md`: all three harnesses read this one file explicitly only when a workflow skill needs it.
+
+Repos configured before this convention moved from `.claude/` to `.agents/` may still have `.claude/tickets.md` / `.claude/specs/`. Those legacy paths keep working — `to-spec` and `spec-review` still read from a `.claude/specs/` directory when found, and `to-tickets` appends to an existing `.claude/tickets.md` rather than starting a second file. New output otherwise goes under the `.agents/` defaults above.
