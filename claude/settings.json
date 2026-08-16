@@ -114,6 +114,15 @@
             "command": "pwsh -NoProfile -Command \"[console]::beep(); [console]::Write([char]7)\""
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File ~/.claude/self-review-questions.ps1",
+            "shell": "bash"
+          }
+        ]
       }
     ],
     "Notification": [

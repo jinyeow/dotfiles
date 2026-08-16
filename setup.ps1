@@ -955,6 +955,8 @@ function Install-Claude {
     New-FileSymlink -Link (Join-Path $claudeDir 'inject-handoff.ps1') -Target (Join-Path $Dotfiles 'claude\inject-handoff.ps1')
     # SessionStart hook: nudge when the current project's auto-memory store is overdue for review.
     New-FileSymlink -Link (Join-Path $claudeDir 'memory-review-nudge.ps1') -Target (Join-Path $Dotfiles 'claude\memory-review-nudge.ps1')
+    # Stop hook: force a two-question self-review (least confident about / biggest thing missed) before ending.
+    New-FileSymlink -Link (Join-Path $claudeDir 'self-review-questions.ps1') -Target (Join-Path $Dotfiles 'claude\self-review-questions.ps1')
 
     # Skills — project portable and Claude-native resources into ~/.claude/skills/.
     # Native names win collisions so each destination receives exactly one link.
