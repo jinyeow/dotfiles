@@ -114,7 +114,21 @@
             "command": "pwsh -NoProfile -Command \"[console]::beep(); [console]::Write([char]7)\""
           }
         ]
-      },
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "clear|logout|prompt_input_exit|other",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File ~/.claude/self-review-questions.ps1",
+            "shell": "bash"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
       {
         "hooks": [
           {

@@ -1,23 +1,16 @@
-# Stop hook: forces a two-question self-review before Claude ends a turn.
-# Inspired by https://www.reddit.com/r/ClaudeAI/ - the "what are you least confident
-# about" / "what am I missing" end-of-session ritual.
+# SessionEnd/PreCompact hook: reminds Claude of a two-question self-review before a
+# session-ending event (/clear, /quit, logout) or a context compaction (/compact).
+# Inspired by an r/ClaudeAI end-of-session ritual ("what are you least confident about" /
+# "what am I missing").
 #
-# stop_hook_active is set by Claude Code when this is a second Stop attempt after a
-# previous Stop hook already blocked once - honor it to avoid an infinite block loop.
+# Non-blocking by design: SessionEnd hooks cannot block session termination, and PreCompact
+# blocking only halts compaction (via stderr) without granting Claude another turn to answer -
+# so this surfaces as a systemMessage to the user rather than forcing a reply.
 
-$hookInput = [Console]::In.ReadToEnd() | ConvertFrom-Json
-
-if ($hookInput.stop_hook_active) {
-    exit 0
-}
-
-$reason = @'
-Before ending this turn, answer two questions in your reply (briefly, a sentence or two each):
-1. What are you least confident about in what you just did?
-2. What's the biggest thing you're probably missing about this that you haven't thought to ask?
+$systemMessage = @'
+Self-review reminder: what are you least confident about in your recent work, and what's the biggest thing you're probably missing that you haven't thought to ask?
 '@
 
 @{
-    decision = 'block'
-    reason   = $reason
+    systemMessage = $systemMessage
 } | ConvertTo-Json -Compress
