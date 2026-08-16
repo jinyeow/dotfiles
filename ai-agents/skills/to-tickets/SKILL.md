@@ -1,6 +1,6 @@
 ---
 name: to-tickets
-description: Break a plan, spec, or conversation into tracer-bullet tickets with blocking edges — written to .claude/tickets.md or published to the configured tracker.
+description: Break a plan, spec, or conversation into tracer-bullet tickets with blocking edges — written to .agents/tickets.md or published to the configured tracker.
 disable-model-invocation: true
 ---
 
@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 Break a plan, spec, or conversation into a set of **tickets** — tracer-bullet vertical slices, each declaring the tickets that **block** it.
 
-Resolve output location and any tracker target from repository-root `.agents/workflow.local.md` when present, otherwise repository-root `.agents/workflow.md`; run `/setup-agent-skills` if neither exists. Default: write `.claude/tickets.md`.
+Resolve output location and any tracker target from repository-root `.agents/workflow.local.md` when present, otherwise repository-root `.agents/workflow.md`; run `/setup-agent-skills` if neither exists. Default: write `.agents/tickets.md`. A legacy `.claude/tickets.md` from before this convention moved stays honored — if it exists and `.agents/tickets.md` does not, append to it instead of starting a new file.
 
 ## Process
 
@@ -61,7 +61,7 @@ Iterate until the user approves the breakdown.
 
 Publish the approved tickets. **How** depends on the config — the tickets are the same either way, only the shape of the blocking edges changes:
 
-- **Local files (default)** → write `.claude/tickets.md`, all tickets in dependency order (blockers first), each with its "Blocked by" listing the titles it depends on. Use the file template below.
+- **Local files (default)** → write `.agents/tickets.md` (or the legacy `.claude/tickets.md` if that already exists for this repo), all tickets in dependency order (blockers first), each with its "Blocked by" listing the titles it depends on. Use the file template below.
 - **A real issue tracker (GitHub, Azure Boards, …)** → publish one issue per ticket in dependency order (blockers first) so each ticket's blocking edges can reference real identifiers. Use the platform's native blocking / sub-issue relationship where it has one; otherwise set each ticket's "Blocked by" to the blocking issues. Apply the `triaged` label, plus `ready` for any ticket an agent may grab and implement autonomously.
 
 Do NOT close or modify any parent issue.

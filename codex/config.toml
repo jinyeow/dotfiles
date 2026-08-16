@@ -33,7 +33,7 @@ hooks = true
 # Official Bicep MCP server (Azure.Bicep.McpServer), run via the .NET SDK's `dnx` tool
 # runner. Buys file diagnostics, formatting, decompile, resource-type schemas, and
 # best-practices lookup for .bicep files — not symbol-level go-to-definition/references,
-# which stays out of scope (see .claude/specs/bicep-code-intelligence.md, Track D). Not
+# which stays out of scope (see .agents/specs/bicep-code-intelligence.md, Track D). Not
 # registered for Claude Code: the Azure MCP plugin's `bicepschema` tool plus the
 # self-authored LSP plugin already cover that ground there.
 [mcp_servers.bicep]
