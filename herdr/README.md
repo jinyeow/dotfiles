@@ -62,11 +62,12 @@ workspace/tab/pane hierarchy.
   **outer** workspace manager: Herdr's default prefix is `Ctrl+b`, and psmux
   (`psmux/psmux.conf`) keeps the tmux-compatible default of the same `Ctrl+b` prefix,
   under which `prefix+[`/`prefix+]` are already bound to `copy-mode`/`paste-buffer`
-  (confirmed live via `psmux list-keys`). Herdr running nested *inside* a psmux pane
-  would never see this chord — psmux consumes `Ctrl+b` first and enters its own
-  copy-mode. That prefix-level ambiguity (both apps defaulting to `Ctrl+b`) predates
-  this change and is out of scope here; it would affect any Herdr `prefix+*` binding
-  the same way, not just this pair.
+  (confirmed live via `psmux list-keys`). This repo's owner never nests multiplexers —
+  no psmux inside Herdr, no Herdr inside psmux, no nesting of any kind — so the two
+  apps never share a terminal at the same time and this collision is not a real
+  conflict for this setup. That prefix-level ambiguity (both apps defaulting to
+  `Ctrl+b`) predates this change and is out of scope here; it would affect any Herdr
+  `prefix+*` binding the same way, not just this pair.
 - **Order**: cycling order is Herdr's internal agent order. Not independently verified
   live in this session — only one agent pane was active (this session's own Claude
   pane, per `herdr agent list`), so a two-agent cycle could not be exercised
