@@ -49,7 +49,6 @@ not download or change the machine.
 | `warn-legacy-files.ps1` | `~/.claude/warn-legacy-files.ps1` | PreToolUse(Edit\|Write) hook that asks to confirm before editing legacy/do-not-touch dotfiles (scoped to `$env:DOTFILES`) |
 | `warn-hardcoded-secrets.ps1` | `~/.claude/warn-hardcoded-secrets.ps1` | PostToolUse(Edit\|Write) hook that warns when written content looks like a hardcoded secret |
 | `warn-reasoning-extraction.ps1` | `~/.claude/warn-reasoning-extraction.ps1` | UserPromptSubmit + PreToolUse(Edit\|Write) hook that flags reasoning-extraction phrasing that trips Fable-5's `reasoning_extraction` → Opus fallback |
-| `self-review-questions.ps1` | `~/.claude/self-review-questions.ps1` | SessionEnd/PreCompact hook that surfaces a two-question self-review reminder (least confident about / biggest thing missed) via `systemMessage` |
 | `ai-agents/skills/<name>/` | `~/.claude/skills/<name>/` | Portable custom skills (also projected to Codex and Pi) |
 | `claude/skills/<name>/` | `~/.claude/skills/<name>/` | Claude-native skills and projected Claude support content |
 | `ai-agents/_shared/` | — | Portable support content; source-only, not projected as a skill |
@@ -57,9 +56,9 @@ not download or change the machine.
 | `output-styles/<name>.md` | `~/.claude/output-styles/<name>.md` | Output styles (whole dir junctioned); active style pinned by `outputStyle` in `settings.json` |
 
 **Install method.** `settings.json`, `CLAUDE.md`, `AGENTS.md`,
-`statusline-command.sh`, `no-claude-session-trailer.sh`, and the nine pwsh hook scripts
+`statusline-command.sh`, `no-claude-session-trailer.sh`, and the eight pwsh hook scripts
 (`inject-handoff.ps1`, `memory-review-nudge.ps1`, `block-destructive-vcs.ps1`, `block-pwsh-in-bash.ps1`, `lint-powershell.ps1`,
-`warn-legacy-files.ps1`, `warn-hardcoded-secrets.ps1`, `warn-reasoning-extraction.ps1`, `self-review-questions.ps1`) are
+`warn-legacy-files.ps1`, `warn-hardcoded-secrets.ps1`, `warn-reasoning-extraction.ps1`) are
 **symlinked** into `~/.claude`, and each skill directory is
 **junctioned** (Windows) / symlinked (Linux). Windows file symlinks require **Developer
 Mode** (Settings → For developers) — junctions don't need it but can't link files. Because
@@ -80,13 +79,13 @@ old copy-based install + planned live→repo sync.)
 | `agentPushNotifEnabled` | `true` | Mobile push notifications (cloud/background agents — not local CLI) |
 | `teammateMode` | `in-process` | How spawned **teammates** execute (`auto`/`tmux`/`iterm2`/`in-process`). Pinned to `in-process` so agent teams run inline and spawn **no panes**. At `auto`, Claude's backend detection sees `$TMUX` (psmux sets it) and picks the tmux backend, which emits a hardcoded POSIX launch line (`cd . && env VAR=x 'path/to/claude' .`) that is invalid in a pwsh pane — panes open to a bare prompt and the fan-out silently does nothing ([#42848](https://github.com/anthropics/claude-code/issues/42848); psmux-as-a-backend [#34150](https://github.com/anthropics/claude-code/issues/34150) is closed/not-planned). Revisit if upstream ships a shell-aware launch formatter. Note: this pin is global, so it also disables *working* bash panes under real tmux on Linux — move it to an untracked `settings.local.json` if that becomes a problem. Ordinary **subagents** (Agent/Task tool) are unaffected — they always ran in-process |
 | `preferredNotifChannel` | `terminal_bell` | Built-in bell on the **needs-input** notification → marks the Zellij tab |
-| `hooks` | SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop, SessionEnd, PreCompact, Notification | SessionStart: injects a pending `.claude/handoff.md`. UserPromptSubmit: warns on reasoning-extraction phrasing (Fable-5 fallback). PreToolUse: blocks the AI session-URL commit trailer, denies destructive git, denies PowerShell mis-sent to the Bash tool, asks to confirm edits to legacy dotfiles, and asks before writing a reasoning-extraction phrase into config. PostToolUse: PSScriptAnalyzer lint-on-edit and hardcoded-secret warn. Stop: local completion alert. SessionEnd/PreCompact: a two-question self-review reminder. Notification: local completion alert — see Hooks and Notifications |
+| `hooks` | SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop, Notification | SessionStart: injects a pending `.claude/handoff.md`. UserPromptSubmit: warns on reasoning-extraction phrasing (Fable-5 fallback). PreToolUse: blocks the AI session-URL commit trailer, denies destructive git, denies PowerShell mis-sent to the Bash tool, asks to confirm edits to legacy dotfiles, and asks before writing a reasoning-extraction phrase into config. PostToolUse: PSScriptAnalyzer lint-on-edit and hardcoded-secret warn. Stop: local completion alert. Notification: local completion alert — see Hooks and Notifications. For an end-of-session self-review, run the portable `wrapup` skill (`/wrapup`) before `/clear`/`/compact`/quitting — `SessionEnd`/`PreCompact` hooks can't force the model to answer (see Hooks) |
 | `statusLine` | command | Runs `statusline-command.sh` |
 
 ## Hooks
 
 Beyond the notification beeps, `settings.json` wires a handoff injector, deterministic
-guardrails, a lint pass, and a session-ending self-review reminder. The nine pwsh hooks read the hook
+guardrails, and a lint pass. The eight pwsh hooks read the hook
 JSON on stdin and are invoked through `bash` (so `~` expands) as
 `pwsh -NoProfile -File ~/.claude/<script>.ps1`; they need
 **pwsh** on PATH, and the lint hook additionally needs the **PSScriptAnalyzer** module (it
@@ -105,8 +104,13 @@ self-skips if absent). All allow silently and only emit JSON when they act.
 | `PostToolUse` (Edit\|Write) | `warn-hardcoded-secrets.ps1` | Scans written content (Write `content` / Edit `new_string`) for secret-shaped assignments (api-key/secret/token/password with a quoted literal, private-key blocks, AWS access-key ids) and warns via `additionalContext`. A quoted placeholder value starting with `$` or `{` (e.g. `="$env:X"`, `="{{token}}"`) is excluded, so env-var refs and template placeholders don't false-fire. Global (secrets are bad anywhere); reports only rule names, never values |
 | `UserPromptSubmit` | `warn-reasoning-extraction.ps1` | Warns via `additionalContext` (never denies) when the submitted prompt asks for step-by-step reasoning / chain-of-thought — phrasing that can trip Claude Fable 5's `reasoning_extraction` refusal → Opus fallback (Claude Code shows a transcript notice). Nudges Claude to read it as a request for short rationale + assumptions + evidence |
 | `PreToolUse` (Edit\|Write) | `warn-reasoning-extraction.ps1` | Same script, config-write guard: emits an `ask` only when a reasoning-extraction phrase is being written into a config/prompt-bearing file (`CLAUDE.md`, `AGENTS.md`, `*SKILL.md`, `agents/*.md`, `codex/**`) — a *standing* instruction persisted into config. Strips quoted substrings before matching (so docs that quote the phrase to ban it don't self-trigger) plus a negation guard; reports rule names only |
-| `SessionEnd` (clear\|logout\|prompt_input_exit\|other) | `self-review-questions.ps1` | Surfaces a `systemMessage` asking two questions — what you're least confident about in your recent work, and the biggest thing you're probably missing — inspired by an r/ClaudeAI end-of-session ritual. Fires on `/clear`, `/quit`, and logout, not on `resume`/`bypass_permissions_disabled`. Non-blocking: `SessionEnd` hooks cannot block session termination, so this is a reminder shown to the user, not a forced reply |
-| `PreCompact` | `self-review-questions.ps1` | Same script and message, fired before `/compact` (manual or auto). Non-blocking for the same reason — `PreCompact` blocking only halts compaction via stderr, it doesn't grant Claude another turn to answer |
+
+A `SessionEnd`/`PreCompact` hook was tried for an end-of-session self-review reminder and
+removed: `SessionEnd` fires after the session has already torn down (and `/clear` wipes the
+terminal before/as it fires), and `PreCompact`'s `systemMessage` is a UI notice, not context
+fed to the model — neither path grants the model a turn to actually answer. Use the portable
+`wrapup` skill (`/wrapup`) instead: it runs while the session is live, so the model answers in
+its own turn before you `/clear`/`/compact`/quit.
 
 **Lint caveat:** the PostToolUse hook lints only the *single edited file* — it is a fast
 inner-loop nudge, **not** a substitute for the full `-Recurse` run CI does over the whole
