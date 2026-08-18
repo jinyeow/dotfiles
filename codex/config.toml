@@ -22,11 +22,15 @@ sandbox_mode = "workspace-write"
 # full conventions file is always read.
 project_doc_max_bytes = 32768
 
-# Enable Codex's hook system so herdr's agent-state integration can report session
-# activity to a running herdr server. `setup.ps1 -Module herdr` runs `herdr integration
-# install codex`, which writes the hook script + ~/.codex/hooks.json; this flag turns the
-# hook system on. It lives here (not left to the integration) because this file is COPIED,
-# not symlinked — so a fresh -Module codex run after herdr would otherwise drop it.
+# Enable Codex's hook system. Two independent consumers share it:
+# - herdr's agent-state integration reports session activity to a running herdr server.
+#   `setup.ps1 -Module herdr` runs `herdr integration install codex`, which writes the hook
+#   script + a SessionStart entry in ~/.codex/hooks.json.
+# - The git-guardrails PreToolUse hook (issue #170, codex/hooks.json + codex/block-dangerous-git.sh)
+#   blocks dangerous git commands. `setup.ps1 -Module codex` merges its PreToolUse entry into
+#   ~/.codex/hooks.json without disturbing herdr's SessionStart entry.
+# This flag lives here (not left to either integration) because this file is COPIED, not
+# symlinked — so a fresh -Module codex run would otherwise drop it.
 [features]
 hooks = true
 

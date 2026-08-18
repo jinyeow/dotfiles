@@ -1254,7 +1254,43 @@ function Install-Codex {
         }
     }
 
-    # 4. Register Codex as a user-scope, read-only MCP reviewer in Claude Code. User-scope MCP
+    # 4. Git guardrails PreToolUse hook (issue #170) — blocks dangerous git commands (push,
+    #    reset --hard, clean -f, branch -D, checkout/restore .) before Codex executes them,
+    #    ported from claude/skills/git-guardrails-claude-code/scripts/block-dangerous-git.sh.
+    #    User-scope, matching this repo's Claude Code guardrail scope choice. The hook script
+    #    copies like any other tracked file, but ~/.codex/hooks.json is not: herdr's own
+    #    installer (`herdr integration install codex`) may already own a SessionStart entry
+    #    there, so a literal Copy-Dotfile would destroy it. Merge in only hooks.PreToolUse,
+    #    leaving every other event key untouched.
+    $params = @{
+        Dest = Join-Path $codexDir 'block-dangerous-git.sh'
+        Source = Join-Path $Dotfiles 'codex\block-dangerous-git.sh'
+    }
+    Copy-Dotfile @params
+
+    $hooksJsonDest = Join-Path $codexDir 'hooks.json'
+    $hooksJsonSource = Join-Path $Dotfiles 'codex\hooks.json'
+    if ($Backup) {
+        Write-Info 'Backup mode — skipping hooks.json merge (tracked copy is a PreToolUse-only fragment, not a full backup target).'
+    } elseif ($DryRun) {
+        Write-Info "[DRY RUN] would merge hooks.PreToolUse from $hooksJsonSource into $hooksJsonDest"
+    } else {
+        $sourceHooks = Get-Content -LiteralPath $hooksJsonSource -Raw | ConvertFrom-Json -AsHashtable
+        $merged = if (Test-Path -LiteralPath $hooksJsonDest) {
+            Get-Content -LiteralPath $hooksJsonDest -Raw | ConvertFrom-Json -AsHashtable
+        } else {
+            @{ hooks = @{} }
+        }
+        if (-not $merged.hooks) { $merged.hooks = @{} }
+        $merged.hooks.PreToolUse = $sourceHooks.hooks.PreToolUse
+        $null = Backup-Existing $hooksJsonDest
+        $dir = Split-Path $hooksJsonDest
+        if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        ($merged | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath $hooksJsonDest
+        Write-Ok "Merged:     $hooksJsonDest (hooks.PreToolUse)"
+    }
+
+    # 5. Register Codex as a user-scope, read-only MCP reviewer in Claude Code. User-scope MCP
     #    config lives in ~/.claude.json (settings.json does not support mcpServers), so this is
     #    a CLI registration, not a tracked file. The -c overrides pin the reviewer read-only and
     #    non-interactive regardless of ~/.codex/config.toml. Idempotent: remove any prior entry first.
@@ -1280,7 +1316,7 @@ function Install-Codex {
         }
     }
 
-    # 5. Skills — project portable and Codex-native variants into ~/.codex/skills/.
+    # 6. Skills — project portable and Codex-native variants into ~/.codex/skills/.
     #    Codex's own built-in skills under ~/.codex/skills/.system/ remain untouched.
     $codexSkillsDst = Join-Path $codexDir 'skills'
     if (-not (Test-Path $codexSkillsDst)) {
