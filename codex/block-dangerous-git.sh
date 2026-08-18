@@ -44,8 +44,11 @@ if command -v python3 &>/dev/null && COMMAND=$(echo "$INPUT" | python3 -c "$PYTH
 elif command -v python &>/dev/null && COMMAND=$(echo "$INPUT" | python -c "$PYTHON_EXTRACT" 2>/dev/null); then
   :
 else
-  # Naive extraction — good enough for single-line commands
-  COMMAND=$(echo "$INPUT" | grep -o '"command"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"command"[[:space:]]*:[[:space:]]*"\(.*\)"/\1/')
+  # Naive extraction — good enough for single-line commands. `|| echo ""` keeps
+  # this non-fatal under `set -euo pipefail` when no "command" key matches
+  # (malformed JSON or a command-less payload), so the hook falls through to
+  # allow rather than crashing.
+  COMMAND=$(echo "$INPUT" | grep -o '"command"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"command"[[:space:]]*:[[:space:]]*"\(.*\)"/\1/' || echo "")
 fi
 
 # ── Blocked patterns ──────────────────────────────────────────────────────────
