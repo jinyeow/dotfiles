@@ -85,14 +85,27 @@ if (-not $agents -or $agents.Count -eq 0) {
     return
 }
 
+$workspaceListJson = herdr workspace list
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "herdr workspace list failed: $workspaceListJson"
+    Start-Sleep -Seconds 2
+    return
+}
+
 $workspaceLabels = @{}
-(herdr workspace list | ConvertFrom-Json).result.workspaces | ForEach-Object {
+($workspaceListJson | ConvertFrom-Json).result.workspaces | ForEach-Object {
     $workspaceLabels[$_.workspace_id] = $_.label
 }
 
 $tabLabels = @{}
-$agents.workspace_id | Select-Object -Unique | ForEach-Object {
-    (herdr tab list --workspace $_ | ConvertFrom-Json).result.tabs | ForEach-Object {
+foreach ($workspaceId in ($agents.workspace_id | Select-Object -Unique)) {
+    $tabListJson = herdr tab list --workspace $workspaceId
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "herdr tab list --workspace $workspaceId failed: $tabListJson"
+        Start-Sleep -Seconds 2
+        return
+    }
+    ($tabListJson | ConvertFrom-Json).result.tabs | ForEach-Object {
         $tabLabels[$_.tab_id] = $_.label
     }
 }

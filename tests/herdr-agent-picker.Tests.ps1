@@ -82,4 +82,8 @@ Describe 'Get-HerdrPaneIdFromSelection' {
     It 'returns $null when no tab delimiter is present (malformed selection)' {
         Get-HerdrPaneIdFromSelection -Selection 'no-delimiter-here' | Should -BeNullOrEmpty
     }
+
+    It 'extracts the pane_id after the last tab when the display column itself contains tabs' {
+        Get-HerdrPaneIdFromSelection -Selection "title`twith`ttabs`tw6:p1Z" | Should -BeExactly 'w6:p1Z'
+    }
 }
