@@ -1216,6 +1216,38 @@ function Confirm-CodexCli {
     return $true
 }
 
+function Resolve-CodexGuardrailBash {
+    # Codex CLI executes command hooks with no shell field, so on Windows a bare `bash` in the
+    # tracked hooks.json fragment resolves through normal PATH search — on a machine with WSL
+    # installed (the common case) that is C:\Windows\System32\bash.exe, the WSL launcher, where
+    # the guardrail script does not exist. Resolve a real Git-for-Windows bash.exe instead.
+    $candidates = [System.Collections.Generic.List[string]]::new()
+
+    $gitCmd = Get-Command -Name git -ErrorAction Ignore
+    if ($gitCmd) {
+        $gitBinDir = Split-Path $gitCmd.Source
+        # cmd\git.exe layout -> ..\..\bin\bash.exe; bin\git.exe layout -> ..\bin\bash.exe.
+        $candidates.Add((Join-Path $gitBinDir '..\..\bin\bash.exe'))
+        $candidates.Add((Join-Path $gitBinDir '..\bin\bash.exe'))
+    }
+    $candidates.Add((Join-Path $env:ProgramFiles 'Git\bin\bash.exe'))
+    if (${env:ProgramFiles(x86)}) {
+        $candidates.Add((Join-Path ${env:ProgramFiles(x86)} 'Git\bin\bash.exe'))
+    }
+    $candidates.Add((Join-Path $env:LocalAppData 'Programs\Git\bin\bash.exe'))
+
+    foreach ($candidate in $candidates) {
+        try {
+            $resolved = (Resolve-Path -LiteralPath $candidate -ErrorAction Stop).Path
+        } catch {
+            continue
+        }
+        if ($resolved -match '(?i)\\(System32|WindowsApps)\\') { continue }
+        return $resolved
+    }
+    return $null
+}
+
 function Install-Codex {
     Write-Host ''
     Write-Info '=== Codex CLI ==='
@@ -1260,8 +1292,10 @@ function Install-Codex {
     #    User-scope, matching this repo's Claude Code guardrail scope choice. The hook script
     #    copies like any other tracked file, but ~/.codex/hooks.json is not: herdr's own
     #    installer (`herdr integration install codex`) may already own a SessionStart entry
-    #    there, so a literal Copy-Dotfile would destroy it. Merge in only hooks.PreToolUse,
-    #    leaving every other event key untouched.
+    #    there, so a literal Copy-Dotfile would destroy it. Merge hooks.PreToolUse at entry
+    #    level — preserve any existing PreToolUse entries that are not this guardrail's, and
+    #    append or replace only the guardrail's own entry — leaving every other event key and
+    #    every other PreToolUse entry untouched.
     $params = @{
         Dest = Join-Path $codexDir 'block-dangerous-git.sh'
         Source = Join-Path $Dotfiles 'codex\block-dangerous-git.sh'
@@ -1276,18 +1310,50 @@ function Install-Codex {
         Write-Info "[DRY RUN] would merge hooks.PreToolUse from $hooksJsonSource into $hooksJsonDest"
     } else {
         $sourceHooks = Get-Content -LiteralPath $hooksJsonSource -Raw | ConvertFrom-Json -AsHashtable
-        $merged = if (Test-Path -LiteralPath $hooksJsonDest) {
-            Get-Content -LiteralPath $hooksJsonDest -Raw | ConvertFrom-Json -AsHashtable
-        } else {
-            @{ hooks = @{} }
+        $skipMerge = $false
+        # On Windows, rewrite the tracked `bash ~/...` command to a resolved absolute
+        # Git-for-Windows bash.exe + absolute script path — see Resolve-CodexGuardrailBash.
+        # On non-Windows the tracked command is correct as-is (setup.sh parity). Modify the
+        # source fragment's own entry before it is assigned into $merged below.
+        if ($IsWindows) {
+            $bashPath = Resolve-CodexGuardrailBash
+            if (-not $bashPath) {
+                Write-Warn 'No Git-for-Windows bash.exe found — skipping hooks.json merge (a merged-but-broken guardrail entry would make every Codex Bash call fail; leaving it absent is safer). Install Git for Windows, then re-run: .\setup.ps1 -Module codex'
+                $skipMerge = $true
+            } else {
+                $scriptPath = (Join-Path $codexDir 'block-dangerous-git.sh') -replace '\\', '/'
+                $bashPathForward = $bashPath -replace '\\', '/'
+                foreach ($entry in $sourceHooks.hooks.PreToolUse) {
+                    foreach ($hook in $entry.hooks) {
+                        if ($hook.command -match '^bash\s') {
+                            $hook.command = "`"$bashPathForward`" `"$scriptPath`""
+                        }
+                    }
+                }
+            }
         }
-        if (-not $merged.hooks) { $merged.hooks = @{} }
-        $merged.hooks.PreToolUse = $sourceHooks.hooks.PreToolUse
-        $null = Backup-Existing $hooksJsonDest
-        $dir = Split-Path $hooksJsonDest
-        if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
-        ($merged | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath $hooksJsonDest
-        Write-Ok "Merged:     $hooksJsonDest (hooks.PreToolUse)"
+        if (-not $skipMerge) {
+            $merged = if (Test-Path -LiteralPath $hooksJsonDest) {
+                Get-Content -LiteralPath $hooksJsonDest -Raw | ConvertFrom-Json -AsHashtable
+            } else {
+                @{ hooks = @{} }
+            }
+            if (-not $merged.hooks) { $merged.hooks = @{} }
+            $existingPreToolUse = if ($merged.hooks.ContainsKey('PreToolUse') -and $merged.hooks.PreToolUse) {
+                @($merged.hooks.PreToolUse)
+            } else {
+                @()
+            }
+            $foreignEntries = $existingPreToolUse | Where-Object {
+                -not ($_.hooks | Where-Object { $_.command -match 'block-dangerous-git\.sh' })
+            }
+            $merged.hooks.PreToolUse = @($foreignEntries) + @($sourceHooks.hooks.PreToolUse)
+            $null = Backup-Existing $hooksJsonDest
+            $dir = Split-Path $hooksJsonDest
+            if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+            ($merged | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath $hooksJsonDest
+            Write-Ok "Merged:     $hooksJsonDest (hooks.PreToolUse)"
+        }
     }
 
     # 5. Register Codex as a user-scope, read-only MCP reviewer in Claude Code. User-scope MCP

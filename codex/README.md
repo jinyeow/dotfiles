@@ -63,6 +63,16 @@ choice (`~/.claude/settings.json`). Because `~/.codex/hooks.json` may already ca
 `SessionStart` entry, the installer merges in only `hooks.PreToolUse` rather than overwriting
 the file — see `Install-Codex` in `setup.ps1`.
 
+The tracked `codex/hooks.json` fragment's hook command is `bash ~/.codex/block-dangerous-git.sh`,
+which is correct as-is on Linux. Codex CLI executes command hooks with no shell field, so on
+Windows a bare `bash` resolves through normal PATH search — on a machine with WSL installed
+(the common case), that hits `C:\Windows\System32\bash.exe`, the WSL launcher, where the
+guardrail script does not exist, silently disabling the hook. On Windows the installer instead
+rewrites the merged entry's command to a resolved absolute Git-for-Windows `bash.exe` and the
+absolute installed script path (`Resolve-CodexGuardrailBash` in `setup.ps1`); if no real
+Git-for-Windows bash can be found, it warns and skips the merge entirely rather than writing a
+broken entry.
+
 **Hook trust gate**: per the official hooks docs (`developers.openai.com/codex/hooks`), a
 non-managed command hook needs to be reviewed and trusted before Codex will run it — use the
 in-session `/hooks` command to inspect and trust a newly registered or changed hook (trust is

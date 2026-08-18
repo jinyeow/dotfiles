@@ -151,6 +151,153 @@ Describe 'setup.ps1 Codex MCP registration gating' {
     }
 }
 
+Describe 'Resolve-CodexGuardrailBash' {
+    BeforeAll {
+        # -Module bogus keeps the top-level script from exiting early and does no real
+        # filesystem work, so it's safe to dot-source in-process to pull the resolution
+        # helper into this Describe's scope without running any real install module.
+        . $script:SetupScript -Module bogus *>$null
+    }
+
+    It 'resolves bash.exe next to a cmd\git.exe layout, never a System32/WindowsApps stub' {
+        $gitRoot = Join-Path ([IO.Path]::GetTempPath()) ('resolve-bash-git-' + [guid]::NewGuid())
+        $cmdDir = Join-Path $gitRoot 'cmd'
+        $binDir = Join-Path $gitRoot 'bin'
+        New-Item -ItemType Directory -Path $cmdDir, $binDir -Force | Out-Null
+        $fakeGit = Join-Path $cmdDir 'git.exe'
+        $fakeBash = Join-Path $binDir 'bash.exe'
+        Set-Content -Path $fakeGit -Value 'stub'
+        Set-Content -Path $fakeBash -Value 'stub'
+        try {
+            Mock Get-Command { [pscustomobject]@{ Source = $fakeGit } } -ParameterFilter { $Name -eq 'git' }
+            $result = Resolve-CodexGuardrailBash
+            $result | Should -Not -BeNullOrEmpty
+            $result | Should -Match '(?i)bin[\\/]bash\.exe$'
+            $result | Should -Not -Match '(?i)System32|WindowsApps'
+        } finally {
+            Remove-Item -Path $gitRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'returns $null when no real Git-for-Windows bash is installed anywhere' {
+        Mock Get-Command { $null } -ParameterFilter { $Name -eq 'git' }
+        $fakeProgramFiles = Join-Path ([IO.Path]::GetTempPath()) ('no-git-pf-' + [guid]::NewGuid())
+        $origPF = $env:ProgramFiles
+        $origPFx86 = ${env:ProgramFiles(x86)}
+        $origLAD = $env:LocalAppData
+        try {
+            $env:ProgramFiles = $fakeProgramFiles
+            ${env:ProgramFiles(x86)} = $fakeProgramFiles
+            $env:LocalAppData = $fakeProgramFiles
+            Resolve-CodexGuardrailBash | Should -BeNullOrEmpty
+        } finally {
+            $env:ProgramFiles = $origPF
+            ${env:ProgramFiles(x86)} = $origPFx86
+            $env:LocalAppData = $origLAD
+        }
+    }
+}
+
+Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:(-not $IsWindows) {
+    BeforeAll {
+        # In-process (not a child pwsh) so overriding $env:USERPROFILE reliably scopes to this
+        # call: a child-process boundary was found to silently reset well-known env vars like
+        # $env:ProgramFiles/$env:LocalAppData back to their real machine values (verified: a
+        # child `pwsh -Command` printed the real "C:\Program Files" despite the parent having
+        # overridden $env:ProgramFiles first), which made the negative case unreliably pass on
+        # a machine with a real Git install. Calling Install-Codex directly avoids that boundary.
+        # Real `codex` is on this dev/CI machine's PATH, so Confirm-CodexCli short-circuits
+        # without a network install; the fake $env:USERPROFILE has no .claude\settings.json, so
+        # step 5 (MCP registration) safely no-ops instead of touching the real ~/.claude.json.
+        . $script:SetupScript -Module bogus *>$null
+    }
+
+    It 'rewrites the merged guardrail command to a resolved absolute Git-for-Windows bash path' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-bash-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            Install-Codex *>$null
+            $hooksPath = Join-Path $tmpHome '.codex\hooks.json'
+            Test-Path -LiteralPath $hooksPath | Should -BeTrue
+            $hooks = Get-Content -LiteralPath $hooksPath -Raw | ConvertFrom-Json
+            $command = $hooks.hooks.PreToolUse[0].hooks[0].command
+            $command | Should -Match '(?i)"[^"]*[\\/]bin[\\/]bash\.exe"'
+            $command | Should -Not -Match '(?i)System32|WindowsApps'
+            $command | Should -Match '(?i)"[^"]*block-dangerous-git\.sh"'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'warns and skips the hooks.json merge when no real bash is found' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-nobash-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            Mock Resolve-CodexGuardrailBash { $null }
+            $output = Install-Codex *>&1 | Out-String
+            $output | Should -Match 'No Git-for-Windows bash\.exe found'
+            Test-Path (Join-Path $tmpHome '.codex\hooks.json') | Should -BeFalse
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'preserves a pre-existing foreign PreToolUse entry alongside the merged guardrail entry' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-foreign-' + [guid]::NewGuid())
+        $codexDir = Join-Path $tmpHome '.codex'
+        New-Item -ItemType Directory -Path $codexDir -Force | Out-Null
+        $foreign = @{
+            hooks = @{
+                PreToolUse = @(
+                    @{
+                        matcher = 'Edit'
+                        hooks = @(@{ type = 'command'; command = 'some-other-tool --check' })
+                    }
+                )
+            }
+        }
+        ($foreign | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath (Join-Path $codexDir 'hooks.json')
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            Install-Codex *>$null
+            $hooks = Get-Content -LiteralPath (Join-Path $codexDir 'hooks.json') -Raw | ConvertFrom-Json
+            $entries = @($hooks.hooks.PreToolUse)
+            $entries.Count | Should -Be 2
+            ($entries | Where-Object { $_.matcher -eq 'Edit' }).hooks[0].command | Should -Be 'some-other-tool --check'
+            ($entries | Where-Object { $_.hooks[0].command -match 'block-dangerous-git\.sh' }) | Should -Not -BeNullOrEmpty
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'replaces rather than duplicates an existing guardrail entry on re-run' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-rerun-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            Install-Codex *>$null
+            Install-Codex *>$null
+            $hooksPath = Join-Path $tmpHome '.codex\hooks.json'
+            $hooks = Get-Content -LiteralPath $hooksPath -Raw | ConvertFrom-Json
+            $entries = @($hooks.hooks.PreToolUse)
+            $entries.Count | Should -Be 1
+            $entries[0].hooks[0].command | Should -Match 'block-dangerous-git\.sh'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 Describe 'setup.ps1 pi module' {
     It 'returns before repository projection when the skills destination is unmanaged' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-pi-unmanaged-' + [guid]::NewGuid())
