@@ -22,7 +22,11 @@ skills is implemented by #116 (per
 is the orchestrating session's own top-level `sandbox_mode` — which may itself be
 `workspace-write`, in which case nothing enforces a reviewer's read-only posture — see
 `ai-agents/skills/deep-review/DISPATCH.md` for the schema evidence; the orchestrator's
-findings-store write path on Codex hosts remains an open gap.
+findings-store write path on Codex hosts remains an open gap. `storm-research` is portable
+too, as of #172 resolving the #95 spike below: its five expert-lens prompts and
+citation-verifier fan-out need only parallel dispatch with distinct per-child prompts, no
+per-child tool scoping, on Pi via `pi-subagents`' `subagent({ tasks: [...] })` reusing the
+builtin `researcher` agent; see `ai-agents/skills/storm-research/DISPATCH.md`.
 
 ## Portable support (`ai-agents/skills/_shared/`)
 
@@ -62,9 +66,6 @@ migration ticket is even writable:
   themselves portable in concept — an earlier pass in this audit missed the `commands/`
   directory and wrongly called this one portable before catching the mistake.) Research
   spike: #94.
-- `storm-research` — needs parallel agent spawn with distinct prompts, but not
-  `deep-review`'s per-agent tool-scoping — a lighter, separately-tracked requirement.
-  Research spike: #95.
 - `git-guardrails-claude-code` — installs a Claude Code `PreToolUse` hook; needs an
   equivalent pre-execution interception mechanism in Codex/Pi, not yet confirmed to
   exist. Research spike: #97.

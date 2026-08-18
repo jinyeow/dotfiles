@@ -5,7 +5,10 @@
 - **storm-research-report-template.html** — The HTML report template the skill references so every briefing comes out with the same clean, consistent layout.
 
 ## How to install
-Drop both files into a `storm-research/` folder inside your `.claude/skills/` directory. Then just say "run a storm research on [topic]" — no slash command needed. The skill is self-contained and also works in Codex or other agents.
+In this repo, this skill lives at `ai-agents/skills/storm-research/` and is projected to
+Claude Code, Codex CLI, and Pi by `setup.ps1 -Module ai-agents` (or `setup.sh -m ai-agents`).
+Outside this repo, drop both files into a `storm-research/` folder inside your `.claude/skills/`
+directory. Then just say "run a storm research on [topic]" — no slash command needed.
 
 ## External links
 - **Free Skool community (all YouTube resources):** linked in the video description
