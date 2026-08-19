@@ -1313,8 +1313,9 @@ function Install-Codex {
         $skipMerge = $false
         # On Windows, rewrite the tracked `bash ~/...` command to a resolved absolute
         # Git-for-Windows bash.exe + absolute script path — see Resolve-CodexGuardrailBash.
-        # On non-Windows the tracked command is correct as-is (setup.sh parity). Modify the
-        # source fragment's own entry before it is assigned into $merged below.
+        # This guardrail install/rewrite is Windows/setup.ps1-only today; setup.sh does not
+        # copy block-dangerous-git.sh or merge hooks.json. Modify the source fragment's own
+        # entry before it is assigned into $merged below.
         if ($IsWindows) {
             $bashPath = Resolve-CodexGuardrailBash
             if (-not $bashPath) {

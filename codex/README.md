@@ -34,8 +34,8 @@ conventions in `ai-agents/AGENTS.md` only; re-run the installer to push the copy
 | `config.toml` | `~/.codex/config.toml` | Model + standalone permissions; also registers the `bicep` MCP server (`[mcp_servers.bicep]` — scope and rationale in the file's comments) |
 | `../ai-agents/AGENTS.md` (shared) | `~/.codex/AGENTS.md` | Personal conventions (sourced from the ai-agents module) |
 | `../ai-agents/AGENTS.d/` (shared) | `~/.codex/AGENTS.d/` | Progressive-disclosure satellite files `AGENTS.md` links out to on demand (sourced from the ai-agents module) |
-| `block-dangerous-git.sh` | `~/.codex/block-dangerous-git.sh` | `PreToolUse` hook that denies dangerous git commands — see "Git guardrails" below |
-| `hooks.json` | merged into `~/.codex/hooks.json` | Tracked `hooks.PreToolUse` fragment; the installer merges it in, preserving any other event key already present (e.g. herdr's `SessionStart` entry) |
+| `block-dangerous-git.sh` | `~/.codex/block-dangerous-git.sh` | `PreToolUse` hook that denies dangerous git commands — see "Git guardrails" below. Installed by `setup.ps1 -Module codex` only; `setup.sh` does not copy this file yet |
+| `hooks.json` | merged into `~/.codex/hooks.json` | Tracked `hooks.PreToolUse` fragment; the installer merges it in, preserving any other event key already present (e.g. herdr's `SessionStart` entry). Merged by `setup.ps1 -Module codex` only; `setup.sh` does not merge it yet |
 | `ai-agents/skills/<name>/` (portable) | `~/.codex/skills/<name>/` | Portable global skills |
 | `codex/skills/<name>/` | `~/.codex/skills/<name>/` | Codex-native skills (win on name collision) |
 | `templates/work-AGENTS.md` | — (manual copy) | Drop into an Azure work repo root as `AGENTS.md` |
@@ -63,8 +63,10 @@ choice (`~/.claude/settings.json`). Because `~/.codex/hooks.json` may already ca
 `SessionStart` entry, the installer merges in only `hooks.PreToolUse` rather than overwriting
 the file — see `Install-Codex` in `setup.ps1`.
 
+Today this hook is installed only by `setup.ps1 -Module codex`; `setup.sh` does not yet copy
+`block-dangerous-git.sh` or merge `hooks.json`, so it is not present on a Linux/WSL install.
 The tracked `codex/hooks.json` fragment's hook command is `bash ~/.codex/block-dangerous-git.sh`,
-which is correct as-is on Linux. Codex CLI executes command hooks with no shell field, so on
+which would be correct as-is on Linux once installed there. Codex CLI executes command hooks with no shell field, so on
 Windows a bare `bash` resolves through normal PATH search — on a machine with WSL installed
 (the common case), that hits `C:\Windows\System32\bash.exe`, the WSL launcher, where the
 guardrail script does not exist, silently disabling the hook. On Windows the installer instead
@@ -86,10 +88,11 @@ for routine interactive use.
 
 Linux/WSL parity is provided by `setup.sh -m codex`: it installs the Codex CLI via OpenAI's
 native installer, copies `config.toml` + `AGENTS.md` into `~/.codex/`, projects skills into
-`~/.codex/skills/`, and registers the MCP reviewer — the same steps as `setup.ps1 -Module
-codex` on Windows. One caveat: the `bicep` MCP server in `config.toml` needs `dnx` from a
-.NET 10 SDK, which neither installer provisions on Linux — without it the server fails at
-session start and Codex degrades to a session without Bicep tools (the entry is not
+`~/.codex/skills/`, and registers the MCP reviewer. It does not yet install the git guardrail
+hook (`block-dangerous-git.sh` + the `hooks.json` merge) covered above; that is currently
+`setup.ps1 -Module codex`-only. One caveat: the `bicep` MCP server in `config.toml` needs `dnx`
+from a .NET 10 SDK, which neither installer provisions on Linux — without it the server fails
+at session start and Codex degrades to a session without Bicep tools (the entry is not
 `required`, so startup itself is unaffected).
 
 ## Fail-closed install gating
