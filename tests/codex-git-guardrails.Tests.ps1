@@ -50,7 +50,7 @@ BeforeAll {
         param([string] $Command)
         $payload = @{ tool_input = @{ command = $Command } } | ConvertTo-Json -Compress
         $stderr = $null
-        $output = $payload | & $script:Bash -c "PATH='$($script:NoPythonStubDir)':`"`$PATH`" '$($script:HookScript)'" 2>&1
+        $output = $payload | & $script:Bash -c "PATH='$($script:NoPythonStubDir)':`"`$PATH`" bash '$($script:HookScript)'" 2>&1
         return [PSCustomObject]@{
             ExitCode = $LASTEXITCODE
             Output   = ($output -join "`n")
@@ -60,7 +60,7 @@ BeforeAll {
     function Invoke-GuardrailHookNoPythonRawPayload {
         param([string] $Payload)
         $stderr = $null
-        $output = $Payload | & $script:Bash -c "PATH='$($script:NoPythonStubDir)':`"`$PATH`" '$($script:HookScript)'" 2>&1
+        $output = $Payload | & $script:Bash -c "PATH='$($script:NoPythonStubDir)':`"`$PATH`" bash '$($script:HookScript)'" 2>&1
         return [PSCustomObject]@{
             ExitCode = $LASTEXITCODE
             Output   = ($output -join "`n")
