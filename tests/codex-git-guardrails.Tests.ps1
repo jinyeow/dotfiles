@@ -43,6 +43,7 @@ BeforeAll {
     foreach ($stubName in @('python3', 'python')) {
         $stubPath = Join-Path $script:NoPythonStubDir $stubName
         Set-Content -Path $stubPath -Value "#!/bin/bash`nexit 1`n" -NoNewline
+        & $script:Bash -c 'chmod +x "$1"' _ ($stubPath -replace '\\', '/')
     }
 
     function Invoke-GuardrailHookNoPython {
