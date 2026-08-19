@@ -151,7 +151,7 @@ Describe 'setup.ps1 Codex MCP registration gating' {
     }
 }
 
-Describe 'Resolve-CodexGuardrailBash' {
+Describe 'Resolve-CodexGuardrailBash' -Skip:(-not $IsWindows) {
     BeforeAll {
         # -Module bogus keeps the top-level script from exiting early and does no real
         # filesystem work, so it's safe to dot-source in-process to pull the resolution
