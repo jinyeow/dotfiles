@@ -278,6 +278,37 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
         }
     }
 
+    It 'preserves a pre-existing SessionStart event key alongside the merged PreToolUse guardrail entry' {
+        # Regression: the merge contract (setup.ps1's own comment above, codex/README.md) promises
+        # preserving other event keys untouched — e.g. herdr's SessionStart entry. Only PreToolUse
+        # was ever seeded in the sibling tests above, so a regression that rebuilds hooks.json from
+        # scratch instead of merging into the existing dest object would still pass every one of them.
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-sessionstart-' + [guid]::NewGuid())
+        $codexDir = Join-Path $tmpHome '.codex'
+        New-Item -ItemType Directory -Path $codexDir -Force | Out-Null
+        $herdr = @{
+            hooks = @{
+                SessionStart = @(
+                    @{
+                        hooks = @(@{ type = 'command'; command = 'herdr integration notify' })
+                    }
+                )
+            }
+        }
+        ($herdr | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath (Join-Path $codexDir 'hooks.json')
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            Install-Codex *>$null
+            $hooks = Get-Content -LiteralPath (Join-Path $codexDir 'hooks.json') -Raw | ConvertFrom-Json
+            $hooks.hooks.SessionStart[0].hooks[0].command | Should -Be 'herdr integration notify'
+            ($hooks.hooks.PreToolUse | Where-Object { $_.hooks[0].command -match 'block-dangerous-git\.sh' }) | Should -Not -BeNullOrEmpty
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     It 'replaces rather than duplicates an existing guardrail entry on re-run' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-rerun-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
