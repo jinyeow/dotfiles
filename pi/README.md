@@ -17,7 +17,16 @@ Pi credentials and session/authentication state remain in Pi's user directory an
 never copied by setup.
 
 Extensions, prompt templates, and themes are projected as their existing whole-directory
-resources. Skills are projected as individual children into `~/.pi/agent/skills/` from:
+resources: `setup.ps1`/`setup.sh` junction `pi/extensions/`, `pi/prompts/`, and `pi/themes/`
+wholesale into `~/.pi/agent/`, so a single-file extension needs no `settings.json` entry —
+`settings.json`'s `packages` array is only for `npm:<name>@<version>` pins installed via
+`pi install`, not local files. `pi/extensions/git-guardrails.ts` blocks the same destructive
+git commands as `claude/skills/git-guardrails-claude-code` (`git push`, `git reset --hard`,
+`git clean -f`/`-fd`, `git branch -D`, `git checkout .`/`git restore .`), ported close to
+verbatim from that skill's `block-dangerous-git.sh`, via Pi's `tool_call` extension event
+(`pi.on("tool_call", ...)`, narrowed to the bash tool with `isToolCallEventType("bash",
+event)`, blocking by returning `{ block: true, reason }`). Skills are projected as
+individual children into `~/.pi/agent/skills/` from:
 
 1. `ai-agents/skills/`;
 2. `pi/skills/`, with Pi-native names winning collisions.

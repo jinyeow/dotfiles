@@ -27,6 +27,17 @@ pane_history = true
 previous_agent = "prefix+["
 next_agent = "prefix+]"
 
+# Bare-fzf agent picker (issue #169). "a" is unbound in herdr --default-config's
+# full [keys] table. Runs the picker via $env:DOTFILES so it resolves against the
+# stable clone regardless of machine; %DOTFILES% is a persistent User env var set
+# by setup.ps1. Windows-only — see herdr/README.md.
+[[keys.command]]
+key = "prefix+a"
+type = "popup"
+command = 'pwsh -NoProfile -File "%DOTFILES%\herdr\agent-picker.ps1"'
+width = "80%"
+height = "80%"
+
 [ui]
 show_agent_labels_on_pane_borders = true
 
