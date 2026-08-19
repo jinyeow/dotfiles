@@ -95,6 +95,43 @@ workspace/tab/pane hierarchy.
   jumps don't. Revisit if a future Herdr release documents indexed bindings as
   reliable on Windows.
 
+## fzf agent picker
+
+`prefix+a` opens a `type = "popup"` command (`[[keys.command]]` in `config.toml`)
+running `herdr/agent-picker.ps1` in a session-modal terminal — no tab-layout change.
+The script lists live agents (`herdr agent list`), joins in human-readable
+workspace/tab labels (`herdr workspace list`, `herdr tab list --workspace <id>`),
+and shows one line per agent — status, agent kind, workspace, tab, stripped
+terminal title — in bare `fzf` (not PSFzf: PSFzf's redirected-stdout/ConPTY
+behavior is unreliable under psmux). The agent's `pane_id` is appended after each
+display line behind a tab character and hidden from view with fzf's
+`--delimiter`/`--with-nth`, so it round-trips losslessly through the picker
+regardless of what the title contains; selecting a line runs
+`herdr agent focus <pane_id>` on it and the popup closes, restoring focus to that
+pane. An empty agent list or a cancelled pick (fzf Esc/Ctrl-C) exits the script
+cleanly with no `herdr agent focus` call and no stray popup.
+
+- **Why `prefix+a`**: unbound in `herdr --default-config`'s full `[keys]` table,
+  audited the same way as `previous_agent`/`next_agent` above.
+- **Path resolution**: the command runs
+  `pwsh -NoProfile -File "%DOTFILES%\herdr\agent-picker.ps1"` — `config.toml` is
+  symlinked into `~/.config/herdr/`, but the picker script is not, so it is
+  addressed via `%DOTFILES%` (the persistent User env var `setup.ps1` sets to the
+  stable clone) rather than a hardcoded path.
+- **Windows-only**: confirmed live — `herdr config check` and
+  `herdr server reload-config` both accept the binding, and `fzf --filter` proves
+  the pane_id round-trips through fzf using real `herdr agent list` output. The
+  popup itself documents Windows command strings running through `cmd.exe /d /c`;
+  the Linux/WSL launcher mechanism is undocumented and was not tested, so this
+  keybinding is **out of scope / unverified on Linux/WSL** (issue #169) — confirm
+  manually before relying on it there.
+- **Unverified end-to-end**: the same limitation as `previous_agent`/`next_agent`
+  above applies — no way to drive real keypresses into the running Herdr UI from
+  this environment. The popup opening, `fzf` rendering interactively, and focus
+  landing back on the selected pane after the popup closes need a manual pass
+  (`herdr server reload-config` then press `prefix+a` with zero, one, and several
+  live agents, including a cancelled pick).
+
 ## Verify
 
 ```

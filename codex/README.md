@@ -34,6 +34,8 @@ conventions in `ai-agents/AGENTS.md` only; re-run the installer to push the copy
 | `config.toml` | `~/.codex/config.toml` | Model + standalone permissions; also registers the `bicep` MCP server (`[mcp_servers.bicep]` — scope and rationale in the file's comments) |
 | `../ai-agents/AGENTS.md` (shared) | `~/.codex/AGENTS.md` | Personal conventions (sourced from the ai-agents module) |
 | `../ai-agents/AGENTS.d/` (shared) | `~/.codex/AGENTS.d/` | Progressive-disclosure satellite files `AGENTS.md` links out to on demand (sourced from the ai-agents module) |
+| `block-dangerous-git.sh` | `~/.codex/block-dangerous-git.sh` | `PreToolUse` hook that denies dangerous git commands — see "Git guardrails" below. Installed by `setup.ps1 -Module codex` only; `setup.sh` does not copy this file yet |
+| `hooks.json` | merged into `~/.codex/hooks.json` | Tracked `hooks.PreToolUse` fragment; the installer merges it in, preserving any other event key already present (e.g. herdr's `SessionStart` entry). Merged by `setup.ps1 -Module codex` only; `setup.sh` does not merge it yet |
 | `ai-agents/skills/<name>/` (portable) | `~/.codex/skills/<name>/` | Portable global skills |
 | `codex/skills/<name>/` | `~/.codex/skills/<name>/` | Codex-native skills (win on name collision) |
 | `templates/work-AGENTS.md` | — (manual copy) | Drop into an Azure work repo root as `AGENTS.md` |
@@ -42,14 +44,55 @@ conventions in `ai-agents/AGENTS.md` only; re-run the installer to push the copy
 module), so the live `~/.codex` copies can drift — re-run the installer (`setup.ps1 -Module
 codex` or `./setup.sh -m codex`) to push repo → live.
 
+## Git guardrails
+
+`setup.ps1 -Module codex` installs a `PreToolUse` hook (matcher `Bash`) that blocks the same
+destructive git commands the Claude Code `git-guardrails-claude-code` skill blocks: `git push`
+(all variants), `git reset --hard`, `git clean -f`/`-fd`, `git branch -D`, and
+`git checkout .` / `git restore .`. The matching logic is ported close to verbatim from
+`claude/skills/git-guardrails-claude-code/scripts/block-dangerous-git.sh` — see
+`codex/block-dangerous-git.sh`'s own comments for the one deliberate deviation (the
+`python3`/`python` command-extraction tier now checks the pipeline actually succeeds, not just
+that an executable exists on PATH — a bare `command -v python3` check is also true for
+Windows's WindowsApps "app execution alias" stub, which exists on PATH but fails when run,
+which would otherwise leave every command silently unmatched and disable the guardrail).
+
+Blocked via the standard Codex hook contract: exit 2 with a reason on stderr. Registered
+user-scope (`~/.codex/hooks.json`), matching this repo's own Claude Code guardrail scope
+choice (`~/.claude/settings.json`). Because `~/.codex/hooks.json` may already carry herdr's
+`SessionStart` entry, the installer merges in only `hooks.PreToolUse` rather than overwriting
+the file — see `Install-Codex` in `setup.ps1`.
+
+Today this hook is installed only by `setup.ps1 -Module codex`; `setup.sh` does not yet copy
+`block-dangerous-git.sh` or merge `hooks.json`, so it is not present on a Linux/WSL install.
+The tracked `codex/hooks.json` fragment's hook command is `bash ~/.codex/block-dangerous-git.sh`,
+which would be correct as-is on Linux once installed there. Codex CLI executes command hooks with no shell field, so on
+Windows a bare `bash` resolves through normal PATH search — on a machine with WSL installed
+(the common case), that hits `C:\Windows\System32\bash.exe`, the WSL launcher, where the
+guardrail script does not exist, silently disabling the hook. On Windows the installer instead
+rewrites the merged entry's command to a resolved absolute Git-for-Windows `bash.exe` and the
+absolute installed script path (`Resolve-CodexGuardrailBash` in `setup.ps1`); if no real
+Git-for-Windows bash can be found, it warns and skips the merge entirely rather than writing a
+broken entry.
+
+**Hook trust gate**: per the official hooks docs (`developers.openai.com/codex/hooks`), a
+non-managed command hook needs to be reviewed and trusted before Codex will run it — use the
+in-session `/hooks` command to inspect and trust a newly registered or changed hook (trust is
+keyed to the hook definition's hash, so an edit requires re-trusting). On a fresh machine,
+expect Codex to prompt for this the first time a `Bash` tool call reaches the guardrail after
+`setup.ps1 -Module codex` has run. `--dangerously-bypass-hook-trust` skips the trust check for
+one invocation — intended for automation that already vets its hook sources outside Codex, not
+for routine interactive use.
+
 ## Platform support
 
 Linux/WSL parity is provided by `setup.sh -m codex`: it installs the Codex CLI via OpenAI's
 native installer, copies `config.toml` + `AGENTS.md` into `~/.codex/`, projects skills into
-`~/.codex/skills/`, and registers the MCP reviewer — the same steps as `setup.ps1 -Module
-codex` on Windows. One caveat: the `bicep` MCP server in `config.toml` needs `dnx` from a
-.NET 10 SDK, which neither installer provisions on Linux — without it the server fails at
-session start and Codex degrades to a session without Bicep tools (the entry is not
+`~/.codex/skills/`, and registers the MCP reviewer. It does not yet install the git guardrail
+hook (`block-dangerous-git.sh` + the `hooks.json` merge) covered above; that is currently
+`setup.ps1 -Module codex`-only. One caveat: the `bicep` MCP server in `config.toml` needs `dnx`
+from a .NET 10 SDK, which neither installer provisions on Linux — without it the server fails
+at session start and Codex degrades to a session without Bicep tools (the entry is not
 `required`, so startup itself is unaffected).
 
 ## Fail-closed install gating
