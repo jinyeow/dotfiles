@@ -206,10 +206,15 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
         # child `pwsh -Command` printed the real "C:\Program Files" despite the parent having
         # overridden $env:ProgramFiles first), which made the negative case unreliably pass on
         # a machine with a real Git install. Calling Install-Codex directly avoids that boundary.
-        # Real `codex` is on this dev/CI machine's PATH, so Confirm-CodexCli short-circuits
-        # without a network install; the fake $env:USERPROFILE has no .claude\settings.json, so
-        # step 5 (MCP registration) safely no-ops instead of touching the real ~/.claude.json.
+        # `codex` is not guaranteed to be on a CI runner's PATH, and a real (non-dry-run) install
+        # is neither hermetic nor idempotent across `It` blocks in the same job (a second real
+        # install attempt fails with "Refusing to retarget junction" once the first has installed
+        # it) — mock Confirm-CodexCli so Install-Codex always proceeds straight to steps 2+
+        # (hooks.json merge etc.), which is what these tests actually exercise. The fake
+        # $env:USERPROFILE has no .claude\settings.json, so step 5 (MCP registration) safely
+        # no-ops instead of touching the real ~/.claude.json.
         . $script:SetupScript -Module bogus *>$null
+        Mock Confirm-CodexCli { $true }
     }
 
     It 'rewrites the merged guardrail command to a resolved absolute Git-for-Windows bash path' {
