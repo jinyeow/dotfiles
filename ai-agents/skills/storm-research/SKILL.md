@@ -14,7 +14,7 @@ Run the full pipeline end to end. Do not shortcut a phase. This is heavier than 
 
 ## Portability
 
-This skill is self-contained. It depends only on built-in Claude Code tools (the `Agent` tool with the built-in `general-purpose` agent, `Write`, and web search/fetch used inside those agents) plus `report-template.html` in this same folder. No external scripts, APIs, paid services, or other skills are required. Drop the folder into any `.claude/skills/` directory and it works.
+This skill is runtime-neutral. It depends only on each runtime's own parallel-subagent-dispatch primitive with distinct per-child prompts, `Write`, and web search/fetch used inside those children, plus `report-template.html` in this same folder. No external scripts, APIs, paid services, or other skills are required. See [`DISPATCH.md`](DISPATCH.md) for the exact per-runtime dispatch call shape (currently: Claude Code, confirmed; Pi, source-verified against the pinned package, not yet live-smoke-tested; Codex CLI, out of scope/unresearched).
 
 ## Phase 0: Scope the topic
 
@@ -26,7 +26,7 @@ This skill is self-contained. It depends only on built-in Claude Code tools (the
 
 ## Phase 1: Five expert lenses (parallel agents)
 
-Spawn **five `general-purpose` agents in a single message** so they run concurrently. Each gets the SAME topic framing plus its own lens. Use these exact prompts, substituting `{TOPIC}` and a one-line `{TOPIC_FRAME}` (your Phase 0 interpretation):
+Dispatch **five parallel children in one batch** so they run concurrently, per your runtime's dispatch shape in [`DISPATCH.md`](DISPATCH.md). Each gets the SAME topic framing plus its own lens. Use these exact prompts, substituting `{TOPIC}` and a one-line `{TOPIC_FRAME}` (your Phase 0 interpretation):
 
 **1. THE PRACTITIONER** — `You are THE PRACTITIONER for: {TOPIC} ({TOPIC_FRAME}). You work with this daily. Do real web research (prioritize recent sources, case studies, practitioner threads, operator data). Surface the GAP between what hands-on operators know and what academics/pundits miss, and the practical realities (workflow friction, what actually works, where it breaks) that get ignored. Return EXACTLY: 1) CORE POSITION in 2 sentences. 2) STRONGEST EVIDENCE, 3-5 bullets each with a concrete data point/case/named source + URL. 3) THE ONE THING only a practitioner would say. Cite real sources with URLs. Under 400 words.`
 
@@ -72,7 +72,7 @@ This is what separates Storm Research from a normal report. Run it before delive
 
 **4a. Self-review (inline).** Score each of the 5 findings 1-10 for reliability and justify. Identify the weakest link and what would verify it. Run a bias check (which lens dominated the synthesis, what got underweighted). Name the missing 6th perspective. Assign an honest overall grade.
 
-**4b. Verify every citation (parallel agents).** Spawn `general-purpose` agents in one message, one per distinct citation cluster (group related claims; ~4-6 agents). Each agent prompt:
+**4b. Verify every citation (parallel agents).** Dispatch one batch with one child per distinct citation cluster (group related claims; ~4-6 children), same dispatch shape as Phase 1 (see [`DISPATCH.md`](DISPATCH.md)). Each child's prompt:
 
 `Independently verify a citation against its PRIMARY source. Be skeptical; do not trust secondary blog summaries. CLAIM: {claim + cited figure + named source}. Find the actual primary source. Confirm or correct: exact title/authors/venue/year/URL, the real figure or effect size as published, sample/method and any author-stated limits, and peer-review status (published vs preprint). For any contested claim, find the strongest credible counter-source. Return: VERDICT = CONFIRMED / PARTIALLY CONFIRMED (list corrections) / UNVERIFIED / FALSE, then the corrected one-line citation, then 2-4 bullets of specifics with the primary URL. Under 280 words.`
 
@@ -96,5 +96,5 @@ This is what separates Storm Research from a normal report. Run it before delive
 - **Verification is mandatory.** A report delivered without Phase 4 is not a Storm Research report. The verification banner must be truthful.
 - **Reliability = evidence quality, not confidence.** Score on the source hierarchy: peer-reviewed causal > official policy/financial data > single commissioned survey > analogy > preprint.
 - **Target the reader, not a default person.** The actionable insight and claim safety guide speak to the role identified in Phase 0. Keep them generic if no role is given.
-- **Cost.** This spawns ~9-11 agents per run. That is expected. Do not fan out wider than five lenses or one verifier per citation cluster.
+- **Cost.** This spawns ~9-11 parallel children per run across the two dispatch batches. That is expected. Do not fan out wider than five lenses or one verifier per citation cluster.
 - **Design.** Clean white and professional (Montserrat / Roboto Mono, blue accent). Keep the template CSS verbatim. Do not swap in a different visual style.

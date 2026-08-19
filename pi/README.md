@@ -43,6 +43,25 @@ configured. The shared skill intentionally does not name package-specific tools.
 skill invocation and package result semantics still require a smoke test against the
 installed versions rather than a guessed command example.
 
+`storm-research` (`ai-agents/skills/storm-research/`) is portable too, as of #172 resolving its
+prior blocker (#95): its five expert-lens prompts (Practitioner, Academic, Skeptic, Economist,
+Historian) and its citation-verifier fan-out both dispatch as parallel children with distinct
+prompts and no per-child tool scoping — a lighter bar than `deep-review`'s per-dimension tool
+allowlists. On Pi, dispatch is `subagent({ tasks: [{ agent: "researcher", task: "<lens
+prompt>", output: false }, ...] })`, reusing the builtin `researcher` agent (already carrying
+`pi-web-access`'s tools) five times with distinct `task` strings rather than a new custom
+agent, since this repo has no `pi/agents/` projection to discover one; `output: false`
+overrides `researcher`'s default `output: research.md` so results return inline instead of
+colliding on one shared file. See `ai-agents/skills/storm-research/DISPATCH.md` for the full
+per-runtime contract. The `tasks` call shape is source-verified against the installed
+`pi-subagents@0.40.0` package's own shipped `README.md`, not executed as a live smoke test: a
+direct `pi -p` probe against the only authenticated provider here (`openai-codex`, OAuth)
+returned `Codex error: The usage limit has been reached` for every model and every prompt
+tried, including a bare `--no-tools` call, while `pi auth check --provider openai-codex`
+reported `{"status": "ready"}` — an account-wide usage-limit block, not a credentials problem.
+Retry the smoke test (call `subagent` with 2+ distinct-prompt `tasks` entries) once the limit
+clears before relying on this skill for a real run.
+
 `quick-review`, `deep-review`, `review-fix-loop`, and `fix-findings` (the review→fix skill set)
 are portable too, projected here from `ai-agents/skills/` alongside `council`. `deep-review`'s
 seven reviewer dimensions need something `council`'s symmetric critics don't: a distinct
