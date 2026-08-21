@@ -52,6 +52,8 @@ terraform.rc
 CLAUDE.md
 AGENTS.md
 GEMINI.md
+CONTEXT.md
+CONTEXT-MAP.md
 .cursor/
 .cursorrules
 .cursorignore
