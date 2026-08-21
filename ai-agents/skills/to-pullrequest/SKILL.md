@@ -91,34 +91,45 @@ this skill — they belong to a separate skill if one is wanted later.
      (`Fixes owner/repo#N`) is possible but only use it when the user explicitly names another
      repository — don't guess at one. Do not use a numeric flag; `gh pr create` has none for
      issue linking.
-   - **Azure DevOps**: resolve the work item id and pass it on the `--work-items <id>` flag of
-     `az repos pr create` (confirmed via `az repos pr create --help`: `--work-items : IDs of
-     the work items to link to the new pull request. Space separated.`). An `AB#123` mention
-     inline in the body is optional/supplementary flavor text only — it is never a substitute
-     for the `--work-items` flag, since that flag is what actually creates the link.
+   - **Azure DevOps**: `--work-items <id>` on `az repos pr create` is documented (`--help`:
+     "IDs of the work items to link to the new pull request") but **confirmed unreliable on
+     create** — see step 9's ADO subsection. Link with a separate `az repos pr work-item add
+     --id <pr-id> --work-items <id>` call after creation instead; verify with `az repos pr
+     work-item list --id <pr-id>`. An `AB#123` mention inline in the body is optional/
+     supplementary flavor text only — never a substitute for the actual link.
 
 8. **Draft vs ready.** Ask the user whether the PR should be open for review now or a draft,
-   unless they already said so. If they don't answer or don't care, default to a **draft**
-   (`--draft` on both `gh pr create` and `az repos pr create`) — never silently open a
-   ready-for-review PR.
+   unless they already said so. If they don't answer or don't care, default to a **draft**.
+   On GitHub, `--draft` on `gh pr create` is reliable. On Azure DevOps, **`--draft true` on
+   `az repos pr create` is confirmed unreliable** — see step 9's ADO subsection; set it via a
+   follow-up `az repos pr update` and verify.
 
 9. **Write the body to a temp file, never inline.** Save the write-polished body to a temp
    file and pass it by file, not as an inline multi-line string — inline strings break on
    `gh`/`az` shell-escaping (quotes, backticks, `$()`, newlines).
-   - GitHub: `gh pr create --title "<title>" --body-file <tmpfile> [--draft]`.
-   - Azure DevOps: `az repos pr create` has no native `@file`-style body flag (verified via
-     `--help`: `--description -d : Description for the new pull request. Can include markdown.
-     Each value sent to this arg will be a new line.`), so read the temp file's content into
-     the argument instead of writing it inline — the shell matters here, since `az` works from
-     both (`review-ado-pr` notes the same):
-     - bash: `az repos pr create --title "<title>" --description "$(cat <tmpfile>)"
-       --work-items <id> [--draft true]`.
-     - PowerShell: **do not** use `cat`/`Get-Content <tmpfile>` bare inside the double-quoted
-       argument — `Get-Content` returns a line array, and PowerShell string interpolation joins
-       array elements with spaces, collapsing the multi-line body onto one line (the exact
-       failure this step exists to avoid). Use `-Raw` to read it as a single string instead:
-       `az repos pr create --title "<title>" --description (Get-Content <tmpfile> -Raw)
-       --work-items <id> --draft true`.
+   - GitHub: `gh pr create --title "<title>" --body-file <tmpfile> [--draft]`. Reliable as
+     documented — no known gotcha here.
+   - **Azure DevOps — confirmed broken on `create`, verified working via `update`+`add`
+     (azure-cli 2.89.1, azure-devops extension 1.0.2, tested 2026-08-21):** a single
+     `az repos pr create --title ... --description ... --draft true --work-items <id>` call
+     silently drops or mis-sets all three of the non-title/branch flags at once — the created
+     PR came back with `isDraft: false` despite `--draft true`, `workItemRefs: null` despite
+     `--work-items <id>`, and `description` truncated to only its first line despite passing
+     the full temp-file content with `-Raw`. This reproduced with the previously-documented
+     `(Get-Content <tmpfile> -Raw)` form specifically — the single-string form is what
+     truncates; do not use `-Raw` for this call. The verified-working sequence is three calls:
+     1. `az repos pr create --title "<title>" --source-branch <branch> --target-branch
+        <default-branch> --org <org-url> --project "<project>" --repository <repo>`
+        (title/branches only — no `--description`, `--draft`, or `--work-items` on this call).
+     2. `az repos pr update --id <pr-id> --description (Get-Content <tmpfile>) --draft true
+        --org <org-url>` — pass the **line array** (no `-Raw`) here; on `update` this lands
+        correctly as a multi-line description (`az`'s own `--help` note, "Each value sent to
+        this arg will be a new line," describes `update`'s actual behavior, not `create`'s).
+     3. `az repos pr work-item add --id <pr-id> --work-items <id> --org <org-url>`.
+     **Verify all three after, every time** — `az repos pr show --id <pr-id> --query
+     "{isDraft:isDraft, title:title}"`, then re-read `description` in full (not just its
+     length) to confirm it isn't truncated, then `az repos pr work-item list --id <pr-id>`.
+     Do not trust the `create`/`update` command's own JSON response as proof; re-fetch.
 
 10. **Report.** Relay the created PR's URL (and number) back to the user. Stop here — do not
     chain into CI checks, review-thread handling, or merge/auto-complete.
@@ -134,6 +145,7 @@ this skill — they belong to a separate skill if one is wanted later.
 | ADO work item only mentioned as `AB#123` in the text | That's supplementary only; the real link is the `--work-items` flag |
 | PR opened straight to ready-for-review without asking | Draft-vs-ready is an explicit step; default to `--draft` when unspecified |
 | Body drafted and sent to `gh`/`az` without going through `write` | Step 6 is the point of this skill; never skip it |
+| `az repos pr create --description ... --draft true --work-items <id>` in one call came back `isDraft: false`, `workItemRefs: null`, description truncated to one line | Confirmed broken on `create` (azure-cli 2.89.1 / azure-devops ext 1.0.2). Create with title/branches only, then `az repos pr update --id <id> --description (Get-Content <tmpfile>) --draft true` (line array, no `-Raw`), then `az repos pr work-item add --id <id> --work-items <id>` — see step 9's ADO subsection. Always re-fetch and verify, don't trust the command's own response. |
 
 ## Related
 
