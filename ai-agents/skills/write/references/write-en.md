@@ -11,13 +11,14 @@ Eliminate predictable AI writing patterns. Write like a human: varied, imperfect
 1. **Cut filler phrases.** Remove throat-clearing openers, emphasis crutches, and adverbs that only signal emphasis. Keep adverbs that carry real meaning.
 2. **Break formulaic structures.** Avoid binary contrasts, negative listings, dramatic fragmentation, rhetorical setups, false agency.
 3. **Use active voice.** Every sentence needs a human subject doing something. No inanimate objects performing human actions ("the complaint becomes a fix").
-4. **Be specific.** No vague declaratives ("The reasons are structural"). Name the specific thing. No lazy extremes ("every," "always," "never") doing vague work.
-5. **Put the reader in the room.** No narrator-from-a-distance voice. "You" beats "People." Specifics beat abstractions.
-6. **Vary rhythm.** Mix sentence lengths. Two items beat three. End paragraphs differently. No em dashes.
-7. **Trust readers.** State facts directly. Skip softening, justification, hand-holding.
-8. **Cut quotables.** If it sounds like a pull-quote, rewrite it.
-9. **Do not replace one formula with another.** “Human” does not mean slangy, quirky, or performatively casual.
-10. **No emoji.** Remove any emoji from the text being edited.
+4. **Short words over long ones, where a short one will do (Orwell's rule).** Use "use" not "utilize", "help" not "facilitate", "show" not "demonstrate". Never use a foreign phrase, scientific word, or jargon term when a plain English one exists.
+5. **Be specific.** No vague declaratives ("The reasons are structural"). Name the specific thing. No lazy extremes ("every," "always," "never") doing vague work.
+6. **Put the reader in the room.** No narrator-from-a-distance voice. "You" beats "People." Specifics beat abstractions.
+7. **Vary rhythm.** Mix sentence lengths. Two items beat three. End paragraphs differently. No em dashes.
+8. **Trust readers.** State facts directly. Skip softening, justification, hand-holding.
+9. **Cut quotables.** If it sounds like a pull-quote, rewrite it.
+10. **Do not replace one formula with another.** “Human” does not mean slangy, quirky, or performatively casual.
+11. **No emoji.** Remove any emoji from the text being edited.
 
 ### Word Choice
 
