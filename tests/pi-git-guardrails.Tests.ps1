@@ -15,6 +15,10 @@
 #   - quote-scrubbing (ported from claude/block-destructive-vcs.ps1, see #177) means a
 #     destructive phrase quoted inside a commit message no longer false-matches, and
 #     "git stash push" is excluded from the push pattern by name
+#   - a real command sitting between two single-quoted strings that each contain a double
+#     quote is not scrubbed away (double/single-quote spans are matched in one alternation,
+#     not two sequential passes, so quote kinds can't pair across each other)
+#   - extra whitespace between "stash" and "push" doesn't defeat the stash-push exclusion
 
 BeforeAll {
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
@@ -51,12 +55,10 @@ const scrubMatch = source.match(/function scrubQuoted\(command: string\): string
 if (!scrubMatch) {
     throw new Error("scrubQuoted function not found in " + extensionPath);
 }
-// Strip the one TS-only type annotation in the function body (the inner arrow function's
-// params/return type) so plain node can eval it; the regex logic itself is plain JS.
-const scrubBody = scrubMatch[1].replace(
-    /\(_match: string, inner: string\): string =>/,
-    "(_match, inner) =>",
-);
+// Strip TS-only ": string" / ": string | undefined" type annotations from the function
+// body so plain node can eval it; the regex logic itself is plain JS. Generic (not tied
+// to one signature's exact text) so it survives a param added/renamed inside the body.
+const scrubBody = scrubMatch[1].replace(/:\s*string(?:\s*\|\s*undefined)?/g, "");
 const scrubQuoted = new Function("command", scrubBody);
 
 const commands = JSON.parse(commandsJson);
@@ -98,6 +100,7 @@ Describe 'pi/extensions/git-guardrails.ts' {
             @{ Command = 'git branch -D foo' }
             @{ Command = 'git checkout .' }
             @{ Command = 'git restore .' }
+            @{ Command = "echo 'a`"b' ; git push ; echo 'c`"d'" }
         ) {
             param($Command)
             $results = Invoke-Guardrails -Command $Command
@@ -116,10 +119,12 @@ Describe 'pi/extensions/git-guardrails.ts' {
             @{ Command = 'git stash list' }
             @{ Command = 'git stash push' }
             @{ Command = 'git stash push -u' }
+            @{ Command = 'git stash  push' }
             @{ Command = 'git reset --soft HEAD~1' }
             @{ Command = 'git clean -n' }
             @{ Command = 'git commit -m "please reset --hard now"' }
             @{ Command = 'git commit -m "say \"reset --hard\" here"' }
+            @{ Command = 'git commit -m "push to origin"' }
         ) {
             param($Command)
             $results = Invoke-Guardrails -Command $Command

@@ -19,21 +19,27 @@ import { isToolCallEventType } from "@earendil-works/pi-coding-agent";
 // false-match; unquotes flag-shaped quoted content in place so e.g. `git push "--force"`
 // (which the shell expands identically to an unquoted flag) still matches. Mirrors the
 // scrub in claude/block-destructive-vcs.ps1. Escape-aware double-quote matching so an
-// escaped quote inside a message doesn't terminate the match early.
+// escaped quote inside a message doesn't terminate the match early. Double- and
+// single-quoted spans are matched in one alternation (not two sequential passes) so a
+// double quote inside one single-quoted string can't pair across to a double quote
+// inside a later one and scrub out everything between them, including a real command.
 function scrubQuoted(command: string): string {
 	const unwrap = (_match: string, inner: string): string =>
 		/^-{1,2}[A-Za-z][A-Za-z-]*$/.test(inner) ? inner : "";
-	return command
-		.replace(/"((?:\\.|[^"\\])*)"/g, unwrap)
-		.replace(/'([^']*)'/g, unwrap);
+	return command.replace(
+		/"((?:\\.|[^"\\])*)"|'([^']*)'/g,
+		(match: string, doubleQuoted: string | undefined, singleQuoted: string | undefined) =>
+			unwrap(match, doubleQuoted !== undefined ? doubleQuoted : singleQuoted ?? ""),
+	);
 }
 
 // Each pattern is matched against the quote-scrubbed command string. Kept in the same
 // order and intent as BLOCKED_PATTERNS in block-dangerous-git.sh; [[:space:]] translates
-// to \s. push excludes git-stash's own "push" subcommand via a negative lookbehind.
+// to \s. push excludes git-stash's own "push" subcommand via a negative lookbehind
+// (`\s+`, not `\s`, so extra whitespace between "stash" and "push" doesn't defeat it).
 const BLOCKED_PATTERNS: RegExp[] = [
 	// Push (all variants), excluding `git stash push`
-	/git\s+(.*\s+)?(?<!stash\s)push(\s|$)/,
+	/git\s+(.*\s+)?(?<!stash\s+)push(\s|$)/,
 
 	// Hard reset
 	/git\s+(.*\s+)?reset\s.*--hard/,
