@@ -54,11 +54,15 @@ $rules = [ordered]@{
 
 foreach ($pattern in $rules.Keys) {
   if ($scrubbed -cmatch $pattern) {
+    # Surface the raw command so the assistant can hand it back for the user to copy and
+    # run themselves (e.g. via Claude Code's `! <command>` shell passthrough) instead of
+    # only naming the rule that fired.
+    $reason = "$($rules[$pattern]) If you want to run it yourself, type: ! $cmd"
     @{
       hookSpecificOutput = @{
         hookEventName            = 'PreToolUse'
         permissionDecision       = 'deny'
-        permissionDecisionReason = $rules[$pattern]
+        permissionDecisionReason = $reason
       }
     } | ConvertTo-Json -Depth 5 -Compress
     exit 0

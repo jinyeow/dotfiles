@@ -10,6 +10,8 @@
 #   - an escaped-quote message must not get mangled into a false deny
 #   - a quoted flag (git push "--force") must NOT bypass the deny — the shell expands it identically
 #   - non-git commands pass through; malformed/empty stdin fails open
+#   - a deny reason includes the raw command as `! <command>`, so it can be handed back for
+#     the user to copy and run themselves via Claude Code's `!` shell passthrough
 
 BeforeAll {
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
@@ -85,6 +87,13 @@ Describe 'claude/block-destructive-vcs.ps1' {
             # A quoted flag expands identically in the shell, so the deny must still fire.
             $out = Invoke-HookCmd -Command $Command
             $out | Should -Match '"permissionDecision":"deny"'
+        }
+    }
+
+    Context 'deny reason includes the runnable command' {
+        It 'includes "! <command>" in the reason for a denied command' {
+            $out = Invoke-HookCmd -Command 'git reset --hard HEAD~1'
+            $out | Should -Match ([regex]::Escape('! git reset --hard HEAD~1'))
         }
     }
 
