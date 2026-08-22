@@ -35,7 +35,7 @@ conventions in `ai-agents/AGENTS.md` only; re-run the installer to push the copy
 | `../ai-agents/AGENTS.md` (shared) | `~/.codex/AGENTS.md` | Personal conventions (sourced from the ai-agents module) |
 | `../ai-agents/AGENTS.d/` (shared) | `~/.codex/AGENTS.d/` | Progressive-disclosure satellite files `AGENTS.md` links out to on demand (sourced from the ai-agents module) |
 | `block-dangerous-git.sh` | `~/.codex/block-dangerous-git.sh` | `PreToolUse` hook that denies dangerous git commands — see "Git guardrails" below. Installed by `setup.ps1 -Module codex` only; `setup.sh` does not copy this file yet |
-| `hooks.json` | merged into `~/.codex/hooks.json` | Tracked `hooks.PreToolUse` + `hooks.SessionStart` fragment; the installer merges both event keys in by entry, preserving any pre-existing foreign entry in either (e.g. herdr's own `SessionStart` entry). Merged by `setup.ps1 -Module codex` only; `setup.sh` does not merge it yet |
+| `hooks.json` | merged into `~/.codex/hooks.json` | Tracked `hooks.PreToolUse` + `hooks.SessionStart` fragment; the installer merges both event keys, preserving any pre-existing foreign entry or hook in either (e.g. herdr's own `SessionStart` entry). Merged by `setup.ps1 -Module codex` only; `setup.sh` does not merge it yet |
 | `ai-agents/skills/<name>/` (portable) | `~/.codex/skills/<name>/` | Portable global skills |
 | `codex/skills/<name>/` | `~/.codex/skills/<name>/` | Codex-native skills (win on name collision) |
 | `templates/work-AGENTS.md` | — (manual copy) | Drop into an Azure work repo root as `AGENTS.md` |
@@ -60,8 +60,11 @@ which would otherwise leave every command silently unmatched and disable the gua
 Blocked via the standard Codex hook contract: exit 2 with a reason on stderr. Registered
 user-scope (`~/.codex/hooks.json`), matching this repo's own Claude Code guardrail scope
 choice (`~/.claude/settings.json`). Because `~/.codex/hooks.json` may already carry herdr's own
-`SessionStart` entry, the installer merges `hooks.PreToolUse` and `hooks.SessionStart` in by
-entry rather than overwriting the file — see `Install-Codex` in `setup.ps1`.
+`SessionStart` entry, the installer merges `hooks.PreToolUse` and `hooks.SessionStart` rather
+than overwriting the file — `PreToolUse` filters out a whole foreign entry if any hook inside it
+matches the guardrail, while `SessionStart` filters at the individual-hook level so a foreign
+hook sharing an entry with a stale project-brain hook is kept — see `Install-Codex` in
+`setup.ps1`.
 
 Today this hook is installed only by `setup.ps1 -Module codex`; `setup.sh` does not yet copy
 `block-dangerous-git.sh` or merge `hooks.json`, so it is not present on a Linux/WSL install.

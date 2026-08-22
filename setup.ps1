@@ -1292,10 +1292,11 @@ function Install-Codex {
     #    User-scope, matching this repo's Claude Code guardrail scope choice. The hook script
     #    copies like any other tracked file, but ~/.codex/hooks.json is not: herdr's own
     #    installer (`herdr integration install codex`) may already own a SessionStart entry
-    #    there, so a literal Copy-Dotfile would destroy it. Merge hooks.PreToolUse at entry
-    #    level — preserve any existing PreToolUse entries that are not this guardrail's, and
-    #    append or replace only the guardrail's own entry — leaving every other event key and
-    #    every other PreToolUse entry untouched.
+    #    there, so a literal Copy-Dotfile would destroy it. This function actively merges both
+    #    hooks.PreToolUse (this guardrail's entry) and hooks.SessionStart (the project-brain
+    #    entry) — preserve any existing entries in either key that are not this install's own,
+    #    and append or replace only its own entry — leaving every other event key and every
+    #    other foreign entry untouched.
     $params = @{
         Dest = Join-Path $codexDir 'block-dangerous-git.sh'
         Source = Join-Path $Dotfiles 'codex\block-dangerous-git.sh'
