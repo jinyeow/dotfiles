@@ -26,7 +26,12 @@ findings-store write path on Codex hosts remains an open gap. `storm-research` i
 too, as of #172 resolving the #95 spike below: its five expert-lens prompts and
 citation-verifier fan-out need only parallel dispatch with distinct per-child prompts, no
 per-child tool scoping, on Pi via `pi-subagents`' `subagent({ tasks: [...] })` reusing the
-builtin `researcher` agent; see `ai-agents/skills/storm-research/DISPATCH.md`.
+builtin `researcher` agent; see `ai-agents/skills/storm-research/DISPATCH.md`. `walkthrough`
+is portable too, as of #91: its `~/.claude/learner-profile.md` path now resolves to the
+runtime's own config home (`~/.claude/`, `~/.codex/`, `~/.pi/agent/`); its stale
+`.claude/tickets.md`/`.claude/specs/*.md` reference was corrected to the current
+`.agents/tickets.md`/`.agents/specs/*.md` convention, and its project-brain resolution was
+already portable.
 
 ## Portable support (`ai-agents/skills/_shared/`)
 
@@ -92,11 +97,6 @@ mechanism; fixable by repointing the reference:
 
 - `fastmail` — only coupling is Claude Code's `mcp__fastmail__*` tool-name syntax in the
   prose; the Fastmail MCP server itself is portable in concept. Migration ticket: #92.
-- `walkthrough` — only coupling is two hardcoded paths (`~/.claude/learner-profile.md`,
-  `.claude/tickets.md`/`.claude/specs/*.md` — the pre-#114 default; `to-tickets`/`to-spec`
-  now default to `.agents/tickets.md`/`.agents/specs/`, keeping `.claude/` only as a legacy
-  fallback for already-set-up repos); already resolves project-brain the portable way.
-  Migration ticket: #91.
 
 Claude-native skills are projected only to Claude Code, while portable skills are projected
 there alongside them. If names collide, the Claude-native variant wins.

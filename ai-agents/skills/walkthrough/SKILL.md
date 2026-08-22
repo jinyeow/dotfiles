@@ -39,8 +39,9 @@ further; if it's empty, say so and stop.
 
 Read the learner profile — both grains, whichever exist:
 
-- **Global** — `~/.claude/learner-profile.md`: general-skill observations that follow me across
-  repos (languages, tools, patterns I've shown fluency or gaps in).
+- **Global** — `learner-profile.md` under the runtime's own config home (`~/.claude/`,
+  `~/.codex/`, or `~/.pi/agent/`): general-skill observations that follow me across repos
+  (languages, tools, patterns I've shown fluency or gaps in).
 - **Area** — `learner.md` in the resolved brain: domain-specific knowledge for this codebase's
   area. Resolve per `project-brain`: an ancestor `.claude/brain/` is self-contained; otherwise the
   `~/.claude/project-brain/brains.json` entry whose scope covers the cwd. No brain → skip silently.
@@ -52,8 +53,9 @@ records open gaps. Missing profiles just mean starting mid-level.
 
 A senior narrates intent, so find the driving artifact before touring — look it up, don't ask me:
 
-1. `.claude/tickets.md` / `.claude/specs/*.md` (the `to-tickets` / `to-spec` outputs) — match by
-   branch name or recency.
+1. `.agents/tickets.md` / `.agents/specs/*.md` (the `to-tickets` / `to-spec` outputs; a legacy
+   `.claude/tickets.md` / `.claude/specs/*.md` from before that convention moved is still
+   honored) — match by branch name or recency.
 2. The PR title and body, when `--pr` was given.
 3. `git log --oneline "$base..HEAD"` and the commit messages.
 
@@ -108,8 +110,8 @@ When the tour ends (or I say stop):
 2. **Update the learner profile(s)** — neutral observations, the register of a shared team doc:
    topics covered, questions I asked, gaps closed. Domain-specific lines go to the brain's
    `learner.md` (create the file if the brain exists but the file doesn't); general-skill lines go
-   to `~/.claude/learner-profile.md`. Keep each file within roughly a screenful — fold older
-   entries into their summary lines rather than appending forever.
+   to the runtime's own `learner-profile.md` (see step 2). Keep each file within roughly a
+   screenful — fold older entries into their summary lines rather than appending forever.
 3. **Show me the exact lines you wrote**, so I can veto or amend them on the spot.
 4. If the profile landed in a brain, follow project-brain's update contract for the change
    (log line + commit).

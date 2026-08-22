@@ -220,14 +220,14 @@ normal calls to 12. The four `/council-code`, `/council-business`, `/council-pla
 `/council-doc` aliases pin their panel. Reports use `.agents/council/reports/`. For branch
 diffs/PRs use `quick-review` (or `deep-review`), not council.
 
-`walkthrough` is the post-`implement` mentoring stage of the main flow: it walks the user through
-a diff like a senior pairing with a junior (checkpoint tour / overview-then-Q&A / socratic, chosen
-at start or via `--mode`), chunked into narrative beats and framed against the driving spec/ticket
-when one can be found. It explains rather than judges — findings stay with `code-review` /
-`spec-review`. It keeps a two-grain **learner profile** seeded into every tour and updated at
-close-out (delta shown for veto): general-skill observations in `~/.claude/learner-profile.md`
-(untracked, created on first use), domain-specific ones in the resolved project-brain's
-`learner.md`.
+The portable `walkthrough` skill is the post-`implement` mentoring stage of the main flow: it
+walks the user through a diff like a senior pairing with a junior (checkpoint tour /
+overview-then-Q&A / socratic, chosen at start or via `--mode`), chunked into narrative beats and
+framed against the driving spec/ticket when one can be found. It explains rather than judges —
+findings stay with `code-review` / `spec-review`. It keeps a two-grain **learner profile** seeded
+into every tour and updated at close-out (delta shown for veto): general-skill observations in
+`~/.claude/learner-profile.md` (untracked, created on first use), domain-specific ones in the
+resolved project-brain's `learner.md`.
 
 The review→fix skills are portable (`ai-agents/skills/`) and compose around the portable
 `_shared/` contract: **`quick-review`** is the default pass — one folded reviewer (correctness +
