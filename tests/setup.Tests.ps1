@@ -237,7 +237,10 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
         }
     }
 
-    It 'warns and skips the hooks.json merge when no real bash is found' {
+    It 'warns and skips only the guardrail PreToolUse merge when no real bash is found' {
+        # The guardrail merge is skipped (a broken bash path would break every Bash call), but
+        # the unrelated pwsh-based project-brain SessionStart merge does not depend on bash and
+        # must still proceed — see the "merges the project-brain SessionStart entry..." test above.
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-nobash-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
@@ -246,7 +249,8 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
             Mock Resolve-CodexGuardrailBash { $null }
             $output = Install-Codex *>&1 | Out-String
             $output | Should -Match 'No Git-for-Windows bash\.exe found'
-            Test-Path (Join-Path $tmpHome '.codex\hooks.json') | Should -BeFalse
+            $hooks = Get-Content -LiteralPath (Join-Path $tmpHome '.codex\hooks.json') -Raw | ConvertFrom-Json
+            $hooks.hooks.PSObject.Properties.Name | Should -Not -Contain 'PreToolUse'
         } finally {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
@@ -283,11 +287,10 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
         }
     }
 
-    It 'preserves a pre-existing SessionStart event key alongside the merged PreToolUse guardrail entry' {
+    It 'preserves a pre-existing foreign SessionStart entry (herdr) alongside the merged project-brain entry' {
         # Regression: the merge contract (setup.ps1's own comment above, codex/README.md) promises
-        # preserving other event keys untouched — e.g. herdr's SessionStart entry. Only PreToolUse
-        # was ever seeded in the sibling tests above, so a regression that rebuilds hooks.json from
-        # scratch instead of merging into the existing dest object would still pass every one of them.
+        # preserving other SessionStart entries untouched — e.g. herdr's own entry — while adding
+        # this repo's project-brain SessionStart entry alongside it (issue #186).
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-sessionstart-' + [guid]::NewGuid())
         $codexDir = Join-Path $tmpHome '.codex'
         New-Item -ItemType Directory -Path $codexDir -Force | Out-Null
@@ -306,8 +309,54 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
             $env:USERPROFILE = $tmpHome
             Install-Codex *>$null
             $hooks = Get-Content -LiteralPath (Join-Path $codexDir 'hooks.json') -Raw | ConvertFrom-Json
-            $hooks.hooks.SessionStart[0].hooks[0].command | Should -Be 'herdr integration notify'
+            $entries = @($hooks.hooks.SessionStart)
+            $entries.Count | Should -Be 2
+            ($entries | Where-Object { $_.hooks[0].command -eq 'herdr integration notify' }) | Should -Not -BeNullOrEmpty
+            $ours = $entries | Where-Object { $_.hooks[0].command -match 'session-start\.ps1' }
+            $ours | Should -Not -BeNullOrEmpty
+            $ours.hooks[0].command | Should -Match '(?i)"[^"]*project-brain[\\/]scripts[\\/]session-start\.ps1"'
+            $ours.hooks[0].command | Should -Not -Match '~'
             ($hooks.hooks.PreToolUse | Where-Object { $_.hooks[0].command -match 'block-dangerous-git\.sh' }) | Should -Not -BeNullOrEmpty
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'replaces rather than duplicates the project-brain SessionStart entry on re-run' {
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-sessionstart-rerun-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            Install-Codex *>$null
+            Install-Codex *>$null
+            $hooksPath = Join-Path $tmpHome '.codex\hooks.json'
+            $hooks = Get-Content -LiteralPath $hooksPath -Raw | ConvertFrom-Json
+            $entries = @($hooks.hooks.SessionStart)
+            $entries.Count | Should -Be 1
+            $entries[0].hooks[0].command | Should -Match 'session-start\.ps1'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'merges the project-brain SessionStart entry even when no Git-for-Windows bash is found' {
+        # session-start.ps1 is pwsh, not bash, and fails safe on any error — a missing guardrail
+        # bash must not also block the unrelated project-brain SessionStart hook (issue #186).
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-nobash-sessionstart-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            Mock Resolve-CodexGuardrailBash { $null }
+            Install-Codex *>$null
+            $hooksPath = Join-Path $tmpHome '.codex\hooks.json'
+            Test-Path -LiteralPath $hooksPath | Should -BeTrue
+            $hooks = Get-Content -LiteralPath $hooksPath -Raw | ConvertFrom-Json
+            $hooks.hooks.SessionStart[0].hooks[0].command | Should -Match 'session-start\.ps1'
+            $hooks.hooks.PSObject.Properties.Name | Should -Not -Contain 'PreToolUse'
         } finally {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue

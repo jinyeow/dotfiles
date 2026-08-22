@@ -35,7 +35,7 @@ conventions in `ai-agents/AGENTS.md` only; re-run the installer to push the copy
 | `../ai-agents/AGENTS.md` (shared) | `~/.codex/AGENTS.md` | Personal conventions (sourced from the ai-agents module) |
 | `../ai-agents/AGENTS.d/` (shared) | `~/.codex/AGENTS.d/` | Progressive-disclosure satellite files `AGENTS.md` links out to on demand (sourced from the ai-agents module) |
 | `block-dangerous-git.sh` | `~/.codex/block-dangerous-git.sh` | `PreToolUse` hook that denies dangerous git commands — see "Git guardrails" below. Installed by `setup.ps1 -Module codex` only; `setup.sh` does not copy this file yet |
-| `hooks.json` | merged into `~/.codex/hooks.json` | Tracked `hooks.PreToolUse` fragment; the installer merges it in, preserving any other event key already present (e.g. herdr's `SessionStart` entry). Merged by `setup.ps1 -Module codex` only; `setup.sh` does not merge it yet |
+| `hooks.json` | merged into `~/.codex/hooks.json` | Tracked `hooks.PreToolUse` + `hooks.SessionStart` fragment; the installer merges both event keys in by entry, preserving any pre-existing foreign entry in either (e.g. herdr's own `SessionStart` entry). Merged by `setup.ps1 -Module codex` only; `setup.sh` does not merge it yet |
 | `ai-agents/skills/<name>/` (portable) | `~/.codex/skills/<name>/` | Portable global skills |
 | `codex/skills/<name>/` | `~/.codex/skills/<name>/` | Codex-native skills (win on name collision) |
 | `templates/work-AGENTS.md` | — (manual copy) | Drop into an Azure work repo root as `AGENTS.md` |
@@ -59,9 +59,9 @@ which would otherwise leave every command silently unmatched and disable the gua
 
 Blocked via the standard Codex hook contract: exit 2 with a reason on stderr. Registered
 user-scope (`~/.codex/hooks.json`), matching this repo's own Claude Code guardrail scope
-choice (`~/.claude/settings.json`). Because `~/.codex/hooks.json` may already carry herdr's
-`SessionStart` entry, the installer merges in only `hooks.PreToolUse` rather than overwriting
-the file — see `Install-Codex` in `setup.ps1`.
+choice (`~/.claude/settings.json`). Because `~/.codex/hooks.json` may already carry herdr's own
+`SessionStart` entry, the installer merges `hooks.PreToolUse` and `hooks.SessionStart` in by
+entry rather than overwriting the file — see `Install-Codex` in `setup.ps1`.
 
 Today this hook is installed only by `setup.ps1 -Module codex`; `setup.sh` does not yet copy
 `block-dangerous-git.sh` or merge `hooks.json`, so it is not present on a Linux/WSL install.
@@ -84,13 +84,42 @@ expect Codex to prompt for this the first time a `Bash` tool call reaches the gu
 one invocation — intended for automation that already vets its hook sources outside Codex, not
 for routine interactive use.
 
+## Project-brain SessionStart hook
+
+`setup.ps1 -Module codex` registers a `SessionStart` hook that reuses the same
+`ai-agents/skills/project-brain/scripts/session-start.ps1` resolver Claude Code's own
+`SessionStart` hook runs (see `claude/settings.json`), projected to
+`~/.codex/skills/project-brain/scripts/session-start.ps1` like any other portable skill. On
+session init/resume/clear, it reads the hook's stdin `cwd`, resolves it to an active initiative
+(in-repo `.claude/brain/core.md` first, else `~/.claude/project-brain/brains.json` +
+registry.json), and injects that initiative's `core.md` + `STATUS.md` via
+`hookSpecificOutput.additionalContext`. It fails safe — any error or no match exits 0 with no
+output, never blocking a session.
+
+Because command hooks run with no shell field (same reasoning as the git-guardrail bash
+rewrite above), the tracked `~/...` placeholder in `codex/hooks.json` is rewritten to the
+resolved absolute installed script path at merge time.
+
+Check `core.md` + `STATUS.md` size for a given initiative against the roughly 2,500-token
+`additionalContext` budget the Codex hook-output docs note — this repo does not solve
+token-budgeting for oversized initiatives; keep those files lean. Measured against this
+repo's own dotfiles brain (`E:\Personal Projects\brain\initiatives\dotfiles\`), the combined
+`core.md` + `STATUS.md` payload is ~55.6K characters (~13.9K tokens at a 4-chars/token
+estimate) — well over budget; expect Codex to truncate or drop the excess for initiatives
+this large.
+
+**Cosmetic caveat**: due to an upstream bug (`openai/codex#16933`), injected
+`additionalContext` currently renders visibly in the Codex transcript instead of staying
+hidden. For project-brain context that visibility is arguably a feature, not a problem — no
+workaround is applied here.
+
 ## Platform support
 
 Linux/WSL parity is provided by `setup.sh -m codex`: it installs the Codex CLI via OpenAI's
 native installer, copies `config.toml` + `AGENTS.md` into `~/.codex/`, projects skills into
 `~/.codex/skills/`, and registers the MCP reviewer. It does not yet install the git guardrail
-hook (`block-dangerous-git.sh` + the `hooks.json` merge) covered above; that is currently
-`setup.ps1 -Module codex`-only. One caveat: the `bicep` MCP server in `config.toml` needs `dnx`
+hook or the project-brain `SessionStart` hook (both need the `hooks.json` merge covered above);
+that merge is currently `setup.ps1 -Module codex`-only. One caveat: the `bicep` MCP server in `config.toml` needs `dnx`
 from a .NET 10 SDK, which neither installer provisions on Linux — without it the server fails
 at session start and Codex degrades to a session without Bicep tools (the entry is not
 `required`, so startup itself is unaffected).

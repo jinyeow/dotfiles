@@ -10,6 +10,16 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -File ~/.codex/skills/project-brain/scripts/session-start.ps1"
+          }
+        ]
+      }
     ]
   }
 }
