@@ -240,7 +240,7 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
     It 'warns and skips only the guardrail PreToolUse merge when no real bash is found' {
         # The guardrail merge is skipped (a broken bash path would break every Bash call), but
         # the unrelated pwsh-based project-brain SessionStart merge does not depend on bash and
-        # must still proceed — see the "merges the project-brain SessionStart entry..." test above.
+        # must still proceed — see the "merges the project-brain SessionStart entry..." test below.
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-nobash-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
@@ -251,6 +251,9 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
             $output | Should -Match 'No Git-for-Windows bash\.exe found'
             $hooks = Get-Content -LiteralPath (Join-Path $tmpHome '.codex\hooks.json') -Raw | ConvertFrom-Json
             $hooks.hooks.PSObject.Properties.Name | Should -Not -Contain 'PreToolUse'
+            # The "Merged:" summary line must not claim hooks.PreToolUse was merged when the
+            # guardrail merge was actually skipped for lack of a resolvable bash.
+            ($output -split "`n" | Where-Object { $_ -match 'Merged:.*hooks\.json' }) | Should -Not -Match 'hooks\.PreToolUse'
         } finally {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
@@ -323,6 +326,39 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
         }
     }
 
+    It 'keeps a foreign hook that shares a SessionStart entry with a stale project-brain hook' {
+        # Regression: the filter used to drop an entry's ENTIRE hooks array whenever any one
+        # hook inside it matched the project-brain pattern, silently discarding a foreign hook
+        # that happened to share the same entry.
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-mixed-' + [guid]::NewGuid())
+        $codexDir = Join-Path $tmpHome '.codex'
+        New-Item -ItemType Directory -Path $codexDir -Force | Out-Null
+        $mixed = @{
+            hooks = @{
+                SessionStart = @(
+                    @{
+                        hooks = @(
+                            @{ type = 'command'; command = 'herdr integration notify' },
+                            @{ type = 'command'; command = 'pwsh -NoProfile -File ~/.codex/skills/project-brain/scripts/session-start.ps1' }
+                        )
+                    }
+                )
+            }
+        }
+        ($mixed | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath (Join-Path $codexDir 'hooks.json')
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            Install-Codex *>$null
+            $hooks = Get-Content -LiteralPath (Join-Path $codexDir 'hooks.json') -Raw | ConvertFrom-Json
+            $allCommands = @($hooks.hooks.SessionStart | ForEach-Object { $_.hooks } | ForEach-Object { $_.command })
+            $allCommands | Should -Contain 'herdr integration notify'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     It 'replaces rather than duplicates the project-brain SessionStart entry on re-run' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-sessionstart-rerun-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
@@ -357,6 +393,83 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
             $hooks = Get-Content -LiteralPath $hooksPath -Raw | ConvertFrom-Json
             $hooks.hooks.SessionStart[0].hooks[0].command | Should -Match 'session-start\.ps1'
             $hooks.hooks.PSObject.Properties.Name | Should -Not -Contain 'PreToolUse'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'preserves both a foreign PreToolUse entry and a foreign SessionStart entry when no bash is found' {
+        # Regression lock for the skip-guardrail-merge path (finding #4, issue #186 review):
+        # when bash can't be resolved, the PreToolUse merge block is skipped entirely, so the
+        # foreign PreToolUse entry survives untouched by construction, not via the per-hook
+        # filter (that filter only runs on the SessionStart side in this scenario).
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-nobash-both-' + [guid]::NewGuid())
+        $codexDir = Join-Path $tmpHome '.codex'
+        New-Item -ItemType Directory -Path $codexDir -Force | Out-Null
+        $foreign = @{
+            hooks = @{
+                PreToolUse = @(
+                    @{
+                        matcher = 'Edit'
+                        hooks = @(@{ type = 'command'; command = 'some-other-tool --check' })
+                    }
+                )
+                SessionStart = @(
+                    @{
+                        hooks = @(@{ type = 'command'; command = 'herdr integration notify' })
+                    }
+                )
+            }
+        }
+        ($foreign | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath (Join-Path $codexDir 'hooks.json')
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            Mock Resolve-CodexGuardrailBash { $null }
+            Install-Codex *>$null
+            $hooks = Get-Content -LiteralPath (Join-Path $codexDir 'hooks.json') -Raw | ConvertFrom-Json
+            $preToolUse = @($hooks.hooks.PreToolUse)
+            $preToolUse.Count | Should -Be 1
+            $preToolUse[0].hooks[0].command | Should -Be 'some-other-tool --check'
+            $sessionStart = @($hooks.hooks.SessionStart)
+            ($sessionStart | Where-Object { $_.hooks[0].command -eq 'herdr integration notify' }) | Should -Not -BeNullOrEmpty
+            ($sessionStart | Where-Object { $_.hooks[0].command -match 'session-start\.ps1' }) | Should -Not -BeNullOrEmpty
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'warns and skips the SessionStart merge when the project-brain source script is missing' {
+        # If the tracked project-brain session-start.ps1 is missing from the repo, the skills
+        # junction it depends on can never resolve — merging a SessionStart hook pointing at it
+        # would silently install a broken hook every session (finding #186 review).
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-nobrainsource-' + [guid]::NewGuid())
+        $codexDir = Join-Path $tmpHome '.codex'
+        New-Item -ItemType Directory -Path $codexDir -Force | Out-Null
+        $herdr = @{
+            hooks = @{
+                SessionStart = @(
+                    @{
+                        hooks = @(@{ type = 'command'; command = 'herdr integration notify' })
+                    }
+                )
+            }
+        }
+        ($herdr | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath (Join-Path $codexDir 'hooks.json')
+        $repoRoot = Split-Path $script:SetupScript -Parent
+        $sessionStartSource = Join-Path $repoRoot 'ai-agents\skills\project-brain\scripts\session-start.ps1'
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            Mock Test-Path -ParameterFilter { $LiteralPath -eq $sessionStartSource } { $false }
+            $output = Install-Codex *>&1 | Out-String
+            $output | Should -Match 'project-brain.*session-start\.ps1.*not found'
+            $hooks = Get-Content -LiteralPath (Join-Path $codexDir 'hooks.json') -Raw | ConvertFrom-Json
+            $entries = @($hooks.hooks.SessionStart)
+            $entries.Count | Should -Be 1
+            $entries[0].hooks[0].command | Should -Be 'herdr integration notify'
         } finally {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue

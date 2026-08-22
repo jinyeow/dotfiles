@@ -1340,11 +1340,21 @@ function Install-Codex {
         # Codex CLI executes command hooks with no shell field, so the tracked `~/...` placeholder
         # in the project-brain SessionStart entry never expands — rewrite it to the resolved
         # absolute installed script path, same reasoning as the guardrail's bash rewrite above.
-        $sessionStartScript = Join-Path $codexDir 'skills\project-brain\scripts\session-start.ps1'
-        foreach ($entry in $sourceHooks.hooks.SessionStart) {
-            foreach ($hook in $entry.hooks) {
-                if ($hook.command -match 'project-brain[\\/]scripts[\\/]session-start\.ps1') {
-                    $hook.command = "pwsh -NoProfile -File `"$sessionStartScript`""
+        # Skills are junctioned (step 6), not copied, so the merged hook only ever resolves if
+        # the tracked source script exists — check that instead of the not-yet-created junction
+        # target, mirroring the guardrail branch's fail-safe pattern above.
+        $skipSessionStartMerge = $false
+        $sessionStartSource = Join-Path $Dotfiles 'ai-agents\skills\project-brain\scripts\session-start.ps1'
+        if (-not (Test-Path -LiteralPath $sessionStartSource)) {
+            Write-Warn "project-brain session-start.ps1 not found at $sessionStartSource — skipping the SessionStart merge (a merged-but-broken entry would fail every session)."
+            $skipSessionStartMerge = $true
+        } else {
+            $sessionStartScript = Join-Path $codexDir 'skills\project-brain\scripts\session-start.ps1'
+            foreach ($entry in $sourceHooks.hooks.SessionStart) {
+                foreach ($hook in $entry.hooks) {
+                    if ($hook.command -match 'project-brain[\\/]scripts[\\/]session-start\.ps1') {
+                        $hook.command = "pwsh -NoProfile -File `"$sessionStartScript`""
+                    }
                 }
             }
         }
@@ -1373,16 +1383,33 @@ function Install-Codex {
         } else {
             @()
         }
-        $foreignSessionStart = $existingSessionStart | Where-Object {
-            -not ($_.hooks | Where-Object { $_.command -match 'project-brain[\\/]scripts[\\/]session-start\.ps1' })
+        # Filter at the individual-hook level, not the whole-entry level: an entry mixing a
+        # foreign hook alongside a project-brain hook must keep its foreign hook, not lose the
+        # whole entry. (The PreToolUse merge above has the same whole-entry-drop shape; not
+        # fixed here to stay surgical to this SessionStart finding.)
+        $foreignSessionStart = foreach ($entry in $existingSessionStart) {
+            $keptHooks = @($entry.hooks | Where-Object { $_.command -notmatch 'project-brain[\\/]scripts[\\/]session-start\.ps1' })
+            if ($keptHooks) {
+                $entry.hooks = $keptHooks
+                $entry
+            }
         }
-        $merged.hooks.SessionStart = @($foreignSessionStart) + @($sourceHooks.hooks.SessionStart)
+        $merged.hooks.SessionStart = if ($skipSessionStartMerge) {
+            @($foreignSessionStart)
+        } else {
+            @($foreignSessionStart) + @($sourceHooks.hooks.SessionStart)
+        }
 
         $null = Backup-Existing $hooksJsonDest
         $dir = Split-Path $hooksJsonDest
         if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
         ($merged | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath $hooksJsonDest
-        Write-Ok "Merged:     $hooksJsonDest (hooks.PreToolUse, hooks.SessionStart)"
+        $mergedKeys = @(if (-not $skipGuardrailMerge) { 'hooks.PreToolUse' }) + @(if (-not $skipSessionStartMerge) { 'hooks.SessionStart' })
+        if ($mergedKeys) {
+            Write-Ok "Merged:     $hooksJsonDest ($($mergedKeys -join ', '))"
+        } else {
+            Write-Ok "Updated:    $hooksJsonDest (no keys merged — both guardrail and SessionStart merges skipped)"
+        }
     }
 
     # 5. Register Codex as a user-scope, read-only MCP reviewer in Claude Code. User-scope MCP
