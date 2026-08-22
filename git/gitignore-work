@@ -47,7 +47,7 @@ terraform.rc
 
 # AI / LLM tooling
 .claude/
-.agents/workflow.local.md
+.agents/
 .serena/
 CLAUDE.md
 AGENTS.md
