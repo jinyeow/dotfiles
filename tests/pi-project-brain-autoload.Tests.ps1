@@ -26,47 +26,43 @@ BeforeAll {
 
     # Node harness: imports the real extension module (type-stripped, no external package
     # needed since the only non-builtin import is type-only), registers a fake `pi` object
-    # to capture the before_agent_start handler, then invokes it with a fixture ctx.cwd and
-    # a fixture scriptPath monkey-patched in place of the module's hardcoded
-    # SESSION_START_SCRIPT via a query-string trick is not possible for a const, so instead
-    # this harness re-implements the call by importing resolveBrainContext indirectly: it
-    # invokes the handler twice against the *real* SESSION_START_SCRIPT path (which may not
-    # exist on this machine) purely to pin the once-per-session gate, and separately drives
-    # resolveBrainContext's stdin/stdout JSON contract directly against fixture scripts by
-    # requiring the module and reaching into its non-exported function is not possible in
-    # ESM — so the contract is instead pinned by extracting resolveBrainContext's source
-    # text verbatim (plain JS after stripping TS annotations) and evaluating it against
-    # fixture scripts, matching the extraction approach in pi-git-guardrails.Tests.ps1.
+    # to capture the before_agent_start handler, and invokes it once against a fixture
+    # scriptPath supplied via PI_PROJECT_BRAIN_SESSION_START_SCRIPT. Drives the real
+    # resolveBrainContext code path end to end rather than regex-extracting and
+    # re-evaluating its source text: a regex anchored on a literal blank line
+    # (`\n\}\n\nexport default`) silently never matched on a CI runner that checks the repo
+    # out with CRLF line endings (no .gitattributes forcing LF here), since two bare `\n`s
+    # in a row don't span a `\r\n\r\n` blank line - failing every test in this file with
+    # "resolveBrainContext function not found" despite passing locally. Real import has no
+    # such fragility.
     $script:ContractHarness = Join-Path $TestDrive 'run-resolve.mjs'
     @'
-import { readFileSync } from "node:fs";
-import { execFile } from "node:child_process";
+import { pathToFileURL } from "node:url";
 
-const [, , extensionPath, cwd, scriptPath] = process.argv;
-const source = readFileSync(extensionPath, "utf8");
+const [, , extensionPath, cwd] = process.argv;
+const mod = (await import(pathToFileURL(extensionPath).href)).default;
 
-const fnMatch = source.match(/function resolveBrainContext\(cwd: string, scriptPath: string\): Promise<string \| undefined> \{([\s\S]*?)\n\}\n\nexport default/);
-if (!fnMatch) {
-    throw new Error("resolveBrainContext function not found in " + extensionPath);
-}
-// Strip TS-only type annotations so plain node can eval the body.
-const body = fnMatch[1]
-    .replace(/: string/g, "")
-    .replace(/: Promise<string \| undefined>/g, "");
-const resolveBrainContext = new Function("cwd", "scriptPath", "execFile", "return " + `(function (cwd, scriptPath) {${body}})(cwd, scriptPath)`);
+const handlers = {};
+mod({ on: (event, handler) => { (handlers[event] ??= []).push(handler); } });
 
-const result = await resolveBrainContext(cwd, scriptPath, execFile);
-process.stdout.write(JSON.stringify({ result: result === undefined ? null : result }));
+const beforeAgentStart = handlers.before_agent_start?.[0];
+const result = (await beforeAgentStart({ type: "before_agent_start" }, { cwd })) ?? null;
+process.stdout.write(JSON.stringify({ result: result?.message?.content ?? null }));
 '@ | Set-Content -Path $script:ContractHarness -NoNewline -Encoding utf8
 
     function Invoke-ResolveBrainContext {
         param([string] $Cwd, [string] $ScriptPath)
 
-        $output = & node --experimental-strip-types $script:ContractHarness $script:ExtensionFile $Cwd $ScriptPath 2>&1
-        if ($LASTEXITCODE -ne 0) {
-            throw "node harness failed: $output"
+        $env:PI_PROJECT_BRAIN_SESSION_START_SCRIPT = $ScriptPath
+        try {
+            $output = & node --experimental-strip-types $script:ContractHarness $script:ExtensionFile $Cwd
+            if ($LASTEXITCODE -ne 0) {
+                throw "node harness failed: $output"
+            }
+            return ($output | ConvertFrom-Json).result
+        } finally {
+            Clear-Item Env:\PI_PROJECT_BRAIN_SESSION_START_SCRIPT -ErrorAction SilentlyContinue
         }
-        return ($output | ConvertFrom-Json).result
     }
 
     # Fixture scripts mimicking session-start.ps1's own contract shapes.
