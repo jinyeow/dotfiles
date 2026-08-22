@@ -73,7 +73,8 @@ Describe 'repository instruction hierarchy' {
         $setupAgentSkills | Should -Match ([regex]::Escape('.agents/workflow.md'))
         $setupAgentSkills | Should -Match 'git rev-parse --git-path info/exclude'
         $setupAgentSkills | Should -Match 'Do not duplicate this configuration under `.claude/`, `.codex/`, or `.pi/`'
-        $workGitignore | Should -Match ([regex]::Escape('.agents/workflow.local.md'))
+        $workGitignore | Should -Match ([regex]::Escape('.agents/*'))
+        $workGitignore | Should -Match ([regex]::Escape('!.agents/workflow.md'))
 
         foreach ($consumerPath in $script:WorkflowConsumerPaths) {
             $consumer = Get-Content -Raw (Join-Path $script:RepoRoot $consumerPath)
