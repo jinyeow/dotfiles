@@ -16,7 +16,10 @@
 //
 // `session_start` alone can't inject context into the conversation (side-effect only per
 // #77's research) - only `before_agent_start` can return a message, so injection happens
-// there instead, gated to fire once per process via the module-scope `injected` flag.
+// there instead, gated by the `injected` flag. The flag is reset on `session_start`
+// (fired on new/resume/fork/reload, not just process startup) rather than relying on the
+// extension factory being re-invoked per session: the factory closure alone cannot be
+// trusted to reset per session boundary, so the gate is scoped explicitly.
 //
 // Discovered automatically by Pi from `~/.pi/agent/extensions/*.ts` (a single file needs
 // no package.json/npm dependencies) — see pi/README.md for the projection mechanism.
@@ -26,15 +29,12 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-const SESSION_START_SCRIPT = join(
-	homedir(),
-	".pi",
-	"agent",
-	"skills",
-	"project-brain",
-	"scripts",
-	"session-start.ps1",
-);
+// Overridable via PI_PROJECT_BRAIN_SESSION_START_SCRIPT so tests can point the real
+// default-exported handler at a fixture script without depending on this machine's
+// actual Pi projection under homedir().
+const SESSION_START_SCRIPT =
+	process.env.PI_PROJECT_BRAIN_SESSION_START_SCRIPT ??
+	join(homedir(), ".pi", "agent", "skills", "project-brain", "scripts", "session-start.ps1");
 
 // Runs session-start.ps1 the same way the Claude Code / Codex hooks do: a SessionStart-
 // shaped JSON payload on stdin, hookSpecificOutput.additionalContext parsed from stdout.
@@ -78,12 +78,23 @@ function resolveBrainContext(cwd: string, scriptPath: string): Promise<string | 
 				}
 			},
 		);
+		// Node emits 'error' on this stream asynchronously if the write is aborted (a
+		// destroyed pipe after spawn failure, or EPIPE from a child that exits before
+		// reading stdin) - unhandled, that throws an uncaughtException in the host Pi
+		// process instead of the fail-safe undefined this function otherwise always
+		// resolves. execFile's own callback above already handles the corresponding
+		// spawn/exit error; this only silences the separate stream-level event.
+		child.stdin?.on("error", () => {});
 		child.stdin?.end(JSON.stringify({ cwd }));
 	});
 }
 
 export default function (pi: ExtensionAPI) {
 	let injected = false;
+
+	pi.on("session_start", () => {
+		injected = false;
+	});
 
 	pi.on("before_agent_start", async (_event, ctx) => {
 		if (injected) return;

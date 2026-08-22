@@ -165,28 +165,99 @@ $payload = [Console]::In.ReadToEnd() | ConvertFrom-Json
         }
     }
 
-    Context 'module structure' {
+    Context 'extension handler behavior (real import, not source-text matching)' {
+        # Imports the real default-exported factory (node --experimental-strip-types, per
+        # the file header) against a fixture script pointed to via
+        # PI_PROJECT_BRAIN_SESSION_START_SCRIPT, so these tests exercise the actual
+        # before_agent_start/session_start handlers and the real returned message shape,
+        # not a regex over the source text (issue found in review: a handler that changed
+        # behavior while keeping the matched substrings would previously still pass).
         BeforeAll {
-            $script:Source = Get-Content -Path $script:ExtensionFile -Raw
+            $script:HandlerHarness = Join-Path $TestDrive 'run-handler.mjs'
+            @'
+import { pathToFileURL } from "node:url";
+
+const [, , extensionPath, cwdArg] = process.argv;
+// A giant cwd is requested via a sentinel rather than passed literally, since a real
+// 200KB argument would blow past the Windows command-line length limit for node.exe
+// itself (unrelated to the pwsh child this is meant to stress).
+const cwd = cwdArg === "__LONG_CWD__" ? `C:/${"x".repeat(200000)}` : cwdArg;
+const mod = (await import(pathToFileURL(extensionPath).href)).default;
+
+const handlers = {};
+const fakePi = {
+    on(event, handler) {
+        (handlers[event] ??= []).push(handler);
+    },
+};
+mod(fakePi);
+
+const beforeAgentStart = handlers.before_agent_start?.[0];
+const sessionStart = handlers.session_start?.[0];
+
+const ctx = { cwd };
+const call = () => beforeAgentStart({ type: "before_agent_start" }, ctx);
+
+const result1 = (await call()) ?? null;
+const result2 = (await call()) ?? null;
+if (sessionStart) {
+    await sessionStart({ type: "session_start", reason: "new" }, ctx);
+}
+const result3 = (await call()) ?? null;
+
+process.stdout.write(JSON.stringify({
+    sessionStartRegistered: Boolean(sessionStart),
+    result1,
+    result2,
+    result3,
+}));
+'@ | Set-Content -Path $script:HandlerHarness -NoNewline -Encoding utf8
+
+            # Fixture project-brain script: always matches, echoing which cwd it saw.
+            $script:FixtureBrainScript = Join-Path $TestDrive 'fixture-session-start.ps1'
+            @'
+$payload = [Console]::In.ReadToEnd() | ConvertFrom-Json
+@{ hookSpecificOutput = @{ hookEventName = 'SessionStart'; additionalContext = "[project-brain] fixture for $($payload.cwd)" } } | ConvertTo-Json -Compress
+'@ | Set-Content -Path $script:FixtureBrainScript -NoNewline -Encoding utf8
+
+            function Invoke-Handler {
+                param([string] $Cwd, [string] $ScriptPath)
+
+                $env:PI_PROJECT_BRAIN_SESSION_START_SCRIPT = $ScriptPath
+                try {
+                    $output = & node --experimental-strip-types $script:HandlerHarness $script:ExtensionFile $Cwd
+                    if ($LASTEXITCODE -ne 0) {
+                        throw "node harness failed (exit $LASTEXITCODE): $output"
+                    }
+                    return ($output | ConvertFrom-Json)
+                } finally {
+                    Clear-Item Env:\PI_PROJECT_BRAIN_SESSION_START_SCRIPT -ErrorAction SilentlyContinue
+                }
+            }
         }
 
-        It 'gates injection to once per session via a module-scope flag' {
-            $script:Source | Should -Match 'let injected = false'
-            $script:Source | Should -Match 'if \(injected\) return'
-            $script:Source | Should -Match 'injected = true'
+        It 'injects once, gates the rest of the session, then injects again after a new session_start' {
+            $r = Invoke-Handler -Cwd 'C:/some/dir' -ScriptPath $script:FixtureBrainScript
+
+            $r.result1.message.customType | Should -Be 'project-brain'
+            $r.result1.message.content | Should -Be '[project-brain] fixture for C:/some/dir'
+            $r.result1.message.display | Should -BeTrue
+
+            $r.result2 | Should -BeNullOrEmpty
+
+            $r.sessionStartRegistered | Should -BeTrue
+            $r.result3 | Should -Not -BeNullOrEmpty
+            $r.result3.message.customType | Should -Be 'project-brain'
         }
 
-        It 'registers a before_agent_start handler' {
-            $script:Source | Should -Match 'pi\.on\("before_agent_start"'
-        }
+        It 'does not crash the host process when the script exits before reading stdin (EPIPE on a large payload)' {
+            $fastExitScript = Join-Path $TestDrive 'fast-exit.ps1'
+            'exit 0' | Set-Content -Path $fastExitScript -NoNewline -Encoding utf8
 
-        It 'injects as a displayed project-brain custom message' {
-            $script:Source | Should -Match 'customType:\s*"project-brain"'
-            $script:Source | Should -Match 'display:\s*true'
-        }
-
-        It 'resolves the default session-start.ps1 script under the Pi projection path' {
-            $script:Source | Should -Match '"\.pi",\s*\n?\s*"agent",\s*\n?\s*"skills",\s*\n?\s*"project-brain",\s*\n?\s*"scripts",\s*\n?\s*"session-start\.ps1"'
+            # A long cwd increases the odds the write hits the pipe after the child has
+            # already exited without draining stdin, reproducing the EPIPE this pins. The
+            # harness expands this sentinel internally to avoid a 200KB CLI argument.
+            { Invoke-Handler -Cwd '__LONG_CWD__' -ScriptPath $fastExitScript } | Should -Not -Throw
         }
     }
 }
