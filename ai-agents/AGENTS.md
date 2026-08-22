@@ -35,6 +35,16 @@ Codex reads this file directly as `~/.codex/AGENTS.md`.
 
 See [`AGENTS.d/project-brain.md`](AGENTS.d/project-brain.md) — only applies when the session is inside a tracked cross-repo initiative.
 
+## Memory system boundaries
+
+Three tiers exist for durable-ish facts. Route a new fact to exactly one, by what it is:
+
+- **Project brain** (`core.md`/`STATUS.md`/ADRs/research, per [`AGENTS.d/project-brain.md`](AGENTS.d/project-brain.md)) — deliberate, cross-repo *initiative* knowledge: a decision, a status-relevant event, a research/report artifact. Git-repo-external, versioned, human-reviewable. Portable across Claude Code and Codex CLI.
+- **Per-fact `~/.claude` memory** (`memory/*.md` + `MEMORY.md` index, per `CLAUDE.md`'s Memory section) — a genuinely session-scoped feedback/gotcha or user preference with no more durable home (not a standing rule, not cross-repo initiative knowledge, not a decision-with-alternatives). Fallback tier only; raise the save bar before using it. Claude Code-only.
+- **Automatic tool-usage-capture tools** (e.g. claude-mem: hooks record every tool call into a local SQLite/Chroma store, auto-surfaced by semantic search) — explicitly not adopted here (see #107). Not diffable, not human-reviewable, and would duplicate the two tiers above with a heavier, Claude-Code-primary mechanism. Do not add a fourth overlapping memory system without a new decision that revisits this.
+
+When unsure which tier a fact belongs in, check whether a more durable home already covers it first (a standing rule → this file or `CLAUDE.md`; a decision with rejected alternatives → an ADR) before defaulting to per-fact memory.
+
 ## Prompting downstream models
 
 Applies to every prompt you author for a downstream model — subagent prompts, skill/agent bodies, LLM prompts embedded in code.
