@@ -43,12 +43,14 @@ const SESSION_START_SCRIPT =
 // is a parameter (not a closed-over constant) so tests can point it at a fixture script
 // without depending on this machine's actual Pi projection.
 //
-// Runs via `-Command` (not `-File`) with an explicit UTF-8 [Console]::OutputEncoding
-// preamble: PowerShell 7 on Windows falls back to the legacy OEM codepage for stdout when
-// spawned without an attached console (Node's execFile pipes it), silently replacing
-// multi-byte characters (e.g. "→") with SUB (0x1A) and breaking ConvertTo-Json's own
-// output — invalid JSON with an embedded control character. Scoped to this call site only
-// (not a session-start.ps1 change) so Claude Code's and Codex's own hook invocations are
+// Runs via `-Command` (not `-File`) with explicit UTF-8 [Console]::OutputEncoding and
+// [Console]::InputEncoding preambles: PowerShell 7 on Windows falls back to the legacy
+// OEM codepage for stdout/stdin when spawned without an attached console (Node's execFile
+// pipes both), silently mangling multi-byte characters (e.g. "→") on the way out
+// (breaking ConvertTo-Json's own output — invalid JSON with an embedded control
+// character) and on the way in (a non-ASCII cwd corrupted before session-start.ps1's own
+// [Console]::In.ReadToEnd() ever sees it). Scoped to this call site only (not a
+// session-start.ps1 change) so Claude Code's and Codex's own hook invocations are
 // untouched.
 function resolveBrainContext(cwd: string, scriptPath: string): Promise<string | undefined> {
 	return new Promise((resolve) => {
@@ -57,7 +59,7 @@ function resolveBrainContext(cwd: string, scriptPath: string): Promise<string | 
 			[
 				"-NoProfile",
 				"-Command",
-				"[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new(); & $env:PROJECT_BRAIN_SESSION_START_SCRIPT",
+				"[Console]::InputEncoding = [System.Text.UTF8Encoding]::new(); [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new(); & $env:PROJECT_BRAIN_SESSION_START_SCRIPT",
 			],
 			{
 				timeout: 10_000,

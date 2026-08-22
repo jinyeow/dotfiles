@@ -163,6 +163,28 @@ $payload = [Console]::In.ReadToEnd() | ConvertFrom-Json
             $result = Invoke-ResolveBrainContext -Cwd 'E:/Personal Projects/dotfiles/main' -ScriptPath $echoScript
             $result | Should -Be 'cwd was: E:/Personal Projects/dotfiles/main'
         }
+
+        It 'round-trips a non-ASCII cwd' {
+            # Pins the fix for a real bug found manually: session-start.ps1 reads stdin via
+            # [Console]::In.ReadToEnd(), which uses Console.InputEncoding - the same
+            # no-attached-console codepage fallback documented for OutputEncoding above
+            # applies symmetrically to input. Confirmed manually (not reliably reproducible
+            # in *this* suite, same caveat as the "round-trips multi-byte characters" test
+            # above): the pwsh child inherits an already-UTF-8 console from this test run's
+            # own pwsh-hosted Pester process, so a missing InputEncoding preamble does not
+            # fail this assertion here even though it mangles the cwd in Pi's actual
+            # runtime (no attached console) - reproduced directly with node's execFile
+            # outside Pester before fixing.
+            $echoScript = Join-Path $TestDrive 'echo-cwd-nonascii.ps1'
+            @'
+$payload = [Console]::In.ReadToEnd() | ConvertFrom-Json
+@{ hookSpecificOutput = @{ hookEventName = 'SessionStart'; additionalContext = "cwd was: $($payload.cwd)" } } | ConvertTo-Json -Compress
+'@ | Set-Content -Path $echoScript -NoNewline -Encoding utf8
+
+            $nonAsciiCwd = 'C:/Personal Projects/初期化/' + [char]0x2192 + 'dir'
+            $result = Invoke-ResolveBrainContext -Cwd $nonAsciiCwd -ScriptPath $echoScript
+            $result | Should -Be "cwd was: $nonAsciiCwd"
+        }
     }
 
     Context 'extension handler behavior (real import, not source-text matching)' {
