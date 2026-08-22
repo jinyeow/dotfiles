@@ -1292,10 +1292,11 @@ function Install-Codex {
     #    User-scope, matching this repo's Claude Code guardrail scope choice. The hook script
     #    copies like any other tracked file, but ~/.codex/hooks.json is not: herdr's own
     #    installer (`herdr integration install codex`) may already own a SessionStart entry
-    #    there, so a literal Copy-Dotfile would destroy it. Merge hooks.PreToolUse at entry
-    #    level — preserve any existing PreToolUse entries that are not this guardrail's, and
-    #    append or replace only the guardrail's own entry — leaving every other event key and
-    #    every other PreToolUse entry untouched.
+    #    there, so a literal Copy-Dotfile would destroy it. This function actively merges both
+    #    hooks.PreToolUse (this guardrail's entry) and hooks.SessionStart (the project-brain
+    #    entry) — preserve any existing entries in either key that are not this install's own,
+    #    and append or replace only its own entry — leaving every other event key and every
+    #    other foreign entry untouched.
     $params = @{
         Dest = Join-Path $codexDir 'block-dangerous-git.sh'
         Source = Join-Path $Dotfiles 'codex\block-dangerous-git.sh'
@@ -1305,12 +1306,16 @@ function Install-Codex {
     $hooksJsonDest = Join-Path $codexDir 'hooks.json'
     $hooksJsonSource = Join-Path $Dotfiles 'codex\hooks.json'
     if ($Backup) {
-        Write-Info 'Backup mode — skipping hooks.json merge (tracked copy is a PreToolUse-only fragment, not a full backup target).'
+        Write-Info 'Backup mode — skipping hooks.json merge (tracked copy is a PreToolUse/SessionStart fragment, not a full backup target).'
     } elseif ($DryRun) {
-        Write-Info "[DRY RUN] would merge hooks.PreToolUse from $hooksJsonSource into $hooksJsonDest"
+        Write-Info "[DRY RUN] would merge hooks.PreToolUse and hooks.SessionStart from $hooksJsonSource into $hooksJsonDest"
     } else {
         $sourceHooks = Get-Content -LiteralPath $hooksJsonSource -Raw | ConvertFrom-Json -AsHashtable
-        $skipMerge = $false
+        # Skip only the guardrail's own PreToolUse merge when no real bash can be resolved — see
+        # below. This gate must not also block the unrelated project-brain SessionStart merge:
+        # session-start.ps1 is pwsh, not bash, and fails safe (exit 0) on any error, so it carries
+        # none of the "broken bash path breaks every Bash call" risk the guardrail gate exists for.
+        $skipGuardrailMerge = $false
         # On Windows, rewrite the tracked `bash ~/...` command to a resolved absolute
         # Git-for-Windows bash.exe + absolute script path — see Resolve-CodexGuardrailBash.
         # This guardrail install/rewrite is Windows/setup.ps1-only today; setup.sh does not
@@ -1319,8 +1324,8 @@ function Install-Codex {
         if ($IsWindows) {
             $bashPath = Resolve-CodexGuardrailBash
             if (-not $bashPath) {
-                Write-Warn 'No Git-for-Windows bash.exe found — skipping hooks.json merge (a merged-but-broken guardrail entry would make every Codex Bash call fail; leaving it absent is safer). Install Git for Windows, then re-run: .\setup.ps1 -Module codex'
-                $skipMerge = $true
+                Write-Warn 'No Git-for-Windows bash.exe found — skipping the guardrail PreToolUse merge (a merged-but-broken guardrail entry would make every Codex Bash call fail; leaving it absent is safer). Install Git for Windows, then re-run: .\setup.ps1 -Module codex'
+                $skipGuardrailMerge = $true
             } else {
                 $scriptPath = (Join-Path $codexDir 'block-dangerous-git.sh') -replace '\\', '/'
                 $bashPathForward = $bashPath -replace '\\', '/'
@@ -1333,13 +1338,36 @@ function Install-Codex {
                 }
             }
         }
-        if (-not $skipMerge) {
-            $merged = if (Test-Path -LiteralPath $hooksJsonDest) {
-                Get-Content -LiteralPath $hooksJsonDest -Raw | ConvertFrom-Json -AsHashtable
-            } else {
-                @{ hooks = @{} }
+        # Codex CLI executes command hooks with no shell field, so the tracked `~/...` placeholder
+        # in the project-brain SessionStart entry never expands — rewrite it to the resolved
+        # absolute installed script path, same reasoning as the guardrail's bash rewrite above.
+        # Skills are junctioned (step 6), not copied, so the merged hook only ever resolves if
+        # the tracked source script exists — check that instead of the not-yet-created junction
+        # target, mirroring the guardrail branch's fail-safe pattern above.
+        $skipSessionStartMerge = $false
+        $sessionStartSource = Join-Path $Dotfiles 'ai-agents\skills\project-brain\scripts\session-start.ps1'
+        if (-not (Test-Path -LiteralPath $sessionStartSource)) {
+            Write-Warn "project-brain session-start.ps1 not found at $sessionStartSource — skipping the SessionStart merge (a merged-but-broken entry would fail every session)."
+            $skipSessionStartMerge = $true
+        } else {
+            $sessionStartScript = Join-Path $codexDir 'skills\project-brain\scripts\session-start.ps1'
+            foreach ($entry in $sourceHooks.hooks.SessionStart) {
+                foreach ($hook in $entry.hooks) {
+                    if ($hook.command -match 'project-brain[\\/]scripts[\\/]session-start\.ps1') {
+                        $hook.command = "pwsh -NoProfile -File `"$sessionStartScript`""
+                    }
+                }
             }
-            if (-not $merged.hooks) { $merged.hooks = @{} }
+        }
+
+        $merged = if (Test-Path -LiteralPath $hooksJsonDest) {
+            Get-Content -LiteralPath $hooksJsonDest -Raw | ConvertFrom-Json -AsHashtable
+        } else {
+            @{ hooks = @{} }
+        }
+        if (-not $merged.hooks) { $merged.hooks = @{} }
+
+        if (-not $skipGuardrailMerge) {
             $existingPreToolUse = if ($merged.hooks.ContainsKey('PreToolUse') -and $merged.hooks.PreToolUse) {
                 @($merged.hooks.PreToolUse)
             } else {
@@ -1349,11 +1377,39 @@ function Install-Codex {
                 -not ($_.hooks | Where-Object { $_.command -match 'block-dangerous-git\.sh' })
             }
             $merged.hooks.PreToolUse = @($foreignEntries) + @($sourceHooks.hooks.PreToolUse)
-            $null = Backup-Existing $hooksJsonDest
-            $dir = Split-Path $hooksJsonDest
-            if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
-            ($merged | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath $hooksJsonDest
-            Write-Ok "Merged:     $hooksJsonDest (hooks.PreToolUse)"
+        }
+
+        $existingSessionStart = if ($merged.hooks.ContainsKey('SessionStart') -and $merged.hooks.SessionStart) {
+            @($merged.hooks.SessionStart)
+        } else {
+            @()
+        }
+        # Filter at the individual-hook level, not the whole-entry level: an entry mixing a
+        # foreign hook alongside a project-brain hook must keep its foreign hook, not lose the
+        # whole entry. (The PreToolUse merge above has the same whole-entry-drop shape; not
+        # fixed here to stay surgical to this SessionStart finding.)
+        $foreignSessionStart = foreach ($entry in $existingSessionStart) {
+            $keptHooks = @($entry.hooks | Where-Object { $_.command -notmatch 'project-brain[\\/]scripts[\\/]session-start\.ps1' })
+            if ($keptHooks) {
+                $entry.hooks = $keptHooks
+                $entry
+            }
+        }
+        $merged.hooks.SessionStart = if ($skipSessionStartMerge) {
+            @($foreignSessionStart)
+        } else {
+            @($foreignSessionStart) + @($sourceHooks.hooks.SessionStart)
+        }
+
+        $null = Backup-Existing $hooksJsonDest
+        $dir = Split-Path $hooksJsonDest
+        if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        ($merged | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath $hooksJsonDest
+        $mergedKeys = @(if (-not $skipGuardrailMerge) { 'hooks.PreToolUse' }) + @(if (-not $skipSessionStartMerge) { 'hooks.SessionStart' })
+        if ($mergedKeys) {
+            Write-Ok "Merged:     $hooksJsonDest ($($mergedKeys -join ', '))"
+        } else {
+            Write-Ok "Updated:    $hooksJsonDest (no keys merged — both guardrail and SessionStart merges skipped)"
         }
     }
 
