@@ -53,24 +53,54 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-function Convert-Wikilinks {
+function Format-WikilinkTarget {
+    param([string] $Target)
+
+    # Split off a #fragment before appending .md, so the anchor doesn't get folded into
+    # the filename, then re-append the fragment after. Strip an existing .md suffix from
+    # the target first, so a target that already ends in .md doesn't get a second one.
+    $fragment = ''
+    if ($Target -match '^(.*)#(.*)$') {
+        $Target = $Matches[1]
+        $fragment = "#$($Matches[2])"
+    }
+    $Target = $Target -replace '\.md$', ''
+    return "$Target.md$fragment"
+}
+
+function Convert-WikilinksInSegment {
     param([string] $Text)
 
     # [[a/b|label]] -> [label](/a/b.md) — must run before the bare-link pattern.
     $Text = [regex]::Replace($Text, '\[\[([^\]\|]+)\|([^\]]+)\]\]', {
         param($m)
-        "[$($m.Groups[2].Value)](/$($m.Groups[1].Value).md)"
+        "[$($m.Groups[2].Value)](/$(Format-WikilinkTarget $m.Groups[1].Value))"
     })
 
     # [[a/b]] -> [b](/a/b.md)
     $Text = [regex]::Replace($Text, '\[\[([^\]\|]+)\]\]', {
         param($m)
-        $target = $m.Groups[1].Value
-        $label = ($target -split '/')[-1]
-        "[$label](/$target.md)"
+        $rawTarget = $m.Groups[1].Value
+        $labelSource = $rawTarget -replace '#.*$', '' -replace '\.md$', ''
+        $label = ($labelSource -split '/')[-1]
+        "[$label](/$(Format-WikilinkTarget $rawTarget))"
     })
 
     return $Text
+}
+
+function Convert-Wikilinks {
+    param([string] $Text)
+
+    # Skip fenced code blocks (```...```) and inline code spans (`...`) — wikilink-looking
+    # text quoted in a code sample or in prose about the syntax itself must not be rewritten.
+    # regex.Split with a capturing group interleaves the pieces: even indexes are prose
+    # (transformable), odd indexes are the code spans/blocks themselves (left untouched).
+    $parts = [regex]::Split($Text, '(```[\s\S]*?```|`[^`\r\n]*`)')
+    for ($i = 0; $i -lt $parts.Count; $i += 2) {
+        $parts[$i] = Convert-WikilinksInSegment -Text $parts[$i]
+    }
+    return ($parts -join '')
 }
 
 function Get-FrontMatter {
@@ -154,8 +184,8 @@ function ConvertTo-OkfFile {
     if ($null -eq $original) { $original = '' }
 
     $relativeForType = $FilePath
-    $body = Convert-Wikilinks -Text $original
-    $fm = Get-FrontMatter -Content $body
+    $fm = Get-FrontMatter -Content $original
+    $fm.Body = Convert-Wikilinks -Text $fm.Body
     $lines = [System.Collections.Generic.List[string]]::new()
     $lines.AddRange([string[]]$fm.Lines)
 

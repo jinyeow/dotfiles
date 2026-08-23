@@ -62,6 +62,83 @@ Describe 'ai-agents/skills/project-brain/scripts/convert-to-okf.ps1' {
         (Get-Content -LiteralPath $file -Raw) | Should -Match ([regex]::Escape('[bar](/research/bar.md)'))
     }
 
+    It 'does not double-append .md to a bare wikilink target that already ends in .md' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'core.md'
+        Set-Content -LiteralPath $file -Value "See [[adr/foo.md]]." -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        $content = Get-Content -LiteralPath $file -Raw
+        $content | Should -Match ([regex]::Escape('[foo](/adr/foo.md)'))
+        $content | Should -Not -Match ([regex]::Escape('.md.md'))
+    }
+
+    It 'does not double-append .md to a labeled wikilink target that already ends in .md' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'core.md'
+        Set-Content -LiteralPath $file -Value "See [[adr/foo.md|Label]]." -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        $content = Get-Content -LiteralPath $file -Raw
+        $content | Should -Match ([regex]::Escape('[Label](/adr/foo.md)'))
+        $content | Should -Not -Match ([regex]::Escape('.md.md'))
+    }
+
+    It 'preserves a #anchor fragment on a bare wikilink target' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'core.md'
+        Set-Content -LiteralPath $file -Value "See [[a/b#section]]." -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        (Get-Content -LiteralPath $file -Raw) | Should -Match ([regex]::Escape('[b](/a/b.md#section)'))
+    }
+
+    It 'preserves a #anchor fragment on a labeled wikilink target' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'core.md'
+        Set-Content -LiteralPath $file -Value "See [[a/b#section|Label]]." -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        (Get-Content -LiteralPath $file -Raw) | Should -Match ([regex]::Escape('[Label](/a/b.md#section)'))
+    }
+
+    It 'leaves wikilink-looking text inside inline code spans untouched' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'index.md'
+        Set-Content -LiteralPath $file -Value 'Use `[[a/b]]` syntax for links.' -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        (Get-Content -LiteralPath $file -Raw) | Should -Be 'Use `[[a/b]]` syntax for links.'
+    }
+
+    It 'leaves wikilink-looking text inside fenced code blocks untouched' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'index.md'
+        $value = "Example:`n" + '```' + "`nSee [[a/b]] here.`n" + '```' + "`nDone."
+        Set-Content -LiteralPath $file -Value $value -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        (Get-Content -LiteralPath $file -Raw) | Should -Be $value
+    }
+
+    It 'leaves wikilink-looking text inside YAML frontmatter untouched' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'core.md'
+        $value = "---`ninitiative: x`ntype: core`nupdated: 2026-01-01`nnote: `"See [[a/b]] here.`"`n---`n`nbody"
+        Set-Content -LiteralPath $file -Value $value -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        $content = Get-Content -LiteralPath $file -Raw
+        $content | Should -Match ([regex]::Escape('note: "See [[a/b]] here."'))
+    }
+
     It 'inserts type: frontmatter inferred from the file role' {
         $script:Repo = New-TestRepo
         New-Item -ItemType Directory -Path (Join-Path $script:Repo 'adr') -Force | Out-Null
