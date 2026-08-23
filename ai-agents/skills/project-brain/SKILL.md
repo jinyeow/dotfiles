@@ -24,8 +24,70 @@ and regenerate-able; the brain's truth source is the work. Design rationale: `<b
   profile (domain knowledge the user has demonstrated; written by walkthrough close-out, read to
   pitch tour depth). Area-level, not per-initiative, because the user's knowledge spans initiatives.
 - An initiative: `core.md` (stable, auto-loaded), `STATUS.md` (volatile, auto-loaded), `adr/`,
-  `research/` (+ `index.md`), `reports/`, `spikes/`.
+  `research/` (+ `index.md`), `reports/`, `spikes/`, and — per initiative role — `tickets/` (per-PBI
+  ticket files) or a one-off `kanban.md`.
 - Single-directory work uses the same schema in the repo's gitignored `.claude/brain/` instead.
+
+## Schema: the Open Knowledge Format
+
+Every brain file conforms to Google's Open Knowledge Format (OKF v0.2, June 2026) — a directory of
+Markdown files with YAML frontmatter and standard markdown links, not a bespoke schema. Full
+rationale: `docs/adr/adopt-okf-for-project-brain-markdown.md` in the dotfiles repo.
+
+**Bundle root:** only the brain-root `index.md` declares `okf_version: "0.2"` in its frontmatter.
+Per-initiative directories are not separate bundles and get no `index.md` of their own.
+
+**`type:` enum** — one non-reserved concept type per directory role. `index.md` and `log.md` are
+reserved role filenames and carry no `type:`.
+
+| `type:` | File(s) |
+|---|---|
+| `core` | `core.md` |
+| `status` | `STATUS.md` |
+| `adr` | `adr/*.md` |
+| `research` | `research/*.md` |
+| `report` | `reports/*.md` |
+| `ticket` | `tickets/*.md` (per-initiative ticket files) |
+| `spike` | `spikes/*.md` |
+| `learner` | `learner.md` |
+| `kanban` | `kanban.md` (ad hoc, one-off) |
+
+**Frontmatter shape per type:**
+
+- `core.md`: `initiative`, `type: core`, `updated`, `generated: { by, at }` (written once at file
+  creation — see `templates/core.md`).
+- `STATUS.md`: `initiative`, `type: status`, `updated`, `stale_after` (`updated:` + 7 days,
+  recomputed on every edit), `generated: { by, at }`.
+- `adr/*.md`: the full former bullet-list header lives in frontmatter, not the body —
+  `status: draft | stable | deprecated` (remapped from `Proposed | Accepted | Superseded`), `date`,
+  `scope`, `supersedes`, `superseded_by`, `type: adr`, `generated: { by, at }`, `verified: []`.
+- `research/*.md`: `type: research`, `generated: { by, at }`, `verified: []` — populated only when a
+  later session confirms a finding by spike/primary-source, not literature review alone.
+- `reports/*.md`: `type: report`, `generated: { by, at }`. No `verified:` — reports are point-in-time
+  outputs, not standing claims to re-confirm.
+- `ticket`/`spike`/`learner`/`kanban`: `type:` only — minimal conformance, no provenance/lifecycle
+  fields required.
+
+`generated.by`/`generated.at` are written once, by hand, at file-creation time for new files (the
+placeholder in each template). They are never backfilled with today's date on a pre-existing file —
+see the conversion script below. A backfilled (pre-existing) file may therefore carry
+`generated: { at }` only, with `by` omitted rather than guessed, when the original authoring
+agent/session can't be reliably attributed — this is conformant, not a gap to flag. `verified:` is
+never backfilled with real entries either: every
+migrated file gets `verified: []` regardless of what its prose claims; it is populated only going
+forward, by a session that actually re-performs the confirmation.
+
+**Link syntax:** Obsidian-style `[[wikilink]]` is retired in favor of OKF's standard markdown links —
+`[text](/path)` (absolute, bundle-root-relative) or `[text](./path)` (relative). Applies to
+`core.md`'s Map section, area-level `index.md`, and ADR cross-references.
+
+**Conversion script:** `scripts/convert-to-okf.ps1` in this directory does the mechanical part of
+migrating a pre-existing file — wikilink rewrite, `type:`/`stale_after:` insertion, `verified: []`
+insertion (adr/research only), and `generated.at` provenance derived from
+`git log --diff-filter=A --follow --format=%aI` in the file's own repo (omitted, never guessed, when
+git history has none). It does not rewrite an ADR's bullet-list header into frontmatter — that remap
+is per-file judgement, done by hand. Run it against a file or a directory:
+`./scripts/convert-to-okf.ps1 -Path <brain-repo-or-file>`.
 
 ## Loading (how context reaches a session)
 
