@@ -302,6 +302,39 @@ Describe 'ai-agents/skills/project-brain/scripts/convert-to-okf.ps1' {
         (Get-Content -LiteralPath $file -Raw) | Should -Match '(?m)^type: report$'
     }
 
+    It 'does not duplicate frontmatter when the closing fence is the last line with no trailing newline' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'core.md'
+        # No newline after the closing '---' fence and no body at all.
+        Set-Content -LiteralPath $file -Value "---`ninitiative: x`ntype: core`nupdated: 2026-01-01`n---" -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        $content = Get-Content -LiteralPath $file -Raw
+        $fenceCount = ([regex]::Matches($content, '(?m)^---$')).Count
+        $fenceCount | Should -Be 2
+    }
+
+    It 'rebuilds frontmatter using CRLF line endings and stays a true no-op rerun on a CRLF file' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'STATUS.md'
+        $value = "---`r`ninitiative: x`r`ntype: status`r`nupdated: 2026-01-01`r`n---`r`n`r`nNow`r`n"
+        [IO.File]::WriteAllText($file, $value)
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        $rawBytes = Get-Content -LiteralPath $file -Raw
+        $rawBytes | Should -Not -Match "(?<!`r)`n"
+
+        $json = & pwsh -NoProfile -Command "& '$script:Script' -Path '$file' | ConvertTo-Json"
+        $LASTEXITCODE | Should -Be 0
+        $result = $json | ConvertFrom-Json
+        $result.Changed | Should -Be $false
+
+        $rerunContent = Get-Content -LiteralPath $file -Raw
+        $rerunContent | Should -Not -Match "(?<!`r)`n"
+    }
+
     It 'processes a directory recursively' {
         $script:Repo = New-TestRepo
         New-Item -ItemType Directory -Path (Join-Path $script:Repo 'adr') -Force | Out-Null

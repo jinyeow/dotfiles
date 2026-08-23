@@ -109,11 +109,11 @@ function Convert-Wikilinks {
 function Get-FrontMatter {
     param([string] $Content)
 
-    if ($Content -match '(?s)^---\r?\n(.*?)\r?\n---\r?\n(.*)$') {
+    if ($Content -match '(?s)^---\r?\n(.*?)\r?\n---(?:\r?\n(.*))?$') {
         return [PSCustomObject]@{
             HasFrontMatter = $true
             Lines          = @($Matches[1] -split '\r?\n')
-            Body           = $Matches[2]
+            Body           = $(if ($Matches[2]) { $Matches[2] } else { '' })
         }
     }
     return [PSCustomObject]@{
@@ -252,9 +252,14 @@ function ConvertTo-OkfFile {
         }
     }
 
-    $newFrontMatter = ($lines -join "`n")
+    # Rebuild the frontmatter block using the file's own dominant line-ending style, so a
+    # CRLF file stays CRLF end to end (the body already keeps its original endings
+    # untouched) — otherwise a CRLF file would flip its frontmatter to LF on every run,
+    # reporting `changed: $true` forever and ending up with mixed line endings.
+    $eol = if ($original -match "`r`n") { "`r`n" } else { "`n" }
+    $newFrontMatter = ($lines -join $eol)
     $newContent = if ($lines.Count -gt 0) {
-        "---`n$newFrontMatter`n---`n$($fm.Body)"
+        "---$eol$newFrontMatter$eol---$eol$($fm.Body)"
     } else {
         $fm.Body
     }
