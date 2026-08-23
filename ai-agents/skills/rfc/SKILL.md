@@ -132,7 +132,8 @@ Paths from both categories anywhere across the linked PRs → scope is `both` �
 firewall-only PR plus an NSG-only PR linked to the same parent is `both`, the same as one
 PR touching both. Paths from only one category → that is the scope.
 
-No linked PR found at all → fall back to conversation context and the PR title
+No PR linked to the parent via the query above → fall back to conversation context — a
+PR already in view but not yet linked to the parent, if any — and the PR title
 convention (`feat(fw)` vs `feat(nsg)`) as a cross-check, rather than asking for a PR.
 State clearly in the step-7 confirmation table that scope was **inferred**, not detected
 from a diff.
@@ -375,7 +376,7 @@ CLI version). Use `az rest` instead, which isn't affected:
 
 ```powershell
 az rest --method patch `
-  --url "https://dev.azure.com/HollardInsuranceRetail/TSC Change Control/_apis/wit/workitems/<id>?api-version=7.1" `
+  --url "https://dev.azure.com/HollardInsuranceRetail/TSC%20Change%20Control/_apis/wit/workitems/<id>?api-version=7.1" `
   --resource 499b84ac-1321-427f-aa17-267ca6975798 `
   --headers "Content-Type=application/json-patch+json" `
   --body "@<patch file path>"

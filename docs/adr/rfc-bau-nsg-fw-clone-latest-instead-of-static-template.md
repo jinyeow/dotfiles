@@ -26,7 +26,7 @@ Instead, the skill finds the most recent BAU RFC of the exact matching scope (NS
 firewall, assigned to the invoking user) already in Azure DevOps and clones its field
 values at runtime, overriding only what must be fresh per run: title, description
 (edited in place, not regenerated), deployment window, parent-work-item relation, the
-PR `ArtifactLink` relation, `System.AssignedTo`, and `Custom.Primary`. Every other field —
+PR `ArtifactLink` relation(s), `System.AssignedTo`, and `Custom.Primary`. Every other field —
 including the SOP URLs, distribution list, and `Custom.Secondary` — is copied verbatim
 from the matched prior RFC. The first version ([#128](https://github.com/jinyeow/dotfiles/issues/128))
 was single-scope and single-PR only, with a both-scope change, more than one linked PR,
