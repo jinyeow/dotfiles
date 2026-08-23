@@ -186,13 +186,18 @@ function ConvertTo-OkfFile {
     $original = Get-Content -LiteralPath $FilePath -Raw
     if ($null -eq $original) { $original = '' }
 
-    $relativeForType = $FilePath
+    $repoRoot = Find-GitRoot -StartDir (Split-Path -Parent $FilePath)
+    $relativePath = if ($repoRoot) {
+        [IO.Path]::GetRelativePath($repoRoot, $FilePath)
+    } else {
+        $FilePath
+    }
     $fm = Get-FrontMatter -Content $original
     $fm.Body = Convert-Wikilinks -Text $fm.Body
     $lines = [System.Collections.Generic.List[string]]::new()
     $lines.AddRange([string[]]$fm.Lines)
 
-    $type = Get-OkfType -RelativePath $relativeForType
+    $type = Get-OkfType -RelativePath $relativePath
 
     if ($type -and -not (Test-TopLevelKey -Lines $lines -Key 'type')) {
         $lines.Add("type: $type")
@@ -223,7 +228,6 @@ function ConvertTo-OkfFile {
     }
 
     if ($type -and -not (Test-TopLevelKey -Lines $lines -Key 'generated')) {
-        $repoRoot = Find-GitRoot -StartDir (Split-Path -Parent $FilePath)
         if ($repoRoot) {
             $at = Get-GitAddedDate -RepoRoot $repoRoot -FilePath $FilePath
             if ($at) {

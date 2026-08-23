@@ -265,6 +265,29 @@ Describe 'ai-agents/skills/project-brain/scripts/convert-to-okf.ps1' {
         (Get-Content -LiteralPath $adr -Raw) | Should -Be $firstPass.adr
     }
 
+    It 'types a file by its path relative to the brain root, not by an ancestor directory that happens to share a role name' {
+        # The fixture repo root itself sits under a parent directory segment named
+        # "adr" (e.g. .../Temp/adr/okf-<guid>). The file lives under the brain's own
+        # reports/ directory, so it must type as 'report' — matching the absolute
+        # path (which also contains "adr/" from the ancestor) would mistype it as
+        # 'adr'.
+        $parent = Join-Path ([IO.Path]::GetTempPath()) 'adr'
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+        $script:Repo = Join-Path $parent ('okf-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $script:Repo -Force | Out-Null
+        & git -C $script:Repo init -q . 2>&1 | Out-Null
+        & git -C $script:Repo config user.email 'test@example.invalid' 2>&1 | Out-Null
+        & git -C $script:Repo config user.name 'Test' 2>&1 | Out-Null
+
+        New-Item -ItemType Directory -Path (Join-Path $script:Repo 'reports') -Force | Out-Null
+        $file = Join-Path $script:Repo 'reports/foo.md'
+        Set-Content -LiteralPath $file -Value "Body." -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        (Get-Content -LiteralPath $file -Raw) | Should -Match '(?m)^type: report$'
+    }
+
     It 'processes a directory recursively' {
         $script:Repo = New-TestRepo
         New-Item -ItemType Directory -Path (Join-Path $script:Repo 'adr') -Force | Out-Null
