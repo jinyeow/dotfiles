@@ -97,7 +97,7 @@ second PR's diff would silently pull the wrong data:
 
 ```powershell
 az repos pr show --id <prId> -o json --org https://dev.azure.com/HollardInsuranceRetail |
-  Select-Object -ExpandProperty repository
+  ConvertFrom-Json | Select-Object -ExpandProperty repository
 ```
 
 Then resolve that PR's latest iteration — a PR updated by later pushes (e.g. review
@@ -383,6 +383,10 @@ az rest --method patch `
 
 `--resource 499b84ac-1321-427f-aa17-267ca6975798` is the well-known Azure DevOps AAD app
 ID — without it `az rest` defaults to an ARM-audience token, which Azure DevOps rejects.
+
+This PATCH path is not exempt from the create path's safeguards: it still needs step 7's
+explicit go-ahead before running, and step 9's read-back validation after — re-`show` the
+item and diff it against what was intended.
 
 Leave the new item in its default initial state — do **not** transition it toward Complete
 or any other state. That workflow step is always manual.
