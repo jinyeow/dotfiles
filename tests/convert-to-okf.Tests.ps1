@@ -233,6 +233,39 @@ Describe 'ai-agents/skills/project-brain/scripts/convert-to-okf.ps1' {
         Invoke-Convert -Path $file | Should -Not -Be 0
     }
 
+    It 'raises an error rather than silently treating a corrupt HEAD (not merely unborn) as an empty repo' {
+        $script:Repo = New-TestRepo
+        # A real, valid work tree with no commits yet has an unborn-but-legitimate HEAD:
+        # `git symbolic-ref -q HEAD` succeeds (HEAD is a valid symref to a branch that
+        # simply has no commits yet), while `rev-parse --verify -q HEAD` fails (no commit
+        # to resolve to). Point HEAD at a malformed ref name instead — `rev-parse --verify
+        # -q HEAD` still fails the same way, but `git symbolic-ref -q HEAD` now fails too
+        # ("your current branch appears to be broken"), which is what distinguishes a
+        # genuinely corrupt HEAD from legitimate unborn HEAD. This must surface as a real
+        # error, not be silently swallowed as "no history".
+        Set-Content -LiteralPath (Join-Path $script:Repo '.git/HEAD') -Value 'ref: refs/heads/bad ref name' -NoNewline -Encoding utf8
+        $file = Join-Path $script:Repo 'core.md'
+        Set-Content -LiteralPath $file -Value "---`ninitiative: x`ntype: core`nupdated: 2026-01-01`n---`n`nbody" -NoNewline -Encoding utf8
+
+        Invoke-Convert -Path $file | Should -Not -Be 0
+    }
+
+    It 'raises an error when HEAD itself is a valid symref but the branch it targets is corrupt' {
+        $script:Repo = New-TestRepo
+        # A different corruption shape than the previous test: HEAD's own content is a
+        # well-formed symref ("ref: refs/heads/main"), but the branch ref it points at
+        # holds garbage instead of a commit SHA. `git symbolic-ref -q HEAD` must also
+        # fail to resolve this (not just report HEAD's literal text), or this would be
+        # misclassified as legitimate unborn HEAD the same way f205-12 originally did.
+        $branch = & git -C $script:Repo symbolic-ref -q HEAD
+        New-Item -ItemType Directory -Path (Join-Path $script:Repo ".git/$(Split-Path $branch -Parent)") -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $script:Repo ".git/$branch") -Value 'notahexsha' -NoNewline -Encoding utf8
+        $file = Join-Path $script:Repo 'core.md'
+        Set-Content -LiteralPath $file -Value "---`ninitiative: x`ntype: core`nupdated: 2026-01-01`n---`n`nbody" -NoNewline -Encoding utf8
+
+        Invoke-Convert -Path $file | Should -Not -Be 0
+    }
+
     It 'omits generated.at entirely when git history has no add commit for the file' {
         $script:Repo = New-TestRepo
         $file = Join-Path $script:Repo 'core.md'
@@ -414,6 +447,41 @@ Describe 'ai-agents/skills/project-brain/scripts/convert-to-okf.ps1' {
         $content = Get-Content -LiteralPath $file -Raw
         $content | Should -Match '(?m)^\s+at: \d{4}-\d{2}-\d{2}T'
         $content | Should -Not -Match '(?m)^\s*by\s*:'
+    }
+
+    It 'backfills at: into an existing generated: block that only has by:, without duplicating the block' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'core.md'
+        Set-Content -LiteralPath $file -Value "---`ninitiative: x`ntype: core`nupdated: 2026-01-01`ngenerated:`n  by: someone`n---`n`nbody" -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo -Message 'add core.md'
+
+        Invoke-Convert -Path $file | Should -Be 0
+        $content = Get-Content -LiteralPath $file -Raw
+        ([regex]::Matches($content, '(?m)^generated:\s*$')).Count | Should -Be 1
+        $content | Should -Match '(?m)^\s+by: someone$'
+        $content | Should -Match '(?m)^\s+at: \d{4}-\d{2}-\d{2}T'
+
+        # Rerunning must be a true no-op — the backfill must not itself be a moving target.
+        $firstPass = $content
+        Invoke-Convert -Path $file | Should -Be 0
+        (Get-Content -LiteralPath $file -Raw) | Should -Be $firstPass
+    }
+
+    It 'backfills at: into an existing inline generated: { by: ... } map, without duplicating the field' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'core.md'
+        Set-Content -LiteralPath $file -Value "---`ninitiative: x`ntype: core`nupdated: 2026-01-01`ngenerated: { by: someone }`n---`n`nbody" -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo -Message 'add core.md'
+
+        Invoke-Convert -Path $file | Should -Be 0
+        $content = Get-Content -LiteralPath $file -Raw
+        ([regex]::Matches($content, '(?m)^generated\s*:')).Count | Should -Be 1
+        $content | Should -Match '(?m)^generated: \{ by: someone, at: \d{4}-\d{2}-\d{2}T[^}]*\}$'
+
+        # Rerunning must be a true no-op — the backfill must not itself be a moving target.
+        $firstPass = $content
+        Invoke-Convert -Path $file | Should -Be 0
+        (Get-Content -LiteralPath $file -Raw) | Should -Be $firstPass
     }
 
     It 'does not add type: (or type-derived fields) to files under a templates/ directory, but still rewrites their wikilinks' {

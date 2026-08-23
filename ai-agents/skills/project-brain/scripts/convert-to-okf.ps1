@@ -24,17 +24,21 @@
        is NOT derived here: there is no reliable record of which agent/session
        originally authored a pre-existing file, so guessing would fabricate provenance.
        New files created from `templates/` fill both `by` and `at` by hand at scaffold
-       time instead (see templates/core.md, templates/STATUS.md).
+       time instead (see templates/core.md, templates/STATUS.md). If the file already
+       has a `generated:` mapping (block-style `generated:\n  by: ...` or inline
+       `generated: { by: ... }`) that is missing `at:`, `at:` is backfilled into that
+       same mapping rather than left incomplete or duplicated.
 
   `verified:` is never populated with real entries by this script — only ever inserted
   empty. A later session that genuinely re-confirms a research finding or re-reads an
   ADR writes into it by hand.
 
-  Every insertion is additive and keyed on the target field's absence (`stale_after:` is
-  the exception — it is always recomputed from the current `updated:` value), so running
-  this script twice over the same file with `updated:` unchanged makes no further change
-  (idempotent) — safe to re-run per migration batch without risk of duplicate frontmatter
-  blocks.
+  Every insertion is additive and keyed on the target field's absence — `stale_after:`
+  is always recomputed from the current `updated:` value, and `generated.at` is keyed on
+  its own absence rather than the whole `generated:` mapping's absence (see point 5) — so
+  running this script twice over the same file with `updated:` unchanged makes no
+  further change (idempotent) — safe to re-run per migration batch without risk of
+  duplicate frontmatter blocks or fields.
 
   Out of scope (left to each migration batch, #197-204): converting an ADR's existing
   bullet-list header (Status/Date/Scope/Supersedes) into `status:`/`date:`/`scope:`/
@@ -212,12 +216,21 @@ function Get-GitAddedDate {
 
     # git log failed. A repo with no commits yet (unborn HEAD) legitimately has no
     # add-commit history for any file — that is not a tooling failure. Anything else
-    # (a corrupt/invalid repo, a bad pathspec, ...) is a real failure and must surface,
-    # not be silently treated the same as "no history".
+    # (a corrupt/invalid repo, a corrupt HEAD ref, a bad pathspec, ...) is a real failure
+    # and must surface, not be silently treated the same as "no history".
+    #
+    # `rev-parse --verify -q HEAD` failing is not proof of legitimate unborn HEAD on its
+    # own — a corrupt HEAD ref fails that same check. A genuinely unborn HEAD is also a
+    # *valid symbolic ref* (HEAD points at a real branch name that simply has no commits
+    # yet), so require both: `symbolic-ref -q HEAD` succeeds AND `rev-parse --verify -q
+    # HEAD` fails. Anything else falls through to the throw below.
     & git -C $RepoRoot rev-parse --is-inside-work-tree 2>&1 | Out-Null
     if ($LASTEXITCODE -eq 0) {
+        & git -C $RepoRoot symbolic-ref -q HEAD 2>&1 | Out-Null
+        $isValidSymbolicRef = ($LASTEXITCODE -eq 0)
         & git -C $RepoRoot rev-parse --verify -q HEAD 2>&1 | Out-Null
-        if ($LASTEXITCODE -ne 0) { return $null }
+        $verifyFailed = ($LASTEXITCODE -ne 0)
+        if ($isValidSymbolicRef -and $verifyFailed) { return $null }
     }
 
     throw "Get-GitAddedDate: git log failed (exit $logExitCode) in repo '$RepoRoot' for file '$relative': $($output -join "`n")"
@@ -271,12 +284,44 @@ function ConvertTo-OkfFile {
         $lines.Add('verified: []')
     }
 
-    if ($type -and -not (Test-TopLevelKey -Lines $lines -Key 'generated')) {
-        if ($repoRoot) {
+    if ($type -and $repoRoot) {
+        $generatedIndex = -1
+        for ($i = 0; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match '^generated\s*:') { $generatedIndex = $i; break }
+        }
+
+        if ($generatedIndex -lt 0) {
             $at = Get-GitAddedDate -RepoRoot $repoRoot -FilePath $FilePath
             if ($at) {
                 $lines.Add('generated:')
                 $lines.Add("  at: $at")
+            }
+        } elseif ($lines[$generatedIndex] -match '^generated\s*:\s*\{(.*)\}\s*$') {
+            # Inline-map style: generated: { by: ... }. Backfill at: into the same map
+            # if it is missing, rather than leaving the block incomplete.
+            $inner = $Matches[1]
+            if ($inner -notmatch '(^|,)\s*at\s*:') {
+                $at = Get-GitAddedDate -RepoRoot $repoRoot -FilePath $FilePath
+                if ($at) {
+                    $trimmedInner = $inner.Trim()
+                    $newInner = if ($trimmedInner) { "$trimmedInner, at: $at" } else { "at: $at" }
+                    $lines[$generatedIndex] = "generated: { $newInner }"
+                }
+            }
+        } else {
+            # Block style: generated: on its own line, children indented below it.
+            # Backfill at: into that same block if it is missing.
+            $blockEnd = $generatedIndex + 1
+            $hasAt = $false
+            while ($blockEnd -lt $lines.Count -and $lines[$blockEnd] -match '^\s+\S') {
+                if ($lines[$blockEnd] -match '^\s+at\s*:') { $hasAt = $true }
+                $blockEnd++
+            }
+            if (-not $hasAt) {
+                $at = Get-GitAddedDate -RepoRoot $repoRoot -FilePath $FilePath
+                if ($at) {
+                    $lines.Insert($blockEnd, "  at: $at")
+                }
             }
         }
     }
