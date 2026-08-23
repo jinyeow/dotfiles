@@ -64,12 +64,23 @@ function Format-WikilinkTarget {
     param([string] $Target)
 
     # Split off a #fragment before appending .md, so the anchor doesn't get folded into
-    # the filename, then re-append the fragment after. Strip an existing .md suffix from
-    # the target first, so a target that already ends in .md doesn't get a second one.
+    # the filename, then re-append the fragment after. Split at the FIRST '#' so a nested
+    # Obsidian heading link ([[file#H1#H2]]) keeps "H1#H2" as one fragment instead of
+    # losing everything up to the last '#'. Slugify the fragment (GitHub heading-anchor
+    # style: lowercase, non-alphanumeric runs collapsed to a single '-', leading/trailing
+    # '-' trimmed) so a multi-word Obsidian heading doesn't leave a raw space in the link
+    # destination — an unencoded space breaks CommonMark link-destination parsing. A
+    # fragment that slugifies to nothing (only punctuation, or empty) is dropped rather
+    # than emitted as a bare, unresolvable "#". Strip an existing .md suffix from the
+    # target first, so a target that already ends in .md doesn't get a second one.
     $fragment = ''
-    if ($Target -match '^(.*)#(.*)$') {
+    if ($Target -match '^([^#]*)#(.*)$') {
         $Target = $Matches[1]
-        $fragment = "#$($Matches[2])"
+        $slug = $Matches[2].ToLower() -replace '[^a-z0-9]+', '-'
+        $slug = $slug.Trim('-')
+        if ($slug) {
+            $fragment = "#$slug"
+        }
     }
     $Target = $Target -replace '\.md$', ''
     if (-not $Target) {
@@ -78,6 +89,11 @@ function Format-WikilinkTarget {
         # headings, so there is no filename to fold ".md" into; emit a plain in-page
         # anchor instead of the malformed "/.md#Heading".
         return $fragment
+    }
+    if ($Target -match '\.[A-Za-z0-9]+$') {
+        # The target already names a concrete non-markdown asset file (image, PDF, etc.)
+        # — leave its extension as-is instead of appending a wrong ".md" suffix.
+        return "/$Target$fragment"
     }
     return "/$Target.md$fragment"
 }

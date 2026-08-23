@@ -114,8 +114,8 @@ Describe 'ai-agents/skills/project-brain/scripts/convert-to-okf.ps1' {
 
         Invoke-Convert -Path $file | Should -Be 0
         $content = Get-Content -LiteralPath $file -Raw
-        $content | Should -Match ([regex]::Escape('[Background](#Background)'))
-        $content | Should -Not -Match ([regex]::Escape('.md#Background'))
+        $content | Should -Match ([regex]::Escape('[Background](#background)'))
+        $content | Should -Not -Match ([regex]::Escape('.md#background'))
     }
 
     It 'converts a labeled local-heading wikilink [[#Heading|Label]] to a plain anchor link, not .md#Heading' {
@@ -126,8 +126,90 @@ Describe 'ai-agents/skills/project-brain/scripts/convert-to-okf.ps1' {
 
         Invoke-Convert -Path $file | Should -Be 0
         $content = Get-Content -LiteralPath $file -Raw
-        $content | Should -Match ([regex]::Escape('[this section](#Background)'))
-        $content | Should -Not -Match ([regex]::Escape('.md#Background'))
+        $content | Should -Match ([regex]::Escape('[this section](#background)'))
+        $content | Should -Not -Match ([regex]::Escape('.md#background'))
+    }
+
+    It 'slugifies a multi-word #anchor fragment on a bare wikilink target so the link destination has no raw space' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'core.md'
+        Set-Content -LiteralPath $file -Value "See [[a/b#Some Heading]]." -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        $content = Get-Content -LiteralPath $file -Raw
+        $content | Should -Match ([regex]::Escape('[b](/a/b.md#some-heading)'))
+        $content | Should -Not -Match ' \]\(/a/b\.md#Some Heading\)'
+    }
+
+    It 'slugifies a multi-word bare local-heading wikilink [[#My Heading]]' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'core.md'
+        Set-Content -LiteralPath $file -Value "See [[#My Heading]] above." -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        $content = Get-Content -LiteralPath $file -Raw
+        $content | Should -Match ([regex]::Escape('[My Heading](#my-heading)'))
+    }
+
+    It 'slugifies a multi-word #anchor fragment on a labeled wikilink target' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'core.md'
+        Set-Content -LiteralPath $file -Value "See [[a/b#Some Heading|Label]]." -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        $content = Get-Content -LiteralPath $file -Raw
+        $content | Should -Match ([regex]::Escape('[Label](/a/b.md#some-heading)'))
+    }
+
+    It 'does not append .md to a bare image-asset wikilink target' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'core.md'
+        Set-Content -LiteralPath $file -Value "See [[image.png]]." -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        $content = Get-Content -LiteralPath $file -Raw
+        $content | Should -Match ([regex]::Escape('[image.png](/image.png)'))
+        $content | Should -Not -Match ([regex]::Escape('.png.md'))
+    }
+
+    It 'does not append .md to a bare PDF-asset wikilink target' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'core.md'
+        Set-Content -LiteralPath $file -Value "See [[report.pdf]]." -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        $content = Get-Content -LiteralPath $file -Raw
+        $content | Should -Match ([regex]::Escape('[report.pdf](/report.pdf)'))
+        $content | Should -Not -Match ([regex]::Escape('.pdf.md'))
+    }
+
+    It 'does not append .md to a labeled image-asset wikilink target' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'core.md'
+        Set-Content -LiteralPath $file -Value "See [[image.png|My Image]]." -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        $content = Get-Content -LiteralPath $file -Raw
+        $content | Should -Match ([regex]::Escape('[My Image](/image.png)'))
+        $content | Should -Not -Match ([regex]::Escape('.png.md'))
+    }
+
+    It 'splits a nested-heading wikilink [[file#H1#H2]] at the first # instead of the last' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'core.md'
+        Set-Content -LiteralPath $file -Value "See [[file#H1#H2]]." -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        $content = Get-Content -LiteralPath $file -Raw
+        $content | Should -Match ([regex]::Escape('(/file.md#h1-h2)'))
+        $content | Should -Not -Match ([regex]::Escape('.md#H1.md'))
     }
 
     It 'leaves wikilink-looking text inside a tilde-fenced code block untouched' {
