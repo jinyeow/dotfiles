@@ -68,7 +68,14 @@ function Format-WikilinkTarget {
         $fragment = "#$($Matches[2])"
     }
     $Target = $Target -replace '\.md$', ''
-    return "$Target.md$fragment"
+    if (-not $Target) {
+        # [[#Heading]] — a bare local-heading link with no path segment before the
+        # fragment. OKF's link syntax covers cross-file references, not intra-file
+        # headings, so there is no filename to fold ".md" into; emit a plain in-page
+        # anchor instead of the malformed "/.md#Heading".
+        return $fragment
+    }
+    return "/$Target.md$fragment"
 }
 
 function Convert-WikilinksInSegment {
@@ -77,7 +84,7 @@ function Convert-WikilinksInSegment {
     # [[a/b|label]] -> [label](/a/b.md) — must run before the bare-link pattern.
     $Text = [regex]::Replace($Text, '\[\[([^\]\|]+)\|([^\]]+)\]\]', {
         param($m)
-        "[$($m.Groups[2].Value)](/$(Format-WikilinkTarget $m.Groups[1].Value))"
+        "[$($m.Groups[2].Value)]($(Format-WikilinkTarget $m.Groups[1].Value))"
     })
 
     # [[a/b]] -> [b](/a/b.md)
@@ -85,8 +92,15 @@ function Convert-WikilinksInSegment {
         param($m)
         $rawTarget = $m.Groups[1].Value
         $labelSource = $rawTarget -replace '#.*$', '' -replace '\.md$', ''
-        $label = ($labelSource -split '/')[-1]
-        "[$label](/$(Format-WikilinkTarget $rawTarget))"
+        $label = if ($labelSource) {
+            ($labelSource -split '/')[-1]
+        } elseif ($rawTarget -match '^#(.*)$') {
+            # Bare [[#Heading]] with no explicit label — fall back to the heading text.
+            $Matches[1]
+        } else {
+            ''
+        }
+        "[$label]($(Format-WikilinkTarget $rawTarget))"
     })
 
     return $Text
@@ -95,15 +109,30 @@ function Convert-WikilinksInSegment {
 function Convert-Wikilinks {
     param([string] $Text)
 
-    # Skip fenced code blocks (```...```) and inline code spans (`...`) — wikilink-looking
-    # text quoted in a code sample or in prose about the syntax itself must not be rewritten.
-    # regex.Split with a capturing group interleaves the pieces: even indexes are prose
-    # (transformable), odd indexes are the code spans/blocks themselves (left untouched).
-    $parts = [regex]::Split($Text, '(```[\s\S]*?```|`[^`\r\n]*`)')
-    for ($i = 0; $i -lt $parts.Count; $i += 2) {
-        $parts[$i] = Convert-WikilinksInSegment -Text $parts[$i]
+    # Skip fenced code blocks (``` or ~~~ fences, 3+ delimiters) and inline code spans
+    # (backtick runs of 1+) — wikilink-looking text quoted in a code sample or in prose
+    # about the syntax itself must not be rewritten. Per CommonMark, a fence's closing
+    # delimiter run must be at least as long as its opening run, and an inline span's
+    # closing run must match the opening run's exact backtick count — otherwise a longer
+    # fence wrapping a shorter literal example (e.g. a 4-backtick fence containing a
+    # ``` example) closes early, and a double-backtick span is misparsed as an empty pair.
+    # Named groups capture each opening run so \k<...> backreferences require a matching
+    # closing run of the same character; the trailing `* / ~* absorbs a closing run that is
+    # longer than the opening, per the "at least as long" rule.
+    $pattern = '(?<btfence>`{3,})[\s\S]*?\k<btfence>`*' +
+    '|(?<tifence>~{3,})[\s\S]*?\k<tifence>~*' +
+    '|(?<span>`+)[^\r\n]*?\k<span>'
+
+    $sb = [System.Text.StringBuilder]::new()
+    $lastIndex = 0
+    foreach ($m in [regex]::Matches($Text, $pattern)) {
+        $prose = $Text.Substring($lastIndex, $m.Index - $lastIndex)
+        [void]$sb.Append((Convert-WikilinksInSegment -Text $prose))
+        [void]$sb.Append($m.Value)
+        $lastIndex = $m.Index + $m.Length
     }
-    return ($parts -join '')
+    [void]$sb.Append((Convert-WikilinksInSegment -Text $Text.Substring($lastIndex)))
+    return $sb.ToString()
 }
 
 function Get-FrontMatter {

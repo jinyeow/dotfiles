@@ -106,6 +106,63 @@ Describe 'ai-agents/skills/project-brain/scripts/convert-to-okf.ps1' {
         (Get-Content -LiteralPath $file -Raw) | Should -Match ([regex]::Escape('[Label](/a/b.md#section)'))
     }
 
+    It 'converts a bare local-heading wikilink [[#Heading]] to a plain anchor link, not .md#Heading' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'core.md'
+        Set-Content -LiteralPath $file -Value "See [[#Background]] above." -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        $content = Get-Content -LiteralPath $file -Raw
+        $content | Should -Match ([regex]::Escape('[Background](#Background)'))
+        $content | Should -Not -Match ([regex]::Escape('.md#Background'))
+    }
+
+    It 'converts a labeled local-heading wikilink [[#Heading|Label]] to a plain anchor link, not .md#Heading' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'core.md'
+        Set-Content -LiteralPath $file -Value "See [[#Background|this section]] above." -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        $content = Get-Content -LiteralPath $file -Raw
+        $content | Should -Match ([regex]::Escape('[this section](#Background)'))
+        $content | Should -Not -Match ([regex]::Escape('.md#Background'))
+    }
+
+    It 'leaves wikilink-looking text inside a tilde-fenced code block untouched' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'index.md'
+        $value = "Example:`n" + '~~~' + "`nSee [[a/b]] here.`n" + '~~~' + "`nDone."
+        Set-Content -LiteralPath $file -Value $value -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        (Get-Content -LiteralPath $file -Raw) | Should -Be $value
+    }
+
+    It 'leaves wikilink-looking text untouched inside a 4-backtick fence wrapping a literal triple-backtick example' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'index.md'
+        $value = "Example:`n" + '````' + "`nHere is a snippet:`n" + '```' + "`nSee [[a/b]] here.`n" + '```' + "`nmore text`n" + '````' + "`nDone."
+        Set-Content -LiteralPath $file -Value $value -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        (Get-Content -LiteralPath $file -Raw) | Should -Be $value
+    }
+
+    It 'leaves wikilink-looking text inside a double-backtick inline code span untouched' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'index.md'
+        $value = 'Use ``[[a/b]]`` syntax for links.'
+        Set-Content -LiteralPath $file -Value $value -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        (Get-Content -LiteralPath $file -Raw) | Should -Be $value
+    }
+
     It 'leaves wikilink-looking text inside inline code spans untouched' {
         $script:Repo = New-TestRepo
         $file = Join-Path $script:Repo 'index.md'
