@@ -335,6 +335,44 @@ Describe 'ai-agents/skills/project-brain/scripts/convert-to-okf.ps1' {
         $rerunContent | Should -Not -Match "(?<!`r)`n"
     }
 
+    It 'leaves the file byte-identical under -WhatIf' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'core.md'
+        Set-Content -LiteralPath $file -Value "See [[adr/0001-foo|the decision]]." -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+        $before = Get-Content -LiteralPath $file -Raw
+
+        & pwsh -NoProfile -File $script:Script -Path $file -WhatIf 2>&1 | Out-Null
+        $LASTEXITCODE | Should -Be 0
+        (Get-Content -LiteralPath $file -Raw) | Should -Be $before
+    }
+
+    It 'does not write generated.by alongside a backfilled generated.at' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'core.md'
+        Set-Content -LiteralPath $file -Value "---`ninitiative: x`ntype: core`nupdated: 2026-01-01`n---`n`nbody" -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo -Message 'add core.md'
+
+        Invoke-Convert -Path $file | Should -Be 0
+        $content = Get-Content -LiteralPath $file -Raw
+        $content | Should -Match '(?m)^\s+at: \d{4}-\d{2}-\d{2}T'
+        $content | Should -Not -Match '(?m)^\s*by\s*:'
+    }
+
+    It 'does not add type: (or type-derived fields) to files under a templates/ directory, but still rewrites their wikilinks' {
+        $script:Repo = New-TestRepo
+        New-Item -ItemType Directory -Path (Join-Path $script:Repo 'templates') -Force | Out-Null
+        $file = Join-Path $script:Repo 'templates/core.md'
+        Set-Content -LiteralPath $file -Value "See [[adr/0001-foo|the decision]]." -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        $content = Get-Content -LiteralPath $file -Raw
+        $content | Should -Not -Match '(?m)^type:'
+        $content | Should -Not -Match '(?m)^generated:'
+        $content | Should -Match ([regex]::Escape('[the decision](/adr/0001-foo.md)'))
+    }
+
     It 'processes a directory recursively' {
         $script:Repo = New-TestRepo
         New-Item -ItemType Directory -Path (Join-Path $script:Repo 'adr') -Force | Out-Null
