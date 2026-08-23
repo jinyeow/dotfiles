@@ -14,7 +14,8 @@
     2. Inserts a `type:` frontmatter field, inferred from the file's role (core.md,
        STATUS.md, adr/, research/, reports/, tickets/, spikes/, learner.md, kanban.md).
        `index.md` and `log.md` are reserved role filenames and get no `type:`.
-    3. On `status`-typed files, computes `stale_after:` as `updated:` + 7 days.
+    3. On `status`-typed files, computes `stale_after:` as `updated:` + 7 days —
+       recomputed (in place) on every run, so a later `updated:` edit moves it too.
     4. On `adr`/`research`-typed files, adds an empty `verified: []` if absent.
     5. Derives `generated.at` from the file's own add commit in its own repo
        (`git log --diff-filter=A --follow --format=%aI`), taking the oldest such event.
@@ -29,9 +30,11 @@
   empty. A later session that genuinely re-confirms a research finding or re-reads an
   ADR writes into it by hand.
 
-  Every insertion is additive and keyed on the target field's absence, so running this
-  script twice over the same file makes no further change (idempotent) — safe to
-  re-run per migration batch without risk of duplicate frontmatter blocks.
+  Every insertion is additive and keyed on the target field's absence (`stale_after:` is
+  the exception — it is always recomputed from the current `updated:` value), so running
+  this script twice over the same file with `updated:` unchanged makes no further change
+  (idempotent) — safe to re-run per migration batch without risk of duplicate frontmatter
+  blocks.
 
   Out of scope (left to each migration batch, #197-204): converting an ADR's existing
   bullet-list header (Status/Date/Scope/Supersedes) into `status:`/`date:`/`scope:`/
@@ -195,13 +198,22 @@ function ConvertTo-OkfFile {
         $lines.Add("type: $type")
     }
 
-    if ($type -eq 'status' -and -not (Test-TopLevelKey -Lines $lines -Key 'stale_after')) {
+    if ($type -eq 'status') {
         $updatedRaw = Get-TopLevelValue -Lines $lines -Key 'updated'
         if ($updatedRaw) {
             $parsedDate = [datetime]::MinValue
             if ([datetime]::TryParse($updatedRaw, [cultureinfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::None, [ref]$parsedDate)) {
                 $staleAfter = $parsedDate.AddDays(7).ToString('yyyy-MM-dd')
-                $lines.Add("stale_after: $staleAfter")
+                $staleAfterLine = "stale_after: $staleAfter"
+                $existingIndex = -1
+                for ($i = 0; $i -lt $lines.Count; $i++) {
+                    if ($lines[$i] -match '^stale_after\s*:') { $existingIndex = $i; break }
+                }
+                if ($existingIndex -ge 0) {
+                    $lines[$existingIndex] = $staleAfterLine
+                } else {
+                    $lines.Add($staleAfterLine)
+                }
             }
         }
     }

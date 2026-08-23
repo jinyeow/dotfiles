@@ -194,6 +194,41 @@ Describe 'ai-agents/skills/project-brain/scripts/convert-to-okf.ps1' {
         (Get-Content -LiteralPath $file -Raw) | Should -Match '(?m)^stale_after: 2026-01-08$'
     }
 
+    It 'recomputes stale_after when updated: changes on a rerun' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'STATUS.md'
+        Set-Content -LiteralPath $file -Value "---`ninitiative: x`ntype: status`nupdated: 2026-01-01`n---`n`nNow" -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        (Get-Content -LiteralPath $file -Raw) | Should -Match '(?m)^stale_after: 2026-01-08$'
+
+        $content = Get-Content -LiteralPath $file -Raw
+        $content = $content -replace 'updated: 2026-01-01', 'updated: 2026-02-01'
+        Set-Content -LiteralPath $file -Value $content -NoNewline -Encoding utf8
+
+        Invoke-Convert -Path $file | Should -Be 0
+        $result = Get-Content -LiteralPath $file -Raw
+        $result | Should -Match '(?m)^stale_after: 2026-02-08$'
+        $result | Should -Not -Match '(?m)^stale_after: 2026-01-08$'
+    }
+
+    It 'is a no-op rerun (changed: $false) when updated: is unchanged' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'STATUS.md'
+        Set-Content -LiteralPath $file -Value "---`ninitiative: x`ntype: status`nupdated: 2026-01-01`n---`n`nNow" -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        $firstPass = Get-Content -LiteralPath $file -Raw
+
+        $json = & pwsh -NoProfile -Command "& '$script:Script' -Path '$file' | ConvertTo-Json"
+        $LASTEXITCODE | Should -Be 0
+        $result = $json | ConvertFrom-Json
+        $result.Changed | Should -Be $false
+        (Get-Content -LiteralPath $file -Raw) | Should -Be $firstPass
+    }
+
     It 'does not add type: to reserved index.md / log.md filenames' {
         $script:Repo = New-TestRepo
         $file = Join-Path $script:Repo 'index.md'
