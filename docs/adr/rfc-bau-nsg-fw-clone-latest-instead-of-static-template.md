@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted. Governs the `rfc-bau-nsg-fw` skill (`ai-agents/skills/rfc-bau-nsg-fw/`).
+Accepted. Governs the BAU firewall/NSG RFC path of the `rfc` skill
+(`ai-agents/skills/rfc/`, renamed from `rfc-bau-nsg-fw` by
+[jinyeow/dotfiles#129](https://github.com/jinyeow/dotfiles/issues/129)).
 
 ## Context
 
@@ -26,10 +28,13 @@ values at runtime, overriding only what must be fresh per run: title, descriptio
 (edited in place, not regenerated), deployment window, parent-work-item relation, the
 PR `ArtifactLink` relation, `System.AssignedTo`, and `Custom.Primary`. Every other field —
 including the SOP URLs, distribution list, and `Custom.Secondary` — is copied verbatim
-from the matched prior RFC. This first version is single-scope and single-PR only: a
-both-scope change, more than one linked PR, or no exact-scope prior RFC are all hard
-stops rather than handled cases; any-scope fallback and both-scope/multi-PR handling are
-deferred to the follow-up ticket ([jinyeow/dotfiles#129](https://github.com/jinyeow/dotfiles/issues/129)).
+from the matched prior RFC. The first version ([#128](https://github.com/jinyeow/dotfiles/issues/128))
+was single-scope and single-PR only, with a both-scope change, more than one linked PR,
+or no exact-scope prior RFC all hard stops rather than handled cases. Both-scope
+handling, multi-PR support, and any-scope fallback (still clone-derived, never a static
+template) shipped in the follow-up
+([jinyeow/dotfiles#129](https://github.com/jinyeow/dotfiles/issues/129)); a true hard
+stop now only fires when no matching prior RFC exists at all, of any scope.
 
 No confidential literal is ever written into the committed skill file, so no local
 values file, template/example file, or runtime-reference mechanism is needed. There is

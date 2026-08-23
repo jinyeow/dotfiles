@@ -1,5 +1,13 @@
 # rfc-bau-nsg-fw
 
+> **Superseded**: this spec covered the first version of the skill, shipped at
+> `ai-agents/skills/rfc-bau-nsg-fw/` as single-scope/single-PR only. The skill was
+> renamed to `rfc` (`ai-agents/skills/rfc/`) and gained both-scope handling, multi-PR
+> support, and any-scope fallback in
+> [jinyeow/dotfiles#129](https://github.com/jinyeow/dotfiles/issues/129). Kept here as
+> the historical record of the first slice; the current behavior is documented in the
+> skill file itself. Filename kept as-is — not renamed alongside the skill.
+
 ## Problem Statement
 
 Creating a BAU (pre-approved, low-risk) "Request for Change RFC" in Azure DevOps for a
