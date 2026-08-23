@@ -70,7 +70,10 @@ reserved role filenames and carry no `type:`.
 
 `generated.by`/`generated.at` are written once, by hand, at file-creation time for new files (the
 placeholder in each template). They are never backfilled with today's date on a pre-existing file —
-see the conversion script below. `verified:` is never backfilled with real entries either: every
+see the conversion script below. A backfilled (pre-existing) file may therefore carry
+`generated: { at }` only, with `by` omitted rather than guessed, when the original authoring
+agent/session can't be reliably attributed — this is conformant, not a gap to flag. `verified:` is
+never backfilled with real entries either: every
 migrated file gets `verified: []` regardless of what its prose claims; it is populated only going
 forward, by a session that actually re-performs the confirmation.
 

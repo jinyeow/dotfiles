@@ -66,7 +66,10 @@ this migration is additive-only.
   authorship, the opposite of what the field means. The shared conversion script (below)
   derives `at` from `git log --diff-filter=A --format=%aI -- <file>` where git history has
   it, and omits the field entirely where it doesn't; OKF tolerates missing optional
-  fields, so an omitted `generated:` stays conformant.
+  fields, so an omitted `generated:` stays conformant. `by` is never derived or backfilled
+  on a pre-existing file — there is no reliable record of which agent/session originally
+  authored it, so a backfilled file may carry `generated: { at }` only, and that is
+  conformant, not a gap.
 - **`verified:` is never backfilled** — every migrated file gets `verified: []`
   regardless of what its prose claims. An agent reading someone else's "verified by
   spike" text and writing a `verified:` entry for it would be attesting to a
