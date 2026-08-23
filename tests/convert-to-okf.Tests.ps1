@@ -162,6 +162,20 @@ Describe 'ai-agents/skills/project-brain/scripts/convert-to-okf.ps1' {
         $content | Should -Match '(?m)^\s+at: \d{4}-\d{2}-\d{2}T'
     }
 
+    It 'raises an error rather than silently omitting generated.at when git log genuinely fails' {
+        $script:Repo = Join-Path ([IO.Path]::GetTempPath()) ('okf-corrupt-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $script:Repo -Force | Out-Null
+        # A .git directory that is not a real git repository — Find-GitRoot finds it
+        # (it only checks for the directory's presence), but any `git` command run
+        # against it fails with a non-zero exit code. This must surface as a real
+        # error, not be silently treated the same as "no history for this file".
+        New-Item -ItemType Directory -Path (Join-Path $script:Repo '.git') -Force | Out-Null
+        $file = Join-Path $script:Repo 'core.md'
+        Set-Content -LiteralPath $file -Value "---`ninitiative: x`ntype: core`nupdated: 2026-01-01`n---`n`nbody" -NoNewline -Encoding utf8
+
+        Invoke-Convert -Path $file | Should -Not -Be 0
+    }
+
     It 'omits generated.at entirely when git history has no add commit for the file' {
         $script:Repo = New-TestRepo
         $file = Join-Path $script:Repo 'core.md'

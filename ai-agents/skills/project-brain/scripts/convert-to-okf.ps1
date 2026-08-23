@@ -173,10 +173,25 @@ function Get-GitAddedDate {
     param([string] $RepoRoot, [string] $FilePath)
 
     $relative = [IO.Path]::GetRelativePath($RepoRoot, $FilePath) -replace '\\', '/'
-    $dates = @(& git -C $RepoRoot log --diff-filter=A --follow --format=%aI -- $relative 2>$null)
-    if (-not $dates -or $dates.Count -eq 0) { return $null }
-    # git log lists newest first; the oldest add event is original authorship.
-    return $dates[-1]
+    $output = @(& git -C $RepoRoot log --diff-filter=A --follow --format=%aI -- $relative 2>&1)
+    $logExitCode = $LASTEXITCODE
+    if ($logExitCode -eq 0) {
+        if (-not $output -or $output.Count -eq 0) { return $null }
+        # git log lists newest first; the oldest add event is original authorship.
+        return $output[-1]
+    }
+
+    # git log failed. A repo with no commits yet (unborn HEAD) legitimately has no
+    # add-commit history for any file — that is not a tooling failure. Anything else
+    # (a corrupt/invalid repo, a bad pathspec, ...) is a real failure and must surface,
+    # not be silently treated the same as "no history".
+    & git -C $RepoRoot rev-parse --is-inside-work-tree 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        & git -C $RepoRoot rev-parse --verify -q HEAD 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { return $null }
+    }
+
+    throw "Get-GitAddedDate: git log failed (exit $logExitCode) in repo '$RepoRoot' for file '$relative': $($output -join "`n")"
 }
 
 function ConvertTo-OkfFile {
