@@ -28,8 +28,29 @@ git commands as `claude/skills/git-guardrails-claude-code` (`git push`, `git res
 Its matching now quote-scrubs the command string before matching (ported from the more
 refined `claude/block-destructive-vcs.ps1`, not that skill's naive `block-dangerous-git.sh`)
 so a destructive phrase quoted inside e.g. a commit message doesn't false-block, and
-`git stash push` is excluded from the push pattern by name. Skills are projected as
-individual children into `~/.pi/agent/skills/` from:
+`git stash push` is excluded from the push pattern by name.
+
+`pi/extensions/project-brain-autoload.ts` injects the active project-brain initiative's
+`core.md` + `STATUS.md` once per session, mirroring Claude Code's and Codex's own
+SessionStart hooks (#186). It uses Pi's `before_agent_start` extension event (the only one
+that can return a message into the conversation — `session_start` is side-effect only),
+gated by a flag reset on Pi's `session_start` event so injection recurs once per session
+rather than once per process. Rather than reimplementing the resolve-and-read procedure in
+TypeScript, it shells out to the same
+`ai-agents/skills/project-brain/scripts/session-start.ps1` the Claude Code and Codex hooks
+run (projected to `~/.pi/agent/skills/project-brain/scripts/session-start.ps1`), feeding
+it a SessionStart-shaped `{ cwd }` JSON payload on stdin and forwarding
+`hookSpecificOutput.additionalContext` from its JSON stdout — one resolver implementation
+shared across all three runtimes. The `pwsh` child runs via `-Command` with explicit
+`[Console]::InputEncoding`/`OutputEncoding = [System.Text.UTF8Encoding]::new()` preambles
+(not `-File` directly): PowerShell 7 falls back to the legacy OEM codepage for stdin/stdout
+when spawned without an attached console (as Node's `execFile` does), which silently
+mangles multi-byte characters — a non-ASCII `cwd` going in, or characters read from
+`core.md`/`STATUS.md` (e.g. "→") coming back out as invalid JSON.
+Scoped to this extension's own invocation only, not a `session-start.ps1` change, so
+Claude Code's and Codex's hook invocations are unaffected.
+
+Skills are projected as individual children into `~/.pi/agent/skills/` from:
 
 1. `ai-agents/skills/`;
 2. `pi/skills/`, with Pi-native names winning collisions.
