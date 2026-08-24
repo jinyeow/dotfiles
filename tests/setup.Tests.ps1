@@ -527,7 +527,7 @@ Describe 'setup.ps1 pi module' {
             $output | Should -Match '=== Pi ==='
             $output | Should -Match '(would install Pi via npm|pi is already installed)'
             $output | Should -Match 'pi[\\/]agent[\\/]settings\.json'
-            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc')) {
+            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc', 'codex-review')) {
                 $output | Should -Match "pi[\\/]agent[\\/]skills[\\/]$name -> .*ai-agents[\\/]skills[\\/]$name"
             }
             Test-Path (Join-Path $tmpHome '.pi') | Should -BeFalse
@@ -594,7 +594,7 @@ Describe 'setup.ps1 Claude skill projection safety' {
             $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match '\.claude\\skills\\council -> .*ai-agents\\skills\\council'
-            $output | Should -Match '\.claude\\skills\\codex-review -> .*claude\\skills\\codex-review'
+            $output | Should -Match '\.claude\\skills\\codex-review -> .*ai-agents\\skills\\codex-review'
             # _shared moved portable with the review skills (#115): now sourced from
             # ai-agents\skills\_shared, not the removed claude\skills\_shared, and not the
             # unrelated, still-source-only ai-agents\_shared (no `skills\` segment).
@@ -1026,8 +1026,10 @@ Describe 'setup.ps1 codex module shared skills' {
             foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc', 'quick-review', 'deep-review', 'review-fix-loop', 'fix-findings', '_shared')) {
                 $output | Should -Match "\\.codex\\skills\\$name -> .*ai-agents\\skills\\$name"
             }
-            # Claude-only skills are not sourced into Codex.
+            # codex-review is portable (ai-agents/skills/) but excluded from Codex on purpose:
+            # it is a self-review with no target, since Codex would be reviewing itself.
             $output | Should -Not -Match '\.codex\\skills\\codex-review ->'
+            # Claude-only skills are not sourced into Codex.
             $output | Should -Not -Match '\.codex\\skills\\handoff ->'
             $output | Should -Not -Match '\.codex\\skills\\git-guardrails-claude-code ->'
         } finally {

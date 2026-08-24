@@ -23,7 +23,10 @@ Codex only returns findings.
 ## Preconditions
 
 - The `codex` MCP server must be available. If it is not, tell the user to run
-  `setup.ps1 -Module codex` and `codex login`, then stop — do not silently skip the review.
+  `setup.ps1 -Module codex` (Windows) or `setup.sh -m codex` (Linux/macOS) and `codex login`,
+  then stop — do not silently skip the review. This registration currently only wires the
+  `codex` MCP server into Claude Code (`claude mcp add`); Pi has no equivalent MCP registration
+  yet, so on Pi this precondition cannot be satisfied until #208 closes that gap.
 
 ## Steps
 

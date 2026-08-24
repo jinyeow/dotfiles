@@ -794,6 +794,9 @@ install_codex() {
     while IFS= read -r -d '' skill_dir; do
         skill_name="$(basename "$skill_dir")"
         [[ -n "${native_names[$skill_name]:-}" ]] && continue
+        # codex-review asks Codex itself for a second opinion — meaningless as self-review, so
+        # it is portable everywhere except Codex.
+        [[ "$skill_name" == 'codex-review' ]] && continue
         desired_names["$skill_name"]=1
     done < <(find "$portable_skills_root" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
     if [[ -d "$skills_dst" ]]; then
@@ -823,7 +826,9 @@ install_codex() {
         make_symlink "$source" "$project_link"
     }
     while IFS= read -r -d '' skill_dir; do
-        [[ -n "${native_names[$(basename "$skill_dir")]:-}" ]] && continue
+        skill_name="$(basename "$skill_dir")"
+        [[ -n "${native_names[$skill_name]:-}" ]] && continue
+        [[ "$skill_name" == 'codex-review' ]] && continue
         project_codex_skill "$skill_dir"
     done < <(find "$portable_skills_root" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
     while IFS= read -r -d '' skill_dir; do

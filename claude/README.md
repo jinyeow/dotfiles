@@ -249,8 +249,9 @@ is the orchestrating session's own top-level `sandbox_mode` (which may itself be
 dispatched through Codex's native `spawn_agent` tool; see DISPATCH.md for the schema
 evidence and what the Codex smoke test actually confirmed (the `spawn_agent` dispatch
 primitive, not per-role scoping).
-`codex-review` is the standalone lightweight Codex second-opinion pass and stays
-Claude-native.
+`codex-review` is the standalone lightweight Codex second-opinion pass. It is portable
+(`ai-agents/skills/codex-review/`), projected to Claude Code and Pi, but excluded from
+Codex CLI itself — a Codex-on-Codex review has no target.
 
 `ai-agents/skills/_shared/` is **not a skill** — it holds portable review-support resources
 shared by multiple skills, projected alongside them into `~/.claude/skills/_shared/` (and the
@@ -264,7 +265,7 @@ actionable error rather than falling back to defaults — see `reviewer-models.m
 for the mechanism and `docs/adr/reviewers-flag-unsupported-on-codex-cli.md` for the decision;
 Pi still has no native equivalent). It has
 no `SKILL.md`, so the harness ignores it
-as a skill; `claude/skills/codex-review/SKILL.md` still reaches it via `../_shared/<file>`,
+as a skill; `ai-agents/skills/codex-review/SKILL.md` still reaches it via `../_shared/<file>`,
 resolved at the installed destination. The independent `ai-agents/_shared/` copy (note: not
 `ai-agents/skills/_shared/`) is source-only and may diverge — see `../ai-agents/README.md`.
 
