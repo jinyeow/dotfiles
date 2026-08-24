@@ -98,11 +98,14 @@ function Resolve-BareWikilinkTarget {
     $found = $index[$key]
     if ($found.Count -eq 1) { return $found[0] }
 
-    $sameDir = $found | Where-Object {
+    # Wrap in @() — Where-Object unwraps a single match to a bare string rather than a
+    # 1-element array, and indexing a string with [0] returns its first character, not
+    # the string itself (silently resolving to a garbage one-letter path).
+    $sameDir = @($found | Where-Object {
         $dir = if ($_ -match '^(.*)/[^/]+$') { $Matches[1] } else { '' }
         $dir -eq $CurrentDir
-    }
-    if ($sameDir) {
+    })
+    if ($sameDir.Count -gt 0) {
         Write-Warning "convert-to-okf.ps1: ambiguous wikilink target '$Target' ($($found.Count) matches) — resolved to same-directory match '$($sameDir[0])'."
         return $sameDir[0]
     }
