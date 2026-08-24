@@ -60,8 +60,113 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+function Get-WikilinkIndex {
+    param([string] $RepoRoot)
+
+    # A bare-filename wikilink target (no '/' in it, Obsidian-style same-vault resolution)
+    # carries no directory information — resolving it as if it were already bundle-root-
+    # relative (the old behavior) silently produces a wrong link whenever the target file
+    # actually lives in a subdirectory. Build a basename -> real-path index once per repo so
+    # such targets resolve to where the file genuinely is.
+    if (-not $script:WikilinkIndexCache) { $script:WikilinkIndexCache = @{} }
+    if ($script:WikilinkIndexCache.ContainsKey($RepoRoot)) {
+        return $script:WikilinkIndexCache[$RepoRoot]
+    }
+
+    $index = @{}
+    # No -ErrorAction SilentlyContinue: a swallowed enumeration failure here would silently
+    # cache an incomplete index, degrading every subsequent lookup to a wrong or dead link
+    # with no signal of why — let it terminate ($ErrorActionPreference = 'Stop' above) so a
+    # real traversal failure surfaces instead of masquerading as "no such file".
+    $mdFiles = Get-ChildItem -LiteralPath $RepoRoot -Filter '*.md' -File -Recurse |
+        Where-Object { $_.FullName -notmatch '[\\/]\.git[\\/]' }
+    foreach ($f in $mdFiles) {
+        $rel = ([IO.Path]::GetRelativePath($RepoRoot, $f.FullName)) -replace '\\', '/'
+        $base = ([IO.Path]::GetFileNameWithoutExtension($f.Name)).ToLowerInvariant()
+        if (-not $index.ContainsKey($base)) {
+            $index[$base] = [System.Collections.Generic.List[string]]::new()
+        }
+        $index[$base].Add($rel)
+    }
+    $script:WikilinkIndexCache[$RepoRoot] = $index
+    return $index
+}
+
+function Resolve-AmbiguousMatch {
+    param([string[]] $Found, [string] $Target, [string] $CurrentDir)
+
+    # Wrap in @() — Where-Object unwraps a single match to a bare string rather than a
+    # 1-element array, and indexing a string with [0] returns its first character, not
+    # the string itself (silently resolving to a garbage one-letter path).
+    $sameDir = @($Found | Where-Object {
+        $dir = if ($_ -match '^(.*)/[^/]+$') { $Matches[1] } else { '' }
+        $dir -eq $CurrentDir
+    })
+    if ($sameDir.Count -gt 0) {
+        Write-Warning "convert-to-okf.ps1: ambiguous wikilink target '$Target' ($($Found.Count) matches) — resolved to same-directory match '$($sameDir[0])'."
+        return $sameDir[0]
+    }
+    $picked = ($Found | Sort-Object)[0]
+    Write-Warning "convert-to-okf.ps1: ambiguous wikilink target '$Target' ($($Found.Count) matches: $($Found -join ', ')) — defaulted to '$picked'; verify manually."
+    return $picked
+}
+
+function Resolve-BareWikilinkTarget {
+    param([string] $Target, [string] $RepoRoot, [string] $CurrentDir)
+
+    $index = Get-WikilinkIndex -RepoRoot $RepoRoot
+    $key = $Target.ToLowerInvariant()
+    if (-not $index.ContainsKey($key)) { return $null }
+
+    $found = $index[$key]
+    if ($found.Count -eq 1) { return $found[0] }
+    return Resolve-AmbiguousMatch -Found $found -Target $Target -CurrentDir $CurrentDir
+}
+
+function Resolve-PathWikilinkTarget {
+    param([string] $Target, [string] $RepoRoot, [string] $CurrentDir)
+
+    # Obsidian same-vault resolution is relative to the linking note's own directory tree
+    # (in this brain, effectively the initiative root), not the whole bundle root. Walk up
+    # from the linking file's own directory, trying "$Target.md" against each ancestor in
+    # turn, so "adr/0001-x" resolves against the initiative that actually owns it instead
+    # of colliding with a same-named file in an unrelated initiative, or double-counting a
+    # path segment ($CurrentDir already inside "adr/") that a naive join would repeat.
+    $dir = $CurrentDir
+    while ($true) {
+        if ($dir) {
+            $candidate = Join-Path $RepoRoot ("$dir/$Target.md" -replace '/', [IO.Path]::DirectorySeparatorChar)
+            if (Test-Path -LiteralPath $candidate) { return "$dir/$Target.md" }
+        }
+        if (-not $dir) { break }
+        $parent = if ($dir -match '^(.*)/[^/]+$') { $Matches[1] } else { '' }
+        if ($parent -eq $dir) { break }
+        $dir = $parent
+    }
+
+    # No ancestor-relative match — widen to a basename lookup across the whole repo,
+    # preferring a candidate whose real path still ends with the target's own path
+    # segment over one that merely shares its final filename.
+    $bareName = ($Target -split '/')[-1]
+    $index = Get-WikilinkIndex -RepoRoot $RepoRoot
+    $key = $bareName.ToLowerInvariant()
+    if (-not $index.ContainsKey($key)) { return $null }
+
+    $found = $index[$key]
+    # Ordinal EndsWith, not -like — $Target is raw wikilink text and may legally contain
+    # wildcard-meaningful characters (e.g. an unclosed '[' from a Markdown-ish source), which
+    # -like would either match unintended candidates or throw WildcardPatternException.
+    $suffix = "/$Target.md"
+    $preserving = @($found | Where-Object { "/$_".EndsWith($suffix, [StringComparison]::OrdinalIgnoreCase) })
+    if ($preserving.Count -eq 1) { return $preserving[0] }
+    if ($preserving.Count -gt 1) { return Resolve-AmbiguousMatch -Found $preserving -Target $Target -CurrentDir $CurrentDir }
+
+    if ($found.Count -eq 1) { return $found[0] }
+    return Resolve-AmbiguousMatch -Found $found -Target $Target -CurrentDir $CurrentDir
+}
+
 function Format-WikilinkTarget {
-    param([string] $Target)
+    param([string] $Target, [string] $RepoRoot, [string] $CurrentDir)
 
     # Split off a #fragment before appending .md, so the anchor doesn't get folded into
     # the filename, then re-append the fragment after. Split at the FIRST '#' so a nested
@@ -95,16 +200,33 @@ function Format-WikilinkTarget {
         # — leave its extension as-is instead of appending a wrong ".md" suffix.
         return "/$Target$fragment"
     }
+    if ($RepoRoot) {
+        # A wikilink target's path segment (if any) is Obsidian-vault-relative, which in
+        # this brain's layout usually means relative to the initiative directory, not the
+        # bundle root — so treating it as bundle-root-relative literally is only safe when
+        # that literal path actually exists. When it doesn't, fall back to a basename
+        # lookup keyed on just the last path segment (same as the no-slash case) rather
+        # than assuming the wrong base and emitting a dead link.
+        $literalMdPath = Join-Path $RepoRoot ("$Target.md" -replace '/', [IO.Path]::DirectorySeparatorChar)
+        if (-not (Test-Path -LiteralPath $literalMdPath)) {
+            $resolved = if ($Target -match '/') {
+                Resolve-PathWikilinkTarget -Target $Target -RepoRoot $RepoRoot -CurrentDir $CurrentDir
+            } else {
+                Resolve-BareWikilinkTarget -Target $Target -RepoRoot $RepoRoot -CurrentDir $CurrentDir
+            }
+            if ($resolved) { return "/$resolved$fragment" }
+        }
+    }
     return "/$Target.md$fragment"
 }
 
 function Convert-WikilinksInSegment {
-    param([string] $Text)
+    param([string] $Text, [string] $RepoRoot, [string] $CurrentDir)
 
     # [[a/b|label]] -> [label](/a/b.md) — must run before the bare-link pattern.
     $Text = [regex]::Replace($Text, '\[\[([^\]\|]+)\|([^\]]+)\]\]', {
         param($m)
-        "[$($m.Groups[2].Value)]($(Format-WikilinkTarget $m.Groups[1].Value))"
+        "[$($m.Groups[2].Value)]($(Format-WikilinkTarget $m.Groups[1].Value $RepoRoot $CurrentDir))"
     })
 
     # [[a/b]] -> [b](/a/b.md)
@@ -120,14 +242,14 @@ function Convert-WikilinksInSegment {
         } else {
             ''
         }
-        "[$label]($(Format-WikilinkTarget $rawTarget))"
+        "[$label]($(Format-WikilinkTarget $rawTarget $RepoRoot $CurrentDir))"
     })
 
     return $Text
 }
 
 function Convert-Wikilinks {
-    param([string] $Text)
+    param([string] $Text, [string] $RepoRoot, [string] $CurrentDir)
 
     # Skip fenced code blocks (``` or ~~~ fences, 3+ delimiters) and inline code spans
     # (backtick runs of 1+) — wikilink-looking text quoted in a code sample or in prose
@@ -147,11 +269,11 @@ function Convert-Wikilinks {
     $lastIndex = 0
     foreach ($m in [regex]::Matches($Text, $pattern)) {
         $prose = $Text.Substring($lastIndex, $m.Index - $lastIndex)
-        [void]$sb.Append((Convert-WikilinksInSegment -Text $prose))
+        [void]$sb.Append((Convert-WikilinksInSegment -Text $prose -RepoRoot $RepoRoot -CurrentDir $CurrentDir))
         [void]$sb.Append($m.Value)
         $lastIndex = $m.Index + $m.Length
     }
-    [void]$sb.Append((Convert-WikilinksInSegment -Text $Text.Substring($lastIndex)))
+    [void]$sb.Append((Convert-WikilinksInSegment -Text $Text.Substring($lastIndex) -RepoRoot $RepoRoot -CurrentDir $CurrentDir))
     return $sb.ToString()
 }
 
@@ -265,8 +387,10 @@ function ConvertTo-OkfFile {
     } else {
         $FilePath
     }
+    $currentDir = (Split-Path -Parent $relativePath) -replace '\\', '/'
+    if ($currentDir -eq '.') { $currentDir = '' }
     $fm = Get-FrontMatter -Content $original
-    $fm.Body = Convert-Wikilinks -Text $fm.Body
+    $fm.Body = Convert-Wikilinks -Text $fm.Body -RepoRoot $repoRoot -CurrentDir $currentDir
     $lines = [System.Collections.Generic.List[string]]::new()
     $lines.AddRange([string[]]$fm.Lines)
 
