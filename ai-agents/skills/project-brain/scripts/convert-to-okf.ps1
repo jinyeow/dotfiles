@@ -153,8 +153,11 @@ function Resolve-PathWikilinkTarget {
     if (-not $index.ContainsKey($key)) { return $null }
 
     $found = $index[$key]
+    # Ordinal EndsWith, not -like — $Target is raw wikilink text and may legally contain
+    # wildcard-meaningful characters (e.g. an unclosed '[' from a Markdown-ish source), which
+    # -like would either match unintended candidates or throw WildcardPatternException.
     $suffix = "/$Target.md"
-    $preserving = @($found | Where-Object { "/$_" -like "*$suffix" })
+    $preserving = @($found | Where-Object { "/$_".EndsWith($suffix, [StringComparison]::OrdinalIgnoreCase) })
     if ($preserving.Count -eq 1) { return $preserving[0] }
     if ($preserving.Count -gt 1) { return Resolve-AmbiguousMatch -Found $preserving -Target $Target -CurrentDir $CurrentDir }
 
