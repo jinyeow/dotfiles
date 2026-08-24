@@ -75,6 +75,32 @@ Describe 'ai-agents/skills/project-brain/scripts/convert-to-okf.ps1' {
         $content | Should -Match ([regex]::Escape('[T9a-ado-prerequisites](/tickets/T9a-ado-prerequisites.md)'))
     }
 
+    It 'resolves a path-containing wikilink target whose path segment is relative to the wrong base, not the bundle root' {
+        $script:Repo = New-TestRepo
+        New-Item -ItemType Directory -Path (Join-Path $script:Repo 'initiatives/foo/adr') -Force | Out-Null
+        $file = Join-Path $script:Repo 'initiatives/foo/core.md'
+        Set-Content -LiteralPath $file -Value "See [[adr/0001-decision]]." -NoNewline -Encoding utf8
+        Set-Content -LiteralPath (Join-Path $script:Repo 'initiatives/foo/adr/0001-decision.md') -Value 'target' -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $script:Repo | Should -Be 0
+        $content = Get-Content -LiteralPath $file -Raw
+        $content | Should -Match ([regex]::Escape('[0001-decision](/initiatives/foo/adr/0001-decision.md)'))
+    }
+
+    It 'keeps a path-containing wikilink target as-is when it already resolves literally from the bundle root' {
+        $script:Repo = New-TestRepo
+        New-Item -ItemType Directory -Path (Join-Path $script:Repo 'adr') -Force | Out-Null
+        $file = Join-Path $script:Repo 'core.md'
+        Set-Content -LiteralPath $file -Value "See [[adr/0001-decision]]." -NoNewline -Encoding utf8
+        Set-Content -LiteralPath (Join-Path $script:Repo 'adr/0001-decision.md') -Value 'target' -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        $content = Get-Content -LiteralPath $file -Raw
+        $content | Should -Match ([regex]::Escape('[0001-decision](/adr/0001-decision.md)'))
+    }
+
     It 'falls back to bundle-root-relative when a bare-filename wikilink target has no matching file on disk' {
         $script:Repo = New-TestRepo
         $file = Join-Path $script:Repo 'core.md'

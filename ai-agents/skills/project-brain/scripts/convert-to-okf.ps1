@@ -146,10 +146,19 @@ function Format-WikilinkTarget {
         # — leave its extension as-is instead of appending a wrong ".md" suffix.
         return "/$Target$fragment"
     }
-    if ($RepoRoot -and $Target -notmatch '/') {
-        # Bare filename, no path segment — do not assume bundle-root, look it up.
-        $resolved = Resolve-BareWikilinkTarget -Target $Target -RepoRoot $RepoRoot -CurrentDir $CurrentDir
-        if ($resolved) { return "/$resolved$fragment" }
+    if ($RepoRoot) {
+        # A wikilink target's path segment (if any) is Obsidian-vault-relative, which in
+        # this brain's layout usually means relative to the initiative directory, not the
+        # bundle root — so treating it as bundle-root-relative literally is only safe when
+        # that literal path actually exists. When it doesn't, fall back to a basename
+        # lookup keyed on just the last path segment (same as the no-slash case) rather
+        # than assuming the wrong base and emitting a dead link.
+        $literalMdPath = Join-Path $RepoRoot ("$Target.md" -replace '/', [IO.Path]::DirectorySeparatorChar)
+        if (-not (Test-Path -LiteralPath $literalMdPath)) {
+            $bareName = ($Target -split '/')[-1]
+            $resolved = Resolve-BareWikilinkTarget -Target $bareName -RepoRoot $RepoRoot -CurrentDir $CurrentDir
+            if ($resolved) { return "/$resolved$fragment" }
+        }
     }
     return "/$Target.md$fragment"
 }
