@@ -60,8 +60,59 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+function Get-WikilinkIndex {
+    param([string] $RepoRoot)
+
+    # A bare-filename wikilink target (no '/' in it, Obsidian-style same-vault resolution)
+    # carries no directory information — resolving it as if it were already bundle-root-
+    # relative (the old behavior) silently produces a wrong link whenever the target file
+    # actually lives in a subdirectory. Build a basename -> real-path index once per repo so
+    # such targets resolve to where the file genuinely is.
+    if (-not $script:WikilinkIndexCache) { $script:WikilinkIndexCache = @{} }
+    if ($script:WikilinkIndexCache.ContainsKey($RepoRoot)) {
+        return $script:WikilinkIndexCache[$RepoRoot]
+    }
+
+    $index = @{}
+    $mdFiles = Get-ChildItem -LiteralPath $RepoRoot -Filter '*.md' -File -Recurse -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -notmatch '[\\/]\.git[\\/]' }
+    foreach ($f in $mdFiles) {
+        $rel = ([IO.Path]::GetRelativePath($RepoRoot, $f.FullName)) -replace '\\', '/'
+        $base = ([IO.Path]::GetFileNameWithoutExtension($f.Name)).ToLowerInvariant()
+        if (-not $index.ContainsKey($base)) {
+            $index[$base] = [System.Collections.Generic.List[string]]::new()
+        }
+        $index[$base].Add($rel)
+    }
+    $script:WikilinkIndexCache[$RepoRoot] = $index
+    return $index
+}
+
+function Resolve-BareWikilinkTarget {
+    param([string] $Target, [string] $RepoRoot, [string] $CurrentDir)
+
+    $index = Get-WikilinkIndex -RepoRoot $RepoRoot
+    $key = $Target.ToLowerInvariant()
+    if (-not $index.ContainsKey($key)) { return $null }
+
+    $found = $index[$key]
+    if ($found.Count -eq 1) { return $found[0] }
+
+    $sameDir = $found | Where-Object {
+        $dir = if ($_ -match '^(.*)/[^/]+$') { $Matches[1] } else { '' }
+        $dir -eq $CurrentDir
+    }
+    if ($sameDir) {
+        Write-Warning "convert-to-okf.ps1: ambiguous wikilink target '$Target' ($($found.Count) matches) — resolved to same-directory match '$($sameDir[0])'."
+        return $sameDir[0]
+    }
+    $picked = ($found | Sort-Object)[0]
+    Write-Warning "convert-to-okf.ps1: ambiguous wikilink target '$Target' ($($found.Count) matches: $($found -join ', ')) — defaulted to '$picked'; verify manually."
+    return $picked
+}
+
 function Format-WikilinkTarget {
-    param([string] $Target)
+    param([string] $Target, [string] $RepoRoot, [string] $CurrentDir)
 
     # Split off a #fragment before appending .md, so the anchor doesn't get folded into
     # the filename, then re-append the fragment after. Split at the FIRST '#' so a nested
@@ -95,16 +146,21 @@ function Format-WikilinkTarget {
         # — leave its extension as-is instead of appending a wrong ".md" suffix.
         return "/$Target$fragment"
     }
+    if ($RepoRoot -and $Target -notmatch '/') {
+        # Bare filename, no path segment — do not assume bundle-root, look it up.
+        $resolved = Resolve-BareWikilinkTarget -Target $Target -RepoRoot $RepoRoot -CurrentDir $CurrentDir
+        if ($resolved) { return "/$resolved$fragment" }
+    }
     return "/$Target.md$fragment"
 }
 
 function Convert-WikilinksInSegment {
-    param([string] $Text)
+    param([string] $Text, [string] $RepoRoot, [string] $CurrentDir)
 
     # [[a/b|label]] -> [label](/a/b.md) — must run before the bare-link pattern.
     $Text = [regex]::Replace($Text, '\[\[([^\]\|]+)\|([^\]]+)\]\]', {
         param($m)
-        "[$($m.Groups[2].Value)]($(Format-WikilinkTarget $m.Groups[1].Value))"
+        "[$($m.Groups[2].Value)]($(Format-WikilinkTarget $m.Groups[1].Value $RepoRoot $CurrentDir))"
     })
 
     # [[a/b]] -> [b](/a/b.md)
@@ -120,14 +176,14 @@ function Convert-WikilinksInSegment {
         } else {
             ''
         }
-        "[$label]($(Format-WikilinkTarget $rawTarget))"
+        "[$label]($(Format-WikilinkTarget $rawTarget $RepoRoot $CurrentDir))"
     })
 
     return $Text
 }
 
 function Convert-Wikilinks {
-    param([string] $Text)
+    param([string] $Text, [string] $RepoRoot, [string] $CurrentDir)
 
     # Skip fenced code blocks (``` or ~~~ fences, 3+ delimiters) and inline code spans
     # (backtick runs of 1+) — wikilink-looking text quoted in a code sample or in prose
@@ -147,11 +203,11 @@ function Convert-Wikilinks {
     $lastIndex = 0
     foreach ($m in [regex]::Matches($Text, $pattern)) {
         $prose = $Text.Substring($lastIndex, $m.Index - $lastIndex)
-        [void]$sb.Append((Convert-WikilinksInSegment -Text $prose))
+        [void]$sb.Append((Convert-WikilinksInSegment -Text $prose -RepoRoot $RepoRoot -CurrentDir $CurrentDir))
         [void]$sb.Append($m.Value)
         $lastIndex = $m.Index + $m.Length
     }
-    [void]$sb.Append((Convert-WikilinksInSegment -Text $Text.Substring($lastIndex)))
+    [void]$sb.Append((Convert-WikilinksInSegment -Text $Text.Substring($lastIndex) -RepoRoot $RepoRoot -CurrentDir $CurrentDir))
     return $sb.ToString()
 }
 
@@ -265,8 +321,10 @@ function ConvertTo-OkfFile {
     } else {
         $FilePath
     }
+    $currentDir = (Split-Path -Parent $relativePath) -replace '\\', '/'
+    if ($currentDir -eq '.') { $currentDir = '' }
     $fm = Get-FrontMatter -Content $original
-    $fm.Body = Convert-Wikilinks -Text $fm.Body
+    $fm.Body = Convert-Wikilinks -Text $fm.Body -RepoRoot $repoRoot -CurrentDir $currentDir
     $lines = [System.Collections.Generic.List[string]]::new()
     $lines.AddRange([string[]]$fm.Lines)
 

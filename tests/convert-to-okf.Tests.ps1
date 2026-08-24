@@ -62,6 +62,29 @@ Describe 'ai-agents/skills/project-brain/scripts/convert-to-okf.ps1' {
         (Get-Content -LiteralPath $file -Raw) | Should -Match ([regex]::Escape('[bar](/research/bar.md)'))
     }
 
+    It 'resolves a bare-filename wikilink target (no path segment) to its real on-disk location, not the bundle root' {
+        $script:Repo = New-TestRepo
+        New-Item -ItemType Directory -Path (Join-Path $script:Repo 'tickets') -Force | Out-Null
+        $file = Join-Path $script:Repo 'tickets/index.md'
+        Set-Content -LiteralPath $file -Value "See [[T9a-ado-prerequisites]]." -NoNewline -Encoding utf8
+        Set-Content -LiteralPath (Join-Path $script:Repo 'tickets/T9a-ado-prerequisites.md') -Value 'target' -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $script:Repo | Should -Be 0
+        $content = Get-Content -LiteralPath $file -Raw
+        $content | Should -Match ([regex]::Escape('[T9a-ado-prerequisites](/tickets/T9a-ado-prerequisites.md)'))
+    }
+
+    It 'falls back to bundle-root-relative when a bare-filename wikilink target has no matching file on disk' {
+        $script:Repo = New-TestRepo
+        $file = Join-Path $script:Repo 'core.md'
+        Set-Content -LiteralPath $file -Value "See [[nonexistent-target]]." -NoNewline -Encoding utf8
+        Add-Commit -Repo $script:Repo
+
+        Invoke-Convert -Path $file | Should -Be 0
+        (Get-Content -LiteralPath $file -Raw) | Should -Match ([regex]::Escape('[nonexistent-target](/nonexistent-target.md)'))
+    }
+
     It 'does not double-append .md to a bare wikilink target that already ends in .md' {
         $script:Repo = New-TestRepo
         $file = Join-Path $script:Repo 'core.md'
