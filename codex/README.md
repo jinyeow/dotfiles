@@ -10,7 +10,7 @@ can ask it for a cross-model review on demand (see the `/codex-review` skill and
 second opinion" section in `claude/CLAUDE.md`). The integration is one-way: Claude → Codex.
 `codex-review` is portable and also projects to Pi, but the MCP registration below is
 currently Claude-only (`claude mcp add`) — Pi has no equivalent registration yet, so it
-cannot use `codex-review` until that is added.
+cannot use `codex-review` until that is added (tracked in #208).
 
 Two permission postures, one config file:
 

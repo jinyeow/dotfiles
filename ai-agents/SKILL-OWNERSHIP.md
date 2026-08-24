@@ -36,7 +36,9 @@ own directory living under `claude/skills/` — its `../_shared/review-rubric.md
 resolved to the portable `ai-agents/skills/_shared/` copy at the installed destination (#115),
 so the move itself was the fix. It is projected to Claude Code and Pi but deliberately excluded
 from Codex CLI (`setup.ps1`/`setup.sh` filter it out of the Codex projection list) — asking
-Codex to review its own changes has no target.
+Codex to review its own changes has no target. Pi's projection is not yet functional: the
+`codex` MCP server is only registered for Claude Code, so the skill's precondition fails on
+Pi until #208 wires up the registration.
 
 ## Portable support (`ai-agents/skills/_shared/`)
 
