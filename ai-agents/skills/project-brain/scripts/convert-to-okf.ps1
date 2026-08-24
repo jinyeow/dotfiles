@@ -74,7 +74,11 @@ function Get-WikilinkIndex {
     }
 
     $index = @{}
-    $mdFiles = Get-ChildItem -LiteralPath $RepoRoot -Filter '*.md' -File -Recurse -ErrorAction SilentlyContinue |
+    # No -ErrorAction SilentlyContinue: a swallowed enumeration failure here would silently
+    # cache an incomplete index, degrading every subsequent lookup to a wrong or dead link
+    # with no signal of why — let it terminate ($ErrorActionPreference = 'Stop' above) so a
+    # real traversal failure surfaces instead of masquerading as "no such file".
+    $mdFiles = Get-ChildItem -LiteralPath $RepoRoot -Filter '*.md' -File -Recurse |
         Where-Object { $_.FullName -notmatch '[\\/]\.git[\\/]' }
     foreach ($f in $mdFiles) {
         $rel = ([IO.Path]::GetRelativePath($RepoRoot, $f.FullName)) -replace '\\', '/'
@@ -88,6 +92,25 @@ function Get-WikilinkIndex {
     return $index
 }
 
+function Resolve-AmbiguousMatch {
+    param([string[]] $Found, [string] $Target, [string] $CurrentDir)
+
+    # Wrap in @() — Where-Object unwraps a single match to a bare string rather than a
+    # 1-element array, and indexing a string with [0] returns its first character, not
+    # the string itself (silently resolving to a garbage one-letter path).
+    $sameDir = @($Found | Where-Object {
+        $dir = if ($_ -match '^(.*)/[^/]+$') { $Matches[1] } else { '' }
+        $dir -eq $CurrentDir
+    })
+    if ($sameDir.Count -gt 0) {
+        Write-Warning "convert-to-okf.ps1: ambiguous wikilink target '$Target' ($($Found.Count) matches) — resolved to same-directory match '$($sameDir[0])'."
+        return $sameDir[0]
+    }
+    $picked = ($Found | Sort-Object)[0]
+    Write-Warning "convert-to-okf.ps1: ambiguous wikilink target '$Target' ($($Found.Count) matches: $($Found -join ', ')) — defaulted to '$picked'; verify manually."
+    return $picked
+}
+
 function Resolve-BareWikilinkTarget {
     param([string] $Target, [string] $RepoRoot, [string] $CurrentDir)
 
@@ -97,21 +120,46 @@ function Resolve-BareWikilinkTarget {
 
     $found = $index[$key]
     if ($found.Count -eq 1) { return $found[0] }
+    return Resolve-AmbiguousMatch -Found $found -Target $Target -CurrentDir $CurrentDir
+}
 
-    # Wrap in @() — Where-Object unwraps a single match to a bare string rather than a
-    # 1-element array, and indexing a string with [0] returns its first character, not
-    # the string itself (silently resolving to a garbage one-letter path).
-    $sameDir = @($found | Where-Object {
-        $dir = if ($_ -match '^(.*)/[^/]+$') { $Matches[1] } else { '' }
-        $dir -eq $CurrentDir
-    })
-    if ($sameDir.Count -gt 0) {
-        Write-Warning "convert-to-okf.ps1: ambiguous wikilink target '$Target' ($($found.Count) matches) — resolved to same-directory match '$($sameDir[0])'."
-        return $sameDir[0]
+function Resolve-PathWikilinkTarget {
+    param([string] $Target, [string] $RepoRoot, [string] $CurrentDir)
+
+    # Obsidian same-vault resolution is relative to the linking note's own directory tree
+    # (in this brain, effectively the initiative root), not the whole bundle root. Walk up
+    # from the linking file's own directory, trying "$Target.md" against each ancestor in
+    # turn, so "adr/0001-x" resolves against the initiative that actually owns it instead
+    # of colliding with a same-named file in an unrelated initiative, or double-counting a
+    # path segment ($CurrentDir already inside "adr/") that a naive join would repeat.
+    $dir = $CurrentDir
+    while ($true) {
+        if ($dir) {
+            $candidate = Join-Path $RepoRoot ("$dir/$Target.md" -replace '/', [IO.Path]::DirectorySeparatorChar)
+            if (Test-Path -LiteralPath $candidate) { return "$dir/$Target.md" }
+        }
+        if (-not $dir) { break }
+        $parent = if ($dir -match '^(.*)/[^/]+$') { $Matches[1] } else { '' }
+        if ($parent -eq $dir) { break }
+        $dir = $parent
     }
-    $picked = ($found | Sort-Object)[0]
-    Write-Warning "convert-to-okf.ps1: ambiguous wikilink target '$Target' ($($found.Count) matches: $($found -join ', ')) — defaulted to '$picked'; verify manually."
-    return $picked
+
+    # No ancestor-relative match — widen to a basename lookup across the whole repo,
+    # preferring a candidate whose real path still ends with the target's own path
+    # segment over one that merely shares its final filename.
+    $bareName = ($Target -split '/')[-1]
+    $index = Get-WikilinkIndex -RepoRoot $RepoRoot
+    $key = $bareName.ToLowerInvariant()
+    if (-not $index.ContainsKey($key)) { return $null }
+
+    $found = $index[$key]
+    $suffix = "/$Target.md"
+    $preserving = @($found | Where-Object { "/$_" -like "*$suffix" })
+    if ($preserving.Count -eq 1) { return $preserving[0] }
+    if ($preserving.Count -gt 1) { return Resolve-AmbiguousMatch -Found $preserving -Target $Target -CurrentDir $CurrentDir }
+
+    if ($found.Count -eq 1) { return $found[0] }
+    return Resolve-AmbiguousMatch -Found $found -Target $Target -CurrentDir $CurrentDir
 }
 
 function Format-WikilinkTarget {
@@ -158,8 +206,11 @@ function Format-WikilinkTarget {
         # than assuming the wrong base and emitting a dead link.
         $literalMdPath = Join-Path $RepoRoot ("$Target.md" -replace '/', [IO.Path]::DirectorySeparatorChar)
         if (-not (Test-Path -LiteralPath $literalMdPath)) {
-            $bareName = ($Target -split '/')[-1]
-            $resolved = Resolve-BareWikilinkTarget -Target $bareName -RepoRoot $RepoRoot -CurrentDir $CurrentDir
+            $resolved = if ($Target -match '/') {
+                Resolve-PathWikilinkTarget -Target $Target -RepoRoot $RepoRoot -CurrentDir $CurrentDir
+            } else {
+                Resolve-BareWikilinkTarget -Target $Target -RepoRoot $RepoRoot -CurrentDir $CurrentDir
+            }
             if ($resolved) { return "/$resolved$fragment" }
         }
     }
