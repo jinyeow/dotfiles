@@ -1450,6 +1450,9 @@ function Install-Codex {
     $codexSkills = @(Get-ChildItem -Path (Join-Path $Dotfiles 'codex\skills') -Directory -ErrorAction SilentlyContinue)
     $codexSkillNames = @($codexSkills.ForEach('Name'))
     $portableSkills = @($portableSkills | Where-Object { $_.Name -notin $codexSkillNames })
+    # codex-review asks Codex itself for a second opinion — meaningless as self-review, so it
+    # is portable everywhere except Codex.
+    $portableSkills = @($portableSkills | Where-Object { $_.Name -ne 'codex-review' })
     $desiredSkillNames = @($portableSkills | ForEach-Object Name) + @($codexSkills | ForEach-Object Name)
     # Scoped to roots the Codex installer itself (current or historical) has ever written into —
     # claude\skills was the shared source Codex projected from before the ai-agents rehome, and

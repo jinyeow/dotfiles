@@ -31,7 +31,12 @@ is portable too, as of #91: its `~/.claude/learner-profile.md` path now resolves
 runtime's own config home (`~/.claude/`, `~/.codex/`, `~/.pi/agent/`); its stale
 `.claude/tickets.md`/`.claude/specs/*.md` reference was corrected to the current
 `.agents/tickets.md`/`.agents/specs/*.md` convention, and its project-brain resolution was
-already portable.
+already portable. `codex-review` is portable too, as of #98: its only Claude coupling was its
+own directory living under `claude/skills/` — its `../_shared/review-rubric.md` link already
+resolved to the portable `ai-agents/skills/_shared/` copy at the installed destination (#115),
+so the move itself was the fix. It is projected to Claude Code and Pi but deliberately excluded
+from Codex CLI (`setup.ps1`/`setup.sh` filter it out of the Codex projection list) — asking
+Codex to review its own changes has no target.
 
 ## Portable support (`ai-agents/skills/_shared/`)
 
@@ -74,15 +79,6 @@ migration ticket is even writable:
 - `git-guardrails-claude-code` — installs a Claude Code `PreToolUse` hook; needs an
   equivalent pre-execution interception mechanism in Codex/Pi, not yet confirmed to
   exist. Research spike: #97.
-
-**Content-coupled** — depends on a Claude-scoped copy of shared content, not a missing
-mechanism; fixable by repointing the reference:
-
-- `codex-review` — still lives under `claude/skills/`; its own directory hasn't moved yet.
-  Its `../_shared/review-rubric.md` and `../_shared/dimensions.md` links already resolve to
-  the now-portable `ai-agents/skills/_shared/` copy at the installed destination (#115
-  relocated `_shared/`), so the remaining work is only moving `codex-review` itself to
-  `ai-agents/skills/`. Migration ticket: #98.
 
 **Needs design work** — the skill's value depends on a Claude-only *convenience trigger*
 (not a missing primitive), so portability needs a designed equivalent, not a spike:

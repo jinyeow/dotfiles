@@ -104,7 +104,7 @@ Describe 'setup.sh --dry-run' {
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m pi --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
-            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc')) {
+            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc', 'codex-review')) {
                 $out | Should -Match "\.pi/agent/skills/$name -> .*ai-agents/skills/$name"
             }
             (Test-Path (Join-Path $tmpHome '.pi')) | Should -BeFalse
@@ -123,7 +123,7 @@ Describe 'setup.sh --dry-run' {
             $out = & $script:Bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $out | Should -Match '\.claude/skills/council -> .*ai-agents/skills/council'
-            $out | Should -Match '\.claude/skills/codex-review -> .*claude/skills/codex-review'
+            $out | Should -Match '\.claude/skills/codex-review -> .*ai-agents/skills/codex-review'
             # _shared moved portable with the review skills (#115): now sourced from
             # ai-agents/skills/_shared, not the removed claude/skills/_shared, and not the
             # unrelated, still-source-only ai-agents/_shared (no `skills/` segment).
@@ -387,6 +387,8 @@ Describe 'setup.sh Codex skill projection' {
             foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc', 'quick-review', 'deep-review', 'review-fix-loop', 'fix-findings', '_shared')) {
                 $out | Should -Match "\.codex/skills/$name -> .*ai-agents/skills/$name"
             }
+            # codex-review is portable (ai-agents/skills/) but excluded from Codex on purpose:
+            # it is a self-review with no target, since Codex would be reviewing itself.
             $out | Should -Not -Match '\.codex/skills/codex-review ->'
             $out | Should -Not -Match '\.codex/skills/handoff ->'
             $out | Should -Not -Match '\.codex/skills/git-guardrails-claude-code ->'
