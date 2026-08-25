@@ -220,6 +220,15 @@ normal calls to 12. The four `/council-code`, `/council-business`, `/council-pla
 `/council-doc` aliases pin their panel. Reports use `.agents/council/reports/`. For branch
 diffs/PRs use `quick-review` (or `deep-review`), not council.
 
+The portable `dispatch-implement` skill is a thin wrapper around `implement`: given one or more
+`#ticket` references, it dispatches one subagent per ticket to run `/implement` unmodified —
+`implement/SKILL.md` itself carries no dispatch logic
+(`docs/adr/implement-stays-minimal-dispatch-in-wrapper-skill.md`). It judges file/scope overlap
+pairwise and picks a model per ticket under the implement-stage pin (Opus or Sonnet, never
+Fable), but parallel dispatch is currently gated off in favor of sequential-only pending a trial
+(#213). Claude Code only for now — Codex CLI (#211) and Pi (#212) dispatch are tracked
+separately.
+
 The portable `walkthrough` skill is the post-`implement` mentoring stage of the main flow: it
 walks the user through a diff like a senior pairing with a junior (checkpoint tour /
 overview-then-Q&A / socratic, chosen at start or via `--mode`), chunked into narrative beats and
