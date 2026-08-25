@@ -44,7 +44,8 @@ runtime-neutral, and it wraps the portable `implement` without changing it. It i
 all three runtimes, but only Claude Code's dispatch is wired (the `Agent` tool, with
 `isolation: "worktree"` for parallel children so they do not race one shared `.git/index`); on
 Codex CLI (`[agents.implementer]` + `spawn_agent`, #211) and Pi (`pi-subagents`, #212) the skill
-stops and reports instead of dispatching until those tickets land.
+stops and reports instead of dispatching until those tickets land. Parallel dispatch is gated off
+in favor of sequential-only until #213 confirms the base flow against real usage.
 
 ## Portable support (`ai-agents/skills/_shared/`)
 

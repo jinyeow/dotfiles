@@ -22,6 +22,12 @@ checks, review, commit.
 
 ## Steps
 
+> **Trial gate (#213): sequential-only for now.** Run every ticket sequentially regardless of what
+> step 3's overlap judgment finds — treat every pair as unconfirmed until #213 confirms the base
+> flow (parsing, model pick, single dispatch, `/implement` completing inside a child) against real
+> usage. Step 3 and step 6 (integration) stay written up below for when #213 lifts this gate; do not
+> act on them meanwhile.
+
 1. **Parse the invocation.** Collect every `#<number>` reference (comma- or space-separated) and any
    explicit model/effort override phrased in natural language ("using Opus", "using Sonnet on low").
    No flag grammar; this skill does not consume `--reviewers`-style arguments. Guard clauses:
