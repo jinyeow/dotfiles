@@ -38,7 +38,14 @@ so the move itself was the fix. It is projected to Claude Code and Pi but delibe
 from Codex CLI (`setup.ps1`/`setup.sh` filter it out of the Codex projection list) — asking
 Codex to review its own changes has no target. Pi's projection is not yet functional: the
 `codex` MCP server is only registered for Claude Code, so the skill's precondition fails on
-Pi until #208 wires up the registration.
+Pi until #208 wires up the registration. `dispatch-implement` is portable too, as of #210:
+its ticket parsing, parallel-vs-sequential overlap judgment, and per-ticket model selection are
+runtime-neutral, and it wraps the portable `implement` without changing it. It is projected to
+all three runtimes, but only Claude Code's dispatch is wired (the `Agent` tool, with
+`isolation: "worktree"` for parallel children so they do not race one shared `.git/index`); on
+Codex CLI (`[agents.implementer]` + `spawn_agent`, #211) and Pi (`pi-subagents`, #212) the skill
+stops and reports instead of dispatching until those tickets land. Parallel dispatch is gated off
+in favor of sequential-only until #213 confirms the base flow against real usage.
 
 ## Portable support (`ai-agents/skills/_shared/`)
 
