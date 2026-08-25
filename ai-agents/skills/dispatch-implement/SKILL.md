@@ -41,9 +41,16 @@ checks, review, commit.
 5. **Dispatch**, one subagent per ticket, each prompted to run `/implement` on that ticket and
    nothing else. Parallel units go out in a single message so they actually run concurrently;
    sequential units wait for the previous unit's result before the next dispatch.
-6. **Report** per ticket: model used, parallel or sequential and why, the child's outcome, and — for
-   parallel runs — where each child committed, so leftover worktrees can be reconciled (see
-   `worktree-janitor`).
+6. **Integrate parallel children** (sequential children skip this — they already committed to the
+   current branch, in turn). An isolated child commits to its own branch in its own worktree, so its
+   work is not on the invoking branch until you bring it over. Once every parallel child has
+   returned, cherry-pick each child's commits — all of them, `/implement` does not promise exactly
+   one — onto the invoking branch in ticket order, run the project's fast checks once over the
+   integrated result, then remove the child worktrees. On a cherry-pick conflict, stop and hand back
+   with the child branch and worktree names; do not resolve it silently, since a conflict here means
+   the non-overlapping judgment in step 3 was wrong.
+7. **Report** per ticket: model used, parallel or sequential and why, the child's outcome, and for a
+   parallel run the integration result (integrated cleanly, or which branches are left for the user).
 
 ---
 
@@ -64,11 +71,12 @@ Use the `Agent` tool, one call per ticket:
 
 ### Override
 
-Valid values are the `Agent` tool's model aliases: `opus`, `sonnet`, `haiku`, `fable`. Anything else
-is an error — say which aliases exist and stop, never substitute a model the user did not ask for.
+The `Agent` tool's model aliases are `opus`, `sonnet`, `haiku`, `fable`. Anything else is an error —
+say which aliases exist and stop, never substitute a model the user did not ask for.
 
-- **Fable** collides with the implement-stage pin. Stop and ask rather than honoring or refusing it
-  silently.
+- **`opus` and `sonnet`** are honored directly; they satisfy the implement-stage pin.
+- **`haiku` and `fable`** collide with it (`claude/CLAUDE.md`: Opus or Sonnet, never Fable). Stop and
+  ask rather than honoring or refusing either silently.
 - **Effort** has no `Agent` tool parameter — dispatch takes `model` only. Record the requested effort
   and say once that it was not applied; do not invent a field. Same gap as
   [`../_shared/reviewer-models.md`](../_shared/reviewer-models.md) § Effort.
