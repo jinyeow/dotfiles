@@ -176,7 +176,7 @@ mishandles escape sequences (see `docs/zellij-windows-terminal-colors.md`).
 
 ## Skills
 
-`ai-agents/skills/` holds portable global skills, while `claude/skills/` holds Claude-native skills and Claude support content. Each portable or Claude-native subdirectory is projected individually:
+`ai-agents/skills/` holds portable global skills, while `claude/skills/` holds Claude-native skills and Claude support content. See `../ai-agents/README.md` for the full portable-skill roster with descriptions. Each portable or Claude-native subdirectory is projected individually:
 
 ```
 ai-agents/skills/
@@ -198,18 +198,23 @@ so Codex CLI reads portable skills from the same source. Claude-native skills re
 to Claude Code. See `../codex/README.md` → Skills, and re-run `setup.ps1 -Module codex` after
 adding a portable or Codex-native skill so Codex picks it up as well.
 
-`azure-boards-organiser` (Azure DevOps Boards management for a Scrum process — PBIs,
-sprints, backlog) needs a one-time local setup: copy its `config.example.json` to
-`config.json` (gitignored) and fill in your ADO project / team / iteration root; the org
-is read from `az devops configure`. It prefers the Azure DevOps MCP server when connected
-and falls back to PowerShell-native `az boards` CLI.
+Claude-native skills:
 
-`bicep-tdd` (local, offline RED→GREEN loop for Azure Bicep — `bicep build`/`lint`, PSRule
-for Azure policy-as-code, a committed `bicep snapshot` compare gate, and Pester golden
-fixtures over compiled ARM) needs two prerequisites
-on the machine: the **Bicep CLI** on PATH and the **PSRule.Rules.Azure** module
-(`Install-Module PSRule.Rules.Azure -Scope CurrentUser`). It deliberately stops at compiled
-ARM — no `what-if`/deploy, so it never authenticates to a tenant.
+- **`azure-boards-organiser`** — Manage Azure DevOps Boards work items for a Scrum
+  process: read and write PBIs, Bugs, and Tasks; run sprint and backlog WIQL queries;
+  enrich, decompose, prioritise, and report. Needs a one-time local setup: copy its
+  `config.example.json` to `config.json` (gitignored) and fill in your ADO project / team /
+  iteration root; the org is read from `az devops configure`. Prefers the Azure DevOps MCP
+  server when connected and falls back to PowerShell-native `az boards` CLI.
+- **`fastmail`** — Pull a live Fastmail digest: unread emails, upcoming calendar events,
+  and other inbox signals.
+- **`git-guardrails-claude-code`** — Set up Claude Code hooks to block dangerous git
+  commands (push, reset --hard, clean, branch -D, etc.) before they execute.
+- **`handoff`** — Compact the current conversation into a handoff document for another
+  agent to pick up, saved to `.claude/handoff.md` and picked up by the `inject-handoff.ps1`
+  SessionStart hook (see Hooks below). This repo's own skill, not a harness built-in.
+- **`router`** — Ask which skill or flow fits your situation: a router over the skills in
+  this repo.
 
 `council` is a shared, cost-bounded prompt orchestration contract for adversarial review
 of a **non-diff artifact**. Claude's native isolated workers receive portable critic/chair
@@ -262,26 +267,17 @@ primitive, not per-role scoping).
 (`ai-agents/skills/codex-review/`), projected to Claude Code and Pi, but excluded from
 Codex CLI itself — a Codex-on-Codex review has no target.
 
-`ai-agents/skills/_shared/` is **not a skill** — it holds portable review-support resources
-shared by multiple skills, projected alongside them into `~/.claude/skills/_shared/` (and the
-Codex/Pi equivalents): `review-rubric.md` (the merged AGENTS.md + thermo-nuclear quality bar),
-`dimensions.md` (the 7-dimension registry + charters used whole by `deep-review` and folded to
-three by `quick-review`), `findings-schema.md` (the JSONL finding schema, semantic fingerprint,
-and store discipline shared by the review→fix skills), and `reviewer-models.md` (how
-`--reviewers` resolves aliases + effort and the per-call Codex-as-MCP posture on Claude Code;
-on Codex CLI itself the flag is unsupported, so the orchestrating skill refuses it with an
-actionable error rather than falling back to defaults — see `reviewer-models.md`'s Scope note
-for the mechanism and `docs/adr/reviewers-flag-unsupported-on-codex-cli.md` for the decision;
-Pi still has no native equivalent). It has
-no `SKILL.md`, so the harness ignores it
-as a skill; `ai-agents/skills/codex-review/SKILL.md` still reaches it via `../_shared/<file>`,
-resolved at the installed destination. The independent `ai-agents/_shared/` copy (note: not
-`ai-agents/skills/_shared/`) is source-only and may diverge — see `../ai-agents/README.md`.
+`ai-agents/skills/_shared/` is **not a skill** — see `../ai-agents/README.md` for what it
+holds and how it differs from the independent, source-only `ai-agents/_shared/` copy. It has
+no `SKILL.md`, so the harness ignores it as a skill; `ai-agents/skills/codex-review/SKILL.md`
+still reaches it via `../_shared/<file>`, resolved at the installed destination. On Codex CLI
+itself, `--reviewers` is unsupported, so the orchestrating skill refuses it with an actionable
+error rather than falling back to defaults — see `reviewer-models.md`'s Scope note for the
+mechanism and `docs/adr/reviewers-flag-unsupported-on-codex-cli.md` for the decision; Pi still
+has no native equivalent.
 
 Built-in Claude Code skills (`code-review`, `compact`, `deep-research`, `security-review`,
-`verify`, etc.) are provided by the harness and do not need to be installed. `handoff` is
-this repo's own skill (`claude/skills/handoff/`), not a harness built-in — see the Files
-table above.
+`verify`, etc.) are provided by the harness and do not need to be installed.
 
 ## Agents
 
