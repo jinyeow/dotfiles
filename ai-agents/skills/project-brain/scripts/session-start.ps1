@@ -9,6 +9,10 @@
 #      then that brain's registry.json (dir-glob -> initiative) picks the initiative.
 # Fails safe: any error, or no match, exits 0 with no output (never blocks a session).
 $ErrorActionPreference = 'Stop'
+# core.md/STATUS.md content is echoed back verbatim; without this, non-ASCII characters (e.g. "->")
+# get mangled to stray control bytes by the console's default (non-UTF-8) output codepage, which
+# breaks the emitted JSON.
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 function Read-IfPresent([string]$path) {
     if ($path -and (Test-Path -LiteralPath $path -PathType Leaf)) {

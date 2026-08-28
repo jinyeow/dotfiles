@@ -10,6 +10,10 @@
 # After injecting, the file is archived to `handoff-<timestamp>.consumed.md` so it is delivered
 # once and not replayed into every subsequent fresh session in the same workspace.
 $ErrorActionPreference = 'Stop'
+# handoff.md content is echoed back verbatim; without this, non-ASCII characters (e.g. "->")
+# get mangled to stray control bytes by the console's default (non-UTF-8) output codepage, which
+# breaks the emitted JSON.
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 $payload = [Console]::In.ReadToEnd()
 if (-not $payload) { exit 0 }
