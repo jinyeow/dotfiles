@@ -47,7 +47,12 @@ all three runtimes, but only Claude Code's dispatch is wired (the `Agent` tool, 
 `isolation: "worktree"` for parallel children so they do not race one shared `.git/index`); on
 Codex CLI (`[agents.implementer]` + `spawn_agent`, #211) and Pi (`pi-subagents`, #212) the skill
 stops and reports instead of dispatching until those tickets land. Parallel dispatch is gated off
-in favor of sequential-only until #213 confirms the base flow against real usage.
+in favor of sequential-only until #213 confirms the base flow against real usage. `implement-spec`
+is portable too: it only orchestrates calls into `to-spec`, `to-tickets`, `dispatch-implement`,
+`review-fix-loop`, and `to-pullrequest` — all already portable or tracked as such — so it carries
+no runtime-specific mechanics of its own. It inherits `dispatch-implement`'s current Claude-Code-
+only dispatch and sequential-only gate at each frontier batch until that skill's own blockers
+clear.
 
 ## Portable support (`ai-agents/skills/_shared/`)
 

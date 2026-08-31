@@ -61,6 +61,7 @@ own `SKILL.md` frontmatter, trimmed to one line. Claude-native skills live in `.
 - **`health`** — Manual engineering health audit of your agent setup: Claude/Codex config drift, hooks, MCP, skills, memory and skill supply-chain security, and AI-maintainability drift.
 - **`i-have-adhd`** — Shape output for a reader with ADHD: lead with the next action, number multi-step work, restate state across turns, suppress tangents, give specific time estimates, make wins visible. `disable-model-invocation: true` — invoke explicitly with `/i-have-adhd`; stays on until "stop adhd mode". Adapted from [ayghri/i-have-adhd](https://github.com/ayghri/i-have-adhd) (MIT).
 - **`implement`** — Implement a piece of work from a spec or set of tickets: TDD at agreed seams, review, then commit.
+- **`implement-spec`** — Implement a whole spec as one pull request, working the ticket frontier with concurrent implementer subagents until every ticket lands, then review and open the PR.
 - **`improve-codebase-architecture`** — Find deepening opportunities in a codebase, informed by the domain language in CONTEXT.md and the decisions in docs/adr/.
 - **`jj`** — Use when working in a Jujutsu (jj) repository: making/describing changes, syncing with a remote, rewriting history, managing bookmarks or workspaces, or recovering via the op log.
 - **`linkedin-jobs`** — Read LinkedIn job alert emails and recruiter InMails, extract role details, and present them as structured cards grouped by inferred category.
@@ -74,6 +75,7 @@ own `SKILL.md` frontmatter, trimmed to one line. Claude-native skills live in `.
 - **`redraft`** — Scrap the current fix and redo it properly, using everything learned while building the mediocre version.
 - **`refactor-agents-md`** — Refactor an AGENTS.md file to follow progressive disclosure: split it into a minimal root file plus linked category files.
 - **`resolving-merge-conflicts`** — Use when you need to resolve an in-progress git merge/rebase conflict.
+- **`retro`** — Conduct a retrospective on a coding session, surfacing improvements to the agent's environment (docs, checks, conventions) rather than to the code itself.
 - **`review-ado-pr`** — Review an Azure DevOps pull request locally, end-to-end.
 - **`review-fix-loop`** — Iterative review-fix cycle for a branch or PR.
 - **`review-me`** — Interrogate the user on the current diff as an adversarial reviewer and withhold the PR until they pass.
