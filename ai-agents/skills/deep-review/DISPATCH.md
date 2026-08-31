@@ -43,8 +43,8 @@ use; no change from current behavior.
 ### Pi (`pi-subagents`)
 
 Express the allowlist as the child agent's `tools:` frontmatter — confirmed present at the
-pinned `pi-subagents@0.40.0` (`RunnerSubagentStep.tools?: string[]`, shipped source,
-`package/src/runs/shared/parallel-utils.ts`; also `agent-serializer.ts:10,58-63`). A dimension
+pinned `pi-subagents@0.60.0` (`RunnerSubagentStep.tools?: string[]`, shipped source,
+`package/src/runs/shared/parallel-utils.ts:44`; also `agent-serializer.ts:11,67-72`). A dimension
 with `no` in "Reads beyond diff?" gets `tools: read, grep`; one with `yes` gets
 `tools: read, grep, glob`. Never include `bash`, `edit`, or `write` — a reviewer that needs to
 mutate anything is out of contract.
@@ -151,19 +151,23 @@ adapter, not one of the seven dimension workers.
 
 ## Dispatch call shape (Pi)
 
-Two shapes exist in the pinned `pi-subagents@0.40.0` source: an ad-hoc multi-call in one turn,
-and the scripted `runs.all`/`workflowScript` batch API. **This skill uses ad-hoc multi-call**,
-matching what `council` already exercises in practice (`council`'s `CRITIQUE` step: "Launch all
-charter seats as fresh isolated workers, together when parallel dispatch is available" — no
-scripted workflow). Rationale:
+At the pinned `pi-subagents@0.60.0`, two shapes exist for launching several children: an ad-hoc
+multi-call in one turn (repeated single-child `subagent({ agent, task })` calls), and the
+scripted `runs.all`/`workflowScript` batch API. As of 0.41.0, the package removed the older
+top-level `tasks: [...]` array shape entirely — `workflowScript` is now the only way to batch
+children in a single tool call — but ad-hoc multi-call was never affected by that removal, since
+it never used `tasks[]`. **This skill uses ad-hoc multi-call**, matching what `council` already
+exercises in practice (`council`'s `CRITIQUE` step: "Launch all charter seats as fresh isolated
+workers, together when parallel dispatch is available" — no scripted workflow). Rationale:
 
 - Consistency — `deep-review`/`quick-review` compose with `council`'s contract; diverging to a
   scripted API for one skill and ad-hoc for the rest adds a second dispatch idiom for no
   functional gain.
-- Evidence asymmetry — the `tools:` scoping field and the parallel-batch *mechanism* are
-  confirmed in the pinned 0.40.0 shipped source; the exact `runs.all()` call-site spelling is
-  confirmed only against newer (0.44.0) docs, not source-verified at the pin. Ad-hoc multi-call
-  avoids depending on the unverified spelling.
+- Evidence asymmetry no longer applies at the current pin — the `tools:` scoping field, the
+  parallel-batch mechanism, and the `runs.all()` call-site spelling (`docs/workflows.md:38,88-92`
+  at the pinned 0.60.0) are all now confirmed directly in the pinned version's own shipped
+  source and docs, not inferred from a newer version. Ad-hoc multi-call remains the choice for
+  the consistency reason above, not because the scripted shape is unverified.
 
 This is **source-verified against the pinned version, not executed as a live smoke test** — no
 live Pi session was driven interactively in this session to confirm ad-hoc multi-call actually
@@ -265,8 +269,10 @@ way whether `config_file` honors per-role `sandbox_mode`.
 
 `findings-schema.md` requires reviewer/verifier/fixer workers to **return** results — never
 write the store themselves. Under Pi, a child's `outputMode` defaults to `"inline"`
-(`package/src/api/preflight.ts:398` at the pinned 0.40.0: `outputMode: input.outputMode ??
-"inline"`), meaning the child's result resolves back to the caller as text rather than being
+(`package/src/shared/settings.ts:387` at the pinned 0.60.0: `task.outputMode ?? config.outputMode
+?? "inline"`), meaning the child's result resolves back to the caller as text rather than being
 written to a file by the child. This holds the invariant by default — the orchestrator stays
-the sole writer as long as dispatch never sets `outputMode: "file-only"`. Do not set it for
-reviewer, verifier, or fixer children.
+the sole writer as long as dispatch never sets `outputMode: "file-only"` and no project/user
+`subagents` config sets a global `outputMode: "file-only"` default (the added
+`config.outputMode` term at this version); this repo's `pi/settings.json` sets no such config.
+Do not set it for reviewer, verifier, or fixer children.

@@ -1047,14 +1047,14 @@ function Install-Pi {
     if (Get-Command -Name pi -ErrorAction Ignore) {
         Write-Ok 'pi is already installed.'
     } elseif ($DryRun) {
-        Write-Info '[DRY RUN] would install Pi via npm (@mariozechner/pi-coding-agent)'
+        Write-Info '[DRY RUN] would install Pi via npm (@earendil-works/pi-coding-agent)'
     } else {
         if (-not (Get-Command -Name npm -ErrorAction Ignore)) {
             Write-Fail 'npm not found — Pi setup stopped before changing Pi configuration.'
             return
         }
         Write-Info 'Installing Pi via npm...'
-        & npm install --global '@mariozechner/pi-coding-agent'
+        & npm install --global '@earendil-works/pi-coding-agent'
         if ($LASTEXITCODE -ne 0 -or -not (Get-Command -Name pi -ErrorAction Ignore)) {
             Write-Fail 'Pi installation failed — no Pi configuration or resources were changed.'
             return

@@ -10,9 +10,9 @@ on its own.
 Each entry under `packages` pins an exact version (`npm:<name>@<version>`); Pi does not
 auto-update them. To bump a pin, edit the version in `settings.json`, verify the package still
 behaves as expected, then re-run `setup.ps1 -Module pi` (or `-Module ai-agents`) to project the
-change. The Pi CLI itself (`@mariozechner/pi-coding-agent`) is unpinned but only installed
+change. The Pi CLI itself (`@earendil-works/pi-coding-agent`) is unpinned but only installed
 once — setup skips the `npm install` when `pi` is already on PATH, so later runs never update
-it; bump it manually with `npm install --global @mariozechner/pi-coding-agent@latest`.
+it; bump it manually with `npm install --global @earendil-works/pi-coding-agent@latest`.
 Pi credentials and session/authentication state remain in Pi's user directory and are
 never copied by setup.
 
@@ -71,32 +71,49 @@ installed versions rather than a guessed command example.
 prior blocker (#95): its five expert-lens prompts (Practitioner, Academic, Skeptic, Economist,
 Historian) and its citation-verifier fan-out both dispatch as parallel children with distinct
 prompts and no per-child tool scoping — a lighter bar than `deep-review`'s per-dimension tool
-allowlists. On Pi, dispatch is `subagent({ tasks: [{ agent: "researcher", task: "<lens
-prompt>", output: false }, ...] })`, reusing the builtin `researcher` agent (already carrying
+allowlists. At the pinned `pi-subagents@0.60.0`, the top-level `tasks: [...]` call shape no
+longer exists: it was removed at 0.41.0 in favor of `workflowScript` as the sole public
+multi-agent orchestration surface (confirmed in the package's own `CHANGELOG.md` and in
+`src/extension/schemas.ts`, whose public call schema carries no `tasks` field). Dispatch is now
+`subagent({ workflowScript: "return runs.all([{ key: 'lens-1', agent: 'researcher', task: '<lens
+prompt>', output: false }, ...]);" })`, reusing the builtin `researcher` agent (already carrying
 `pi-web-access`'s tools) five times with distinct `task` strings rather than a new custom
 agent, since this repo has no `pi/agents/` projection to discover one; `output: false`
 overrides `researcher`'s default `output: research.md` so results return inline instead of
-colliding on one shared file. See `ai-agents/skills/storm-research/DISPATCH.md` for the full
-per-runtime contract. The `tasks` call shape is source-verified against the installed
-`pi-subagents@0.40.0` package's own shipped `README.md`, not executed as a live smoke test: a
-direct `pi -p` probe against the only authenticated provider here (`openai-codex`, OAuth)
-returned `Codex error: The usage limit has been reached` for every model and every prompt
-tried, including a bare `--no-tools` call, while `pi auth check --provider openai-codex`
-reported `{"status": "ready"}` — an account-wide usage-limit block, not a credentials problem.
-Retry the smoke test (call `subagent` with 2+ distinct-prompt `tasks` entries) once the limit
-clears before relying on this skill for a real run.
+colliding on one shared file. `output` is a recognized per-item `runs.all` param at this
+version (`src/workflows/scripted-workflow.ts`'s `AUTO_RESUME_PARAM_KEYS` lists it alongside
+`outputMode`), so the override still applies. See `ai-agents/skills/storm-research/DISPATCH.md`
+for the full per-runtime contract. This `workflowScript`/`runs.all` call shape is
+source-verified against the installed `pi-subagents@0.60.0` package's own shipped source and
+`docs/workflows.md`, not executed as a live smoke test: a direct `pi -p` probe against the only
+authenticated provider here (`openai-codex`, OAuth) returned `Codex error: The usage limit has
+been reached` for every model and every prompt tried, including a bare `--no-tools` call, while
+`pi auth check --provider openai-codex` reported `{"status": "ready"}` — an account-wide
+usage-limit block, not a credentials problem. Retry the smoke test (call `subagent` with a
+`workflowScript` containing 2+ distinct-prompt `runs.all` entries) once the limit clears before
+relying on this skill for a real run.
 
 `quick-review`, `deep-review`, `review-fix-loop`, and `fix-findings` (the review→fix skill set)
 are portable too, projected here from `ai-agents/skills/` alongside `council`. `deep-review`'s
 seven reviewer dimensions need something `council`'s symmetric critics don't: a distinct
 read-only tool allowlist per dimension. On Pi this is expressed as each spawned child's `tools:`
-frontmatter — confirmed present in the pinned `pi-subagents@0.40.0` shipped source
-(`RunnerSubagentStep.tools?: string[]`) — per the (derived, not transcribed from `dimensions.md`)
-mapping in `ai-agents/skills/deep-review/DISPATCH.md`. Dispatch uses ad-hoc multi-call rather
-than the scripted `runs.all`/`workflowScript` API, reasoned from `council`'s unscripted
-isolated-worker contract plus pinned-source evidence — not from a live Pi run driven this
-session; see DISPATCH.md for the source-verified-vs-live-smoke-tested distinction behind that
-choice. The
+frontmatter — confirmed present in the pinned `pi-subagents@0.60.0` shipped source
+(`RunnerSubagentStep.tools?: string[]`, `src/runs/shared/parallel-utils.ts`) — per the (derived,
+not transcribed from `dimensions.md`) mapping in `ai-agents/skills/deep-review/DISPATCH.md`.
+`tools` is an agent-definition frontmatter field, not a per-call parameter, at this version too
+(there is no `tools` field on the public `subagent` tool-call schema), so the dispatch mechanism
+is unaffected by 0.41.0 removing the top-level `tasks[]` call shape (see the `storm-research`
+paragraph above). Dispatch uses ad-hoc multi-call rather than the scripted `runs.all`/
+`workflowScript` API, reasoned from `council`'s unscripted isolated-worker contract plus
+pinned-source evidence — not from a live Pi run driven this session; see DISPATCH.md for the
+source-verified-vs-live-smoke-tested distinction behind that choice. This choice held up well:
+`workflowScript` is now the *only* way to batch several children in one call, since `tasks[]`
+and `runs.all` are no longer alternatives but the sole surface, so ad-hoc multi-call (repeated
+single-child `subagent({ agent, task })` calls in one turn) remains the simpler, still-valid
+path deep-review always used. The
 findings store's sole-writer invariant (reviewers/fixers return text, never write the store
 themselves) holds under Pi because a child's `outputMode` defaults to `"inline"` at the pinned
-version, confirmed in source (`package/src/api/preflight.ts`).
+version, confirmed in source (`src/shared/settings.ts`: `task.outputMode ?? config.outputMode ??
+"inline"`). Note the added `config.outputMode` term: a project or user `subagents` config could
+set a global `outputMode: "file-only"` default, which would override this default for every
+child; this repo's `pi/settings.json` sets no such config, so the invariant holds as installed.

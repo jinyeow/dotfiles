@@ -9,8 +9,8 @@
   "defaultProjectTrust": "always",
   "packages": [
     "npm:@sherif-fanous/pi-catppuccin@0.2.0",
-    "npm:pi-web-access@0.17.1",
+    "npm:pi-web-access@0.27.0",
     "npm:pi-ask-user@0.13.1",
-    "npm:pi-subagents@0.40.0"
+    "npm:pi-subagents@0.60.0"
   ]
 }
