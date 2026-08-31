@@ -52,7 +52,13 @@ is portable too: it only orchestrates calls into `to-spec`, `to-tickets`, `dispa
 `review-fix-loop`, and `to-pullrequest` — all already portable or tracked as such — so it carries
 no runtime-specific mechanics of its own. It inherits `dispatch-implement`'s current Claude-Code-
 only dispatch and sequential-only gate at each frontier batch until that skill's own blockers
-clear.
+clear. `critique-plan`
+is portable too, and new: it dispatches one isolated read-only subagent to critique a drafted
+plan against the domain model, reusing `grill-with-docs`' `CONTEXT.md`/`ADR-FORMAT.md`/
+`CONTEXT-FORMAT.md` conventions rather than a runtime-specific mechanism. Marked trial in
+`ai-agents/README.md` — adapted from
+[ayoubben18/ab-method](https://github.com/ayoubben18/ab-method) (MIT); not yet a settled
+convention.
 
 ## Portable support (`ai-agents/skills/_shared/`)
 

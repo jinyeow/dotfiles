@@ -52,6 +52,7 @@ own `SKILL.md` frontmatter, trimmed to one line. Claude-native skills live in `.
 - **`council-code`** — Thin council alias for technical designs, ADRs, APIs, and approach documents.
 - **`council-doc`** — Thin council alias for presentations, proposals, and important documents.
 - **`council-plan`** — Thin council alias for project plans, roadmaps, and migrations.
+- **`critique-plan`** *(trial)* — Stress-test a drafted plan against the project's domain model before any code is written: terminology drift, wrong bounded context, ADR contradictions, bad dependency edges, reinvented concepts. Adapted from [ayoubben18/ab-method](https://github.com/ayoubben18/ab-method) (MIT).
 - **`deep-review`** — Heavy multi-dimension cross-model code review of a branch diff or PR, the opt-in deep pass, not the default.
 - **`diagnosing-bugs`** — Diagnosis loop for hard bugs and performance regressions.
 - **`dispatch-implement`** — Dispatch one subagent per ticket to run `/implement` on it.
