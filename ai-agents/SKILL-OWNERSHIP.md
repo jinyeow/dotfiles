@@ -54,11 +54,15 @@ no runtime-specific mechanics of its own. It inherits `dispatch-implement`'s cur
 only dispatch and sequential-only gate at each frontier batch until that skill's own blockers
 clear. `critique-plan`
 is portable too, and new: it dispatches one isolated read-only subagent to critique a drafted
-plan against the domain model, reusing `grill-with-docs`' `CONTEXT.md`/`ADR-FORMAT.md`/
+plan against the domain model, reusing `domain-modeling`'s `CONTEXT.md`/`ADR-FORMAT.md`/
 `CONTEXT-FORMAT.md` conventions rather than a runtime-specific mechanism. Marked trial in
 `ai-agents/README.md` — adapted from
 [ayoubben18/ab-method](https://github.com/ayoubben18/ab-method) (MIT); not yet a settled
-convention.
+convention. `domain-modeling` is portable too, split out of `grill-with-docs` to match
+[mattpocock/skills](https://github.com/mattpocock/skills)' current design: the CONTEXT.md/ADR
+discipline stands on its own, independently model-invocable, while `grilling` (also
+mattpocock/skills) carries the interview mechanics and `grill-with-docs` is now a thin pointer
+skill invoking both. No runtime-specific mechanism involved.
 
 ## Portable support (`ai-agents/skills/_shared/`)
 

@@ -104,8 +104,9 @@ Not sure which one fits? Run `/router` — a manual index that maps these as flo
 
 | Skill | Source | Purpose |
 |---|---|---|
-| `grill-with-docs` | mattpocock/skills | Stateful grilling against the domain model; updates `CONTEXT.md`/ADRs inline |
-| `grilling` | mattpocock/skills | Stateless relentless-interview primitive to stress-test a plan |
+| `grill-with-docs` | mattpocock/skills | Thin pointer invoking `grilling` and `domain-modeling` together |
+| `grilling` | mattpocock/skills | Relentless-interview primitive to stress-test a plan, in batched frontier rounds |
+| `domain-modeling` | mattpocock/skills | Challenge terminology against `CONTEXT.md`, sharpen fuzzy language, record ADRs |
 | `prototype` | mattpocock/skills | Throwaway prototype for a state/logic question or UI exploration |
 | `to-spec` | mattpocock/skills | Turn the conversation into a spec |
 | `to-hld` | local | Turn the discussion into a high-level design doc — decisions + mermaid |

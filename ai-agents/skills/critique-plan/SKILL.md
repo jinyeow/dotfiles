@@ -23,7 +23,7 @@ tracker, or whatever the user pastes in standalone.
 
 Read only what exists; skip missing files silently — don't flag them or offer to create them.
 Look for `CONTEXT.md` (or `CONTEXT-MAP.md` plus each context's own `CONTEXT.md`, per
-[grill-with-docs](../grill-with-docs/SKILL.md#file-structure)) and `docs/adr/`.
+[domain-modeling](../domain-modeling/SKILL.md#file-structure)) and `docs/adr/`.
 
 If neither exists, say so in one line and stop — there is no domain model to critique against.
 
@@ -73,14 +73,14 @@ Bring the pushbacks back into the planning session. The user resolves each their
 - **Accept** → amend the plan (rename, re-scope, fix the edge, move contexts) right there.
 - **Dismiss** → drop it. If the dismissal rests on a load-bearing reason a future planner would
   need in order not to re-raise it, offer to record an ADR using
-  [grill-with-docs' ADR-FORMAT.md](../grill-with-docs/ADR-FORMAT.md). Skip ephemeral ("not now")
+  [domain-modeling's ADR-FORMAT.md](../domain-modeling/ADR-FORMAT.md). Skip ephemeral ("not now")
   and self-evident reasons.
 
 When a resolution sharpens a term, update `CONTEXT.md` inline using
-[grill-with-docs' CONTEXT-FORMAT.md](../grill-with-docs/CONTEXT-FORMAT.md).
+[domain-modeling's CONTEXT-FORMAT.md](../domain-modeling/CONTEXT-FORMAT.md).
 
 If the critic returned "No objections," say so in one line and move on. Don't pad it.
 
-`grill-with-docs`/`grilling` is a full interactive re-grill of the design; `critique-plan` is a
+`grilling`/`domain-modeling` is a full interactive re-grill of the design; `critique-plan` is a
 single-pass, silent-by-default gate — one critic, real conflicts only, then straight back to the
 workflow.

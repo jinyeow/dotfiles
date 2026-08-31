@@ -56,9 +56,10 @@ own `SKILL.md` frontmatter, trimmed to one line. Claude-native skills live in `.
 - **`deep-review`** — Heavy multi-dimension cross-model code review of a branch diff or PR, the opt-in deep pass, not the default.
 - **`diagnosing-bugs`** — Diagnosis loop for hard bugs and performance regressions.
 - **`dispatch-implement`** — Dispatch one subagent per ticket to run `/implement` on it.
+- **`domain-modeling`** — Build and sharpen a project's domain model: challenge terminology against `CONTEXT.md`, sharpen fuzzy language, and record ADRs as decisions crystallise.
 - **`fix-findings`** — Apply fixes for findings produced by quick-review or deep-review.
-- **`grilling`** — Interview the user relentlessly about a plan or design until reaching shared understanding, resolving each branch of the decision tree.
-- **`grill-with-docs`** — Grilling session that challenges your plan against the existing domain model, sharpens terminology, and updates documentation (CONTEXT.md, ADRs) inline as decisions crystallise.
+- **`grilling`** — Interview the user relentlessly about a plan or design until reaching shared understanding, resolving each branch of the decision tree in batched frontier rounds.
+- **`grill-with-docs`** — Thin pointer invoking `grilling` and `domain-modeling` together for a grilling session that also updates documentation (CONTEXT.md, ADRs) inline as decisions crystallise.
 - **`health`** — Manual engineering health audit of your agent setup: Claude/Codex config drift, hooks, MCP, skills, memory and skill supply-chain security, and AI-maintainability drift.
 - **`i-have-adhd`** — Shape output for a reader with ADHD: lead with the next action, number multi-step work, restate state across turns, suppress tangents, give specific time estimates, make wins visible. `disable-model-invocation: true` — invoke explicitly with `/i-have-adhd`; stays on until "stop adhd mode". Adapted from [ayghri/i-have-adhd](https://github.com/ayghri/i-have-adhd) (MIT).
 - **`implement`** — Implement a piece of work from a spec or set of tickets: TDD at agreed seams, review, then commit.
