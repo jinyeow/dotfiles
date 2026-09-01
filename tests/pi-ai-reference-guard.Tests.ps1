@@ -13,14 +13,19 @@
 #   - each of the five command shapes (git commit, gh pr create/edit, az repos pr
 #     create/update, az boards, az devops invoke) denies only when combined with a
 #     wordlist match, and allows the same shape without one
-#   - `git commit --no-verify`/`-n` and `git push --no-verify` deny unconditionally, with
-#     no wordlist match required
-#   - a missing/unreadable wordlist fails CLOSED (loadWordlistPatterns throws; this suite
-#     exercises that by feeding matchCommand an empty pattern list only where explicitly
-#     testing wordlist-driven behavior — the fail-closed path itself is exercised by
-#     invoking the real extension module's default export against a nonexistent wordlist
-#     path via node, not by calling matchCommand directly, since matchCommand itself never
-#     touches the filesystem)
+#   - `git commit --no-verify`/`-n` (isolated or clustered with another short flag, e.g.
+#     `-nm`) and `git push --no-verify` deny unconditionally, with no wordlist match
+#     required
+#   - a missing/unreadable wordlist fails CLOSED. This is exercised two ways: (1) the
+#     synthetic case — parseWordlist fed a nonexistent path throws, verified directly; and
+#     (2) genuinely, by extracting resolveWordlistPath/loadWordlistPatterns and the real
+#     default export's tool_call handler verbatim from the source and running them in node
+#     against a real (non-mocked) filesystem — a fake HOME with no wordlist file produces
+#     the handler's real `{ block: true, reason }` shape naming the attempted path, and a
+#     fake HOME with the wordlist present at the homedir fallback candidate
+#     (`~/.pi/agent/banned-ai-terms.txt`) resolves and loads it successfully even though the
+#     relative-to-module candidate is absent — the real-world shape of the pi/extensions/
+#     junction-resolution bug this fallback fixes
 #   - non-git and unrelated read-only commands pass through
 #   - a banned term sitting inside actual commit-message/title/body prose (a quoted span)
 #     is still caught — scrubbing must not scrub away a real banned term in the message
@@ -30,12 +35,15 @@
 #     dev.azure.com AND HollardInsuranceRetail, and only then does matchCommand's own
 #     wordlist/no-verify/SKIP-var logic apply — exercised against real throwaway repos
 #     (mirroring tests/git-templates-ai-reference-hook.Tests.ps1's New-TestRepo pattern),
-#     not mocked, since matchCommand itself has no filesystem/process dependency to mock
+#     not mocked, since matchCommand itself has no filesystem/process dependency to mock.
+#     This also covers a command carrying its own `git -C <path>` target: scoping follows
+#     that path's origin, not process.cwd()'s
 #   - `--discussion`, `--text`, and `--query-parameters` are recognized message-flag shapes
 #     alongside the existing -m/--title/--body/--fields/--route-parameters set
 #   - SKIP_AI_REFERENCE_SCAN=1 / SKIP_GITLEAKS=1 still deny even when the value is quoted
 #     (`SKIP_GITLEAKS='1'`), which would otherwise be scrubbed away by scrubQuoted before
-#     the old pattern ever saw it
+#     the old pattern ever saw it, and even when the assignment sits on its own line of a
+#     multi-line command string (`"true\nSKIP_AI_REFERENCE_SCAN=1 git commit -m \"clean\""`)
 
 BeforeAll {
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
@@ -83,7 +91,8 @@ function stripTypes(body) {
         .replace(/:\s*string\[\]/g, "")
         .replace(/:\s*string(?:\s*\|\s*undefined)?/g, "")
         .replace(/:\s*RegExpExecArray\s*\|\s*null/g, "")
-        .replace(/:\s*RegExp\[\]/g, "");
+        .replace(/:\s*RegExp\[\]/g, "")
+        .replace(/\s+as\s+Error/g, "");
 }
 
 const commitShapedSrc = extractBlock(/const COMMIT_SHAPED_PATTERNS: RegExp\[\] = \[([\s\S]*?)\n\];/, "COMMIT_SHAPED_PATTERNS");
@@ -125,6 +134,7 @@ const commands = JSON.parse(readFileSync(commandsPath, "utf8"));
 const results = commands.map((command) => ({
     command,
     reason: matchCommand(command, wordlistPatterns, scrubQuoted, collectQuotedContent, COMMIT_SHAPED_PATTERNS, NO_VERIFY_PATTERNS) ?? null,
+    collected: collectQuotedContent(command),
 }));
 
 process.stdout.write(JSON.stringify(results));
@@ -154,9 +164,32 @@ process.stdout.write(JSON.stringify(results));
         return $results
     }
 
-    # Second node harness: extracts the real isRepoScopedIn function body verbatim and
-    # evaluates it against a real cwd, using node's own execSync (not a mock) so
-    # `git remote get-url origin` runs for real — mirrors
+    # Same node harness, but returns the real collectQuotedContent(command) string keyed
+    # by command — used to verify wordlist-VALUE extraction directly (e.g. a clustered
+    # -nm's message value), independent of whether NO_VERIFY_PATTERNS also denies the
+    # same command outright.
+    function Invoke-CollectQuotedContent {
+        param([string[]] $Command)
+
+        $commandsPath = Join-Path $TestDrive ([System.IO.Path]::GetRandomFileName())
+        $Command | ConvertTo-Json -Compress -AsArray | Set-Content -Path $commandsPath -NoNewline -Encoding utf8
+
+        $output = & node $script:NodeHarness $script:ExtensionFile $script:WordlistFile $commandsPath
+        if ($LASTEXITCODE -ne 0) {
+            throw "node harness failed: $output"
+        }
+
+        $results = @{}
+        foreach ($entry in ($output | ConvertFrom-Json)) {
+            $results[$entry.command] = $entry.collected
+        }
+        return $results
+    }
+
+    # Second node harness: extracts the real isRepoScopedIn AND extractDashCPath function
+    # bodies verbatim and evaluates them against a real cwd, using node's own execSync
+    # (not a mock) so `git remote get-url origin` (or `git -C <path> remote get-url
+    # origin` when the command carries its own -C target) runs for real — mirrors
     # tests/git-templates-ai-reference-hook.Tests.ps1's approach of driving the shipped
     # logic against real throwaway repos rather than mocking git.
     $script:RepoScopeHarness = Join-Path $TestDrive 'run-repo-scoped.mjs'
@@ -164,22 +197,31 @@ process.stdout.write(JSON.stringify(results));
 import { readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 
-const [, , extensionPath, cwd] = process.argv;
+const [, , extensionPath, cwd, command] = process.argv;
 const source = readFileSync(extensionPath, "utf8");
 
-const match = source.match(/function isRepoScopedIn\(cwd: string\): boolean \{([\s\S]*?)\n\}/);
-if (!match) {
-    throw new Error("isRepoScopedIn not found in " + extensionPath);
+function extractBlock(pattern, label) {
+    const found = source.match(pattern);
+    if (!found) {
+        throw new Error(label + " not found in " + extensionPath);
+    }
+    return found[1];
 }
-const body = match[1].replace(/:\s*string/g, "");
-const isRepoScopedIn = new Function("cwd", "execSync", body);
 
-process.stdout.write(JSON.stringify(isRepoScopedIn(cwd, execSync)));
+const dashCPathBody = extractBlock(/function extractDashCPath\(command: string\): string \| undefined \{([\s\S]*?)\n\}/, "extractDashCPath")
+    .replace(/:\s*string/g, "");
+const isRepoScopedInBody = extractBlock(/function isRepoScopedIn\(cwd: string, command: string\): boolean \{([\s\S]*?)\n\}/, "isRepoScopedIn")
+    .replace(/:\s*string/g, "");
+
+const extractDashCPath = new Function("command", dashCPathBody);
+const isRepoScopedIn = new Function("cwd", "command", "execSync", "extractDashCPath", isRepoScopedInBody);
+
+process.stdout.write(JSON.stringify(isRepoScopedIn(cwd, command ?? "", execSync, extractDashCPath)));
 '@ | Set-Content -Path $script:RepoScopeHarness -NoNewline -Encoding utf8
 
     function Invoke-IsRepoScopedIn {
-        param([string] $Cwd)
-        $output = & node $script:RepoScopeHarness $script:ExtensionFile $Cwd
+        param([string] $Cwd, [string] $Command = 'git commit -m "fix"')
+        $output = & node $script:RepoScopeHarness $script:ExtensionFile $Cwd $Command
         if ($LASTEXITCODE -ne 0) {
             throw "node harness failed: $output"
         }
@@ -202,6 +244,152 @@ process.stdout.write(JSON.stringify(isRepoScopedIn(cwd, execSync)));
     $script:HollardHttps = 'https://dev.azure.com/HollardInsuranceRetail/Proj/_git/Repo'
     $script:HollardSsh = 'git@ssh.dev.azure.com:v3/HollardInsuranceRetail/Proj/Repo'
     $script:GitHubUrl = 'https://github.com/jinyeow/dotfiles.git'
+
+    # Third node harness: exercises the real DEFAULT_WORDLIST_PATH-resolution fallback and
+    # the real default export's tool_call handler verbatim from the source, against a real
+    # (non-mocked) filesystem and a real, controllable HOME — this is what makes it a
+    # genuine test of item 4's fix rather than a synthetic missing-file case. It:
+    #   - reconstructs RELATIVE_WORDLIST_PATH the same way the real source does
+    #     (`new URL("../banned-ai-terms.txt", import.meta.url)`), but rooted at the real
+    #     extension file's own path (accurate for running the file directly, un-junctioned
+    #     — this repo genuinely ships no pi/banned-ai-terms.txt, so this candidate always
+    #     misses here, faithfully reproducing the junction-broken scenario without having
+    #     to fake a Windows junction)
+    #   - reconstructs HOMEDIR_WORDLIST_PATH from node's own (possibly HOME/USERPROFILE-
+    #     overridden) homedir(), exactly as the real source does
+    #   - extracts resolveWordlistPath, loadWordlistPatterns, isToolCallEventType-stubbed
+    #     tool_call handler (the arrow function body inside the real default export),
+    #     parseWordlist, scrubQuoted, collectQuotedContent, matchCommand, and the pattern
+    #     arrays verbatim from the source, and runs the real handler against a stubbed
+    #     always-in-scope isRepoScopedIn (repo scoping itself is exercised separately above)
+    #   - returns the resolved wordlist path plus the handler's real return value, so a
+    #     test can assert on the actual `{ block: true, reason }` shape or `undefined`
+    $script:WordlistResolutionHarness = Join-Path $TestDrive 'run-wordlist-resolution.mjs'
+    @'
+import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+
+const [, , extensionPath, homeOverride, command] = process.argv;
+if (homeOverride) {
+    process.env.HOME = homeOverride;
+    process.env.USERPROFILE = homeOverride;
+}
+
+const source = readFileSync(extensionPath, "utf8");
+
+function extractBlock(pattern, label) {
+    const found = source.match(pattern);
+    if (!found) {
+        throw new Error(label + " not found in " + extensionPath);
+    }
+    return found[1];
+}
+
+function stripTypes(body) {
+    return body
+        .replace(/:\s*string\[\]/g, "")
+        .replace(/:\s*string(?:\s*\|\s*undefined)?/g, "")
+        .replace(/:\s*RegExpExecArray\s*\|\s*null/g, "")
+        .replace(/:\s*RegExp\[\]/g, "")
+        .replace(/\s+as\s+Error/g, "");
+}
+
+// Mirrors the real source's own construction (see ai-reference-guard.ts's
+// DEFAULT_WORDLIST_CANDIDATES block) exactly, just rooted at this process's real
+// extensionPath/homedir() instead of an ES module's own import.meta.url.
+const RELATIVE_WORDLIST_PATH = new URL("../banned-ai-terms.txt", pathToFileURL(extensionPath));
+const HOMEDIR_WORDLIST_PATH = join(homedir(), ".pi", "agent", "banned-ai-terms.txt");
+const DEFAULT_WORDLIST_CANDIDATES = [RELATIVE_WORDLIST_PATH, HOMEDIR_WORDLIST_PATH];
+
+const resolveWordlistPathBody = stripTypes(extractBlock(/function resolveWordlistPath\(\): string \| URL \{([\s\S]*?)\n\}/, "resolveWordlistPath"));
+const loadWordlistPatternsBody = stripTypes(extractBlock(/function loadWordlistPatterns\(\): RegExp\[\] \{([\s\S]*?)\n\}/, "loadWordlistPatterns"));
+const parseWordlistBody = stripTypes(extractBlock(/function parseWordlist\(text: string\): RegExp\[\] \{([\s\S]*?)\n\}/, "parseWordlist"));
+const scrubQuotedBody = stripTypes(extractBlock(/function scrubQuoted\(command: string\): string \{([\s\S]*?)\n\}/, "scrubQuoted"));
+const collectQuotedContentBody = stripTypes(extractBlock(/function collectQuotedContent\(command: string\): string \{([\s\S]*?)\n\}/, "collectQuotedContent"));
+const matchCommandBody = stripTypes(extractBlock(/function matchCommand\(command: string, wordlistPatterns: RegExp\[\]\): string \| undefined \{([\s\S]*?)\n\}/, "matchCommand"));
+const commitShapedSrc = extractBlock(/const COMMIT_SHAPED_PATTERNS: RegExp\[\] = \[([\s\S]*?)\n\];/, "COMMIT_SHAPED_PATTERNS");
+const noVerifySrc = extractBlock(/const NO_VERIFY_PATTERNS: RegExp\[\] = \[([\s\S]*?)\n\];/, "NO_VERIFY_PATTERNS");
+
+const handlerStart = "export default function (pi: ExtensionAPI) {";
+const startIdx = source.indexOf(handlerStart);
+if (startIdx === -1) {
+    throw new Error("default export not found in " + extensionPath);
+}
+const onCallMatch = source
+    .slice(startIdx)
+    .match(/pi\.on\("tool_call", async \(event\) => \{([\s\S]*?)\n\t\}\);/);
+if (!onCallMatch) {
+    throw new Error("tool_call handler body not found in " + extensionPath);
+}
+const handlerBody = stripTypes(onCallMatch[1]);
+
+const COMMIT_SHAPED_PATTERNS = eval("[" + commitShapedSrc + "]");
+const NO_VERIFY_PATTERNS = eval("[" + noVerifySrc + "]");
+
+const scrubQuoted = new Function("command", scrubQuotedBody);
+const collectQuotedContent = new Function("command", collectQuotedContentBody);
+const parseWordlist = new Function("text", parseWordlistBody);
+const matchCommand = new Function(
+    "command",
+    "wordlistPatterns",
+    "scrubQuoted",
+    "collectQuotedContent",
+    "COMMIT_SHAPED_PATTERNS",
+    "NO_VERIFY_PATTERNS",
+    matchCommandBody,
+);
+const resolveWordlistPath = new Function("existsSync", "DEFAULT_WORDLIST_CANDIDATES", "process", resolveWordlistPathBody);
+const loadWordlistPatterns = new Function(
+    "resolveWordlistPath",
+    "readFileSync",
+    "parseWordlist",
+    "let cachedWordlistPatterns;\n" + loadWordlistPatternsBody,
+);
+// isRepoScopedIn is stubbed always-true here — repo scoping itself is exercised
+// separately (see Invoke-IsRepoScopedIn above) against real throwaway repos.
+const isToolCallEventType = () => true;
+const isRepoScopedIn = () => true;
+const handler = new Function(
+    "isToolCallEventType",
+    "isRepoScopedIn",
+    "loadWordlistPatterns",
+    "resolveWordlistPath",
+    "matchCommand",
+    "process",
+    "event",
+    handlerBody,
+);
+
+const resolvedPath = String(
+    resolveWordlistPath(existsSync, DEFAULT_WORDLIST_CANDIDATES, process),
+);
+const boundResolveWordlistPath = () => resolveWordlistPath(existsSync, DEFAULT_WORDLIST_CANDIDATES, process);
+const boundLoadWordlistPatterns = () => loadWordlistPatterns(boundResolveWordlistPath, readFileSync, parseWordlist);
+const boundMatchCommand = (cmd, wordlistPatterns) =>
+    matchCommand(cmd, wordlistPatterns, scrubQuoted, collectQuotedContent, COMMIT_SHAPED_PATTERNS, NO_VERIFY_PATTERNS);
+const result = handler(
+    isToolCallEventType,
+    isRepoScopedIn,
+    boundLoadWordlistPatterns,
+    boundResolveWordlistPath,
+    boundMatchCommand,
+    process,
+    { input: { command } },
+);
+
+process.stdout.write(JSON.stringify({ resolvedPath, result: result ?? null }));
+'@ | Set-Content -Path $script:WordlistResolutionHarness -NoNewline -Encoding utf8
+
+    function Invoke-WordlistResolutionHandler {
+        param([string] $HomeOverride, [string] $Command = 'git commit -m "fix"')
+        $output = & node $script:WordlistResolutionHarness $script:ExtensionFile $HomeOverride $Command
+        if ($LASTEXITCODE -ne 0) {
+            throw "node harness failed: $output"
+        }
+        return $output | ConvertFrom-Json
+    }
 }
 
 Describe 'pi/extensions/ai-reference-guard.ts' {
@@ -265,6 +453,7 @@ Describe 'pi/extensions/ai-reference-guard.ts' {
             @{ Command = 'git commit -m "fix" --no-verify' }
             @{ Command = 'git commit --no-verify -m "fix"' }
             @{ Command = 'git commit -m "fix" -n' }
+            @{ Command = 'git commit -nm "Generated with Claude"' }
             @{ Command = 'git push --no-verify origin main' }
             @{ Command = 'SKIP_AI_REFERENCE_SCAN=1 git commit -m "fix"' }
             @{ Command = 'SKIP_GITLEAKS=1 git commit -m "fix"' }
@@ -281,6 +470,12 @@ Describe 'pi/extensions/ai-reference-guard.ts' {
 
         It 'allows a chained command where -n belongs to a different subcommand, not commit' {
             $command = 'git commit -m "fix" && git log -n 1'
+            $results = Invoke-AiReferenceGuard -Command $command
+            $results[$command] | Should -BeFalse
+        }
+
+        It 'does not regress a clean -am clustered short flag (no n present)' {
+            $command = 'git commit -am "fix the login bug"'
             $results = Invoke-AiReferenceGuard -Command $command
             $results[$command] | Should -BeFalse
         }
@@ -382,6 +577,91 @@ Describe 'pi/extensions/ai-reference-guard.ts' {
             param($Command)
             $results = Invoke-AiReferenceGuard -Command $Command
             $results[$Command] | Should -BeTrue
+        }
+    }
+
+    Context 'SKIP-var deny survives a newline-separated segment' {
+        It 'blocks <Command>' -TestCases @(
+            @{ Command = "true`nSKIP_AI_REFERENCE_SCAN=1 git commit -m ""clean""" }
+            @{ Command = "true`nSKIP_GITLEAKS=1 git commit -m ""clean""" }
+        ) {
+            param($Command)
+            $results = Invoke-AiReferenceGuard -Command $Command
+            $results[$Command] | Should -BeTrue
+        }
+
+        It 'does not false-positive on prose that mentions the var name across a newline without an assignment' {
+            $command = "This fixes the login bug`nrelated to SKIP_GITLEAKS handling elsewhere"
+            $results = Invoke-AiReferenceGuard -Command $command
+            $results[$command] | Should -BeFalse
+        }
+    }
+
+    Context 'clustered -n short flag (e.g. -nm) is detected as --no-verify' {
+        It 'still finds the clustered -m message value via collectQuotedContent, matching -am' {
+            $commands = @('git commit -nm "msg"', 'git commit -am "msg"')
+            $collected = Invoke-CollectQuotedContent -Command $commands
+            $collected['git commit -nm "msg"'] | Should -Match 'msg'
+            $collected['git commit -am "msg"'] | Should -Match 'msg'
+        }
+    }
+
+    Context 'isRepoScopedIn follows a command''s own -C target over process.cwd()' {
+        It 'is scoped in via -C when cwd itself is unscoped' {
+            $hollardRepo = New-TestRepo -OriginUrl $script:HollardHttps
+            $unscopedCwd = New-TestRepo -OriginUrl $script:GitHubUrl
+            $command = "git -C ""$hollardRepo"" commit -m ""Generated with Claude"""
+            Invoke-IsRepoScopedIn -Cwd $unscopedCwd -Command $command | Should -BeTrue
+        }
+
+        It 'is scoped out via -C when the -C target is not Hollard, even if cwd is' {
+            $githubRepo = New-TestRepo -OriginUrl $script:GitHubUrl
+            $hollardCwd = New-TestRepo -OriginUrl $script:HollardHttps
+            $command = "git -C ""$githubRepo"" commit -m ""fix"""
+            Invoke-IsRepoScopedIn -Cwd $hollardCwd -Command $command | Should -BeFalse
+        }
+
+        It 'falls back to cwd when the command carries no -C flag' {
+            $hollardCwd = New-TestRepo -OriginUrl $script:HollardHttps
+            Invoke-IsRepoScopedIn -Cwd $hollardCwd -Command 'git commit -m "fix"' | Should -BeTrue
+        }
+    }
+
+    Context 'DEFAULT_WORDLIST_PATH resolution falls back past the junction-broken relative candidate' {
+        It 'fails closed with the real {block, reason} shape when neither candidate exists' {
+            $emptyHome = Join-Path $TestDrive ('empty-home-' + [guid]::NewGuid())
+            New-Item -ItemType Directory -Path $emptyHome -Force | Out-Null
+
+            $outcome = Invoke-WordlistResolutionHandler -HomeOverride $emptyHome -Command 'git commit -m "fix"'
+
+            $outcome.result | Should -Not -BeNullOrEmpty
+            $outcome.result.block | Should -BeTrue
+            $outcome.result.reason | Should -Match 'wordlist unreadable'
+        }
+
+        It 'resolves and loads the wordlist from the homedir fallback candidate when the relative one is missing' {
+            $fakeHome = Join-Path $TestDrive ('fake-home-' + [guid]::NewGuid())
+            $wordlistDir = Join-Path $fakeHome '.pi/agent'
+            New-Item -ItemType Directory -Path $wordlistDir -Force | Out-Null
+            Copy-Item -Path $script:WordlistFile -Destination (Join-Path $wordlistDir 'banned-ai-terms.txt')
+
+            $outcome = Invoke-WordlistResolutionHandler -HomeOverride $fakeHome -Command 'git commit -m "Generated with Claude"'
+
+            $outcome.resolvedPath | Should -Match 'fake-home.*\.pi[/\\]agent[/\\]banned-ai-terms\.txt'
+            $outcome.result | Should -Not -BeNullOrEmpty
+            $outcome.result.block | Should -BeTrue
+            $outcome.result.reason | Should -Match 'blocklist'
+        }
+
+        It 'allows a clean command when the homedir-fallback wordlist has no match' {
+            $fakeHome = Join-Path $TestDrive ('fake-home-clean-' + [guid]::NewGuid())
+            $wordlistDir = Join-Path $fakeHome '.pi/agent'
+            New-Item -ItemType Directory -Path $wordlistDir -Force | Out-Null
+            Copy-Item -Path $script:WordlistFile -Destination (Join-Path $wordlistDir 'banned-ai-terms.txt')
+
+            $outcome = Invoke-WordlistResolutionHandler -HomeOverride $fakeHome -Command 'git commit -m "fix the login bug"'
+
+            $outcome.result | Should -BeNullOrEmpty
         }
     }
 }

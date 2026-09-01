@@ -30,8 +30,10 @@
 // The wordlist file needs its own New-FileSymlink call in setup.ps1 (not this extension's
 // concern — see pi/README.md and the PR description for the exact call).
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { isToolCallEventType } from "@earendil-works/pi-coding-agent";
 
@@ -40,24 +42,73 @@ import { isToolCallEventType } from "@earendil-works/pi-coding-agent";
 // pi/extensions/, so a file placed inside it at runtime would show up as an untracked
 // file in the repo on every `setup.ps1 -Module pi` run), resolved relative to this
 // module's own location (not process.cwd(), which is unrelated to where Pi loaded this
-// file from). Overridable via PI_AI_REFERENCE_WORDLIST_PATH so tests can point at a
-// fixture file without depending on this machine's actual Pi projection under homedir()
-// — mirrors the PI_PROJECT_BRAIN_SESSION_START_SCRIPT override in
-// project-brain-autoload.ts.
-const DEFAULT_WORDLIST_PATH = new URL("../banned-ai-terms.txt", import.meta.url);
+// file from).
+//
+// Two candidates, tried in order, because Node's ESM loader may or may not resolve
+// import.meta.url THROUGH the pi/extensions/ junction (setup.ps1's `-Module pi`
+// New-Junction from ~/.pi/agent/extensions to this repo's pi/extensions/):
+//   1. RELATIVE_WORDLIST_PATH — "../banned-ai-terms.txt" relative to this module's
+//      resolved URL. Correct when the loader preserves the junctioned path
+//      (~/.pi/agent/extensions/ai-reference-guard.ts -> ~/.pi/agent/banned-ai-terms.txt,
+//      the real symlink setup.ps1 installs there).
+//   2. HOMEDIR_WORDLIST_PATH — the same installed path, but built directly from
+//      homedir() instead of import.meta.url. Correct when the loader instead resolves
+//      the junction to its target (this repo's real pi/extensions/ai-reference-guard.ts),
+//      in which case "../banned-ai-terms.txt" would miss entirely (there is no
+//      pi/banned-ai-terms.txt in this repo — it is never installed there).
+// Overridable via PI_AI_REFERENCE_WORDLIST_PATH so tests can point at a fixture file
+// without depending on either candidate — mirrors the
+// PI_PROJECT_BRAIN_SESSION_START_SCRIPT override in project-brain-autoload.ts.
+const RELATIVE_WORDLIST_PATH = new URL("../banned-ai-terms.txt", import.meta.url);
+const HOMEDIR_WORDLIST_PATH = join(homedir(), ".pi", "agent", "banned-ai-terms.txt");
+const DEFAULT_WORDLIST_CANDIDATES: (string | URL)[] = [RELATIVE_WORDLIST_PATH, HOMEDIR_WORDLIST_PATH];
+
+// Picks the wordlist path to read: the env override when set, else the first candidate
+// that exists on disk, else the first candidate (so a fail-closed error message names a
+// real attempted path rather than an empty string).
+function resolveWordlistPath(): string | URL {
+	const override = process.env.PI_AI_REFERENCE_WORDLIST_PATH;
+	if (override) {
+		return override;
+	}
+	for (const candidate of DEFAULT_WORDLIST_CANDIDATES) {
+		if (existsSync(candidate)) {
+			return candidate;
+		}
+	}
+	return DEFAULT_WORDLIST_CANDIDATES[0];
+}
+
+// Extracts a leading `git -C <path>` global flag's value from the raw command, if
+// present — quoted or bare. Deliberately does NOT track `cd <path> &&` shell state (out
+// of scope: this is a single regex over the command string, not a shell interpreter).
+function extractDashCPath(command: string): string | undefined {
+	const match = /(?:^|\s)-C(?:=|\s+)("(?:[^"\\]|\\.)*"|'[^']*'|\S+)/.exec(command);
+	if (!match) {
+		return undefined;
+	}
+	const raw = match[1];
+	const doubleQuoted = /^"(.*)"$/.exec(raw);
+	const singleQuoted = /^'(.*)'$/.exec(raw);
+	return doubleQuoted ? doubleQuoted[1] : singleQuoted ? singleQuoted[1] : raw;
+}
 
 // Repo scoping, mirroring git/templates/hooks/pre-commit's own scoping (see that file's
 // AI-reference section): this whole extension only applies inside a Hollard/Azure DevOps
-// remote repo. `git remote get-url origin` runs against cwd (the extension's own
-// inherited working directory, same as the bash ports use their inherited cwd). If it
-// throws (not a repo, no origin) or the URL isn't both dev.azure.com AND
-// HollardInsuranceRetail (case-insensitive), the repo is out of scope — a GitHub repo
-// like dotfiles/wiki/brain legitimately says "Claude"/"Codex" in its own subject matter
-// and must stay unscanned.
-function isRepoScopedIn(cwd: string): boolean {
+// remote repo. `git remote get-url origin` runs against the command's own `-C <path>`
+// target when the command carries one (e.g. `git -C E:/work/HollardRepo commit ...`
+// run from an unscoped cwd) — otherwise against cwd (the extension's own inherited
+// working directory, same as the bash ports use their inherited cwd). If it throws (not
+// a repo, no origin) or the URL isn't both dev.azure.com AND HollardInsuranceRetail
+// (case-insensitive), the repo is out of scope — a GitHub repo like dotfiles/wiki/brain
+// legitimately says "Claude"/"Codex" in its own subject matter and must stay unscanned.
+function isRepoScopedIn(cwd: string, command: string): boolean {
+	const dashCPath = extractDashCPath(command);
 	let originUrl: string;
 	try {
-		originUrl = execSync("git remote get-url origin", { cwd, encoding: "utf8" });
+		originUrl = dashCPath
+			? execSync(`git -C "${dashCPath}" remote get-url origin`, { encoding: "utf8" })
+			: execSync("git remote get-url origin", { cwd, encoding: "utf8" });
 	} catch {
 		return false;
 	}
@@ -174,13 +225,16 @@ const COMMIT_SHAPED_PATTERNS: RegExp[] = [
 // Unconditional denies: these bypass the commit/push hooks that would otherwise catch a
 // banned reference, regardless of wordlist content. -n is git commit's own --no-verify
 // short flag; git push's own -n means --dry-run, not --no-verify, so the alternation is
-// deliberately NOT shared across both commands. The `[^;&|]*` gap between the subcommand
-// and the flag keeps the match scoped to the same shell segment (mirrors
-// codex/ai-reference-guard.sh's sibling bound and its regression test) — without it, a
-// chained `git commit -m "fix" && git log -n 1` would match `-n` from the unrelated `log`
-// segment and deny a perfectly clean chained command.
+// deliberately NOT shared across both commands. `-n` is detected as part of ANY
+// dash-prefixed short-flag cluster containing the letter n (`-(?!-)[A-Za-z]*n[A-Za-z]*\b`
+// — a single leading `-`, not `--`), not just an isolated `-n`, so `git commit -nm
+// "Generated with Claude"` (-n clustered with -m) is caught the same way an isolated -n
+// is. The `[^;&|]*` gap between the subcommand and the flag keeps the match scoped to the
+// same shell segment (mirrors codex/ai-reference-guard.sh's sibling bound and its
+// regression test) — without it, a chained `git commit -m "fix" && git log -n 1` would
+// match `-n` from the unrelated `log` segment and deny a perfectly clean chained command.
 const NO_VERIFY_PATTERNS: RegExp[] = [
-	/git\s+(.*\s+)?commit\s[^;&|]*(--no-verify|-n\b)/,
+	/git\s+(.*\s+)?commit\s[^;&|]*(--no-verify|-(?!-)[A-Za-z]*n[A-Za-z]*\b)/,
 	/git\s+(.*\s+)?push\s[^;&|]*--no-verify/,
 ];
 
@@ -197,8 +251,14 @@ function matchCommand(command: string, wordlistPatterns: RegExp[]): string | und
 	// (`SKIP_GITLEAKS='1' git commit ...`) would otherwise have its "1" scrubbed away
 	// before this pattern ever saw it, even though the underlying shell hook still sees the
 	// unquoted value (the shell strips the quotes). Anchored to an actual shell-assignment
-	// shape so it doesn't false-match unrelated prose containing this text.
-	const skipVarPattern = /(^|[;&|]\s*|export\s+|env\s+)SKIP_(AI_REFERENCE_SCAN|GITLEAKS)=['"]?1['"]?\b/;
+	// shape so it doesn't false-match unrelated prose containing this text. The `m` flag
+	// plus `\n` in the anchor class makes `^` (and the explicit `\n` alternative) match
+	// after a newline too — a real multi-line command string
+	// (`"true\nSKIP_AI_REFERENCE_SCAN=1 git commit -m \"clean\""`) starts a new segment at
+	// each line the same way `;`/`&`/`|` do, so an assignment on its own line must still
+	// deny. The assignment shape itself (`SKIP_X=1` with no intervening text) is unchanged,
+	// so prose that merely mentions the variable name after a newline still doesn't match.
+	const skipVarPattern = /(^|[;&|]\s*|export\s+|env\s+|\n)SKIP_(AI_REFERENCE_SCAN|GITLEAKS)=['"]?1['"]?\b/m;
 	if (skipVarPattern.test(command)) {
 		return `Blocked: does not have authority to run "${command}" — this command bypasses commit/push verification hooks.`;
 	}
@@ -235,7 +295,7 @@ function loadWordlistPatterns(): RegExp[] {
 	if (cachedWordlistPatterns) {
 		return cachedWordlistPatterns;
 	}
-	const wordlistPath = process.env.PI_AI_REFERENCE_WORDLIST_PATH ?? DEFAULT_WORDLIST_PATH;
+	const wordlistPath = resolveWordlistPath();
 	const text = readFileSync(wordlistPath, "utf8");
 	cachedWordlistPatterns = parseWordlist(text);
 	return cachedWordlistPatterns;
@@ -247,17 +307,17 @@ export default function (pi: ExtensionAPI) {
 			return;
 		}
 
-		if (!isRepoScopedIn(process.cwd())) {
+		const command = event.input.command;
+
+		if (!isRepoScopedIn(process.cwd(), command)) {
 			return;
 		}
-
-		const command = event.input.command;
 
 		let wordlistPatterns: RegExp[];
 		try {
 			wordlistPatterns = loadWordlistPatterns();
 		} catch (error) {
-			const wordlistPath = process.env.PI_AI_REFERENCE_WORDLIST_PATH ?? DEFAULT_WORDLIST_PATH;
+			const wordlistPath = resolveWordlistPath();
 			return {
 				block: true,
 				reason: `Blocked: AI-reference wordlist unreadable at "${String(wordlistPath)}" (${(error as Error).message}) — failing closed rather than allowing an unscanned commit/PR/work-item command.`,
