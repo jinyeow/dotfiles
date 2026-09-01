@@ -11,20 +11,22 @@
 # binary is never blocked — the gitleaks CI job is the backstop.
 # Bypass one commit:  SKIP_GITLEAKS=1 git commit ...
 
-[ "$SKIP_GITLEAKS" = "1" ] && exit 0
-
-if ! command -v gitleaks >/dev/null 2>&1; then
-    echo "gitleaks not on PATH — skipping local secret scan (install: winget install gitleaks.gitleaks)." >&2
-    exit 0
-fi
-
-gitleaks git --pre-commit --redact --staged --no-banner
-status=$?
-if [ "$status" -ne 0 ]; then
-    echo "" >&2
-    echo "gitleaks blocked this commit: a staged change looks like a secret (values redacted above)." >&2
-    echo "Fix it, or bypass this one commit with:  SKIP_GITLEAKS=1 git commit ..." >&2
-    exit "$status"
+# Wrapped in an `if` rather than top-level early `exit 0`s: SKIP_GITLEAKS=1 or a
+# missing gitleaks binary must only skip the gitleaks check itself. Execution
+# must always continue into the independent AI-reference section below.
+if [ "$SKIP_GITLEAKS" != "1" ]; then
+    if ! command -v gitleaks >/dev/null 2>&1; then
+        echo "gitleaks not on PATH — skipping local secret scan (install: winget install gitleaks.gitleaks)." >&2
+    else
+        gitleaks git --pre-commit --redact --staged --no-banner
+        status=$?
+        if [ "$status" -ne 0 ]; then
+            echo "" >&2
+            echo "gitleaks blocked this commit: a staged change looks like a secret (values redacted above)." >&2
+            echo "Fix it, or bypass this one commit with:  SKIP_GITLEAKS=1 git commit ..." >&2
+            exit "$status"
+        fi
+    fi
 fi
 
 # ----------------------------------------------------------------------------
@@ -78,7 +80,12 @@ if printf '%s' "$origin_url" | grep -qi 'dev\.azure\.com' && \
         # (not "next char isn't +") so an added line whose own content starts
         # with '+' (e.g. "++i; // ...") is still scanned — --no-color guards
         # against grep seeing ANSI codes if color.diff=always is configured.
-        if git diff --cached --no-color -U0 | grep -E '^\+' | grep -Ev '^\+\+\+ ' | grep -Eiqf "$PATTERNS"; then
+        # The header exclusion is further narrowed to require one of git's own
+        # default diff path prefixes right after '+++ ' (a/, b/, /dev/null): a
+        # bare '^\+\+\+ ' would also match an added line whose own content
+        # starts with '++ ' (e.g. "++ i; // ..."), wrongly treating it as the
+        # file header and skipping it from the scan.
+        if git diff --cached --no-color -U0 | grep -E '^\+' | grep -Ev '^\+\+\+ (a/|b/|/dev/null)' | grep -Eiqf "$PATTERNS"; then
             echo "" >&2
             echo "AI-reference scan blocked this commit: a staged added line matches a banned AI/Claude/Codex/Copilot/co-authorship term (ai-agents/_shared/banned-ai-terms.txt)." >&2
             echo "Fix it, or bypass this one commit with:  SKIP_AI_REFERENCE_SCAN=1 git commit ..." >&2

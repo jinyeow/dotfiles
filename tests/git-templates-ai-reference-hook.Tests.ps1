@@ -11,9 +11,57 @@
 $script:TestBash = Resolve-TestBash
 $script:HasBash = [bool]$script:TestBash
 
+# A PATH that has git/grep/mktemp (Git for Windows' own mingw64/bin + usr/bin)
+# but excludes wherever gitleaks itself is installed (e.g. the WinGet Links
+# shim dir) — simulates "gitleaks not on PATH" for the SKIP_GITLEAKS-should-
+# not-also-skip-AI-reference-scan test below. Built from $script:TestBash's own
+# Git install rather than hardcoded, and 8.3-shortened to dodge the space in
+# "Program Files" (bash PATH entries are ':'-joined, not quotable per-entry the
+# way Windows PATH is). Rendered as MSYS-style /c/... (not "C:/...") because
+# bash's PATH splitter treats ':' as the entry separator, and a drive letter's
+# own colon would otherwise fragment the entry. $null (the dependent test
+# self-skips) if unavailable. Computed here AND again inside BeforeAll (same
+# duplication as $script:TestBash above): an It block's -Skip is evaluated at
+# Pester's discovery phase, which runs in a separate scope pass before
+# BeforeAll, so a value set only inside BeforeAll wouldn't be seen by -Skip.
+$script:NoGitleaksPath = $null
+if ($script:TestBash) {
+    try {
+        $gitBashDir = Split-Path -Path $script:TestBash -Parent
+        $gitRoot = Split-Path -Path $gitBashDir -Parent
+        $fso = New-Object -ComObject Scripting.FileSystemObject
+        $gitRootShort = $fso.GetFolder($gitRoot).ShortPath
+        $driveLetter = $gitRootShort.Substring(0, 1).ToLowerInvariant()
+        $restOfPath = ($gitRootShort.Substring(2)) -replace '\\', '/'
+        $posixRoot = "/$driveLetter$restOfPath"
+        $mingwBin = "$posixRoot/mingw64/bin"
+        $usrBin = "$posixRoot/usr/bin"
+        $script:NoGitleaksPath = "${mingwBin}:${usrBin}"
+    } catch {
+        $script:NoGitleaksPath = $null
+    }
+}
+
 BeforeAll {
     . (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
     $script:TestBash = Resolve-TestBash
+    $script:NoGitleaksPath = $null
+    if ($script:TestBash) {
+        try {
+            $gitBashDir = Split-Path -Path $script:TestBash -Parent
+            $gitRoot = Split-Path -Path $gitBashDir -Parent
+            $fso = New-Object -ComObject Scripting.FileSystemObject
+            $gitRootShort = $fso.GetFolder($gitRoot).ShortPath
+            $driveLetter = $gitRootShort.Substring(0, 1).ToLowerInvariant()
+            $restOfPath = ($gitRootShort.Substring(2)) -replace '\\', '/'
+            $posixRoot = "/$driveLetter$restOfPath"
+            $mingwBin = "$posixRoot/mingw64/bin"
+            $usrBin = "$posixRoot/usr/bin"
+            $script:NoGitleaksPath = "${mingwBin}:${usrBin}"
+        } catch {
+            $script:NoGitleaksPath = $null
+        }
+    }
 
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:HooksDir = Join-Path $script:RepoRoot 'git/templates/hooks'
@@ -226,6 +274,19 @@ Describe 'git/templates/hooks/pre-commit AI-reference section' -Skip:(-not $scri
         $r.Output | Should -Match 'AI-reference scan blocked'
     }
 
+    It 'blocks a banned term on an added line that starts with "++ " but is not the real diff file header' {
+        # Diff line is "+++ i; // written with Claude" — diff-format '+' marker,
+        # then content "++ i; ...". This literally matches a bare '^\+\+\+ '
+        # exclusion (three pluses, a space), which would wrongly treat it as the
+        # file-header line and skip it. The real header is always immediately
+        # followed by 'a/', 'b/', or '/dev/null' — this content isn't, so it must
+        # still be scanned.
+        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        $r = Invoke-PreCommitHook -Repo $script:Repo -FileContent '++ i; // written with Claude'
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'AI-reference scan blocked'
+    }
+
     It 'does not false-positive-block on the real "+++" diff file header' {
         $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
         $r = Invoke-PreCommitHook -Repo $script:Repo -FileContent '// normal comment' -FileName 'written-with-claude.js'
@@ -242,6 +303,20 @@ Describe 'git/templates/hooks/pre-commit AI-reference section' -Skip:(-not $scri
         $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
         $r = Invoke-PreCommitHook -Repo $script:Repo -FileContent '// written with Claude' -Env @{ SKIP_AI_REFERENCE_SCAN = '1' }
         $r.ExitCode | Should -Be 0
+    }
+
+    It 'still blocks via the AI-reference scan when SKIP_GITLEAKS=1 (that var must not also skip it)' {
+        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        $r = Invoke-PreCommitHook -Repo $script:Repo -FileContent '// written with Claude' -Env @{ SKIP_GITLEAKS = '1' }
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'AI-reference scan blocked'
+    }
+
+    It 'still blocks via the AI-reference scan when gitleaks is not on PATH (its absence must not also skip it)' -Skip:(-not $script:NoGitleaksPath) {
+        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        $r = Invoke-PreCommitHook -Repo $script:Repo -FileContent '// written with Claude' -Env @{ PATH = $script:NoGitleaksPath }
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'AI-reference scan blocked'
     }
 
     It 'fails closed when the wordlist is missing in a Hollard repo' {
