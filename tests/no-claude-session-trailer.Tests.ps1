@@ -103,8 +103,12 @@ Describe 'claude/no-claude-session-trailer.sh' -Skip:(-not $script:HasBash) {
         It 'denies `git -C <path> commit` with a banned term' {
             # The flag group allows each global flag to carry an argument (-C <path>): a unit is
             # `-flag` optionally followed by one non-flag argument token, so a flag WITH an
-            # argument can't slip between git and commit and evade the deny.
-            $out = Invoke-Hook -Command 'git -C /tmp/x commit -m "Co-Authored-By: Claude"'
+            # argument can't slip between git and commit and evade the deny. Uses the real
+            # Hollard-remote repo as the -C target: -C now also drives the repo-scoping check
+            # (see the `git -C` scoping context below), so a decoy path with no real origin
+            # would be scoped out before the wordlist check ever ran.
+            $hollardPath = $script:HollardRepo -replace '\\', '/'
+            $out = Invoke-Hook -Command "git -C $hollardPath commit -m `"Co-Authored-By: Claude`""
             $out | Should -Match '"permissionDecision":"deny"'
         }
         It 'denies `git -c k=v commit` with a banned term' {
@@ -195,7 +199,10 @@ Describe 'claude/no-claude-session-trailer.sh' -Skip:(-not $script:HasBash) {
             $out.Trim() | Should -BeNullOrEmpty
         }
         It 'allows `git -C <path> commit` without a banned term' {
-            $out = Invoke-Hook -Command 'git -C /tmp/x commit -m "normal"'
+            # Uses the real Hollard-remote repo as the -C target so this exercises the clean
+            # wordlist path in scope, not an out-of-scope allow via a decoy -C target.
+            $hollardPath = $script:HollardRepo -replace '\\', '/'
+            $out = Invoke-Hook -Command "git -C $hollardPath commit -m `"normal`""
             $out.Trim() | Should -BeNullOrEmpty
         }
         It 'allows a clean PR create' {
@@ -275,13 +282,15 @@ Describe 'claude/no-claude-session-trailer.sh' -Skip:(-not $script:HasBash) {
 
     Context 'drops the blanket quoted-span scan (flag-value extraction only)' {
         It 'allows a clean commit whose unrelated quoted flag value would trip a blanket scan' {
-            # `-C "claude"` is quoted content unrelated to the commit message — a blanket scan of
-            # every quoted span (dropped by this fix) would previously false-positive on it.
-            $out = Invoke-Hook -Command 'git -C "claude" commit -m "fix"'
+            # `-c "claude"` is quoted content unrelated to the commit message — a blanket scan of
+            # every quoted span (dropped by this fix) would previously false-positive on it. Uses
+            # `-c` rather than `-C` here since `-C` now also drives the repo-scoping check (see
+            # the `git -C` scoping context above), which this test isn't exercising.
+            $out = Invoke-Hook -Command 'git -c "claude" commit -m "fix"'
             $out.Trim() | Should -BeNullOrEmpty
         }
         It 'denies when the banned term is genuinely in the message, alongside an unrelated quoted flag value' {
-            $out = Invoke-Hook -Command 'git -C "claude" commit -m "Co-Authored-By: Claude"'
+            $out = Invoke-Hook -Command 'git -c "claude" commit -m "Co-Authored-By: Claude"'
             $out | Should -Match '"permissionDecision":"deny"'
         }
     }
@@ -336,6 +345,81 @@ Describe 'claude/no-claude-session-trailer.sh' -Skip:(-not $script:HasBash) {
         It 'still denies a banned commit term in a Hollard-remote repo' {
             $out = Invoke-Hook -Command 'git commit -m "Co-Authored-By: Claude"' -RepoDir $script:HollardRepo
             $out | Should -Match '"permissionDecision":"deny"'
+        }
+        It 'scopes via `git -C <path>` to the target repo''s origin, not the inherited cwd (out-of-scope cwd, in-scope -C target)' {
+            $hollardPath = $script:HollardRepo -replace '\\', '/'
+            $out = Invoke-Hook -Command "git -C $hollardPath commit --no-verify -m `"Generated with Claude`"" -RepoDir $script:GitHubRepo
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+        It 'scopes via `git -C <path>` and allows when the -C target is out of scope (in-scope cwd, out-of-scope -C target)' {
+            $githubPath = $script:GitHubRepo -replace '\\', '/'
+            $out = Invoke-Hook -Command "git -C $githubPath commit -m `"Generated with Claude`"" -RepoDir $script:HollardRepo
+            $out.Trim() | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'clustered short-flag evasion of the -n (no-verify) deny' {
+        It 'denies `git commit -nm "..."` (clustered -n and -m short flags)' {
+            $out = Invoke-Hook -Command 'git commit -nm "Generated with Claude"'
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+        It 'denies `git commit -nm "..."` for the -n bypass specifically, even with a clean message' {
+            $out = Invoke-Hook -Command 'git commit -nm "clean message"'
+            $out | Should -Match '"permissionDecision":"deny"'
+            $out | Should -Match 'no-verify'
+        }
+        It 'still denies `git commit -am` with a banned term (clustering fix does not regress -am)' {
+            $out = Invoke-Hook -Command 'git commit -am "Co-Authored-By: Claude"'
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+        It 'still allows `git commit -am` with a clean message (clustering fix does not regress -am)' {
+            $out = Invoke-Hook -Command 'git commit -am "a normal message"'
+            $out.Trim() | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'export persists the SKIP-var bypass forward across shell segments' {
+        It 'denies `export SKIP_AI_REFERENCE_SCAN=1 && git commit ...` (export persists forward, not segment-bound)' {
+            $out = Invoke-Hook -Command 'export SKIP_AI_REFERENCE_SCAN=1 && git commit -m "clean message"'
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+        It 'denies `export SKIP_GITLEAKS=1 && git commit ...`' {
+            $out = Invoke-Hook -Command 'export SKIP_GITLEAKS=1 && git commit -m "clean message"'
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+        It 'still allows a commit message that merely mentions SKIP_GITLEAKS=1 in prose (assignment-shape anchor holds)' {
+            $out = Invoke-Hook -Command 'git commit -m "mentions SKIP_GITLEAKS=1 in a message about our hooks"'
+            $out.Trim() | Should -BeNullOrEmpty
+        }
+        It 'still allows a non-exported prefix assignment chained before an unrelated clean commit (unchanged segment-bound behavior)' {
+            $out = Invoke-Hook -Command 'SKIP_GITLEAKS=1 rg foo && git commit -m "clean message"'
+            $out.Trim() | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'gh pr create/edit short flags -t/-b' {
+        It 'denies `gh pr create -t "..." -b "..."` with a banned term in -b' {
+            $out = Invoke-Hook -Command 'gh pr create -t "fix" -b "Generated with Claude Code"'
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+        It 'denies `gh pr edit 123 -t "..."` with a banned term in -t' {
+            $out = Invoke-Hook -Command 'gh pr edit 123 -t "Reviewed by Codex"'
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+        It 'allows `gh pr create -t "..." -b "..."` with a clean title/body' {
+            $out = Invoke-Hook -Command 'gh pr create -t "fix" -b "normal description"'
+            $out.Trim() | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'multi-value --fields/--route-parameters/--query-parameters key=value runs' {
+        It 'denies a banned term in the SECOND key=value pair after --fields' {
+            $out = Invoke-Hook -Command 'az boards work-item update --fields System.Title=ok "System.Description=Thanks Claude"'
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+        It 'allows a clean multi-pair --fields run' {
+            $out = Invoke-Hook -Command 'az boards work-item update --fields System.Title=ok System.Description=fine'
+            $out.Trim() | Should -BeNullOrEmpty
         }
     }
 }

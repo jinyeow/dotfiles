@@ -29,18 +29,33 @@
 # the check.
 #
 # Scoped to Hollard/Azure DevOps repos only, mirroring git/templates/hooks/pre-commit's own
-# scoping: `git remote get-url origin`, run from this hook's inherited cwd, must succeed AND
-# contain both dev.azure.com and HollardInsuranceRetail (case-insensitive). If the repo has no
-# origin, isn't a repo at all, or the origin is a GitHub URL (dotfiles, wiki, brain — repos that
-# legitimately say "Claude"/"Codex" in their own subject matter), every check below is skipped:
-# the wordlist scan, the --no-verify/-n denies, and the SKIP_*-env-var denies alike.
-origin_url=$(git remote get-url origin 2>/dev/null) || exit 0
+# scoping: `git remote get-url origin`, run against the command's actual git target, must
+# succeed AND contain both dev.azure.com and HollardInsuranceRetail (case-insensitive). If the
+# repo has no origin, isn't a repo at all, or the origin is a GitHub URL (dotfiles, wiki, brain
+# — repos that legitimately say "Claude"/"Codex" in their own subject matter), every check below
+# is skipped: the wordlist scan, the --no-verify/-n denies, and the SKIP_*-env-var denies alike.
+#
+# The command's actual git target is not always this hook's inherited cwd: `git -C <path> ...`
+# retargets git at a different repo, so the origin check must follow it there rather than
+# checking cwd's origin. If the command carries a `-C <path>` in git's leading global-flag run,
+# that path's origin is checked instead of cwd's; otherwise cwd's origin is used as before.
+# `cd <path> && git ...` shell-state tracking is a known, separate, accepted limitation — not
+# attempted here.
+cmd=$(jq -r '.tool_input.command // ""')
+
+git_global_flag_group='(?:[[:space:]]+-[^[:space:]]+(?:[[:space:]]+[^-][^[:space:]]*)?)*?'
+c_path_re="\\bgit\\b${git_global_flag_group}[[:space:]]+-C[[:space:]]+\\K[^[:space:]]+"
+c_path=$(printf '%s' "$cmd" | grep -oP -- "$c_path_re" | head -1)
+
+if [[ -n "$c_path" ]]; then
+  origin_url=$(git -C "$c_path" remote get-url origin 2>/dev/null) || exit 0
+else
+  origin_url=$(git remote get-url origin 2>/dev/null) || exit 0
+fi
 if ! { printf '%s' "$origin_url" | grep -qi 'dev\.azure\.com' &&
        printf '%s' "$origin_url" | grep -qi 'HollardInsuranceRetail'; }; then
   exit 0
 fi
-
-cmd=$(jq -r '.tool_input.command // ""')
 
 script_dir=$(cd -- "$(dirname -- "$0")" &>/dev/null && pwd)
 wordlist="$script_dir/banned-ai-terms.txt"
@@ -59,6 +74,7 @@ wordlist_pattern=$(grep -Ev '^[[:space:]]*(#|$)' "$wordlist" | paste -sd'|' -)
 flag_group='([[:space:]]+-[^[:space:]]+([[:space:]]+[^-][^[:space:]]*)?)*'
 commit_re="\\bgit\\b${flag_group}[[:space:]]+commit\\b"
 pr_re='\bgh\b[[:space:]]+pr[[:space:]]+(create|edit)\b|\baz\b[[:space:]]+repos[[:space:]]+pr[[:space:]]+(create|update)\b'
+gh_pr_re='\bgh\b[[:space:]]+pr[[:space:]]+(create|edit)\b'
 boards_re='\baz\b[[:space:]]+boards\b|\baz\b[[:space:]]+devops[[:space:]]+invoke\b'
 
 # `-n`/SKIP-var bound: `[^;&|]*` between the guarded subcommand and the flag/assignment keeps
@@ -67,15 +83,32 @@ boards_re='\baz\b[[:space:]]+boards\b|\baz\b[[:space:]]+devops[[:space:]]+invoke
 # isn't treated as `git commit -n`, and `SKIP_GITLEAKS=1 rg foo && git log -n 1` (SKIP_GITLEAKS
 # assigned in an unrelated earlier segment) isn't treated as a bypass of a git commit that
 # never appears in that same segment.
-commit_dashn_re="${commit_re}[^;&|]*[[:space:]]-n([[:space:]]|\$)"
+#
+# The `-n` flag itself is matched as part of ANY dash-prefixed short-flag cluster containing
+# the letter n (`-[a-zA-Z]*n[a-zA-Z]*`), not just an isolated `-n` token: `git commit -nm "..."`
+# clusters `-n` with `-m`, which is valid git and was not previously caught by an isolated-`-n`
+# match. Requiring the cluster to start with a single `-` (immediately followed by a letter or
+# `n`, never another `-`) keeps this from matching `--no-verify`/`--dry-run`-shaped long options,
+# which are handled by the separate `--no-verify` check above.
+commit_dashn_re="${commit_re}[^;&|]*[[:space:]]-[a-zA-Z]*n[a-zA-Z]*([[:space:]]|\$)"
 # SKIP_AI_REFERENCE_SCAN/SKIP_GITLEAKS=1 assignment shape: at the start of the command or a
 # shell segment, or after `export `/`env `, matching either an unquoted `1` or a single-/
 # double-quoted `'1'`/`"1"` (the git hooks' own `[ "$SKIP_GITLEAKS" = "1" ]` check treats both
 # the same way, since the shell strips the quotes) — not a bare substring match, so a command
 # that merely mentions the literal string in unrelated prose (e.g. `rg 'SKIP_GITLEAKS=1'
 # README.md`) doesn't match this shape at all.
-skip_assign_re="(^|[;&|][[:space:]]*|export[[:space:]]+|env[[:space:]]+)SKIP_(AI_REFERENCE_SCAN|GITLEAKS)=['\"]?1\\b"
-skip_commit_re="${skip_assign_re}[^;&|]*${commit_re}"
+#
+# Split into two shapes with different segment-boundedness: a plain/prefix assignment
+# (`SKIP_GITLEAKS=1 rg foo && ...`) only affects the single command it prefixes, so it stays
+# segment-bound to the guarded `git ... commit` via `[^;&|]*` (unchanged from before). An
+# `export`/`env`-prefixed assignment persists forward across `&&`/`;` for the rest of the SAME
+# bash invocation, so `export SKIP_AI_REFERENCE_SCAN=1 && git commit ...` must still be caught
+# even though the assignment and the guarded commit sit in different segments — that shape is
+# matched anywhere in the whole command instead, still anchored to a real `export `/`env `
+# assignment shape (not a bare substring) so unrelated prose still passes.
+skip_plain_assign_re="(^|[;&|][[:space:]]*)SKIP_(AI_REFERENCE_SCAN|GITLEAKS)=['\"]?1\\b"
+skip_export_assign_re="(export|env)[[:space:]]+SKIP_(AI_REFERENCE_SCAN|GITLEAKS)=['\"]?1\\b"
+skip_commit_re="${skip_plain_assign_re}[^;&|]*${commit_re}"
 
 matches() {
   printf '%s' "$cmd" | grep -Eq -- "$1"
@@ -95,31 +128,59 @@ if matches '\bgit\b'; then
   # already ship. An agent invoking Bash directly can set either var just as easily as a human,
   # silently defeating layer 2's scan, so this hook denies it outright the same way it denies
   # --no-verify.
-  if matches "$skip_commit_re"; then
+  if matches "$skip_commit_re" || { matches "$skip_export_assign_re" && matches "$commit_re"; }; then
     deny "SKIP_AI_REFERENCE_SCAN/SKIP_GITLEAKS bypasses this repo's git hooks (layer 2) — not allowed from an agent."
   fi
 fi
 
 # Message content the wordlist is matched against: the value of every recognized message-
-# bearing flag (-am/-m/--message/--title/--body/--description/--fields/--route-parameters/
-# --discussion/--text/--query-parameters), quoted or unquoted — not a blanket scan of every
-# quoted span in the command, and not the whole raw command string. A banned term always
-# arrives via one of these flags; scanning every quoted span would also catch quoted content
-# attached to an unrelated flag (e.g. `git -C "claude-project" commit -m "fix"`), and matching
-# the whole raw command would false-positive on this repo's own path segments (e.g.
-# `claude/settings.json`, `codex/ai-reference-guard.sh`), which contain the bare words
-# "claude"/"codex" outside any message. An optional `key=` prefix before the value handles the
-# key=value shape some of these flags use (`--query-parameters text="thanks Claude"`), matching
-# --fields/--route-parameters' own convention. The quoted-value alternatives are escape-aware
-# (`(?:[^"\\]|\\.)*`, requiring PCRE via `grep -P`) so an escaped inner quote (`-m "say \"Claude
-# \" less please"`) doesn't truncate the match at the first literal `"` — the naive `[^"]*` grep
-# -E form used to stop there and never see the banned term. Real newlines inside a quoted `-m`
-# value (the actual trailer shape: `git commit -m "feat: x\n\nCo-Authored-By: Claude"`) are
-# flattened to spaces first, since a quoted span can't otherwise pair across lines under a
-# single-line grep match.
+# bearing flag (-m/-am/-nm/etc./--message/--title/--body/--description/--discussion/--text,
+# plus --fields/--route-parameters/--query-parameters and (for `gh pr create`/`gh pr edit`
+# only) -t/-b below), quoted or unquoted — not a blanket scan of every quoted span in the
+# command, and not the whole raw command string. A banned term always arrives via one of these
+# flags; scanning every quoted span would also catch quoted content attached to an unrelated
+# flag (e.g. `git -C "claude-project" commit -m "fix"`), and matching the whole raw command
+# would false-positive on this repo's own path segments (e.g. `claude/settings.json`,
+# `codex/ai-reference-guard.sh`), which contain the bare words "claude"/"codex" outside any
+# message. An optional `key=` prefix before the value handles the key=value shape some of these
+# flags use. The quoted-value alternatives are escape-aware (`(?:[^"\\]|\\.)*`, requiring PCRE
+# via `grep -P`) so an escaped inner quote (`-m "say \"Claude \" less please"`) doesn't truncate
+# the match at the first literal `"` — the naive `[^"]*` grep -E form used to stop there and
+# never see the banned term. Real newlines inside a quoted `-m` value (the actual trailer shape:
+# `git commit -m "feat: x\n\nCo-Authored-By: Claude"`) are flattened to spaces first, since a
+# quoted span can't otherwise pair across lines under a single-line grep match.
+#
+# `-m`'s short flag is matched as `-[A-Za-z]*m` (not a literal `-m`/`-am` alternation) so it is
+# still found when clustered with other short flags in any order/combination, e.g. `-nm`/`-am`/
+# `-sm` — mirroring codex/ai-reference-guard.sh and pi/extensions/ai-reference-guard.ts's own
+# `-[A-Za-z]*m` handling — so the wordlist check still fires on a clustered `-m` even when the
+# cluster also carries `-n`.
 flat_cmd=$(printf '%s' "$cmd" | tr '\n' ' ')
-message_flag_re='(?:^|[[:space:]])(?:-am|-m|--message|--title|--body|--description|--fields|--route-parameters|--discussion|--text|--query-parameters)(?:[[:space:]]+|=)\K(?:[A-Za-z0-9_.-]+=)?("(?:[^"\\]|\\.)*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)'
+message_flag_re='(?:^|[[:space:]])(?:-[A-Za-z]*m|--message|--title|--body|--description|--discussion|--text)(?:[[:space:]]+|=)\K(?:[A-Za-z0-9_.-]+=)?("(?:[^"\\]|\\.)*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)'
 message_content=$(printf '%s' "$flat_cmd" | grep -oP -- "$message_flag_re")
+
+# --fields/--route-parameters/--query-parameters take a run of space-separated `key=value`
+# pairs (e.g. `az boards work-item update --fields System.Title=ok
+# "System.Description=Thanks Claude"`), not just a single value — the whole run is captured,
+# stopping at the next `-`-prefixed flag, a shell separator (`;`/`&`/`|`), or end of command, so
+# a banned term in the SECOND (or later) pair isn't missed. Ported from
+# pi/extensions/ai-reference-guard.ts's `multiValuePattern`.
+value_token_re='(?:"(?:[^"\\]|\\.)*"|'"'"'[^'"'"']*'"'"'|[^[:space:]"'"'"';&|-]\S*)'
+multi_value_flag_re="(?:^|[[:space:]])(?:--fields|--route-parameters|--query-parameters)(?=[=[:space:]])(?:=|[[:space:]]+)\\K${value_token_re}(?:[[:space:]]+${value_token_re})*"
+multi_value_content=$(printf '%s' "$flat_cmd" | grep -oP -- "$multi_value_flag_re")
+message_content=$(printf '%s\n%s' "$message_content" "$multi_value_content")
+
+# `gh pr create`/`gh pr edit`'s short `-t`/`-b` forms mean "title"/"body" only for that command
+# shape — those same letters mean something else for other commands (e.g. git commit's `-t
+# <template-file>`), so this extraction is deliberately scoped to `gh pr create|edit` rather
+# than added to the general message_flag_re above, mirroring codex/ai-reference-guard.sh and
+# pi/extensions/ai-reference-guard.ts's own scoping.
+if matches "$gh_pr_re"; then
+  gh_title_body_re='(?:^|[[:space:]])(?:-t|-b)(?:[[:space:]]+|=)\K(?:[A-Za-z0-9_.-]+=)?("(?:[^"\\]|\\.)*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)'
+  gh_title_body_content=$(printf '%s' "$flat_cmd" | grep -oP -- "$gh_title_body_re")
+  message_content=$(printf '%s\n%s' "$message_content" "$gh_title_body_content")
+fi
+
 matches_message_ci() {
   printf '%s' "$message_content" | grep -Eqi -- "$1"
 }
