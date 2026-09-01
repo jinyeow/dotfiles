@@ -38,6 +38,19 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORDLIST_PATH="$SCRIPT_DIR/banned-ai-terms.txt"
 
+# ── Repo scoping: Hollard/Azure-DevOps remotes only ─────────────────────────────────
+# Mirrors git/templates/hooks/pre-commit's own scoping (see its lines ~59-61): read
+# the origin remote from the hook's inherited cwd. If that fails (not a repo, no
+# origin) or the URL isn't both dev.azure.com AND HollardInsuranceRetail
+# (case-insensitive), this is a GitHub repo (dotfiles, wiki, brain, ...) that
+# legitimately says "Claude"/"Codex" in its own subject matter — ALLOW everything,
+# before any check, including the fail-closed missing-wordlist check below.
+origin_url=$(git remote get-url origin 2>/dev/null) || exit 0
+if ! { printf '%s' "$origin_url" | grep -qi 'dev\.azure\.com' && \
+       printf '%s' "$origin_url" | grep -qi 'HollardInsuranceRetail'; }; then
+  exit 0
+fi
+
 # Fail CLOSED only for a missing/unreadable wordlist — without it we cannot tell a
 # banned reference from a clean command, so refuse to run rather than silently allow.
 if [[ ! -f "$WORDLIST_PATH" ]] || [[ ! -r "$WORDLIST_PATH" ]]; then
@@ -82,6 +95,12 @@ else
   COMMAND=$(printf '%s' "$RAW_COMMAND" | sed 's/\\\\/\x01/g; s/\\"/"/g; s/\x01/\\/g')
 fi
 
+# Flatten embedded newlines so a multiline -m value (the real Claude-Session trailer
+# shape: `git commit -m "feat: x\n\nCo-Authored-By: Claude"`) doesn't evade the
+# single-line flag-value extraction below — a quoted span can't otherwise pair across
+# lines under a single-line grep match.
+COMMAND=$(printf '%s' "$COMMAND" | tr '\n' ' ')
+
 # ── Layer 4a: --no-verify / -n bypass of layer 2's git hooks ───────────────────────
 # Unconditional — no wordlist match required, since bypassing the commit-msg/pre-commit
 # hooks that already carry the banned-term scan is itself the risk, regardless of content.
@@ -107,7 +126,13 @@ fi
 # SKIP_AI_REFERENCE_SCAN/SKIP_GITLEAKS=1 is git/templates/hooks/{commit-msg,pre-commit}'s own
 # human bypass hatch (matching the existing SKIP_GITLEAKS convention). Codex invoking a Bash
 # command can set either var just as easily as a human, silently defeating layer 2's scan.
-if echo "$COMMAND" | grep -qE '\bSKIP_AI_REFERENCE_SCAN=1\b|\bSKIP_GITLEAKS=1\b'; then
+# Anchored to an actual shell-assignment shape (command start, or right after a `;`/`&&`/`|`
+# separator or `export `/`env `), value `1` unquoted or quoted with `'1'`/`"1"` — not a bare
+# substring match anywhere in the command, which would both miss a quoted value (the real git
+# hooks' `[ "$SKIP_GITLEAKS" = "1" ]` shell check strips the quotes) and over-match unrelated
+# prose that merely mentions the variable.
+SKIP_VAR_RE='(^|[;&|]+[[:space:]]*|export[[:space:]]+|env[[:space:]]+)SKIP_(AI_REFERENCE_SCAN|GITLEAKS)=(1|'\''1'\''|"1")([[:space:]]|$)'
+if echo "$COMMAND" | grep -qE "$SKIP_VAR_RE"; then
   echo "BLOCKED: Codex does not have authority to run: $COMMAND" >&2
   echo "Reason: SKIP_AI_REFERENCE_SCAN/SKIP_GITLEAKS bypasses the banned-AI-reference git hooks." >&2
   echo "If you want to run this command, do it yourself in a terminal." >&2
@@ -137,16 +162,33 @@ done
 
 if $IS_RISKY; then
   # Scope the wordlist scan to message-bearing ARGUMENT VALUES only — the content of
-  # -m/--message/--title/--body/--description/--fields/--route-parameters — instead of
-  # the whole $COMMAND string. Matching against the whole command also matches a banned
-  # word inside an unrelated file path (e.g. `\bCodex\b` inside
-  # `codex/ai-reference-guard.sh`, or `\bClaude\b` inside `claude/settings.json`), which
-  # would self-block routine commits in this very repo. Both double- and single-quoted
-  # values are captured (handling an internal escaped `"`), as well as a bare unquoted
-  # token; `\K` drops the flag+separator from the match so only the value text is
-  # scanned. `|| echo ""` keeps this non-fatal under `set -euo pipefail` when none of
-  # the flags are present in a risky command.
-  MESSAGE_VALUES=$(echo "$COMMAND" | grep -oP -- '(?:^|[[:space:]])(?:-m|--message|--title|--body|--description|--fields|--route-parameters)(?:[[:space:]]+|=)\K("(?:[^"\\]|\\.)*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)' || echo "")
+  # -m/--message/-am/--title/--body/--description/--fields/--route-parameters/
+  # --discussion/--text/--query-parameters — instead of the whole $COMMAND string.
+  # Matching against the whole command also matches a banned word inside an unrelated
+  # file path (e.g. `\bCodex\b` inside `codex/ai-reference-guard.sh`, or `\bClaude\b`
+  # inside `claude/settings.json`), which would self-block routine commits in this very
+  # repo. Both double- and single-quoted values are captured (handling an internal
+  # escaped `"`), as well as a bare unquoted token; `\K` drops the flag+separator from
+  # the match so only the value text is scanned. `|| echo ""` keeps this non-fatal
+  # under `set -euo pipefail` when none of the flags are present in a risky command.
+  #
+  # VALUE_TOKEN matches one shell-word: a run of (quoted spans OR single non-space
+  # chars). This handles a fully-quoted value ("thanks Claude"), a bare unquoted
+  # token (id=1), AND a `key="quoted value with spaces"` shape (e.g. az's
+  # `--query-parameters text="thanks Claude"`) where only PART of the token is
+  # quoted — a plain `[^[:space:]]+` alone stops at the first real space, which is
+  # inside the quotes for that last shape and would silently drop everything after it.
+  VALUE_TOKEN='(?:"(?:[^"\\]|\\.)*"|'"'"'[^'"'"']*'"'"'|[^[:space:]])+'
+  MESSAGE_VALUE_FLAGS='-m|--message|-am|--title|--body|--description|--fields|--route-parameters|--discussion|--text|--query-parameters'
+  MESSAGE_VALUES=$(echo "$COMMAND" | grep -oP -- '(?:^|[[:space:]])(?:'"$MESSAGE_VALUE_FLAGS"')(?:[[:space:]]+|=)\K'"$VALUE_TOKEN" || echo "")
+
+  # gh's short `-t`/`-b` forms mean "title"/"body" only for `gh pr create`/`gh pr edit`
+  # — those same letters mean something else for other commands, so this extraction is
+  # deliberately scoped to that command shape rather than added to the general list above.
+  if echo "$COMMAND" | grep -qE 'gh[[:space:]]+pr[[:space:]]+(create|edit)'; then
+    GH_TITLE_BODY_VALUES=$(echo "$COMMAND" | grep -oP -- '(?:^|[[:space:]])(?:-t|-b)(?:[[:space:]]+|=)\K'"$VALUE_TOKEN" || echo "")
+    MESSAGE_VALUES=$(printf '%s\n%s' "$MESSAGE_VALUES" "$GH_TITLE_BODY_VALUES")
+  fi
 
   # Strip comment/blank lines before using the wordlist as a grep -f pattern file —
   # grep -f treats every line as a pattern, so a raw blank line would match everything.

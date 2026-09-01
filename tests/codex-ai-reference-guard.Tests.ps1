@@ -21,6 +21,33 @@ BeforeAll {
         throw 'codex-ai-reference-guard.Tests.ps1: no usable bash found, WSL launchers excluded — install Git for Windows'
     }
 
+    # The script scopes its whole enforcement to Hollard/Azure-DevOps-remote repos
+    # (mirroring git/templates/hooks/pre-commit — see tests/git-templates-ai-reference-hook.Tests.ps1
+    # for the same pattern). Every test below runs inside a throwaway repo with a
+    # controlled origin remote so the scoping decision is exercised, not bypassed.
+    $script:HollardOriginUrl = 'https://dev.azure.com/HollardInsuranceRetail/Proj/_git/Repo'
+    $script:GitHubOriginUrl = 'https://github.com/jinyeow/dotfiles.git'
+
+    function New-TestRepo {
+        param([string] $OriginUrl)
+        $root = Join-Path ([System.IO.Path]::GetTempPath()) ('codex-ai-ref-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $root -Force | Out-Null
+        & git -C $root init -q . 2>&1 | Out-Null
+        & git -C $root config user.email 'test@example.invalid' 2>&1 | Out-Null
+        & git -C $root config user.name 'Test' 2>&1 | Out-Null
+        if ($OriginUrl) {
+            & git -C $root remote add origin $OriginUrl 2>&1 | Out-Null
+        }
+        return $root
+    }
+
+    # Default cwd for every hook invocation below: a Hollard/Azure-DevOps-remote repo,
+    # i.e. scoped IN, so the existing enforcement tests keep exercising the same
+    # behavior without each one needing to pass -Repo explicitly.
+    $script:ScopedRepo = New-TestRepo -OriginUrl $script:HollardOriginUrl
+    $script:UnscopedRepo = New-TestRepo -OriginUrl $script:GitHubOriginUrl
+    $script:NoOriginRepo = New-TestRepo -OriginUrl $null
+
     # Staged dir mirrors the real runtime layout: script + wordlist as siblings.
     $script:StagedDir = Join-Path ([System.IO.Path]::GetTempPath()) "codex-ai-reference-guard-$PID"
     New-Item -ItemType Directory -Path $script:StagedDir -Force | Out-Null
@@ -35,9 +62,14 @@ BeforeAll {
     $script:NoWordlistHookScript = Join-Path $script:NoWordlistDir 'ai-reference-guard.sh'
 
     function Invoke-GuardrailHook {
-        param([string] $Command, [string] $Script = $script:HookScript)
+        param([string] $Command, [string] $Script = $script:HookScript, [string] $Repo = $script:ScopedRepo)
         $payload = @{ tool_input = @{ command = $Command } } | ConvertTo-Json -Compress
-        $output = $payload | & $script:Bash $Script 2>&1
+        Push-Location $Repo
+        try {
+            $output = $payload | & $script:Bash $Script 2>&1
+        } finally {
+            Pop-Location
+        }
         return [PSCustomObject]@{
             ExitCode = $LASTEXITCODE
             Output   = ($output -join "`n")
@@ -45,8 +77,13 @@ BeforeAll {
     }
 
     function Invoke-GuardrailHookRawPayload {
-        param([string] $Payload, [string] $Script = $script:HookScript)
-        $output = $Payload | & $script:Bash $Script 2>&1
+        param([string] $Payload, [string] $Script = $script:HookScript, [string] $Repo = $script:ScopedRepo)
+        Push-Location $Repo
+        try {
+            $output = $Payload | & $script:Bash $Script 2>&1
+        } finally {
+            Pop-Location
+        }
         return [PSCustomObject]@{
             ExitCode = $LASTEXITCODE
             Output   = ($output -join "`n")
@@ -72,9 +109,14 @@ BeforeAll {
     $script:NoPythonStubDirPosix = (& $script:Bash -c 'cygpath -u "$1"' _ $script:NoPythonStubDir).Trim()
 
     function Invoke-GuardrailHookNoPython {
-        param([string] $Command)
+        param([string] $Command, [string] $Repo = $script:ScopedRepo)
         $payload = @{ tool_input = @{ command = $Command } } | ConvertTo-Json -Compress
-        $output = $payload | & $script:Bash -c "PATH='$($script:NoPythonStubDirPosix)':`"`$PATH`" bash '$($script:HookScript)'" 2>&1
+        Push-Location $Repo
+        try {
+            $output = $payload | & $script:Bash -c "PATH='$($script:NoPythonStubDirPosix)':`"`$PATH`" bash '$($script:HookScript)'" 2>&1
+        } finally {
+            Pop-Location
+        }
         return [PSCustomObject]@{
             ExitCode = $LASTEXITCODE
             Output   = ($output -join "`n")
@@ -83,7 +125,7 @@ BeforeAll {
 }
 
 AfterAll {
-    foreach ($dir in @($script:StagedDir, $script:NoWordlistDir, $script:NoPythonStubDir)) {
+    foreach ($dir in @($script:StagedDir, $script:NoWordlistDir, $script:NoPythonStubDir, $script:ScopedRepo, $script:UnscopedRepo, $script:NoOriginRepo)) {
         if ($dir -and (Test-Path -LiteralPath $dir)) {
             Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction Ignore
         }
@@ -217,6 +259,117 @@ Describe 'codex/ai-reference-guard.sh' {
             $result = Invoke-GuardrailHook -Command 'git commit -m "fix bug" && git log -n 1'
             $result.ExitCode | Should -Be 0
         }
+
+        It 'allows git push -n (dry-run, not a --no-verify bypass)' {
+            $result = Invoke-GuardrailHook -Command 'git push -n origin main'
+            $result.ExitCode | Should -Be 0
+        }
+    }
+
+    Context 'SKIP_AI_REFERENCE_SCAN/SKIP_GITLEAKS quoted-value evasion (finding 5)' {
+        It 'blocks SKIP_GITLEAKS with a single-quoted 1 value' {
+            $result = Invoke-GuardrailHook -Command "SKIP_GITLEAKS='1' git commit -m ""fix bug"""
+            $result.ExitCode | Should -Be 2
+        }
+
+        It 'blocks SKIP_AI_REFERENCE_SCAN with a double-quoted 1 value' {
+            $result = Invoke-GuardrailHook -Command 'SKIP_AI_REFERENCE_SCAN="1" git commit -m "fix bug"'
+            $result.ExitCode | Should -Be 2
+        }
+
+        It 'blocks SKIP_GITLEAKS=1 chained after a separator' {
+            $result = Invoke-GuardrailHook -Command 'echo hi && SKIP_GITLEAKS=1 git commit -m "fix bug"'
+            $result.ExitCode | Should -Be 2
+        }
+
+        It 'does not over-match SKIP_GITLEAKS mentioned mid-string in unrelated prose' {
+            $result = Invoke-GuardrailHook -Command 'git commit -m "note: SKIP_GITLEAKS=1 was documented here"'
+            $result.ExitCode | Should -Be 0
+        }
+    }
+
+    Context 'repo-scoping to Hollard/Azure-DevOps remotes' {
+        It 'allows a banned term in a GitHub-remote repo (out of scope)' {
+            $result = Invoke-GuardrailHook -Command 'git commit -m "thanks Claude for the help"' -Repo $script:UnscopedRepo
+            $result.ExitCode | Should -Be 0
+        }
+
+        It 'allows a banned term when there is no origin remote at all' {
+            $result = Invoke-GuardrailHook -Command 'git commit -m "thanks Claude for the help"' -Repo $script:NoOriginRepo
+            $result.ExitCode | Should -Be 0
+        }
+
+        It 'allows --no-verify in a GitHub-remote repo (out of scope)' {
+            $result = Invoke-GuardrailHook -Command 'git commit -m "fix bug" --no-verify' -Repo $script:UnscopedRepo
+            $result.ExitCode | Should -Be 0
+        }
+
+        It 'allows SKIP_GITLEAKS=1 in a GitHub-remote repo (out of scope)' {
+            $result = Invoke-GuardrailHook -Command 'SKIP_GITLEAKS=1 git commit -m "fix bug"' -Repo $script:UnscopedRepo
+            $result.ExitCode | Should -Be 0
+        }
+
+        It 'still blocks a banned term in a Hollard-remote repo (scoped in, sanity check)' {
+            $result = Invoke-GuardrailHook -Command 'git commit -m "thanks Claude for the help"' -Repo $script:ScopedRepo
+            $result.ExitCode | Should -Be 2
+        }
+    }
+
+    Context 'newly-recognized message-bearing flags (finding 2)' {
+        It 'blocks az boards work-item update --discussion with a banned term' {
+            $result = Invoke-GuardrailHook -Command 'az boards work-item update --id 1 --discussion "Reviewed by Codex"'
+            $result.ExitCode | Should -Be 2
+        }
+
+        It 'blocks az boards work-item comment add --text with a banned term' {
+            $result = Invoke-GuardrailHook -Command 'az boards work-item comment add --id 1 --text "Co-Authored-By: Claude"'
+            $result.ExitCode | Should -Be 2
+        }
+
+        It 'blocks az devops invoke --query-parameters with a banned term' {
+            $result = Invoke-GuardrailHook -Command 'az devops invoke --area wit --resource workitems --query-parameters text="thanks Claude" --http-method PATCH'
+            $result.ExitCode | Should -Be 2
+        }
+
+        It 'blocks git commit -am with a banned term' {
+            $result = Invoke-GuardrailHook -Command 'git commit -am "thanks Claude"'
+            $result.ExitCode | Should -Be 2
+        }
+
+        It 'allows git commit -am without a banned term' {
+            $result = Invoke-GuardrailHook -Command 'git commit -am "fix bug"'
+            $result.ExitCode | Should -Be 0
+        }
+
+        It 'blocks gh pr create -t/-b short flags with a banned term' {
+            $result = Invoke-GuardrailHook -Command 'gh pr create -t "Fix" -b "Generated with Claude"'
+            $result.ExitCode | Should -Be 2
+        }
+
+        It 'allows gh pr create -t/-b short flags without a banned term' {
+            $result = Invoke-GuardrailHook -Command 'gh pr create -t "Fix" -b "fixes the bug"'
+            $result.ExitCode | Should -Be 0
+        }
+
+        It 'blocks gh pr edit -t/-b short flags with a banned term' {
+            $result = Invoke-GuardrailHook -Command 'gh pr edit 42 -b "Generated with Claude"'
+            $result.ExitCode | Should -Be 2
+        }
+
+        It 'does not treat -t/-b as message-bearing outside gh pr create/edit' {
+            # -t/-b mean something else for other commands (e.g. az's own flags); a banned
+            # term after a bare -t/-b outside gh pr create/edit must not be scanned.
+            $result = Invoke-GuardrailHook -Command 'git commit -m "fix bug" -t "mentions Claude"'
+            $result.ExitCode | Should -Be 0
+        }
+    }
+
+    Context 'multiline -m message (finding 3 follow-up)' {
+        It 'blocks a multiline -m message carrying the banned term on a later line' {
+            $rawPayload = '{"tool_input":{"command":"git commit -m \"feat: x\n\nCo-Authored-By: Claude\""}}'
+            $result = Invoke-GuardrailHookRawPayload -Payload $rawPayload
+            $result.ExitCode | Should -Be 2
+        }
     }
 
     Context 'prose mentioning a banned term in an unrelated command' {
@@ -232,11 +385,15 @@ Describe 'codex/ai-reference-guard.sh' {
     }
 
     Context 'missing wordlist (fail closed)' {
-        It 'blocks with exit 2 when the sibling wordlist file is missing' {
-            $payload = @{ tool_input = @{ command = 'git commit -m "fix bug"' } } | ConvertTo-Json -Compress
-            $output = $payload | & $script:Bash $script:NoWordlistHookScript 2>&1
-            $LASTEXITCODE | Should -Be 2
-            ($output -join "`n") | Should -Match 'BLOCKED'
+        It 'blocks with exit 2 when the sibling wordlist file is missing (scoped-in repo)' {
+            $result = Invoke-GuardrailHook -Command 'git commit -m "fix bug"' -Script $script:NoWordlistHookScript
+            $result.ExitCode | Should -Be 2
+            $result.Output | Should -Match 'BLOCKED'
+        }
+
+        It 'allows even with a missing wordlist when the repo is out of scope' {
+            $result = Invoke-GuardrailHook -Command 'git commit -m "fix bug"' -Script $script:NoWordlistHookScript -Repo $script:UnscopedRepo
+            $result.ExitCode | Should -Be 0
         }
     }
 
@@ -295,7 +452,12 @@ Describe 'codex/ai-reference-guard.sh' {
         It 'blocks (via the fallback tier) a double-quoted -m message with an internal escaped quote and a banned term' {
             $rawPayload = '{"tool_input":{"command":"git commit -m \"she said \\\"hi\\\" and thanks Claude\""}}'
             $probeCommand = "PATH='$($script:NoPythonStubDirPosix)':`"`$PATH`" bash '$($script:HookScript)'"
-            $output = $rawPayload | & $script:Bash -c $probeCommand 2>&1
+            Push-Location $script:ScopedRepo
+            try {
+                $output = $rawPayload | & $script:Bash -c $probeCommand 2>&1
+            } finally {
+                Pop-Location
+            }
             $LASTEXITCODE | Should -Be 2
             ($output -join "`n") | Should -Match 'BLOCKED'
         }
