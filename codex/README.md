@@ -101,9 +101,17 @@ for routine interactive use.
 from being written into a `git commit`, a PR (`gh pr create`/`edit`, `az repos pr
 create`/`update`), or an Azure Boards item (`az boards ...`, `az devops invoke`) — replacing a
 prompt-level "don't reference AI tools" rule that already failed once (issue #219). It also
-denies `git commit`/`git push` using `--no-verify` (or `-n` on commit) outright, since that
-flag bypasses this repo's global `commit-msg`/`pre-commit` git hooks (see `git/README.md`) that
-carry the same scan.
+denies `git commit`/`git push` using `--no-verify`, or `-n` clustered anywhere in a short-flag
+token (e.g. `-nm`, valid git for `--no-verify -m`) on commit, outright — since that flag
+bypasses this repo's global `commit-msg`/`pre-commit` git hooks (see `git/README.md`) that
+carry the same scan — and denies an exported `SKIP_AI_REFERENCE_SCAN`/`SKIP_GITLEAKS=1`
+bypassing those same hooks the same way.
+
+Scoped to Hollard/Azure DevOps repos only, mirroring `git/README.md`'s `commit-msg` scoping:
+`git remote get-url origin` must contain both `dev.azure.com` and `HollardInsuranceRetail`.
+The check runs against `git -C <path>`'s actual target repo when the command carries one
+(quoted or bare), not just the hook's inherited cwd; `cd <path> && git ...` shell-state
+tracking remains a known, accepted limitation.
 
 Ported in structure from `block-dangerous-git.sh` (same stdin JSON extraction tiers, same
 `BLOCKED:`/`Reason:` stderr format); the wordlist scan itself is new. Reads
