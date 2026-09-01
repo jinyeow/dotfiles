@@ -149,9 +149,16 @@ const COMMIT_SHAPED_PATTERNS: RegExp[] = [
 // codex/ai-reference-guard.sh's sibling bound and its regression test) — without it, a
 // chained `git commit -m "fix" && git log -n 1` would match `-n` from the unrelated `log`
 // segment and deny a perfectly clean chained command.
+// SKIP_AI_REFERENCE_SCAN/SKIP_GITLEAKS=1 (last two patterns) is
+// git/templates/hooks/{commit-msg,pre-commit}'s own human bypass hatch (matching the existing
+// SKIP_GITLEAKS convention those hooks already ship). Pi invoking a bash command can set
+// either var just as easily as a human, silently defeating layer 2's scan — denied outright
+// here, same unconditional treatment as --no-verify above.
 const NO_VERIFY_PATTERNS: RegExp[] = [
 	/git\s+(.*\s+)?commit\s[^;&|]*(--no-verify|-n\b)/,
 	/git\s+(.*\s+)?push\s[^;&|]*--no-verify/,
+	/\bSKIP_AI_REFERENCE_SCAN=1\b/,
+	/\bSKIP_GITLEAKS=1\b/,
 ];
 
 // Pure matcher: given a raw command string and an already-parsed wordlist, returns a

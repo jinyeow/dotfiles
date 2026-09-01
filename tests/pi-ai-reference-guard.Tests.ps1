@@ -206,6 +206,8 @@ Describe 'pi/extensions/ai-reference-guard.ts' {
             @{ Command = 'git commit --no-verify -m "fix"' }
             @{ Command = 'git commit -m "fix" -n' }
             @{ Command = 'git push --no-verify origin main' }
+            @{ Command = 'SKIP_AI_REFERENCE_SCAN=1 git commit -m "fix"' }
+            @{ Command = 'SKIP_GITLEAKS=1 git commit -m "fix"' }
         ) {
             param($Command)
             $results = Invoke-AiReferenceGuard -Command $Command
