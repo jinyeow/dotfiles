@@ -30,6 +30,31 @@ refined `claude/block-destructive-vcs.ps1`, not that skill's naive `block-danger
 so a destructive phrase quoted inside e.g. a commit message doesn't false-block, and
 `git stash push` is excluded from the push pattern by name.
 
+`pi/extensions/ai-reference-guard.ts` hard-blocks AI/Claude/Codex/Copilot/co-authored-by
+references from being written into a commit, PR, or Azure Boards item via Pi (issue #219,
+layer 5), replacing a prompt-level rule that already failed once. It shares
+`git-guardrails.ts`'s `tool_call` event shape and bash-tool narrowing but not its quote
+handling: `git-guardrails.ts` scrubs quoted content away before matching so a destructive
+phrase inside a commit message can't false-match a command-shape pattern, while this
+extension matches its wordlist against the CONTENT of quoted spans (message/title/body
+values), since that is exactly where a banned reference is meant to land — scrubbing it
+away first would defeat the check on its own target case. It denies `git commit`,
+`gh pr create`/`gh pr edit`, `az repos pr create`/`az repos pr update`, `az boards ...`,
+and `az devops invoke` only when a quoted value also matches the wordlist, and denies
+`git commit --no-verify`/`-n` and `git push --no-verify` unconditionally. The wordlist
+(`ai-agents/_shared/banned-ai-terms.txt`, one case-insensitive `\b`-bounded ERE per line)
+is read from a sibling file projected alongside this extension inside the junctioned
+`pi/extensions/` directory (its own `New-FileSymlink` entry in `setup.ps1`, not part of the
+whole-directory junction), resolved relative to this extension module's own location. A
+missing or unreadable wordlist fails closed (blocks with a reason naming the path); every
+other non-match condition fails open. Visibility check: Pi's `tool_call` event also exposes
+`edit` and `write` tool calls with their full `path`/`edits[].newText`/`content` payloads
+(confirmed in the installed package's extension types), so staged-content leaks via those
+tools are technically visible to an extension — but this extension does not scan them,
+because the wordlist's bare product-name terms (`\bClaude\b`, `\bCodex\b`, `\bSonnet\b`, …)
+would self-block edits to this repo's own legitimate files (this README, `claude/CLAUDE.md`,
+the extension's own source) with no narrower scope defined for that surface.
+
 `pi/extensions/project-brain-autoload.ts` injects the active project-brain initiative's
 `core.md` + `STATUS.md` once per session, mirroring Claude Code's and Codex's own
 SessionStart hooks (#186). It uses Pi's `before_agent_start` extension event (the only one
