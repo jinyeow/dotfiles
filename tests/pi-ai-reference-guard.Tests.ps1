@@ -25,6 +25,17 @@
 #   - a banned term sitting inside actual commit-message/title/body prose (a quoted span)
 #     is still caught — scrubbing must not scrub away a real banned term in the message
 #     content itself
+#   - `isRepoScopedIn` (repo scoping, mirroring git/templates/hooks/pre-commit's own
+#     scoping) allows everything when there is no origin remote or the origin isn't both
+#     dev.azure.com AND HollardInsuranceRetail, and only then does matchCommand's own
+#     wordlist/no-verify/SKIP-var logic apply — exercised against real throwaway repos
+#     (mirroring tests/git-templates-ai-reference-hook.Tests.ps1's New-TestRepo pattern),
+#     not mocked, since matchCommand itself has no filesystem/process dependency to mock
+#   - `--discussion`, `--text`, and `--query-parameters` are recognized message-flag shapes
+#     alongside the existing -m/--title/--body/--fields/--route-parameters set
+#   - SKIP_AI_REFERENCE_SCAN=1 / SKIP_GITLEAKS=1 still deny even when the value is quoted
+#     (`SKIP_GITLEAKS='1'`), which would otherwise be scrubbed away by scrubQuoted before
+#     the old pattern ever saw it
 
 BeforeAll {
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
@@ -142,6 +153,55 @@ process.stdout.write(JSON.stringify(results));
         }
         return $results
     }
+
+    # Second node harness: extracts the real isRepoScopedIn function body verbatim and
+    # evaluates it against a real cwd, using node's own execSync (not a mock) so
+    # `git remote get-url origin` runs for real — mirrors
+    # tests/git-templates-ai-reference-hook.Tests.ps1's approach of driving the shipped
+    # logic against real throwaway repos rather than mocking git.
+    $script:RepoScopeHarness = Join-Path $TestDrive 'run-repo-scoped.mjs'
+    @'
+import { readFileSync } from "node:fs";
+import { execSync } from "node:child_process";
+
+const [, , extensionPath, cwd] = process.argv;
+const source = readFileSync(extensionPath, "utf8");
+
+const match = source.match(/function isRepoScopedIn\(cwd: string\): boolean \{([\s\S]*?)\n\}/);
+if (!match) {
+    throw new Error("isRepoScopedIn not found in " + extensionPath);
+}
+const body = match[1].replace(/:\s*string/g, "");
+const isRepoScopedIn = new Function("cwd", "execSync", body);
+
+process.stdout.write(JSON.stringify(isRepoScopedIn(cwd, execSync)));
+'@ | Set-Content -Path $script:RepoScopeHarness -NoNewline -Encoding utf8
+
+    function Invoke-IsRepoScopedIn {
+        param([string] $Cwd)
+        $output = & node $script:RepoScopeHarness $script:ExtensionFile $Cwd
+        if ($LASTEXITCODE -ne 0) {
+            throw "node harness failed: $output"
+        }
+        return [bool]($output | ConvertFrom-Json)
+    }
+
+    # Mirrors tests/git-templates-ai-reference-hook.Tests.ps1's New-TestRepo: a throwaway
+    # repo with an origin remote set (or not) to exercise real `git remote get-url origin`.
+    function New-TestRepo {
+        param([string] $OriginUrl)
+        $root = Join-Path $TestDrive ('ai-ref-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $root -Force | Out-Null
+        & git -C $root init -q . 2>&1 | Out-Null
+        if ($OriginUrl) {
+            & git -C $root remote add origin $OriginUrl 2>&1 | Out-Null
+        }
+        return $root
+    }
+
+    $script:HollardHttps = 'https://dev.azure.com/HollardInsuranceRetail/Proj/_git/Repo'
+    $script:HollardSsh = 'git@ssh.dev.azure.com:v3/HollardInsuranceRetail/Proj/Repo'
+    $script:GitHubUrl = 'https://github.com/jinyeow/dotfiles.git'
 }
 
 Describe 'pi/extensions/ai-reference-guard.ts' {
@@ -258,6 +318,70 @@ Describe 'pi/extensions/ai-reference-guard.ts' {
         It 'throws when parseWordlist is fed a nonexistent file (fail-closed path)' {
             $missingPath = Join-Path $TestDrive 'does-not-exist.txt'
             { Invoke-AiReferenceGuard -Command 'git commit -m "fix"' -WordlistPath $missingPath } | Should -Throw
+        }
+    }
+
+    Context 'isRepoScopedIn repo scoping (real throwaway repos, mirroring pre-commit)' {
+        It 'is scoped in for a Hollard HTTPS origin' {
+            $repo = New-TestRepo -OriginUrl $script:HollardHttps
+            Invoke-IsRepoScopedIn -Cwd $repo | Should -BeTrue
+        }
+
+        It 'is scoped in for a Hollard SSH origin' {
+            $repo = New-TestRepo -OriginUrl $script:HollardSsh
+            Invoke-IsRepoScopedIn -Cwd $repo | Should -BeTrue
+        }
+
+        It 'is scoped out for a GitHub origin' {
+            $repo = New-TestRepo -OriginUrl $script:GitHubUrl
+            Invoke-IsRepoScopedIn -Cwd $repo | Should -BeFalse
+        }
+
+        It 'is scoped out when there is no origin remote at all' {
+            $repo = New-TestRepo -OriginUrl $null
+            Invoke-IsRepoScopedIn -Cwd $repo | Should -BeFalse
+        }
+
+        It 'is scoped out when cwd is not a git repo' {
+            $notARepo = Join-Path $TestDrive ('not-a-repo-' + [guid]::NewGuid())
+            New-Item -ItemType Directory -Path $notARepo -Force | Out-Null
+            Invoke-IsRepoScopedIn -Cwd $notARepo | Should -BeFalse
+        }
+    }
+
+    Context 'newly-recognized message flags (--discussion / --text / --query-parameters)' {
+        It 'blocks <Command>' -TestCases @(
+            @{ Command = 'az boards work-item update --id 5 --discussion "Generated with Claude"' }
+            @{ Command = 'az boards work-item comment add --id 5 --text "Written by Claude"' }
+            @{ Command = 'az devops invoke --area wit --resource workitems --query-parameters "System.Description=Generated with Claude"' }
+            @{ Command = 'az devops invoke --area wit --resource workitems --query-parameters System.Description=Generated-with-Claude' }
+        ) {
+            param($Command)
+            $results = Invoke-AiReferenceGuard -Command $Command
+            $results[$Command] | Should -BeTrue
+        }
+
+        It 'allows <Command>' -TestCases @(
+            @{ Command = 'az boards work-item update --id 5 --discussion "Looks good"' }
+            @{ Command = 'az boards work-item comment add --id 5 --text "Reviewed and approved"' }
+            @{ Command = 'az devops invoke --area wit --resource workitems --query-parameters "System.Description=Normal work"' }
+        ) {
+            param($Command)
+            $results = Invoke-AiReferenceGuard -Command $Command
+            $results[$Command] | Should -BeFalse
+        }
+    }
+
+    Context 'SKIP-var deny survives quoting the value' {
+        It 'blocks <Command>' -TestCases @(
+            @{ Command = "SKIP_GITLEAKS='1' git commit -m ""fix""" }
+            @{ Command = 'SKIP_GITLEAKS="1" git commit -m "fix"' }
+            @{ Command = "SKIP_AI_REFERENCE_SCAN='1' git commit -m ""fix""" }
+            @{ Command = 'export SKIP_GITLEAKS=1; git commit -m "fix"' }
+        ) {
+            param($Command)
+            $results = Invoke-AiReferenceGuard -Command $Command
+            $results[$Command] | Should -BeTrue
         }
     }
 }

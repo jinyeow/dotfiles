@@ -31,16 +31,38 @@
 // concern — see pi/README.md and the PR description for the exact call).
 
 import { readFileSync } from "node:fs";
+import { execSync } from "node:child_process";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { isToolCallEventType } from "@earendil-works/pi-coding-agent";
 
-// Default wordlist location: a sibling file next to this extension module inside the
-// junctioned pi/extensions/ directory at runtime, resolved relative to this module's own
-// location (not process.cwd(), which is unrelated to where Pi loaded this file from).
-// Overridable via PI_AI_REFERENCE_WORDLIST_PATH so tests can point at a fixture file
-// without depending on this machine's actual Pi projection under homedir() — mirrors the
-// PI_PROJECT_BRAIN_SESSION_START_SCRIPT override in project-brain-autoload.ts.
-const DEFAULT_WORDLIST_PATH = new URL("./banned-ai-terms.txt", import.meta.url);
+// Default wordlist location: a sibling of the junctioned pi/extensions/ directory (NOT
+// inside it — that directory is a whole-directory junction straight into this repo's
+// pi/extensions/, so a file placed inside it at runtime would show up as an untracked
+// file in the repo on every `setup.ps1 -Module pi` run), resolved relative to this
+// module's own location (not process.cwd(), which is unrelated to where Pi loaded this
+// file from). Overridable via PI_AI_REFERENCE_WORDLIST_PATH so tests can point at a
+// fixture file without depending on this machine's actual Pi projection under homedir()
+// — mirrors the PI_PROJECT_BRAIN_SESSION_START_SCRIPT override in
+// project-brain-autoload.ts.
+const DEFAULT_WORDLIST_PATH = new URL("../banned-ai-terms.txt", import.meta.url);
+
+// Repo scoping, mirroring git/templates/hooks/pre-commit's own scoping (see that file's
+// AI-reference section): this whole extension only applies inside a Hollard/Azure DevOps
+// remote repo. `git remote get-url origin` runs against cwd (the extension's own
+// inherited working directory, same as the bash ports use their inherited cwd). If it
+// throws (not a repo, no origin) or the URL isn't both dev.azure.com AND
+// HollardInsuranceRetail (case-insensitive), the repo is out of scope — a GitHub repo
+// like dotfiles/wiki/brain legitimately says "Claude"/"Codex" in its own subject matter
+// and must stay unscanned.
+function isRepoScopedIn(cwd: string): boolean {
+	let originUrl: string;
+	try {
+		originUrl = execSync("git remote get-url origin", { cwd, encoding: "utf8" });
+	} catch {
+		return false;
+	}
+	return /dev\.azure\.com/i.test(originUrl) && /HollardInsuranceRetail/i.test(originUrl);
+}
 
 // Parses banned-ai-terms.txt's documented format (one case-insensitive ERE per line,
 // '#'-prefixed comments and blank lines ignored) into compiled RegExp patterns. Pure and
@@ -100,7 +122,15 @@ function collectQuotedContent(command: string): string {
 	// something else for other commands (e.g. git commit -t <template-file>), so scanning
 	// them everywhere would risk an unrelated false positive.
 	const isGhPr = /(^|\s)gh\s+pr\s+(create|edit)(\s|$)/.test(command);
-	const singleValueFlags = ["-[A-Za-z]*m", "--message", "--title", "--body", "--description"];
+	const singleValueFlags = [
+		"-[A-Za-z]*m",
+		"--message",
+		"--title",
+		"--body",
+		"--description",
+		"--discussion",
+		"--text",
+	];
 	if (isGhPr) {
 		singleValueFlags.push("-t", "-b");
 	}
@@ -114,13 +144,13 @@ function collectQuotedContent(command: string): string {
 		singleMatch = singleValuePattern.exec(command);
 	}
 
-	// Multi-value flags: --fields/--route-parameters take a run of space-separated
-	// `key=value` pairs (e.g. `az boards work-item update --fields System.Title=Fix
-	// System.Description=Generated-with-Claude`), so the whole run is scanned, not just the
-	// first pair — stopping at the next `-`-prefixed flag, a shell separator (`;`/`&`/`|`),
-	// or end of command.
+	// Multi-value flags: --fields/--route-parameters/--query-parameters take a run of
+	// space-separated `key=value` pairs (e.g. `az boards work-item update --fields
+	// System.Title=Fix System.Description=Generated-with-Claude`), so the whole run is
+	// scanned, not just the first pair — stopping at the next `-`-prefixed flag, a shell
+	// separator (`;`/`&`/`|`), or end of command.
 	const multiValuePattern =
-		/(?:^|\s)(?:--fields|--route-parameters)(?=[=\s])(?:=|\s+)((?:"(?:\\.|[^"\\])*"|'[^']*'|[^\s"';&|-]\S*)(?:\s+(?:"(?:\\.|[^"\\])*"|'[^']*'|[^\s"';&|-]\S*))*)/g;
+		/(?:^|\s)(?:--fields|--route-parameters|--query-parameters)(?=[=\s])(?:=|\s+)((?:"(?:\\.|[^"\\])*"|'[^']*'|[^\s"';&|-]\S*)(?:\s+(?:"(?:\\.|[^"\\])*"|'[^']*'|[^\s"';&|-]\S*))*)/g;
 	let multiMatch: RegExpExecArray | null = multiValuePattern.exec(command);
 	while (multiMatch !== null) {
 		spans.push(multiMatch[1]);
@@ -149,22 +179,30 @@ const COMMIT_SHAPED_PATTERNS: RegExp[] = [
 // codex/ai-reference-guard.sh's sibling bound and its regression test) — without it, a
 // chained `git commit -m "fix" && git log -n 1` would match `-n` from the unrelated `log`
 // segment and deny a perfectly clean chained command.
-// SKIP_AI_REFERENCE_SCAN/SKIP_GITLEAKS=1 (last two patterns) is
-// git/templates/hooks/{commit-msg,pre-commit}'s own human bypass hatch (matching the existing
-// SKIP_GITLEAKS convention those hooks already ship). Pi invoking a bash command can set
-// either var just as easily as a human, silently defeating layer 2's scan — denied outright
-// here, same unconditional treatment as --no-verify above.
 const NO_VERIFY_PATTERNS: RegExp[] = [
 	/git\s+(.*\s+)?commit\s[^;&|]*(--no-verify|-n\b)/,
 	/git\s+(.*\s+)?push\s[^;&|]*--no-verify/,
-	/\bSKIP_AI_REFERENCE_SCAN=1\b/,
-	/\bSKIP_GITLEAKS=1\b/,
 ];
 
 // Pure matcher: given a raw command string and an already-parsed wordlist, returns a
 // block reason or undefined to allow. No I/O — the caller owns reading the wordlist file,
 // so this stays testable without a filesystem.
 function matchCommand(command: string, wordlistPatterns: RegExp[]): string | undefined {
+	// SKIP_AI_REFERENCE_SCAN/SKIP_GITLEAKS=1 is git/templates/hooks/{commit-msg,pre-commit}'s
+	// own human bypass hatch (matching the existing SKIP_GITLEAKS convention those hooks
+	// already ship). Pi invoking a bash command can set either var just as easily as a
+	// human, silently defeating layer 2's scan — denied outright here, same unconditional
+	// treatment as --no-verify below. Checked against the RAW command, not scrubbed:
+	// scrubQuoted deletes non-flag quoted content, so a quoted value
+	// (`SKIP_GITLEAKS='1' git commit ...`) would otherwise have its "1" scrubbed away
+	// before this pattern ever saw it, even though the underlying shell hook still sees the
+	// unquoted value (the shell strips the quotes). Anchored to an actual shell-assignment
+	// shape so it doesn't false-match unrelated prose containing this text.
+	const skipVarPattern = /(^|[;&|]\s*|export\s+|env\s+)SKIP_(AI_REFERENCE_SCAN|GITLEAKS)=['"]?1['"]?\b/;
+	if (skipVarPattern.test(command)) {
+		return `Blocked: does not have authority to run "${command}" — this command bypasses commit/push verification hooks.`;
+	}
+
 	const scrubbed = scrubQuoted(command);
 
 	for (const pattern of NO_VERIFY_PATTERNS) {
@@ -206,6 +244,10 @@ function loadWordlistPatterns(): RegExp[] {
 export default function (pi: ExtensionAPI) {
 	pi.on("tool_call", async (event) => {
 		if (!isToolCallEventType("bash", event)) {
+			return;
+		}
+
+		if (!isRepoScopedIn(process.cwd())) {
 			return;
 		}
 

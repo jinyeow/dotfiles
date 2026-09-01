@@ -1113,11 +1113,14 @@ function Install-Pi {
     foreach ($resource in @('extensions', 'prompts', 'themes')) {
         New-Junction -Link (Join-Path $piDir $resource) -Target (Join-Path $Dotfiles "pi\$resource")
     }
-    # Shared wordlist ai-reference-guard.ts reads as a sibling file inside the junctioned
-    # extensions/ dir. Symlinked (not junctioned like the whole-dir resources above) since it's
-    # a single file living outside pi/extensions/ in the repo — matches the claude module's
-    # per-file New-FileSymlink pattern for the same wordlist (issue #219).
-    New-FileSymlink -Link (Join-Path $piDir 'extensions\banned-ai-terms.txt') -Target (Join-Path $Dotfiles 'ai-agents\_shared\banned-ai-terms.txt')
+    # Shared wordlist ai-reference-guard.ts reads as a sibling of the junctioned extensions/
+    # dir, not inside it — extensions/ is a whole-directory JUNCTION straight into this
+    # repo's pi/extensions/, so a symlink placed inside it would land as a real filesystem
+    # entry inside the tracked repo directory, showing up as untracked on every
+    # `setup.ps1 -Module pi` run. Symlinked (not junctioned like the whole-dir resources
+    # above) since it's a single file living outside pi/extensions/ in the repo — matches
+    # the claude module's per-file New-FileSymlink pattern for the same wordlist (issue #219).
+    New-FileSymlink -Link (Join-Path $piDir 'banned-ai-terms.txt') -Target (Join-Path $Dotfiles 'ai-agents\_shared\banned-ai-terms.txt')
 
     $nativeSkills = @(Get-ChildItem -Path $oldSkillsTarget -Directory -ErrorAction SilentlyContinue)
     $nativeNames = @($nativeSkills.ForEach('Name'))
