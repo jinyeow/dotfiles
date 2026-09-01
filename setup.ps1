@@ -1420,8 +1420,15 @@ function Install-Codex {
             } else {
                 @()
             }
-            $foreignEntries = $existingPreToolUse | Where-Object {
-                -not ($_.hooks | Where-Object { $_.command -match 'block-dangerous-git\.sh' })
+            # Filter at the individual-hook level, not the whole-entry level: an entry mixing a
+            # foreign hook alongside a stale block-dangerous-git.sh hook must keep its foreign
+            # hook, not lose the whole entry (mirrors the SessionStart merge below).
+            $foreignEntries = foreach ($entry in $existingPreToolUse) {
+                $keptHooks = @($entry.hooks | Where-Object { $_.command -notmatch 'block-dangerous-git\.sh' })
+                if ($keptHooks) {
+                    $entry.hooks = $keptHooks
+                    $entry
+                }
             }
             $dangerousGitEntries = @($sourceHooks.hooks.PreToolUse) | Where-Object {
                 $_.hooks | Where-Object { $_.command -match 'block-dangerous-git\.sh' }
@@ -1434,8 +1441,15 @@ function Install-Codex {
             } else {
                 @()
             }
-            $foreignEntries = $existingPreToolUse | Where-Object {
-                -not ($_.hooks | Where-Object { $_.command -match 'ai-reference-guard\.sh' })
+            # Filter at the individual-hook level, not the whole-entry level: an entry mixing a
+            # foreign hook alongside a stale ai-reference-guard.sh hook must keep its foreign
+            # hook, not lose the whole entry (mirrors the SessionStart merge below).
+            $foreignEntries = foreach ($entry in $existingPreToolUse) {
+                $keptHooks = @($entry.hooks | Where-Object { $_.command -notmatch 'ai-reference-guard\.sh' })
+                if ($keptHooks) {
+                    $entry.hooks = $keptHooks
+                    $entry
+                }
             }
             $aiReferenceEntries = @($sourceHooks.hooks.PreToolUse) | Where-Object {
                 $_.hooks | Where-Object { $_.command -match 'ai-reference-guard\.sh' }
@@ -1450,8 +1464,7 @@ function Install-Codex {
         }
         # Filter at the individual-hook level, not the whole-entry level: an entry mixing a
         # foreign hook alongside a project-brain hook must keep its foreign hook, not lose the
-        # whole entry. (The PreToolUse merge above has the same whole-entry-drop shape; not
-        # fixed here to stay surgical to this SessionStart finding.)
+        # whole entry. (The PreToolUse merges above use the same per-hook filtering.)
         $foreignSessionStart = foreach ($entry in $existingSessionStart) {
             $keptHooks = @($entry.hooks | Where-Object { $_.command -notmatch 'project-brain[\\/]scripts[\\/]session-start\.ps1' })
             if ($keptHooks) {

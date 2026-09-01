@@ -318,6 +318,48 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
         }
     }
 
+    It 'keeps a foreign hook that shares a PreToolUse entry with a stale guardrail hook' {
+        # Regression: the PreToolUse filter used to drop an entry's ENTIRE hooks array whenever
+        # any one hook inside it matched a guardrail pattern, silently discarding a foreign hook
+        # that happened to share the same entry (mirrors the SessionStart mixed-hook fix above).
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-pretooluse-mixed-' + [guid]::NewGuid())
+        $codexDir = Join-Path $tmpHome '.codex'
+        New-Item -ItemType Directory -Path $codexDir -Force | Out-Null
+        $mixed = @{
+            hooks = @{
+                PreToolUse = @(
+                    @{
+                        hooks = @(
+                            @{ type = 'command'; command = 'some-other-tool --check' },
+                            @{ type = 'command'; command = 'bash ~/.codex/skills/git-guardrails/block-dangerous-git.sh' }
+                        )
+                    },
+                    @{
+                        hooks = @(
+                            @{ type = 'command'; command = 'another-foreign-tool --scan' },
+                            @{ type = 'command'; command = 'bash ~/.codex/skills/ai-reference-guard/ai-reference-guard.sh' }
+                        )
+                    }
+                )
+            }
+        }
+        ($mixed | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath (Join-Path $codexDir 'hooks.json')
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            Install-Codex *>$null
+            $hooks = Get-Content -LiteralPath (Join-Path $codexDir 'hooks.json') -Raw | ConvertFrom-Json
+            $allCommands = @($hooks.hooks.PreToolUse | ForEach-Object { $_.hooks } | ForEach-Object { $_.command })
+            $allCommands | Should -Contain 'some-other-tool --check'
+            $allCommands | Should -Contain 'another-foreign-tool --scan'
+            ($allCommands | Where-Object { $_ -match 'block-dangerous-git\.sh' }) | Should -Not -BeNullOrEmpty
+            ($allCommands | Where-Object { $_ -match 'ai-reference-guard\.sh' }) | Should -Not -BeNullOrEmpty
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     It 'preserves a pre-existing foreign SessionStart entry (herdr) alongside the merged project-brain entry' {
         # Regression: the merge contract (setup.ps1's own comment above, codex/README.md) promises
         # preserving other SessionStart entries untouched — e.g. herdr's own entry — while adding
