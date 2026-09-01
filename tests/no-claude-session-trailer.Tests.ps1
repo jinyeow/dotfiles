@@ -12,6 +12,13 @@
 # shared wordlist into an isolated temp directory (mimicking the sibling layout) and invokes it
 # from there; the fail-closed test uses a temp directory with the script only.
 #
+# The whole hook is scoped to Hollard/Azure-DevOps-remote repos (mirroring
+# git/templates/hooks/pre-commit's own scoping): it reads `git remote get-url origin` from its
+# inherited cwd and allows everything outright when that fails or doesn't match. So every check
+# below runs with the process cwd pushed into a throwaway repo whose origin is set accordingly —
+# a Hollard-remote repo by default (Invoke-Hook's default -RepoDir), so the existing deny
+# behaviour is exercised as before; a dedicated context covers the GitHub/no-origin allow cases.
+#
 # The suite needs bash + jq (as the hook does); it skips rather than false-green when absent.
 
 . (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
@@ -24,6 +31,9 @@ BeforeAll {
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:HookSource = Join-Path $script:RepoRoot 'claude/no-claude-session-trailer.sh'
     $script:WordlistSource = Join-Path $script:RepoRoot 'ai-agents/_shared/banned-ai-terms.txt'
+
+    $script:HollardHttps = 'https://dev.azure.com/HollardInsuranceRetail/Proj/_git/Repo'
+    $script:GitHubUrl = 'https://github.com/jinyeow/dotfiles.git'
 
     # Sibling layout (hook + wordlist together), mimicking ~/.claude/.
     $script:InstalledDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.Guid]::NewGuid())
@@ -38,20 +48,49 @@ BeforeAll {
     Copy-Item -LiteralPath $script:HookSource -Destination (Join-Path $script:NoWordlistDir 'no-claude-session-trailer.sh')
     $script:HookNoWordlist = Join-Path $script:NoWordlistDir 'no-claude-session-trailer.sh'
 
-    # Drive the bash hook with a command string wrapped as the tool-call JSON on stdin.
+    # Throwaway git repos to drive the `git remote get-url origin` scoping check, mirroring
+    # tests/git-templates-ai-reference-hook.Tests.ps1's New-TestRepo helper.
+    function New-TestRepo {
+        param([string] $OriginUrl)
+        $root = Join-Path ([System.IO.Path]::GetTempPath()) ('no-claude-trailer-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $root -Force | Out-Null
+        & git -C $root init -q . 2>&1 | Out-Null
+        & git -C $root config user.email 'test@example.invalid' 2>&1 | Out-Null
+        & git -C $root config user.name 'Test' 2>&1 | Out-Null
+        if ($OriginUrl) {
+            & git -C $root remote add origin $OriginUrl 2>&1 | Out-Null
+        }
+        return $root
+    }
+
+    $script:HollardRepo = New-TestRepo -OriginUrl $script:HollardHttps
+    $script:GitHubRepo = New-TestRepo -OriginUrl $script:GitHubUrl
+    $script:NoOriginRepo = New-TestRepo -OriginUrl $null
+
+    # Drive the bash hook with a command string wrapped as the tool-call JSON on stdin, from
+    # inside the given repo (default: the Hollard-remote repo, so scoped-in behaviour is the
+    # default for the existing deny-focused tests).
     function Invoke-Hook {
-        param([string] $Command, [string] $HookPath = $script:Hook)
+        param(
+            [string] $Command,
+            [string] $HookPath = $script:Hook,
+            [string] $RepoDir = $script:HollardRepo
+        )
         $json = @{ tool_input = @{ command = $Command } } | ConvertTo-Json -Compress
-        return ($json | & $script:TestBash $HookPath 2>&1 | Out-String)
+        Push-Location $RepoDir
+        try {
+            return ($json | & $script:TestBash $HookPath 2>&1 | Out-String)
+        } finally {
+            Pop-Location
+        }
     }
 }
 
 AfterAll {
-    if ($script:InstalledDir -and (Test-Path -LiteralPath $script:InstalledDir)) {
-        Remove-Item -LiteralPath $script:InstalledDir -Recurse -Force -ErrorAction SilentlyContinue
-    }
-    if ($script:NoWordlistDir -and (Test-Path -LiteralPath $script:NoWordlistDir)) {
-        Remove-Item -LiteralPath $script:NoWordlistDir -Recurse -Force -ErrorAction SilentlyContinue
+    foreach ($dir in @($script:InstalledDir, $script:NoWordlistDir, $script:HollardRepo, $script:GitHubRepo, $script:NoOriginRepo)) {
+        if ($dir -and (Test-Path -LiteralPath $dir)) {
+            Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
 }
 
@@ -136,6 +175,10 @@ Describe 'claude/no-claude-session-trailer.sh' -Skip:(-not $script:HasBash) {
             $out = Invoke-Hook -Command 'SKIP_GITLEAKS=1 git commit -m "clean message"'
             $out | Should -Match '"permissionDecision":"deny"'
         }
+        It 'denies a quoted `SKIP_GITLEAKS="1"` value (the unquoted-only evasion)' {
+            $out = Invoke-Hook -Command 'SKIP_GITLEAKS="1" git commit -m "clean message"'
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
     }
 
     Context 'fails closed when the wordlist is missing' {
@@ -203,6 +246,95 @@ Describe 'claude/no-claude-session-trailer.sh' -Skip:(-not $script:HasBash) {
         }
         It 'denies an unquoted banned term in a --body value' {
             $out = Invoke-Hook -Command 'gh pr create --title x --body AI-generated'
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+    }
+
+    Context 'recognizes additional message-bearing flag shapes' {
+        It 'denies git commit -am with a banned term (the clustered short-flag form)' {
+            $out = Invoke-Hook -Command 'git commit -am "Co-Authored-By: Claude"'
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+        It 'allows git commit -am with a clean message' {
+            $out = Invoke-Hook -Command 'git commit -am "a normal message"'
+            $out.Trim() | Should -BeNullOrEmpty
+        }
+        It 'denies az boards work-item update --discussion with a banned term' {
+            $out = Invoke-Hook -Command 'az boards work-item update --id 1 --discussion "Co-Authored-By: Claude"'
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+        It 'denies az boards work-item comment add --text with a banned term' {
+            $out = Invoke-Hook -Command 'az boards work-item comment add --id 1 --text "written by AI"'
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+        It 'denies `az devops invoke --query-parameters key=value` carrying a banned term (key=value shape)' {
+            $out = Invoke-Hook -Command 'az devops invoke --area wit --resource comments --query-parameters text="thanks Claude"'
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+    }
+
+    Context 'drops the blanket quoted-span scan (flag-value extraction only)' {
+        It 'allows a clean commit whose unrelated quoted flag value would trip a blanket scan' {
+            # `-C "claude"` is quoted content unrelated to the commit message — a blanket scan of
+            # every quoted span (dropped by this fix) would previously false-positive on it.
+            $out = Invoke-Hook -Command 'git -C "claude" commit -m "fix"'
+            $out.Trim() | Should -BeNullOrEmpty
+        }
+        It 'denies when the banned term is genuinely in the message, alongside an unrelated quoted flag value' {
+            $out = Invoke-Hook -Command 'git -C "claude" commit -m "Co-Authored-By: Claude"'
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+    }
+
+    Context 'escape-aware quoted-value extraction' {
+        It 'denies a banned term inside an escaped inner-quoted -m value' {
+            $out = Invoke-Hook -Command 'git commit -m "say \"Claude\" less please"'
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+    }
+
+    Context 'scopes -n and SKIP_* checks to the same shell segment as the guarded subcommand' {
+        It 'allows a chained `git commit ... && git log -n 1` (unrelated -n on a different segment)' {
+            $out = Invoke-Hook -Command 'git commit -m "fix" && git log -n 1'
+            $out.Trim() | Should -BeNullOrEmpty
+        }
+        It 'allows a chained `git commit ... && git push -n origin main` (dry-run -n on a different segment)' {
+            $out = Invoke-Hook -Command 'git commit -m "fix" && git push -n origin main'
+            $out.Trim() | Should -BeNullOrEmpty
+        }
+        It 'allows `SKIP_GITLEAKS=1` prefixed to an unrelated command chained before a clean git commit' {
+            $out = Invoke-Hook -Command 'SKIP_GITLEAKS=1 rg foo && git commit -m "clean message"'
+            $out.Trim() | Should -BeNullOrEmpty
+        }
+        It 'allows `SKIP_GITLEAKS=1` prefixed to an unrelated command with no commit anywhere' {
+            $out = Invoke-Hook -Command 'SKIP_GITLEAKS=1 rg foo && git log -n 1'
+            $out.Trim() | Should -BeNullOrEmpty
+        }
+        It 'allows a command that merely mentions SKIP_GITLEAKS=1 in unrelated prose' {
+            $out = Invoke-Hook -Command "rg 'SKIP_GITLEAKS=1' README.md"
+            $out.Trim() | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'repo scoping (Hollard/Azure DevOps remotes only)' {
+        It 'allows a banned commit term in a GitHub-remote repo (out of scope)' {
+            $out = Invoke-Hook -Command 'git commit -m "Co-Authored-By: Claude"' -RepoDir $script:GitHubRepo
+            $out.Trim() | Should -BeNullOrEmpty
+        }
+        It 'allows a banned commit term when there is no origin remote at all' {
+            $out = Invoke-Hook -Command 'git commit -m "Co-Authored-By: Claude"' -RepoDir $script:NoOriginRepo
+            $out.Trim() | Should -BeNullOrEmpty
+        }
+        It 'allows `git commit --no-verify` in a GitHub-remote repo (out of scope)' {
+            $out = Invoke-Hook -Command 'git commit -m "clean message" --no-verify' -RepoDir $script:GitHubRepo
+            $out.Trim() | Should -BeNullOrEmpty
+        }
+        It 'allows `SKIP_GITLEAKS=1 git commit` in a GitHub-remote repo (out of scope)' {
+            $out = Invoke-Hook -Command 'SKIP_GITLEAKS=1 git commit -m "clean message"' -RepoDir $script:GitHubRepo
+            $out.Trim() | Should -BeNullOrEmpty
+        }
+        It 'still denies a banned commit term in a Hollard-remote repo' {
+            $out = Invoke-Hook -Command 'git commit -m "Co-Authored-By: Claude"' -RepoDir $script:HollardRepo
             $out | Should -Match '"permissionDecision":"deny"'
         }
     }
