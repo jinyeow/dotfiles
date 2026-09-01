@@ -64,11 +64,22 @@ if command -v python3 &>/dev/null && COMMAND=$(echo "$INPUT" | python3 -c "$PYTH
 elif command -v python &>/dev/null && COMMAND=$(echo "$INPUT" | python -c "$PYTHON_EXTRACT" 2>/dev/null); then
   :
 else
-  # Naive extraction — good enough for single-line commands. `|| echo ""` keeps
-  # this non-fatal under `set -euo pipefail` when no "command" key matches
-  # (malformed JSON or a command-less payload), so the hook falls through to
-  # allow rather than crashing.
-  COMMAND=$(echo "$INPUT" | grep -o '"command"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"command"[[:space:]]*:[[:space:]]*"\(.*\)"/\1/' || echo "")
+  # Naive extraction — good enough for single-line commands. The previous
+  # `[^"]*`-based value pattern didn't understand JSON's own backslash escaping and
+  # stopped at the FIRST literal `"` it saw — including a JSON-escaped `\"` that is
+  # only the middle of an internally-quoted bash message (e.g. `-m "she said \"hi\""`).
+  # That silently truncated COMMAND before any banned term appearing after the escaped
+  # quote, so the scan below would pass even though the term was present. This PCRE
+  # pattern instead consumes `\"`/`\\` escape pairs (`\\.`) as part of the string
+  # content, so it only stops at the real closing quote; `\K` drops the `"command":"`
+  # prefix from the extracted match so only the (still JSON-escaped) value is captured.
+  # The sed pass then un-escapes `\"` -> `"` and `\\` -> `\`, matching what
+  # `json.load` would have produced (other JSON escapes, e.g. `\n`, are left literal —
+  # out of scope for a single-line shell command). `|| echo ""` keeps this non-fatal
+  # under `set -euo pipefail` when no "command" key matches (malformed JSON or a
+  # command-less payload), so the hook falls through to allow rather than crashing.
+  RAW_COMMAND=$(echo "$INPUT" | grep -oP '"command"[[:space:]]*:[[:space:]]*"\K(?:[^"\\]|\\.)*' | head -1 || echo "")
+  COMMAND=$(printf '%s' "$RAW_COMMAND" | sed 's/\\\\/\x01/g; s/\\"/"/g; s/\x01/\\/g')
 fi
 
 # ── Layer 4a: --no-verify / -n bypass of layer 2's git hooks ───────────────────────
@@ -115,9 +126,21 @@ for pattern in "${RISKY_COMMAND_PATTERNS[@]}"; do
 done
 
 if $IS_RISKY; then
+  # Scope the wordlist scan to message-bearing ARGUMENT VALUES only — the content of
+  # -m/--message/--title/--body/--description/--fields/--route-parameters — instead of
+  # the whole $COMMAND string. Matching against the whole command also matches a banned
+  # word inside an unrelated file path (e.g. `\bCodex\b` inside
+  # `codex/ai-reference-guard.sh`, or `\bClaude\b` inside `claude/settings.json`), which
+  # would self-block routine commits in this very repo. Both double- and single-quoted
+  # values are captured (handling an internal escaped `"`), as well as a bare unquoted
+  # token; `\K` drops the flag+separator from the match so only the value text is
+  # scanned. `|| echo ""` keeps this non-fatal under `set -euo pipefail` when none of
+  # the flags are present in a risky command.
+  MESSAGE_VALUES=$(echo "$COMMAND" | grep -oP -- '(?:^|[[:space:]])(?:-m|--message|--title|--body|--description|--fields|--route-parameters)(?:[[:space:]]+|=)\K("(?:[^"\\]|\\.)*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)' || echo "")
+
   # Strip comment/blank lines before using the wordlist as a grep -f pattern file —
   # grep -f treats every line as a pattern, so a raw blank line would match everything.
-  if echo "$COMMAND" | grep -qEi -f <(grep -vE '^[[:space:]]*(#|$)' "$WORDLIST_PATH"); then
+  if [[ -n "$MESSAGE_VALUES" ]] && echo "$MESSAGE_VALUES" | grep -qEi -f <(grep -vE '^[[:space:]]*(#|$)' "$WORDLIST_PATH"); then
     echo "BLOCKED: Codex does not have authority to run: $COMMAND" >&2
     echo "Reason: this command carries a commit/PR/board reference and matches the banned AI-reference wordlist ($WORDLIST_PATH)." >&2
     echo "If you want to run this command, do it yourself in a terminal." >&2

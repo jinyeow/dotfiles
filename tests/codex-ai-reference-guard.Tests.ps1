@@ -63,10 +63,18 @@ BeforeAll {
         & $script:Bash -c 'chmod +x "$1"' _ ($stubPath -replace '\\', '/')
     }
 
+    # `PATH='<windows-style path>':"$PATH"` does NOT shadow anything in Git Bash: a raw
+    # `C:\...` path contains its own `:` (after the drive letter), which the colon-split
+    # PATH parser treats as a separate, bogus entry, so the real python3/python stay
+    # resolvable. Convert the stub dir to Git Bash's own POSIX path form (cygpath -u,
+    # e.g. `/c/Users/...`) first — verified empirically that only the POSIX form actually
+    # shadows `command -v python3`/`python` in this environment.
+    $script:NoPythonStubDirPosix = (& $script:Bash -c 'cygpath -u "$1"' _ $script:NoPythonStubDir).Trim()
+
     function Invoke-GuardrailHookNoPython {
         param([string] $Command)
         $payload = @{ tool_input = @{ command = $Command } } | ConvertTo-Json -Compress
-        $output = $payload | & $script:Bash -c "PATH='$($script:NoPythonStubDir)':`"`$PATH`" bash '$($script:HookScript)'" 2>&1
+        $output = $payload | & $script:Bash -c "PATH='$($script:NoPythonStubDirPosix)':`"`$PATH`" bash '$($script:HookScript)'" 2>&1
         return [PSCustomObject]@{
             ExitCode = $LASTEXITCODE
             Output   = ($output -join "`n")
@@ -154,7 +162,11 @@ Describe 'codex/ai-reference-guard.sh' {
 
     Context 'az devops invoke' {
         It 'blocks az devops invoke with a banned term' {
-            $result = Invoke-GuardrailHook -Command 'az devops invoke --area wit --resource workitems --route-parameters id=1 --http-method PATCH --in-file body.json # Co-Authored-By: Claude'
+            # The wordlist scan is scoped to message-bearing argument VALUES (finding 1),
+            # not the whole command, so the banned term must sit in a scanned flag's
+            # value (--route-parameters here) rather than a trailing shell comment —
+            # a comment is never sent anywhere by the command itself.
+            $result = Invoke-GuardrailHook -Command 'az devops invoke --area wit --resource workitems --route-parameters "comment=Co-Authored-By: Claude" --http-method PATCH --in-file body.json'
             $result.ExitCode | Should -Be 2
         }
 
@@ -248,6 +260,63 @@ Describe 'codex/ai-reference-guard.sh' {
 
         It 'blocks git commit --no-verify via the fallback extraction' {
             $result = Invoke-GuardrailHookNoPython -Command 'git commit -m "fix bug" --no-verify'
+            $result.ExitCode | Should -Be 2
+        }
+
+        It 'proves the PATH stub actually shadows python3/python (sanity check for the tier below)' {
+            # If this ever stops holding (e.g. the stub-shadow trick breaks again on a
+            # different host), the two tests below would silently pass via the real
+            # python tier instead of the grep/sed fallback they are named for.
+            $probe = "PATH='$($script:NoPythonStubDirPosix)':`"`$PATH`" bash -c 'command -v python3; command -v python'"
+            $resolved = & $script:Bash -c $probe 2>&1
+            $resolved | Should -Match ([regex]::Escape($script:NoPythonStubDirPosix))
+            $resolved | Should -Not -Match 'WindowsApps|Python3\d\d'
+        }
+
+        # Finding 3 regression: the fallback tier's naive `[^"]*`-based JSON "command"
+        # extraction stopped at the FIRST literal `"` — including one that is only a
+        # JSON-escaped `\"` inside the bash command's own double-quoted -m message — so
+        # a message with an internal escaped quote was silently truncated before the
+        # banned term, and the scan passed even though the term was present. Bypasses
+        # Invoke-GuardrailHookNoPython's JSON-building `ConvertTo-Json` (which would
+        # re-encode away the exact escaping shape under test) and drives the fallback
+        # tier with a literal, hand-built JSON payload instead, so this test is robust
+        # regardless of whether the PATH-shadow trick above holds on a given host.
+        It 'blocks (via the fallback tier) a double-quoted -m message with an internal escaped quote and a banned term' {
+            $rawPayload = '{"tool_input":{"command":"git commit -m \"she said \\\"hi\\\" and thanks Claude\""}}'
+            $probeCommand = "PATH='$($script:NoPythonStubDirPosix)':`"`$PATH`" bash '$($script:HookScript)'"
+            $output = $rawPayload | & $script:Bash -c $probeCommand 2>&1
+            $LASTEXITCODE | Should -Be 2
+            ($output -join "`n") | Should -Match 'BLOCKED'
+        }
+    }
+
+    Context 'wordlist scan scoped to message-bearing argument values (finding 1)' {
+        It 'allows staging/committing this very script without self-blocking on the path' {
+            # `\bCodex\b` (word-boundary bounded) matches the literal word inside the
+            # path segment `codex/ai-reference-guard.sh` when the wordlist is scanned
+            # against the whole command instead of just the -m content.
+            $result = Invoke-GuardrailHook -Command 'git add codex/ai-reference-guard.sh && git commit -m "clean message"'
+            $result.ExitCode | Should -Be 0
+        }
+
+        It 'allows staging/committing claude/settings.json without self-blocking on the path' {
+            $result = Invoke-GuardrailHook -Command 'git add claude/settings.json && git commit -m "clean message"'
+            $result.ExitCode | Should -Be 0
+        }
+
+        It 'still blocks a genuinely banned term inside the actual -m content alongside a clean path' {
+            $result = Invoke-GuardrailHook -Command 'git add codex/ai-reference-guard.sh && git commit -m "thanks Claude for the help"'
+            $result.ExitCode | Should -Be 2
+        }
+
+        It 'still blocks a banned term inside az boards --fields value content' {
+            $result = Invoke-GuardrailHook -Command 'az boards work-item update --id 1 --fields "System.Description=drafted by Claude"'
+            $result.ExitCode | Should -Be 2
+        }
+
+        It 'still blocks a banned term inside az devops invoke --route-parameters value content' {
+            $result = Invoke-GuardrailHook -Command 'az devops invoke --area wit --resource workitems --route-parameters "comment=thanks Claude" --http-method PATCH --in-file body.json'
             $result.ExitCode | Should -Be 2
         }
     }
