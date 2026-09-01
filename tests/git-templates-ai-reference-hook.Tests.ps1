@@ -215,6 +215,23 @@ Describe 'git/templates/hooks/pre-commit AI-reference section' -Skip:(-not $scri
         $r.ExitCode | Should -Be 0
     }
 
+    It 'blocks a banned term on an added line whose own content starts with a literal +' {
+        # The diff line is "+++i; // written with Claude" — diff-format '+' marker,
+        # then the content's own leading '+' from "++i". A regex that excludes any
+        # line where the second character is '+' would wrongly skip this line and
+        # never check it for a banned term.
+        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        $r = Invoke-PreCommitHook -Repo $script:Repo -FileContent '++i; // written with Claude'
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'AI-reference scan blocked'
+    }
+
+    It 'does not false-positive-block on the real "+++" diff file header' {
+        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        $r = Invoke-PreCommitHook -Repo $script:Repo -FileContent '// normal comment' -FileName 'written-with-claude.js'
+        $r.ExitCode | Should -Be 0
+    }
+
     It 'allows a banned term in a GitHub repo (out of scope)' {
         $script:Repo = New-TestRepo -OriginUrl $script:GitHubUrl
         $r = Invoke-PreCommitHook -Repo $script:Repo -FileContent '// written with Claude'

@@ -73,8 +73,12 @@ if printf '%s' "$origin_url" | grep -qi 'dev\.azure\.com' && \
         trap 'rm -f "$PATTERNS"' EXIT
         grep -Ev '^#|^$' "$WORDLIST" > "$PATTERNS"
 
-        # Added lines only: a leading single '+' and not the '+++' file header.
-        if git diff --cached -U0 | grep -E '^\+([^+]|$)' | grep -Eiqf "$PATTERNS"; then
+        # Added lines only: a leading '+' from the diff format, excluding the
+        # literal '+++ ' file-header line. Anchored on the header's known shape
+        # (not "next char isn't +") so an added line whose own content starts
+        # with '+' (e.g. "++i; // ...") is still scanned — --no-color guards
+        # against grep seeing ANSI codes if color.diff=always is configured.
+        if git diff --cached --no-color -U0 | grep -E '^\+' | grep -Ev '^\+\+\+ ' | grep -Eiqf "$PATTERNS"; then
             echo "" >&2
             echo "AI-reference scan blocked this commit: a staged added line matches a banned AI/Claude/Codex/Copilot/co-authorship term (ai-agents/_shared/banned-ai-terms.txt)." >&2
             echo "Fix it, or bypass this one commit with:  SKIP_AI_REFERENCE_SCAN=1 git commit ..." >&2
