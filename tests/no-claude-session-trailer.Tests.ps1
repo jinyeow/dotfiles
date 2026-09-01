@@ -121,10 +121,6 @@ Describe 'claude/no-claude-session-trailer.sh' -Skip:(-not $script:HasBash) {
             $out = Invoke-Hook -Command 'git commit -n -m "clean message"'
             $out | Should -Match '"permissionDecision":"deny"'
         }
-        It 'denies `git push -n` (the --no-verify short form)' {
-            $out = Invoke-Hook -Command 'git push -n origin main'
-            $out | Should -Match '"permissionDecision":"deny"'
-        }
         It 'denies `git push --no-verify`' {
             $out = Invoke-Hook -Command 'git push --no-verify origin main'
             $out | Should -Match '"permissionDecision":"deny"'
@@ -163,6 +159,40 @@ Describe 'claude/no-claude-session-trailer.sh' -Skip:(-not $script:HasBash) {
         It 'allows an unrelated `-n` flag on a non-git command' {
             $out = Invoke-Hook -Command 'grep -n foo bar.txt'
             $out.Trim() | Should -BeNullOrEmpty
+        }
+        It 'allows a clean commit whose command line merely contains a claude/ path segment' {
+            # \bClaude\b word-boundary matches the literal "claude" inside a path like
+            # claude/settings.json — the wordlist must scan message content only, not the
+            # whole raw command (which would self-block routine commits in this repo).
+            $out = Invoke-Hook -Command 'git add claude/settings.json && git commit -m "fix"'
+            $out.Trim() | Should -BeNullOrEmpty
+        }
+        It 'allows a clean commit whose command line contains a codex/ path segment' {
+            $out = Invoke-Hook -Command 'git add codex/ai-reference-guard.sh && git commit -m "fix"'
+            $out.Trim() | Should -BeNullOrEmpty
+        }
+        It 'allows `git push -n` (dry-run, not --no-verify)' {
+            $out = Invoke-Hook -Command 'git push -n origin main'
+            $out.Trim() | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'scopes the wordlist match to message content, not the whole raw command' {
+        It 'denies a banned term inside the actual commit message even with a claude/ path segment present' {
+            $out = Invoke-Hook -Command 'git add claude/settings.json && git commit -m "Co-Authored-By: Claude"'
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+        It 'denies a multi-line commit message carrying the trailer on a later line' {
+            $out = Invoke-Hook -Command "git commit -m `"feat: x`n`nCo-Authored-By: Claude`""
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+        It 'denies an unquoted banned term in a -m value' {
+            $out = Invoke-Hook -Command 'git commit -m Co-Authored-By:Claude'
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+        It 'denies an unquoted banned term in a --body value' {
+            $out = Invoke-Hook -Command 'gh pr create --title x --body AI-generated'
+            $out | Should -Match '"permissionDecision":"deny"'
         }
     }
 }
