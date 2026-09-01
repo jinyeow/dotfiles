@@ -51,8 +51,9 @@ BeforeAll {
     # Throwaway git repos to drive the `git remote get-url origin` scoping check, mirroring
     # tests/git-templates-ai-reference-hook.Tests.ps1's New-TestRepo helper.
     function New-TestRepo {
-        param([string] $OriginUrl)
-        $root = Join-Path ([System.IO.Path]::GetTempPath()) ('no-claude-trailer-' + [guid]::NewGuid())
+        param([string] $OriginUrl, [string] $NameHint = '')
+        $suffix = if ($NameHint) { "$NameHint-$([guid]::NewGuid())" } else { [guid]::NewGuid() }
+        $root = Join-Path ([System.IO.Path]::GetTempPath()) ('no-claude-trailer-' + $suffix)
         New-Item -ItemType Directory -Path $root -Force | Out-Null
         & git -C $root init -q . 2>&1 | Out-Null
         & git -C $root config user.email 'test@example.invalid' 2>&1 | Out-Null
@@ -66,6 +67,9 @@ BeforeAll {
     $script:HollardRepo = New-TestRepo -OriginUrl $script:HollardHttps
     $script:GitHubRepo = New-TestRepo -OriginUrl $script:GitHubUrl
     $script:NoOriginRepo = New-TestRepo -OriginUrl $null
+    # A Hollard-remote repo whose own path contains a space, to exercise a quoted multi-word
+    # `-C "<path>"` value (this repo's own path contains a space too — see AGENTS.md).
+    $script:HollardRepoWithSpace = New-TestRepo -OriginUrl $script:HollardHttps -NameHint 'Hollard Repo'
 
     # Drive the bash hook with a command string wrapped as the tool-call JSON on stdin, from
     # inside the given repo (default: the Hollard-remote repo, so scoped-in behaviour is the
@@ -87,7 +91,7 @@ BeforeAll {
 }
 
 AfterAll {
-    foreach ($dir in @($script:InstalledDir, $script:NoWordlistDir, $script:HollardRepo, $script:GitHubRepo, $script:NoOriginRepo)) {
+    foreach ($dir in @($script:InstalledDir, $script:NoWordlistDir, $script:HollardRepo, $script:GitHubRepo, $script:NoOriginRepo, $script:HollardRepoWithSpace)) {
         if ($dir -and (Test-Path -LiteralPath $dir)) {
             Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -394,14 +398,25 @@ Describe 'claude/no-claude-session-trailer.sh' -Skip:(-not $script:HasBash) {
             $out = Invoke-Hook -Command 'git -C . commit -m "Generated with Claude"' -RepoDir $script:HollardRepo
             $out | Should -Match '"permissionDecision":"deny"'
         }
-        # A `-C "<path with a space>"` regression case (quoting genuinely needed, not just a
-        # `"."`-shaped decoy) was deliberately not added here: `commit_re`/`commit_dashn_re`'s
-        # shared `flag_group` only consumes one non-whitespace token as a flag's argument
-        # (`[^-][^[:space:]]*`), so a quoted multi-word -C value breaks that match entirely
-        # before the origin-lookup fix in this cycle is ever reached — a separate, pre-existing
-        # limitation in the flag-skipping regex, not the quote-stripping bug this cycle fixes.
-        # Fixing it would mean teaching flag_group itself to parse quoted tokens, which is out of
-        # scope for this fix.
+    }
+
+    Context 'quoted multi-word `-C "path-with-a-space"` value (flag_group argument capture)' {
+        It 'denies `git -C "path-with-a-space" commit -nm "..."` (no-verify, quoted multi-word -C value)' {
+            $hollardSpacePath = $script:HollardRepoWithSpace -replace '\\', '/'
+            $out = Invoke-Hook -Command "git -C `"$hollardSpacePath`" commit -nm `"Generated with Claude`"" -RepoDir $script:GitHubRepo
+            $out | Should -Match '"permissionDecision":"deny"'
+            $out | Should -Match 'no-verify'
+        }
+        It 'denies `git -C "path-with-a-space" commit -m "..."` (wordlist, quoted multi-word -C value)' {
+            $hollardSpacePath = $script:HollardRepoWithSpace -replace '\\', '/'
+            $out = Invoke-Hook -Command "git -C `"$hollardSpacePath`" commit -m `"Generated with Claude`"" -RepoDir $script:GitHubRepo
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+        It 'allows `git -C "path-with-a-space" commit -m "..."` with a clean message (no false positive)' {
+            $hollardSpacePath = $script:HollardRepoWithSpace -replace '\\', '/'
+            $out = Invoke-Hook -Command "git -C `"$hollardSpacePath`" commit -m `"a normal message`"" -RepoDir $script:GitHubRepo
+            $out.Trim() | Should -BeNullOrEmpty
+        }
     }
 
     Context 'export persists the SKIP-var bypass forward across shell segments' {

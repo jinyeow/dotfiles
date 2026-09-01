@@ -24,9 +24,10 @@
 # short form for push's no-verify, so `git push -n` is a legitimate, harmless command.
 #
 # The `git ... commit` matcher allows each leading global flag to carry an argument (git -C
-# <path> commit, git -c k=v commit): a unit is `-flag` optionally followed by one non-flag
-# argument token, so a flag WITH an argument can't slip between `git` and `commit` and evade
-# the check.
+# <path> commit, git -c k=v commit): a unit is `-flag` optionally followed by one argument
+# token — a bare non-flag token, or a quoted (possibly multi-word) token such as
+# `-C "C:/Hollard Repo"` — so a flag WITH an argument can't slip between `git` and `commit`
+# and evade the check.
 #
 # Scoped to Hollard/Azure DevOps repos only, mirroring git/templates/hooks/pre-commit's own
 # scoping: `git remote get-url origin`, run against the command's actual git target, must
@@ -83,7 +84,13 @@ fi
 
 wordlist_pattern=$(grep -Ev '^[[:space:]]*(#|$)' "$wordlist" | paste -sd'|' -)
 
-flag_group='([[:space:]]+-[^[:space:]]+([[:space:]]+[^-][^[:space:]]*)?)*'
+# A leading global flag's optional argument token: a double- or single-quoted (possibly
+# multi-word) value, or a bare non-flag token — mirrors c_path_token_re/git_global_flag_group
+# above so `git -C "C:/Hollard Repo" commit ...` doesn't stop matching mid-quote (a quoted
+# multi-word -C value used to break commit_re/commit_dashn_re/skip_commit_re entirely, since
+# the old `[^-][^[:space:]]*` alternative only consumed one non-whitespace token).
+flag_arg_token_re='("[^"]*"|'"'"'[^'"'"']*'"'"'|[^-][^[:space:]]*)'
+flag_group="([[:space:]]+-[^[:space:]]+([[:space:]]+${flag_arg_token_re})?)*"
 commit_re="\\bgit\\b${flag_group}[[:space:]]+commit\\b"
 pr_re='\bgh\b[[:space:]]+pr[[:space:]]+(create|edit)\b|\baz\b[[:space:]]+repos[[:space:]]+pr[[:space:]]+(create|update)\b'
 gh_pr_re='\bgh\b[[:space:]]+pr[[:space:]]+(create|edit)\b'
