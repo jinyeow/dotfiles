@@ -378,6 +378,32 @@ Describe 'claude/no-claude-session-trailer.sh' -Skip:(-not $script:HasBash) {
         }
     }
 
+    Context 'quoted `-C <path>` value is unquoted before the origin lookup (cycle-4 regression)' {
+        It 'denies `git -C "." commit -nm "..."` run from a Hollard-origin cwd (quoted "." -C path)' {
+            # Before the fix, the extracted -C value kept its literal quotes (".\""), the
+            # `git -C '".\"' remote get-url origin` lookup failed, and the `|| exit 0` fallback
+            # let the whole command through — skipping the -n (--no-verify) deny below.
+            $out = Invoke-Hook -Command 'git -C "." commit -nm "Generated with Claude"' -RepoDir $script:HollardRepo
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+        It 'denies `git -C "." commit --no-verify -m "clean"` run from a Hollard-origin cwd (quoted "." -C path)' {
+            $out = Invoke-Hook -Command 'git -C "." commit --no-verify -m "clean"' -RepoDir $script:HollardRepo
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+        It 'still denies `git -C . commit -m "..."` with an unquoted "." -C path (control, no regression)' {
+            $out = Invoke-Hook -Command 'git -C . commit -m "Generated with Claude"' -RepoDir $script:HollardRepo
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+        # A `-C "<path with a space>"` regression case (quoting genuinely needed, not just a
+        # `"."`-shaped decoy) was deliberately not added here: `commit_re`/`commit_dashn_re`'s
+        # shared `flag_group` only consumes one non-whitespace token as a flag's argument
+        # (`[^-][^[:space:]]*`), so a quoted multi-word -C value breaks that match entirely
+        # before the origin-lookup fix in this cycle is ever reached — a separate, pre-existing
+        # limitation in the flag-skipping regex, not the quote-stripping bug this cycle fixes.
+        # Fixing it would mean teaching flag_group itself to parse quoted tokens, which is out of
+        # scope for this fix.
+    }
+
     Context 'export persists the SKIP-var bypass forward across shell segments' {
         It 'denies `export SKIP_AI_REFERENCE_SCAN=1 && git commit ...` (export persists forward, not segment-bound)' {
             $out = Invoke-Hook -Command 'export SKIP_AI_REFERENCE_SCAN=1 && git commit -m "clean message"'

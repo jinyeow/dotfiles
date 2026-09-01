@@ -44,8 +44,20 @@
 cmd=$(jq -r '.tool_input.command // ""')
 
 git_global_flag_group='(?:[[:space:]]+-[^[:space:]]+(?:[[:space:]]+[^-][^[:space:]]*)?)*?'
-c_path_re="\\bgit\\b${git_global_flag_group}[[:space:]]+-C[[:space:]]+\\K[^[:space:]]+"
+c_path_token_re='(?:"[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)'
+c_path_re="\\bgit\\b${git_global_flag_group}[[:space:]]+-C[[:space:]]+\\K${c_path_token_re}"
 c_path=$(printf '%s' "$cmd" | grep -oP -- "$c_path_re" | head -1)
+
+# `git -C <path>` accepts a shell-quoted path (e.g. `-C "."`), but the token captured above still
+# carries its literal surrounding quotes — strip exactly one matching layer of double or single
+# quotes the way a shell would for a simple quoted token, so the origin lookup below targets the
+# real path instead of a literal `".\"`-shaped string that always fails and (via the `|| exit 0`
+# fallback) lets the whole guarded command through. Mirrors codex/ai-reference-guard.sh's
+# equivalent CGIT_PATH unquoting; no nested-quote/escape handling beyond one matching pair, same
+# already-accepted limitation as the `cd <path> &&` shell-expansion case noted above.
+if [[ "$c_path" == \"*\" && "$c_path" == *\" ]] || [[ "$c_path" == \'*\' && "$c_path" == *\' ]]; then
+  c_path="${c_path:1:${#c_path}-2}"
+fi
 
 if [[ -n "$c_path" ]]; then
   origin_url=$(git -C "$c_path" remote get-url origin 2>/dev/null) || exit 0
