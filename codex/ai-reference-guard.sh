@@ -104,6 +104,16 @@ if echo "$COMMAND" | grep -qE 'git[[:space:]]+(.*[[:space:]]+)?push[^;&|]*--no-v
   exit 2
 fi
 
+# SKIP_AI_REFERENCE_SCAN/SKIP_GITLEAKS=1 is git/templates/hooks/{commit-msg,pre-commit}'s own
+# human bypass hatch (matching the existing SKIP_GITLEAKS convention). Codex invoking a Bash
+# command can set either var just as easily as a human, silently defeating layer 2's scan.
+if echo "$COMMAND" | grep -qE '\bSKIP_AI_REFERENCE_SCAN=1\b|\bSKIP_GITLEAKS=1\b'; then
+  echo "BLOCKED: Codex does not have authority to run: $COMMAND" >&2
+  echo "Reason: SKIP_AI_REFERENCE_SCAN/SKIP_GITLEAKS bypasses the banned-AI-reference git hooks." >&2
+  echo "If you want to run this command, do it yourself in a terminal." >&2
+  exit 2
+fi
+
 # ── Layer 4b: commit/PR/board commands carrying a banned AI reference ──────────────
 # Only these command shapes are scanned — mere prose mentioning a banned term in an
 # unrelated command (e.g. `echo "ask claude about this"`) must pass through silently.

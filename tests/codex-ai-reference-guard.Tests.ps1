@@ -193,6 +193,16 @@ Describe 'codex/ai-reference-guard.sh' {
             $result.ExitCode | Should -Be 2
         }
 
+        It 'blocks SKIP_AI_REFERENCE_SCAN=1 git commit' {
+            $result = Invoke-GuardrailHook -Command 'SKIP_AI_REFERENCE_SCAN=1 git commit -m "fix bug"'
+            $result.ExitCode | Should -Be 2
+        }
+
+        It 'blocks SKIP_GITLEAKS=1 git commit' {
+            $result = Invoke-GuardrailHook -Command 'SKIP_GITLEAKS=1 git commit -m "fix bug"'
+            $result.ExitCode | Should -Be 2
+        }
+
         It 'allows git commit without --no-verify or -n' {
             $result = Invoke-GuardrailHook -Command 'git commit -m "fix bug"'
             $result.ExitCode | Should -Be 0
