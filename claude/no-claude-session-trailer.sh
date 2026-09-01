@@ -60,6 +60,14 @@ if matches '\bgit\b'; then
   if matches "$commit_re" && matches '(^|[[:space:]])-n([[:space:]]|$)'; then
     deny "git commit -n (--no-verify) bypasses this repo's git hooks (layer 2) — not allowed."
   fi
+  # SKIP_AI_REFERENCE_SCAN/SKIP_GITLEAKS=1 (as an env-var prefix, export, or env(1) arg) is
+  # git/templates/hooks/{commit-msg,pre-commit}'s own human bypass hatch — matching the
+  # SKIP_GITLEAKS convention those hooks already ship. An agent invoking Bash directly can set
+  # either var just as easily as a human, silently defeating layer 2's scan, so this hook
+  # denies it outright the same way it denies --no-verify.
+  if matches '\bSKIP_AI_REFERENCE_SCAN=1\b' || matches '\bSKIP_GITLEAKS=1\b'; then
+    deny "SKIP_AI_REFERENCE_SCAN/SKIP_GITLEAKS bypasses this repo's git hooks (layer 2) — not allowed from an agent."
+  fi
 fi
 
 # Message content the wordlist is matched against: every quoted (single- or double-quoted)

@@ -127,6 +127,17 @@ Describe 'claude/no-claude-session-trailer.sh' -Skip:(-not $script:HasBash) {
         }
     }
 
+    Context 'denies the SKIP_* env-var bypass of layer 2''s git hooks, independent of the wordlist' {
+        It 'denies `SKIP_AI_REFERENCE_SCAN=1 git commit`' {
+            $out = Invoke-Hook -Command 'SKIP_AI_REFERENCE_SCAN=1 git commit -m "clean message"'
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+        It 'denies `SKIP_GITLEAKS=1 git commit`' {
+            $out = Invoke-Hook -Command 'SKIP_GITLEAKS=1 git commit -m "clean message"'
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+    }
+
     Context 'fails closed when the wordlist is missing' {
         It 'denies with a clear reason naming the missing wordlist path' {
             $out = Invoke-Hook -Command 'git commit -m "clean message"' -HookPath $script:HookNoWordlist
