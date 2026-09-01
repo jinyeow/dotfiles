@@ -24,5 +24,63 @@ if [ "$status" -ne 0 ]; then
     echo "" >&2
     echo "gitleaks blocked this commit: a staged change looks like a secret (values redacted above)." >&2
     echo "Fix it, or bypass this one commit with:  SKIP_GITLEAKS=1 git commit ..." >&2
+    exit "$status"
 fi
-exit "$status"
+
+# ----------------------------------------------------------------------------
+# AI-reference scan on staged code comments — layer 2 of #219, alongside
+# commit-msg's scan of the message text. A single logically-distinct check
+# added inline rather than split into its own file: git only recognizes one
+# literal `pre-commit` per hooks dir, and (like gitleaks above) this only
+# shells out to POSIX git/grep, so a .ps1/.sh split would duplicate identical
+# logic for no reason (see git/README.md's "Why this splits when pre-commit
+# doesn't").
+#
+# Scoped to Hollard/Azure DevOps repos only, via the same signal git/gitconfig's
+# [includeIf] uses for work identity: origin URL contains both dev.azure.com and
+# HollardInsuranceRetail, case-insensitive. GitHub repos (dotfiles, wiki, brain)
+# legitimately say "Claude"/"Codex" in their own subject matter and must stay
+# unscanned. If `git remote get-url origin` fails or the URL doesn't match, ALLOW.
+#
+# Scans only ADDED lines of the staged diff (excluding the `+++` file header) —
+# a banned term in a REMOVED line must not block. Fails OPEN on everything
+# except one case: scoped-in AND the wordlist itself is missing/unreadable,
+# which fails CLOSED, mirroring gitconfig-work's [hook "work-policy"] reasoning
+# (fail-open covers "not installed yet", never "installed but broken").
+#
+# Bypass one commit:  SKIP_AI_REFERENCE_SCAN=1 git commit ...
+
+DIR="$(cd "$(dirname "$0")" && pwd)"
+# ~/.git_templates is a whole-directory junction to git/templates (not git/), so
+# from git/templates/hooks/ the repo root is THREE levels up — verified against
+# the live junction; do not shorten without re-checking.
+WORDLIST="$DIR/../../../ai-agents/_shared/banned-ai-terms.txt"
+
+origin_url=$(git remote get-url origin 2>/dev/null) || exit 0
+if printf '%s' "$origin_url" | grep -qi 'dev\.azure\.com' && \
+   printf '%s' "$origin_url" | grep -qi 'HollardInsuranceRetail'; then
+
+    if [ "$SKIP_AI_REFERENCE_SCAN" != "1" ]; then
+        if [ ! -f "$WORDLIST" ]; then
+            echo "AI-reference scan blocked this commit: wordlist not found at $WORDLIST (this repo is scoped in for the check — see git/README.md)." >&2
+            exit 1
+        fi
+
+        # The wordlist's '#' comments and blank lines are documented as
+        # consumer-stripped, not grep-safe as-is (a comment line containing an
+        # unbalanced paren breaks grep -E). Filter to a scratch patterns file.
+        PATTERNS=$(mktemp) || exit 1
+        trap 'rm -f "$PATTERNS"' EXIT
+        grep -Ev '^#|^$' "$WORDLIST" > "$PATTERNS"
+
+        # Added lines only: a leading single '+' and not the '+++' file header.
+        if git diff --cached -U0 | grep -E '^\+([^+]|$)' | grep -Eiqf "$PATTERNS"; then
+            echo "" >&2
+            echo "AI-reference scan blocked this commit: a staged added line matches a banned AI/Claude/Codex/Copilot/co-authorship term (ai-agents/_shared/banned-ai-terms.txt)." >&2
+            echo "Fix it, or bypass this one commit with:  SKIP_AI_REFERENCE_SCAN=1 git commit ..." >&2
+            exit 1
+        fi
+    fi
+fi
+
+exit 0

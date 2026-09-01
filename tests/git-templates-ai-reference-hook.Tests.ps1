@@ -1,0 +1,253 @@
+#Requires -Version 7
+# Behavioural tests for the AI-reference hard-block layer (#219 layer 2):
+# git/templates/hooks/commit-msg (new) and the AI-reference section added to the
+# existing git/templates/hooks/pre-commit. Both are POSIX sh, so the suite drives
+# them directly through a real bash (skip, not false-green, when absent), against
+# throwaway repos with an origin remote set to either a Hollard/Azure DevOps URL
+# or a GitHub URL — exercising the shipped hooks rather than copies that could
+# drift from them.
+
+. (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
+$script:TestBash = Resolve-TestBash
+$script:HasBash = [bool]$script:TestBash
+
+BeforeAll {
+    . (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
+    $script:TestBash = Resolve-TestBash
+
+    $script:RepoRoot = Split-Path $PSScriptRoot -Parent
+    $script:HooksDir = Join-Path $script:RepoRoot 'git/templates/hooks'
+    $script:CommitMsgHook = Join-Path $script:HooksDir 'commit-msg'
+    $script:PreCommitHook = Join-Path $script:HooksDir 'pre-commit'
+    $script:Wordlist = Join-Path $script:RepoRoot 'ai-agents/_shared/banned-ai-terms.txt'
+
+    $script:HollardHttps = 'https://dev.azure.com/HollardInsuranceRetail/Proj/_git/Repo'
+    $script:HollardSsh = 'git@ssh.dev.azure.com:v3/HollardInsuranceRetail/Proj/Repo'
+    $script:GitHubUrl = 'https://github.com/jinyeow/dotfiles.git'
+
+    function New-TestRepo {
+        param([string] $OriginUrl)
+        $root = Join-Path ([IO.Path]::GetTempPath()) ('ai-ref-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $root -Force | Out-Null
+        & git -C $root init -q . 2>&1 | Out-Null
+        & git -C $root config user.email 'test@example.invalid' 2>&1 | Out-Null
+        & git -C $root config user.name 'Test' 2>&1 | Out-Null
+        if ($OriginUrl) {
+            & git -C $root remote add origin $OriginUrl 2>&1 | Out-Null
+        }
+        return $root
+    }
+
+    # Runs the shipped commit-msg hook against a message file, returning exit code + output.
+    function Invoke-CommitMsgHook {
+        param(
+            [string] $Repo,
+            [string] $Message,
+            [hashtable] $Env = @{}
+        )
+        $msgFile = Join-Path $Repo 'COMMIT_EDITMSG'
+        Set-Content -Path $msgFile -Value $Message -NoNewline
+
+        $envAssignments = ($Env.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join ' '
+        Push-Location $Repo
+        try {
+            if ($envAssignments) {
+                $out = & $script:TestBash -c "$envAssignments `"$($script:CommitMsgHook -replace '\\', '/')`" `"$($msgFile -replace '\\', '/')`"" 2>&1 | Out-String
+            } else {
+                $out = & $script:TestBash "$($script:CommitMsgHook -replace '\\', '/')" "$($msgFile -replace '\\', '/')" 2>&1 | Out-String
+            }
+            $rc = $LASTEXITCODE
+        } finally {
+            Pop-Location
+        }
+        return @{ ExitCode = $rc; Output = $out }
+    }
+
+    # Stages one file's content, then runs the shipped pre-commit hook.
+    function Invoke-PreCommitHook {
+        param(
+            [string] $Repo,
+            [string] $FileContent,
+            [string] $FileName = 'code.js',
+            [hashtable] $Env = @{}
+        )
+        $file = Join-Path $Repo $FileName
+        Set-Content -Path $file -Value $FileContent -NoNewline
+        & git -C $Repo add $FileName 2>&1 | Out-Null
+
+        $envAssignments = ($Env.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join ' '
+        Push-Location $Repo
+        try {
+            if ($envAssignments) {
+                $out = & $script:TestBash -c "$envAssignments `"$($script:PreCommitHook -replace '\\', '/')`"" 2>&1 | Out-String
+            } else {
+                $out = & $script:TestBash -c "`"$($script:PreCommitHook -replace '\\', '/')`"" 2>&1 | Out-String
+            }
+            $rc = $LASTEXITCODE
+        } finally {
+            Pop-Location
+        }
+        return @{ ExitCode = $rc; Output = $out }
+    }
+}
+
+Describe 'git/templates/hooks/commit-msg' -Skip:(-not $script:HasBash) {
+    AfterEach {
+        Remove-Item -Path $script:Repo -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    It 'blocks a banned term in a Hollard HTTPS-remote repo' {
+        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        $r = Invoke-CommitMsgHook -Repo $script:Repo -Message 'feat: written by Claude'
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'AI-reference scan blocked'
+    }
+
+    It 'blocks a banned term in a Hollard SSH-remote repo' {
+        $script:Repo = New-TestRepo -OriginUrl $script:HollardSsh
+        $r = Invoke-CommitMsgHook -Repo $script:Repo -Message 'feat: use Codex for this'
+        $r.ExitCode | Should -Not -Be 0
+    }
+
+    It 'allows a clean message in a Hollard repo' {
+        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        $r = Invoke-CommitMsgHook -Repo $script:Repo -Message 'feat: add the thing'
+        $r.ExitCode | Should -Be 0
+    }
+
+    It 'allows a legitimate near-miss phrase the wordlist deliberately excludes' {
+        # ai-agents/_shared/banned-ai-terms.txt intentionally does not ban bare "AI" or
+        # "Copilot" so real Hollard work can say "Azure AI Search" / "M365 Copilot".
+        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        $r = Invoke-CommitMsgHook -Repo $script:Repo -Message 'feat: integrate Azure AI Search and M365 Copilot'
+        $r.ExitCode | Should -Be 0
+    }
+
+    It 'allows a banned term in a GitHub repo (out of scope)' {
+        $script:Repo = New-TestRepo -OriginUrl $script:GitHubUrl
+        $r = Invoke-CommitMsgHook -Repo $script:Repo -Message 'feat: written by Claude'
+        $r.ExitCode | Should -Be 0
+    }
+
+    It 'allows a banned term when there is no origin remote at all' {
+        $script:Repo = New-TestRepo -OriginUrl $null
+        $r = Invoke-CommitMsgHook -Repo $script:Repo -Message 'feat: written by Claude'
+        $r.ExitCode | Should -Be 0
+    }
+
+    It 'honours SKIP_AI_REFERENCE_SCAN=1 in a Hollard repo' {
+        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        $r = Invoke-CommitMsgHook -Repo $script:Repo -Message 'feat: written by Claude' -Env @{ SKIP_AI_REFERENCE_SCAN = '1' }
+        $r.ExitCode | Should -Be 0
+    }
+
+    It 'fails closed when the wordlist is missing in a Hollard repo' {
+        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        # Simulate a missing wordlist by pointing the hook at a repo copy that has no
+        # ai-agents/_shared directory at the resolved location: copy the hooks dir alone
+        # into a fake repo tree three levels below a root with no ai-agents/.
+        $fakeRoot = Join-Path ([IO.Path]::GetTempPath()) ('ai-ref-nowl-' + [guid]::NewGuid())
+        $fakeHooksDir = Join-Path $fakeRoot 'git/templates/hooks'
+        New-Item -ItemType Directory -Path $fakeHooksDir -Force | Out-Null
+        Copy-Item -Path $script:CommitMsgHook -Destination (Join-Path $fakeHooksDir 'commit-msg')
+        try {
+            $msgFile = Join-Path $script:Repo 'COMMIT_EDITMSG'
+            Set-Content -Path $msgFile -Value 'feat: add the thing' -NoNewline
+            Push-Location $script:Repo
+            try {
+                $hookPath = (Join-Path $fakeHooksDir 'commit-msg') -replace '\\', '/'
+                $msgPath = $msgFile -replace '\\', '/'
+                $out = & $script:TestBash "$hookPath" "$msgPath" 2>&1 | Out-String
+                $rc = $LASTEXITCODE
+            } finally {
+                Pop-Location
+            }
+            $rc | Should -Not -Be 0
+            $out | Should -Match 'wordlist not found'
+        } finally {
+            Remove-Item -Path $fakeRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'matches a real wordlist term ("Claude") straight off disk, catching CRLF/locale drift' {
+        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        Test-Path -LiteralPath $script:Wordlist | Should -BeTrue -Because 'the shared wordlist must exist for this layer to do anything'
+        $r = Invoke-CommitMsgHook -Repo $script:Repo -Message 'Claude'
+        $r.ExitCode | Should -Not -Be 0
+    }
+}
+
+Describe 'git/templates/hooks/pre-commit AI-reference section' -Skip:(-not $script:HasBash) {
+    AfterEach {
+        Remove-Item -Path $script:Repo -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    It 'blocks a banned term on an ADDED line in a Hollard repo' {
+        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        $r = Invoke-PreCommitHook -Repo $script:Repo -FileContent '// written with Claude'
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'AI-reference scan blocked'
+    }
+
+    It 'does NOT block a banned term that only appears on a REMOVED line' {
+        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        # Commit the banned line first (scan bypassed for setup), then remove it and
+        # verify the removal alone does not trip the added-lines-only scan.
+        $r0 = Invoke-PreCommitHook -Repo $script:Repo -FileContent '// written with Claude' -Env @{ SKIP_AI_REFERENCE_SCAN = '1' }
+        $r0.ExitCode | Should -Be 0
+        & git -C $script:Repo commit -q -m init 2>&1 | Out-Null
+
+        Set-Content -Path (Join-Path $script:Repo 'code.js') -Value '// normal comment' -NoNewline
+        & git -C $script:Repo add code.js 2>&1 | Out-Null
+        Push-Location $script:Repo
+        try {
+            $out = & $script:TestBash -c "`"$($script:PreCommitHook -replace '\\', '/')`"" 2>&1 | Out-String
+            $rc = $LASTEXITCODE
+        } finally {
+            Pop-Location
+        }
+        $rc | Should -Be 0
+    }
+
+    It 'allows a clean added line in a Hollard repo' {
+        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        $r = Invoke-PreCommitHook -Repo $script:Repo -FileContent '// normal comment'
+        $r.ExitCode | Should -Be 0
+    }
+
+    It 'allows a banned term in a GitHub repo (out of scope)' {
+        $script:Repo = New-TestRepo -OriginUrl $script:GitHubUrl
+        $r = Invoke-PreCommitHook -Repo $script:Repo -FileContent '// written with Claude'
+        $r.ExitCode | Should -Be 0
+    }
+
+    It 'honours SKIP_AI_REFERENCE_SCAN=1 in a Hollard repo' {
+        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        $r = Invoke-PreCommitHook -Repo $script:Repo -FileContent '// written with Claude' -Env @{ SKIP_AI_REFERENCE_SCAN = '1' }
+        $r.ExitCode | Should -Be 0
+    }
+
+    It 'fails closed when the wordlist is missing in a Hollard repo' {
+        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        $fakeRoot = Join-Path ([IO.Path]::GetTempPath()) ('ai-ref-nowl-pc-' + [guid]::NewGuid())
+        $fakeHooksDir = Join-Path $fakeRoot 'git/templates/hooks'
+        New-Item -ItemType Directory -Path $fakeHooksDir -Force | Out-Null
+        Copy-Item -Path $script:PreCommitHook -Destination (Join-Path $fakeHooksDir 'pre-commit')
+        try {
+            Set-Content -Path (Join-Path $script:Repo 'code.js') -Value '// normal comment' -NoNewline
+            & git -C $script:Repo add code.js 2>&1 | Out-Null
+            Push-Location $script:Repo
+            try {
+                $hookPath = (Join-Path $fakeHooksDir 'pre-commit') -replace '\\', '/'
+                $out = & $script:TestBash -c "`"$hookPath`"" 2>&1 | Out-String
+                $rc = $LASTEXITCODE
+            } finally {
+                Pop-Location
+            }
+            $rc | Should -Not -Be 0
+            $out | Should -Match 'wordlist not found'
+        } finally {
+            Remove-Item -Path $fakeRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}

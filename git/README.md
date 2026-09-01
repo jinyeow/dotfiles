@@ -88,6 +88,48 @@ Override the skip list per-repo:
 git config hooks.skipBranches "main,release/*,hotfix/*"
 ```
 
+### `pre-commit`
+
+Two independent checks, gitleaks first:
+
+- **Secret scan** — blocks a commit whose staged diff looks like a secret
+  (`gitleaks git --pre-commit --redact --staged`). Fails open when `gitleaks` is
+  not on `PATH` (warn, allow) so a machine without the binary is never blocked —
+  the gitleaks CI job is the backstop. Bypass one commit: `SKIP_GITLEAKS=1 git commit ...`
+- **AI-reference scan** — blocks a commit whose staged diff adds a line matching
+  `ai-agents/_shared/banned-ai-terms.txt` (added lines only; a banned term on a
+  removed line does not block). Scoped to Hollard/Azure DevOps repos only — see
+  `### commit-msg` below for the scoping rule and fail-open/closed behaviour,
+  which this check shares. Bypass one commit: `SKIP_AI_REFERENCE_SCAN=1 git commit ...`
+
+Both checks run in the same file: git only recognizes one literal `pre-commit`
+per hooks dir, and neither check has pwsh-native logic worth a `.ps1`/`.sh` split
+(see "Why this splits when `pre-commit` doesn't" below, which explains why
+`prepare-commit-msg` splits and this doesn't).
+
+### `commit-msg`
+
+Blocks a commit whose message matches `ai-agents/_shared/banned-ai-terms.txt` —
+the hard-block layer for AI/Claude/Codex/Copilot/co-authorship references
+(issue #219 layer 2), replacing a prompt-level rule that already failed once.
+Git invokes `commit-msg <path-to-commit-msg-file>`, so this sees the final
+message text regardless of `-m`, `-F`, an editor, `--amend`, or a merge.
+
+Scoped to Hollard/Azure DevOps repos only, via the same signal `gitconfig`'s
+`[includeIf]` uses for work identity: `git remote get-url origin` contains both
+`dev.azure.com` and `HollardInsuranceRetail`, case-insensitive (covers both the
+HTTPS and SSH remote forms). GitHub repos (dotfiles, wiki, brain) legitimately
+say "Claude"/"Codex" in their own subject matter and are never scanned. If
+`git remote get-url origin` fails (no remote, not a repo) or the URL doesn't
+match, the commit is allowed.
+
+Fails open on every other condition, and fails closed only when scoped-in AND
+the wordlist itself is missing or unreadable — mirroring `gitconfig-work`'s
+`[hook "work-policy"]` reasoning (fail-open covers "not installed yet", never
+"installed but broken"; a missing wordlist in a scoped-in repo is the latter).
+
+Bypass one commit: `SKIP_AI_REFERENCE_SCAN=1 git commit ...`
+
 ### `post-commit`, `post-checkout`, `post-merge`, `post-rewrite`
 
 Auto-regenerate ctags after relevant git operations. Reads `~/.ctags` for
