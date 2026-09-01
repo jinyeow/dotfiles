@@ -89,7 +89,15 @@ wordlist_pattern=$(grep -Ev '^[[:space:]]*(#|$)' "$wordlist" | paste -sd'|' -)
 # above so `git -C "C:/Hollard Repo" commit ...` doesn't stop matching mid-quote (a quoted
 # multi-word -C value used to break commit_re/commit_dashn_re/skip_commit_re entirely, since
 # the old `[^-][^[:space:]]*` alternative only consumed one non-whitespace token).
-flag_arg_token_re='("[^"]*"|'"'"'[^'"'"']*'"'"'|[^-][^[:space:]]*)'
+#
+# The bare-token alternative excludes a leading `"`/`'` (not just `-`): without that exclusion
+# it could match just the opening quote of an unbalanced-looking quoted value (e.g. the `"x` in
+# `-c "x commit y"`), leaving the rest of the quoted value unconsumed and free for commit_re's
+# trailing `commit\b` to match a literal "commit" that is actually INSIDE that flag's own value,
+# not a real `git commit`. Excluding the quote characters forces such a token through one of the
+# two full-quoted alternatives instead; if the quote is genuinely unbalanced, the match attempt
+# simply fails there — never allowed to match, which is the safe direction.
+flag_arg_token_re='("[^"]*"|'"'"'[^'"'"']*'"'"'|[^-"'"'"'][^[:space:]]*)'
 flag_group="([[:space:]]+-[^[:space:]]+([[:space:]]+${flag_arg_token_re})?)*"
 commit_re="\\bgit\\b${flag_group}[[:space:]]+commit\\b"
 pr_re='\bgh\b[[:space:]]+pr[[:space:]]+(create|edit)\b|\baz\b[[:space:]]+repos[[:space:]]+pr[[:space:]]+(create|update)\b'

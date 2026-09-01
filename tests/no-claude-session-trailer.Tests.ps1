@@ -419,6 +419,30 @@ Describe 'claude/no-claude-session-trailer.sh' -Skip:(-not $script:HasBash) {
         }
     }
 
+    Context 'unbalanced quote in a flag argument does not leak into a false commit-shape match (cycle-5 regression)' {
+        It 'allows `git -c "x commit y" log -n 1` (bare-token alternative must not swallow a partial quoted value)' {
+            # Before the fix, the bare-token alternative `[^-][^[:space:]]*` could match the
+            # leading `"x` of the unbalanced-looking quoted -c value, leaving ` commit y" log -n 1`
+            # unconsumed; commit_re then matched the literal "commit" inside the quoted -c value
+            # and commit_dashn_re found the later `-n`, falsely denying an ordinary `git log`.
+            $out = Invoke-Hook -Command 'git -c "x commit y" log -n 1'
+            $out.Trim() | Should -BeNullOrEmpty
+        }
+        It 'allows `git -c "x commit y" status` (regression control, no -n involved)' {
+            $out = Invoke-Hook -Command 'git -c "x commit y" status'
+            $out.Trim() | Should -BeNullOrEmpty
+        }
+        It 'still denies `git -C "path-with-a-space" commit -nm "..."` (must not regress the cycle-4 quoted multi-word -C fix)' {
+            $hollardSpacePath = $script:HollardRepoWithSpace -replace '\\', '/'
+            $out = Invoke-Hook -Command "git -C `"$hollardSpacePath`" commit -nm `"Generated with Claude`"" -RepoDir $script:GitHubRepo
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+        It 'still denies `git -C "." commit -nm "..."` (must not regress the cycle-4 simple quoted -C fix)' {
+            $out = Invoke-Hook -Command 'git -C "." commit -nm "Generated with Claude"' -RepoDir $script:HollardRepo
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+    }
+
     Context 'export persists the SKIP-var bypass forward across shell segments' {
         It 'denies `export SKIP_AI_REFERENCE_SCAN=1 && git commit ...` (export persists forward, not segment-bound)' {
             $out = Invoke-Hook -Command 'export SKIP_AI_REFERENCE_SCAN=1 && git commit -m "clean message"'
