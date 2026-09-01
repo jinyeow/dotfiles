@@ -223,6 +223,51 @@ Describe 'git/templates/hooks/commit-msg' -Skip:(-not $script:HasBash) {
         $r = Invoke-CommitMsgHook -Repo $script:Repo -Message 'Claude'
         $r.ExitCode | Should -Not -Be 0
     }
+
+    It 'fails closed when the wordlist exists but is unreadable in a Hollard repo' {
+        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        # Same fake-root layout as the missing-wordlist test above, but this time the
+        # wordlist file is actually present at the resolved location with real content,
+        # then its ACL is denied read access for the current user via icacls — existence
+        # alone (`-f`) must not be enough to treat it as usable.
+        $fakeRoot = Join-Path ([IO.Path]::GetTempPath()) ('ai-ref-unreadwl-' + [guid]::NewGuid())
+        $fakeHooksDir = Join-Path $fakeRoot 'git/templates/hooks'
+        $fakeSharedDir = Join-Path $fakeRoot 'ai-agents/_shared'
+        New-Item -ItemType Directory -Path $fakeHooksDir -Force | Out-Null
+        New-Item -ItemType Directory -Path $fakeSharedDir -Force | Out-Null
+        Copy-Item -Path $script:CommitMsgHook -Destination (Join-Path $fakeHooksDir 'commit-msg')
+        $fakeWordlist = Join-Path $fakeSharedDir 'banned-ai-terms.txt'
+        Set-Content -Path $fakeWordlist -Value 'claude' -NoNewline
+        icacls $fakeWordlist /deny "$($env:USERNAME):(R)" | Out-Null
+        try {
+            # Precondition: confirm the deny actually blocks a real read through the same
+            # bash used to run the hook. If it doesn't bite on this machine, skip rather
+            # than false-RED/false-fail on an ACL quirk unrelated to the hook's own logic.
+            $probe = & $script:TestBash -c "cat `"$($fakeWordlist -replace '\\', '/')`"" 2>&1
+            $probeReadable = ($LASTEXITCODE -eq 0)
+            if ($probeReadable) {
+                Set-ItResult -Skipped -Because 'the ACL deny did not block a real read on this machine'
+                return
+            }
+
+            $msgFile = Join-Path $script:Repo 'COMMIT_EDITMSG'
+            Set-Content -Path $msgFile -Value 'feat: add the thing' -NoNewline
+            Push-Location $script:Repo
+            try {
+                $hookPath = (Join-Path $fakeHooksDir 'commit-msg') -replace '\\', '/'
+                $msgPath = $msgFile -replace '\\', '/'
+                $out = & $script:TestBash "$hookPath" "$msgPath" 2>&1 | Out-String
+                $rc = $LASTEXITCODE
+            } finally {
+                Pop-Location
+            }
+            $rc | Should -Not -Be 0
+            $out | Should -Match 'AI-reference scan blocked'
+        } finally {
+            icacls $fakeWordlist /reset 2>&1 | Out-Null
+            Remove-Item -Path $fakeRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
 }
 
 Describe 'git/templates/hooks/pre-commit AI-reference section' -Skip:(-not $script:HasBash) {
@@ -341,5 +386,52 @@ Describe 'git/templates/hooks/pre-commit AI-reference section' -Skip:(-not $scri
         } finally {
             Remove-Item -Path $fakeRoot -Recurse -Force -ErrorAction SilentlyContinue
         }
+    }
+
+    It 'fails closed when the wordlist exists but is unreadable in a Hollard repo' {
+        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        $fakeRoot = Join-Path ([IO.Path]::GetTempPath()) ('ai-ref-unreadwl-pc-' + [guid]::NewGuid())
+        $fakeHooksDir = Join-Path $fakeRoot 'git/templates/hooks'
+        $fakeSharedDir = Join-Path $fakeRoot 'ai-agents/_shared'
+        New-Item -ItemType Directory -Path $fakeHooksDir -Force | Out-Null
+        New-Item -ItemType Directory -Path $fakeSharedDir -Force | Out-Null
+        Copy-Item -Path $script:PreCommitHook -Destination (Join-Path $fakeHooksDir 'pre-commit')
+        $fakeWordlist = Join-Path $fakeSharedDir 'banned-ai-terms.txt'
+        Set-Content -Path $fakeWordlist -Value 'claude' -NoNewline
+        icacls $fakeWordlist /deny "$($env:USERNAME):(R)" | Out-Null
+        try {
+            $probe = & $script:TestBash -c "cat `"$($fakeWordlist -replace '\\', '/')`"" 2>&1
+            $probeReadable = ($LASTEXITCODE -eq 0)
+            if ($probeReadable) {
+                Set-ItResult -Skipped -Because 'the ACL deny did not block a real read on this machine'
+                return
+            }
+
+            Set-Content -Path (Join-Path $script:Repo 'code.js') -Value '// normal comment' -NoNewline
+            & git -C $script:Repo add code.js 2>&1 | Out-Null
+            Push-Location $script:Repo
+            try {
+                $hookPath = (Join-Path $fakeHooksDir 'pre-commit') -replace '\\', '/'
+                $out = & $script:TestBash -c "`"$hookPath`"" 2>&1 | Out-String
+                $rc = $LASTEXITCODE
+            } finally {
+                Pop-Location
+            }
+            $rc | Should -Not -Be 0
+            $out | Should -Match 'AI-reference scan blocked'
+        } finally {
+            icacls $fakeWordlist /reset 2>&1 | Out-Null
+            Remove-Item -Path $fakeRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'does not false-positive-block on the real "+++" diff file header when diff.noprefix is configured' {
+        # diff.noprefix=true / diff.mnemonicPrefix strip or change the a/ b/ prefixes the
+        # header exclusion regex expects. The hook forces --src-prefix/--dst-prefix on
+        # the command line so the exclusion still matches regardless of repo config.
+        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        & git -C $script:Repo config diff.noprefix true 2>&1 | Out-Null
+        $r = Invoke-PreCommitHook -Repo $script:Repo -FileContent '// normal comment' -FileName 'written-with-claude.js'
+        $r.ExitCode | Should -Be 0
     }
 }

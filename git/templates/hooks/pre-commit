@@ -63,8 +63,8 @@ if printf '%s' "$origin_url" | grep -qi 'dev\.azure\.com' && \
    printf '%s' "$origin_url" | grep -qi 'HollardInsuranceRetail'; then
 
     if [ "$SKIP_AI_REFERENCE_SCAN" != "1" ]; then
-        if [ ! -f "$WORDLIST" ]; then
-            echo "AI-reference scan blocked this commit: wordlist not found at $WORDLIST (this repo is scoped in for the check — see git/README.md)." >&2
+        if [ ! -r "$WORDLIST" ]; then
+            echo "AI-reference scan blocked this commit: wordlist not found or unreadable at $WORDLIST (this repo is scoped in for the check — see git/README.md)." >&2
             exit 1
         fi
 
@@ -75,6 +75,18 @@ if printf '%s' "$origin_url" | grep -qi 'dev\.azure\.com' && \
         trap 'rm -f "$PATTERNS"' EXIT
         grep -Ev '^#|^$' "$WORDLIST" > "$PATTERNS"
 
+        # Belt-and-braces on top of the -r check above: on Windows/MSYS bash,
+        # [ -r ] can report a file readable even when an NTFS ACL deny blocks
+        # the actual read (a verified platform quirk, not a hypothetical),
+        # which would otherwise silently empty PATTERNS and let grep -Eiqf
+        # match nothing below. Any wordlist that yields zero usable patterns —
+        # unreadable or genuinely empty — is "installed but broken", which
+        # fails CLOSED per this hook's documented contract.
+        if [ ! -s "$PATTERNS" ]; then
+            echo "AI-reference scan blocked this commit: wordlist at $WORDLIST yielded no usable patterns (unreadable or empty)." >&2
+            exit 1
+        fi
+
         # Added lines only: a leading '+' from the diff format, excluding the
         # literal '+++ ' file-header line. Anchored on the header's known shape
         # (not "next char isn't +") so an added line whose own content starts
@@ -84,8 +96,11 @@ if printf '%s' "$origin_url" | grep -qi 'dev\.azure\.com' && \
         # default diff path prefixes right after '+++ ' (a/, b/, /dev/null): a
         # bare '^\+\+\+ ' would also match an added line whose own content
         # starts with '++ ' (e.g. "++ i; // ..."), wrongly treating it as the
-        # file header and skipping it from the scan.
-        if git diff --cached --no-color -U0 | grep -E '^\+' | grep -Ev '^\+\+\+ (a/|b/|/dev/null)' | grep -Eiqf "$PATTERNS"; then
+        # file header and skipping it from the scan. --src-prefix/--dst-prefix
+        # force those a/ b/ prefixes on the command line regardless of a
+        # repo's diff.noprefix or diff.mnemonicPrefix config, so the exclusion
+        # keeps matching the real header instead of over-scanning it as content.
+        if git diff --cached --no-color --src-prefix=a/ --dst-prefix=b/ -U0 | grep -E '^\+' | grep -Ev '^\+\+\+ (a/|b/|/dev/null)' | grep -Eiqf "$PATTERNS"; then
             echo "" >&2
             echo "AI-reference scan blocked this commit: a staged added line matches a banned AI/Claude/Codex/Copilot/co-authorship term (ai-agents/_shared/banned-ai-terms.txt)." >&2
             echo "Fix it, or bypass this one commit with:  SKIP_AI_REFERENCE_SCAN=1 git commit ..." >&2

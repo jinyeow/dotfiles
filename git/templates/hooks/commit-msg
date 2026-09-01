@@ -37,8 +37,8 @@ printf '%s' "$origin_url" | grep -qi 'HollardInsuranceRetail' || exit 0
 
 [ "$SKIP_AI_REFERENCE_SCAN" = "1" ] && exit 0
 
-if [ ! -f "$WORDLIST" ]; then
-    echo "AI-reference scan blocked this commit: wordlist not found at $WORDLIST (this repo is scoped in for the check — see git/README.md)." >&2
+if [ ! -r "$WORDLIST" ]; then
+    echo "AI-reference scan blocked this commit: wordlist not found or unreadable at $WORDLIST (this repo is scoped in for the check — see git/README.md)." >&2
     exit 1
 fi
 
@@ -48,6 +48,17 @@ fi
 PATTERNS=$(mktemp) || exit 1
 trap 'rm -f "$PATTERNS"' EXIT
 grep -Ev '^#|^$' "$WORDLIST" > "$PATTERNS"
+
+# Belt-and-braces on top of the -r check above: on Windows/MSYS bash, [ -r ] can
+# report a file readable even when an NTFS ACL deny blocks the actual read (a
+# verified platform quirk, not a hypothetical), which would otherwise silently
+# empty PATTERNS and let grep -Eiqf match nothing below. Any wordlist that
+# yields zero usable patterns — unreadable or genuinely empty — is "installed
+# but broken", which fails CLOSED per this hook's documented contract.
+if [ ! -s "$PATTERNS" ]; then
+    echo "AI-reference scan blocked this commit: wordlist at $WORDLIST yielded no usable patterns (unreadable or empty)." >&2
+    exit 1
+fi
 
 if grep -Eiqf "$PATTERNS" "$MSG_FILE"; then
     echo "" >&2
