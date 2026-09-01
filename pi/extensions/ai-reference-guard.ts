@@ -31,7 +31,7 @@
 // concern — see pi/README.md and the PR description for the exact call).
 
 import { existsSync, readFileSync } from "node:fs";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -102,13 +102,23 @@ function extractDashCPath(command: string): string | undefined {
 // a repo, no origin) or the URL isn't both dev.azure.com AND HollardInsuranceRetail
 // (case-insensitive), the repo is out of scope — a GitHub repo like dotfiles/wiki/brain
 // legitimately says "Claude"/"Codex" in its own subject matter and must stay unscanned.
+//
+// SECURITY: dashCPath comes straight out of the model-controlled command string this
+// whole extension exists to gate, so it must never be interpolated into a shell-
+// interpreting exec call — a crafted `-C` value containing shell metacharacters (`"`,
+// `&`, `;`, backticks, `$()`) would otherwise execute arbitrary commands BEFORE the tool
+// call this hook is supposed to authorize has even run. execFileSync with an argv array
+// never invokes a shell, so no metacharacter in dashCPath (or cwd) can be interpreted
+// specially, regardless of quoting — used for both branches, including the non -C path,
+// for consistency and defense-in-depth even though cwd isn't attacker-controlled the
+// same way.
 function isRepoScopedIn(cwd: string, command: string): boolean {
 	const dashCPath = extractDashCPath(command);
 	let originUrl: string;
 	try {
 		originUrl = dashCPath
-			? execSync(`git -C "${dashCPath}" remote get-url origin`, { encoding: "utf8" })
-			: execSync("git remote get-url origin", { cwd, encoding: "utf8" });
+			? execFileSync("git", ["-C", dashCPath, "remote", "get-url", "origin"], { cwd, encoding: "utf8" })
+			: execFileSync("git", ["remote", "get-url", "origin"], { cwd, encoding: "utf8" });
 	} catch {
 		return false;
 	}
@@ -229,13 +239,18 @@ const COMMIT_SHAPED_PATTERNS: RegExp[] = [
 // dash-prefixed short-flag cluster containing the letter n (`-(?!-)[A-Za-z]*n[A-Za-z]*\b`
 // — a single leading `-`, not `--`), not just an isolated `-n`, so `git commit -nm
 // "Generated with Claude"` (-n clustered with -m) is caught the same way an isolated -n
-// is. The `[^;&|]*` gap between the subcommand and the flag keeps the match scoped to the
-// same shell segment (mirrors codex/ai-reference-guard.sh's sibling bound and its
-// regression test) — without it, a chained `git commit -m "fix" && git log -n 1` would
-// match `-n` from the unrelated `log` segment and deny a perfectly clean chained command.
+// is. The `[^;&|\n]*` gap between the subcommand and the flag keeps the match scoped to
+// the same shell segment (mirrors codex/ai-reference-guard.sh's sibling bound and its
+// regression test) — without excluding `;`/`&`/`|`, a chained `git commit -m "fix" &&
+// git log -n 1` would match `-n` from the unrelated `log` segment and deny a perfectly
+// clean chained command. Newline is excluded from the gap alongside those shell
+// separators for the same reason: in JS a negated character class matches a literal
+// newline unless explicitly excluded, so a real embedded newline
+// (`git commit -m "fix"\ngit log -n 1`, not literal backslash-n text) would otherwise let
+// the gap cross from `commit` on one line all the way to an unrelated `-n` on the next.
 const NO_VERIFY_PATTERNS: RegExp[] = [
-	/git\s+(.*\s+)?commit\s[^;&|]*(--no-verify|-(?!-)[A-Za-z]*n[A-Za-z]*\b)/,
-	/git\s+(.*\s+)?push\s[^;&|]*--no-verify/,
+	/git\s+(.*\s+)?commit\s[^;&|\n]*(--no-verify|-(?!-)[A-Za-z]*n[A-Za-z]*\b)/,
+	/git\s+(.*\s+)?push\s[^;&|\n]*--no-verify/,
 ];
 
 // Pure matcher: given a raw command string and an already-parsed wordlist, returns a

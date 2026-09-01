@@ -195,10 +195,15 @@ process.stdout.write(JSON.stringify(results));
     $script:RepoScopeHarness = Join-Path $TestDrive 'run-repo-scoped.mjs'
     @'
 import { readFileSync } from "node:fs";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 
-const [, , extensionPath, cwd, command] = process.argv;
+// The command is read from a JSON file (not argv) — a malicious -C payload built for the
+// command-injection regression test contains quotes and `&`, which Windows/PowerShell
+// argv passing mangles before node ever sees it, unlike the well-formed inputs the other
+// argv-based calls in this suite carry.
+const [, , extensionPath, cwd, commandPath] = process.argv;
 const source = readFileSync(extensionPath, "utf8");
+const command = JSON.parse(readFileSync(commandPath, "utf8"));
 
 function extractBlock(pattern, label) {
     const found = source.match(pattern);
@@ -214,14 +219,16 @@ const isRepoScopedInBody = extractBlock(/function isRepoScopedIn\(cwd: string, c
     .replace(/:\s*string/g, "");
 
 const extractDashCPath = new Function("command", dashCPathBody);
-const isRepoScopedIn = new Function("cwd", "command", "execSync", "extractDashCPath", isRepoScopedInBody);
+const isRepoScopedIn = new Function("cwd", "command", "execFileSync", "extractDashCPath", isRepoScopedInBody);
 
-process.stdout.write(JSON.stringify(isRepoScopedIn(cwd, command ?? "", execSync, extractDashCPath)));
+process.stdout.write(JSON.stringify(isRepoScopedIn(cwd, command ?? "", execFileSync, extractDashCPath)));
 '@ | Set-Content -Path $script:RepoScopeHarness -NoNewline -Encoding utf8
 
     function Invoke-IsRepoScopedIn {
         param([string] $Cwd, [string] $Command = 'git commit -m "fix"')
-        $output = & node $script:RepoScopeHarness $script:ExtensionFile $Cwd $Command
+        $commandPath = Join-Path $TestDrive ([System.IO.Path]::GetRandomFileName())
+        $Command | ConvertTo-Json -Compress | Set-Content -Path $commandPath -NoNewline -Encoding utf8
+        $output = & node $script:RepoScopeHarness $script:ExtensionFile $Cwd $commandPath
         if ($LASTEXITCODE -ne 0) {
             throw "node harness failed: $output"
         }
@@ -479,6 +486,22 @@ Describe 'pi/extensions/ai-reference-guard.ts' {
             $results = Invoke-AiReferenceGuard -Command $command
             $results[$command] | Should -BeFalse
         }
+
+        It 'allows a chained command where -n belongs to a different subcommand across a real embedded newline' {
+            # An actual newline character (not literal backslash-n text) separating two
+            # independent commands — the shape a newline-chained sequential command
+            # actually takes. The second line's -n belongs to `git log`, not `git commit`,
+            # so this must be allowed, not treated as commit -n/--no-verify.
+            $command = "git commit -m ""fix""`ngit log -n 1"
+            $results = Invoke-AiReferenceGuard -Command $command
+            $results[$command] | Should -BeFalse
+        }
+
+        It 'still denies a genuine -n on the same line as commit, immediately before a newline' {
+            $command = "git commit -m ""fix"" -n`necho done"
+            $results = Invoke-AiReferenceGuard -Command $command
+            $results[$command] | Should -BeTrue
+        }
     }
 
     Context 'non-git and unrelated commands pass through' {
@@ -624,6 +647,25 @@ Describe 'pi/extensions/ai-reference-guard.ts' {
         It 'falls back to cwd when the command carries no -C flag' {
             $hollardCwd = New-TestRepo -OriginUrl $script:HollardHttps
             Invoke-IsRepoScopedIn -Cwd $hollardCwd -Command 'git commit -m "fix"' | Should -BeTrue
+        }
+    }
+
+    Context 'isRepoScopedIn does not execute shell metacharacters in a malicious -C path (command injection)' {
+        It 'treats a crafted -C value as a literal non-existent path, executing no injected command' {
+            $repo = New-TestRepo -OriginUrl $script:HollardHttps
+            $marker = Join-Path $TestDrive ('pwned-' + [guid]::NewGuid() + '.txt')
+            # Breaks out of the `git -C "${dashCPath}" ...` double-quoted shell interpolation
+            # the vulnerable code used to build: closes the quote, chains an `echo` that
+            # writes a marker file via cmd.exe's `&` separator, then reopens/closes a dummy
+            # quoted span so the rest of the injected command string still parses. Wrapped in
+            # single quotes in the SCANNED command so extractDashCPath's own regex (which
+            # allows any non-single-quote content, including embedded double quotes and `&`,
+            # inside a single-quoted -C value) extracts it whole.
+            $malicious = "x`" & echo INJECTED > `"$marker`" & echo `""
+            $command = "git -C '$malicious' commit -m ""fix"""
+
+            Invoke-IsRepoScopedIn -Cwd $repo -Command $command | Should -BeFalse
+            Test-Path $marker | Should -BeFalse
         }
     }
 
