@@ -463,6 +463,52 @@ Describe 'codex/ai-reference-guard.sh' {
         }
     }
 
+    Context 'clustered short-flag -n evasion (cycle-3 finding 1)' {
+        It 'blocks git commit -nm (clustered no-verify + message short flags)' {
+            $result = Invoke-GuardrailHook -Command 'git commit -nm "Generated with Claude"'
+            $result.ExitCode | Should -Be 2
+            $result.Output | Should -Match 'BLOCKED'
+        }
+    }
+
+    Context '-C repo-scoping to the git command target, not the hook cwd (cycle-3 finding 2)' {
+        It 'blocks git -C <path> commit --no-verify run from an unscoped (GitHub-remote) cwd' {
+            $result = Invoke-GuardrailHook -Command "git -C $($script:ScopedRepo) commit --no-verify -m ""Generated with Claude""" -Repo $script:UnscopedRepo
+            $result.ExitCode | Should -Be 2
+        }
+
+        It 'allows git -C <path> commit pointed at an unscoped repo, run from a scoped cwd' {
+            $result = Invoke-GuardrailHook -Command "git -C $($script:UnscopedRepo) commit -m ""thanks Claude""" -Repo $script:ScopedRepo
+            $result.ExitCode | Should -Be 0
+        }
+    }
+
+    Context 'newline-chained commands (cycle-3 finding 3)' {
+        It 'blocks a newline-chained SKIP_AI_REFERENCE_SCAN=1 git commit' {
+            $rawPayload = '{"tool_input":{"command":"true\nSKIP_AI_REFERENCE_SCAN=1 git commit -m \"clean\""}}'
+            $result = Invoke-GuardrailHookRawPayload -Payload $rawPayload
+            $result.ExitCode | Should -Be 2
+        }
+
+        It 'allows a newline-chained git commit followed by git log -n 1 (regression: no false positive)' {
+            $rawPayload = '{"tool_input":{"command":"git commit -m \"fix\"\ngit log -n 1"}}'
+            $result = Invoke-GuardrailHookRawPayload -Payload $rawPayload
+            $result.ExitCode | Should -Be 0
+        }
+    }
+
+    Context 'multi-value key=value pairs after --fields/--route-parameters/--query-parameters (cycle-3 finding 4)' {
+        It 'blocks a banned term in the second key=value pair after --fields' {
+            $result = Invoke-GuardrailHook -Command 'az boards work-item update --fields System.Title=ok "System.Description=Thanks Claude"'
+            $result.ExitCode | Should -Be 2
+        }
+
+        It 'allows --fields with multiple clean key=value pairs' {
+            $result = Invoke-GuardrailHook -Command 'az boards work-item update --fields System.Title=ok System.State=Active'
+            $result.ExitCode | Should -Be 0
+        }
+    }
+
     Context 'wordlist scan scoped to message-bearing argument values (finding 1)' {
         It 'allows staging/committing this very script without self-blocking on the path' {
             # `\bCodex\b` (word-boundary bounded) matches the literal word inside the
