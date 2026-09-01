@@ -237,6 +237,31 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
         }
     }
 
+    It 'rewrites the ai-reference-guard entry to its OWN resolved bash path, not block-dangerous-git.sh' {
+        # Regression: the bash-rewrite loop used to match any `^bash\s` hook and blindly repoint
+        # it to a hardcoded block-dangerous-git.sh path — this would have silently rewired
+        # ai-reference-guard.sh's entry onto the wrong script (issue #219).
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-bash-airef-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            Install-Codex *>$null
+            $hooksPath = Join-Path $tmpHome '.codex\hooks.json'
+            $hooks = Get-Content -LiteralPath $hooksPath -Raw | ConvertFrom-Json
+            $entries = @($hooks.hooks.PreToolUse)
+            $airefCommand = ($entries | Where-Object { $_.hooks[0].command -match 'ai-reference-guard\.sh' }).hooks[0].command
+            $airefCommand | Should -Match '(?i)"[^"]*[\\/]bin[\\/]bash\.exe"'
+            $airefCommand | Should -Match '(?i)"[^"]*ai-reference-guard\.sh"'
+            $airefCommand | Should -Not -Match '(?i)block-dangerous-git\.sh'
+            $dangerousGitCommand = ($entries | Where-Object { $_.hooks[0].command -match 'block-dangerous-git\.sh' }).hooks[0].command
+            $dangerousGitCommand | Should -Not -Match '(?i)ai-reference-guard\.sh'
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     It 'warns and skips only the guardrail PreToolUse merge when no real bash is found' {
         # The guardrail merge is skipped (a broken bash path would break every Bash call), but
         # the unrelated pwsh-based project-brain SessionStart merge does not depend on bash and
@@ -260,7 +285,9 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
         }
     }
 
-    It 'preserves a pre-existing foreign PreToolUse entry alongside the merged guardrail entry' {
+    It 'preserves a pre-existing foreign PreToolUse entry alongside the merged guardrail entries' {
+        # Two guardrail entries now merge under PreToolUse (block-dangerous-git.sh, issue #170,
+        # and ai-reference-guard.sh, issue #219) — each its own entry, plus the foreign one.
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-foreign-' + [guid]::NewGuid())
         $codexDir = Join-Path $tmpHome '.codex'
         New-Item -ItemType Directory -Path $codexDir -Force | Out-Null
@@ -281,9 +308,10 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
             Install-Codex *>$null
             $hooks = Get-Content -LiteralPath (Join-Path $codexDir 'hooks.json') -Raw | ConvertFrom-Json
             $entries = @($hooks.hooks.PreToolUse)
-            $entries.Count | Should -Be 2
+            $entries.Count | Should -Be 3
             ($entries | Where-Object { $_.matcher -eq 'Edit' }).hooks[0].command | Should -Be 'some-other-tool --check'
             ($entries | Where-Object { $_.hooks[0].command -match 'block-dangerous-git\.sh' }) | Should -Not -BeNullOrEmpty
+            ($entries | Where-Object { $_.hooks[0].command -match 'ai-reference-guard\.sh' }) | Should -Not -BeNullOrEmpty
         } finally {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
@@ -399,6 +427,31 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
         }
     }
 
+    It 'skips only the ai-reference-guard PreToolUse merge when its wordlist source is missing' {
+        # ai-reference-guard.sh fails closed unconditionally without its wordlist — merging it
+        # anyway would block every Codex Bash call the moment the wordlist source disappears.
+        # The unrelated block-dangerous-git.sh merge must still proceed.
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-nowordlist-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $repoRoot = Split-Path $script:SetupScript -Parent
+        $bannedTermsSource = Join-Path $repoRoot 'ai-agents\_shared\banned-ai-terms.txt'
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $tmpHome
+            Mock Test-Path -ParameterFilter { $LiteralPath -eq $bannedTermsSource } { $false }
+            $output = Install-Codex *>&1 | Out-String
+            $output | Should -Match 'ai-reference-guard\.sh or its wordlist not found'
+            $hooksPath = Join-Path $tmpHome '.codex\hooks.json'
+            $hooks = Get-Content -LiteralPath $hooksPath -Raw | ConvertFrom-Json
+            $entries = @($hooks.hooks.PreToolUse)
+            ($entries | Where-Object { $_.hooks[0].command -match 'block-dangerous-git\.sh' }) | Should -Not -BeNullOrEmpty
+            ($entries | Where-Object { $_.hooks[0].command -match 'ai-reference-guard\.sh' }) | Should -BeNullOrEmpty
+        } finally {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     It 'preserves both a foreign PreToolUse entry and a foreign SessionStart entry when no bash is found' {
         # Regression lock for the skip-guardrail-merge path (finding #4, issue #186 review):
         # when bash can't be resolved, the PreToolUse merge block is skipped entirely, so the
@@ -476,7 +529,7 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
         }
     }
 
-    It 'replaces rather than duplicates an existing guardrail entry on re-run' {
+    It 'replaces rather than duplicates existing guardrail entries on re-run' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-rerun-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
@@ -487,8 +540,9 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
             $hooksPath = Join-Path $tmpHome '.codex\hooks.json'
             $hooks = Get-Content -LiteralPath $hooksPath -Raw | ConvertFrom-Json
             $entries = @($hooks.hooks.PreToolUse)
-            $entries.Count | Should -Be 1
-            $entries[0].hooks[0].command | Should -Match 'block-dangerous-git\.sh'
+            $entries.Count | Should -Be 2
+            ($entries | Where-Object { $_.hooks[0].command -match 'block-dangerous-git\.sh' }) | Should -Not -BeNullOrEmpty
+            ($entries | Where-Object { $_.hooks[0].command -match 'ai-reference-guard\.sh' }) | Should -Not -BeNullOrEmpty
         } finally {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue

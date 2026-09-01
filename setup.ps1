@@ -939,8 +939,12 @@ function Install-Claude {
     # project brain) — junctioned whole-dir like output-styles/agents so the links resolve live.
     New-Junction -Link (Join-Path $claudeDir 'AGENTS.d') -Target (Join-Path $Dotfiles 'ai-agents\AGENTS.d')
     New-FileSymlink -Link (Join-Path $claudeDir 'statusline-command.sh') -Target (Join-Path $Dotfiles 'claude\statusline-command.sh')
-    # PreToolUse hook wired in settings.json; blocks commits carrying the AI session-URL trailer.
+    # PreToolUse hook wired in settings.json; hard-blocks AI/Claude/Codex/Copilot/co-authored-by
+    # references from landing in a commit, PR, or Azure Boards item (issue #219).
     New-FileSymlink -Link (Join-Path $claudeDir 'no-claude-session-trailer.sh') -Target (Join-Path $Dotfiles 'claude\no-claude-session-trailer.sh')
+    # Shared wordlist the hook above reads as a sibling file at its own runtime path. Also
+    # projected to Codex (copied) and Pi (symlinked) — see those modules below.
+    New-FileSymlink -Link (Join-Path $claudeDir 'banned-ai-terms.txt') -Target (Join-Path $Dotfiles 'ai-agents\_shared\banned-ai-terms.txt')
     # pwsh-native hooks wired in settings.json: PreToolUse guardrails (destructive git, PowerShell
     # mis-sent to the Bash tool) and a PostToolUse PSScriptAnalyzer lint-on-edit pass.
     New-FileSymlink -Link (Join-Path $claudeDir 'block-destructive-vcs.ps1') -Target (Join-Path $Dotfiles 'claude\block-destructive-vcs.ps1')
@@ -1109,6 +1113,11 @@ function Install-Pi {
     foreach ($resource in @('extensions', 'prompts', 'themes')) {
         New-Junction -Link (Join-Path $piDir $resource) -Target (Join-Path $Dotfiles "pi\$resource")
     }
+    # Shared wordlist ai-reference-guard.ts reads as a sibling file inside the junctioned
+    # extensions/ dir. Symlinked (not junctioned like the whole-dir resources above) since it's
+    # a single file living outside pi/extensions/ in the repo — matches the claude module's
+    # per-file New-FileSymlink pattern for the same wordlist (issue #219).
+    New-FileSymlink -Link (Join-Path $piDir 'extensions\banned-ai-terms.txt') -Target (Join-Path $Dotfiles 'ai-agents\_shared\banned-ai-terms.txt')
 
     $nativeSkills = @(Get-ChildItem -Path $oldSkillsTarget -Directory -ErrorAction SilentlyContinue)
     $nativeNames = @($nativeSkills.ForEach('Name'))
@@ -1303,6 +1312,23 @@ function Install-Codex {
     }
     Copy-Dotfile @params
 
+    # 4b. AI-reference hard-block PreToolUse hook (issue #219) — same guardrail mechanism as
+    #    block-dangerous-git.sh above, blocking AI/Claude/Codex/Copilot/co-authored-by references
+    #    from landing in a commit, PR, or Azure Boards item. Copied alongside its own wordlist
+    #    (a sibling file, read relative to the script's own directory at runtime — see
+    #    ai-reference-guard.sh's header) rather than the claude module's symlink, matching this
+    #    directory's existing copy-not-symlink convention (see codex/README.md).
+    $params = @{
+        Dest = Join-Path $codexDir 'ai-reference-guard.sh'
+        Source = Join-Path $Dotfiles 'codex\ai-reference-guard.sh'
+    }
+    Copy-Dotfile @params
+    $params = @{
+        Dest = Join-Path $codexDir 'banned-ai-terms.txt'
+        Source = Join-Path $Dotfiles 'ai-agents\_shared\banned-ai-terms.txt'
+    }
+    Copy-Dotfile @params
+
     $hooksJsonDest = Join-Path $codexDir 'hooks.json'
     $hooksJsonSource = Join-Path $Dotfiles 'codex\hooks.json'
     if ($Backup) {
@@ -1316,22 +1342,40 @@ function Install-Codex {
         # session-start.ps1 is pwsh, not bash, and fails safe (exit 0) on any error, so it carries
         # none of the "broken bash path breaks every Bash call" risk the guardrail gate exists for.
         $skipGuardrailMerge = $false
-        # On Windows, rewrite the tracked `bash ~/...` command to a resolved absolute
-        # Git-for-Windows bash.exe + absolute script path — see Resolve-CodexGuardrailBash.
+        # AI-reference hard-block hook (issue #219) — same "would fail closed on every Bash
+        # call if merged-but-broken" risk as the guardrail gate above, but for a different
+        # cause: ai-reference-guard.sh denies unconditionally when its wordlist is missing.
+        # Independent skip flag so one guardrail's install problem doesn't block the other's.
+        $skipAiReferenceGuardMerge = $false
+        $aiReferenceGuardSource = Join-Path $Dotfiles 'codex\ai-reference-guard.sh'
+        $bannedTermsSource = Join-Path $Dotfiles 'ai-agents\_shared\banned-ai-terms.txt'
+        if (-not (Test-Path -LiteralPath $aiReferenceGuardSource) -or -not (Test-Path -LiteralPath $bannedTermsSource)) {
+            Write-Warn 'ai-reference-guard.sh or its wordlist not found — skipping the AI-reference PreToolUse merge (a merged-but-broken entry fails closed on every Codex Bash call). Re-run once both exist: .\setup.ps1 -Module codex'
+            $skipAiReferenceGuardMerge = $true
+        }
+        # On Windows, rewrite each tracked `bash ~/.codex/<script>.sh` command to a resolved
+        # absolute Git-for-Windows bash.exe + absolute script path — see Resolve-CodexGuardrailBash.
         # This guardrail install/rewrite is Windows/setup.ps1-only today; setup.sh does not
-        # copy block-dangerous-git.sh or merge hooks.json. Modify the source fragment's own
-        # entry before it is assigned into $merged below.
+        # copy these scripts or merge hooks.json. Modify the source fragment's own entries
+        # before they are assigned into $merged below.
+        #
+        # Per-hook by the SCRIPT'S OWN FILENAME, not a single hardcoded block-dangerous-git.sh
+        # path: a prior version of this rewrite blindly repointed every `^bash\s` hook to
+        # block-dangerous-git.sh's resolved path, which would have silently rewired
+        # ai-reference-guard.sh's own entry onto the wrong script the moment a second
+        # `bash ~/...` PreToolUse hook was added (issue #219).
         if ($IsWindows) {
             $bashPath = Resolve-CodexGuardrailBash
             if (-not $bashPath) {
                 Write-Warn 'No Git-for-Windows bash.exe found — skipping the guardrail PreToolUse merge (a merged-but-broken guardrail entry would make every Codex Bash call fail; leaving it absent is safer). Install Git for Windows, then re-run: .\setup.ps1 -Module codex'
                 $skipGuardrailMerge = $true
+                $skipAiReferenceGuardMerge = $true
             } else {
-                $scriptPath = (Join-Path $codexDir 'block-dangerous-git.sh') -replace '\\', '/'
                 $bashPathForward = $bashPath -replace '\\', '/'
                 foreach ($entry in $sourceHooks.hooks.PreToolUse) {
                     foreach ($hook in $entry.hooks) {
-                        if ($hook.command -match '^bash\s') {
+                        if ($hook.command -match '^bash\s+\S*[\\/](?<file>[^\\/]+)$') {
+                            $scriptPath = (Join-Path $codexDir $Matches['file']) -replace '\\', '/'
                             $hook.command = "`"$bashPathForward`" `"$scriptPath`""
                         }
                     }
@@ -1367,6 +1411,9 @@ function Install-Codex {
         }
         if (-not $merged.hooks) { $merged.hooks = @{} }
 
+        # Two independent, sequential merge passes — one per guardrail script — so each can be
+        # skipped on its own without disturbing the other's entry or any foreign entry. Each pass
+        # re-reads $merged.hooks.PreToolUse (updated by the prior pass) so they compose safely.
         if (-not $skipGuardrailMerge) {
             $existingPreToolUse = if ($merged.hooks.ContainsKey('PreToolUse') -and $merged.hooks.PreToolUse) {
                 @($merged.hooks.PreToolUse)
@@ -1376,7 +1423,24 @@ function Install-Codex {
             $foreignEntries = $existingPreToolUse | Where-Object {
                 -not ($_.hooks | Where-Object { $_.command -match 'block-dangerous-git\.sh' })
             }
-            $merged.hooks.PreToolUse = @($foreignEntries) + @($sourceHooks.hooks.PreToolUse)
+            $dangerousGitEntries = @($sourceHooks.hooks.PreToolUse) | Where-Object {
+                $_.hooks | Where-Object { $_.command -match 'block-dangerous-git\.sh' }
+            }
+            $merged.hooks.PreToolUse = @($foreignEntries) + @($dangerousGitEntries)
+        }
+        if (-not $skipAiReferenceGuardMerge) {
+            $existingPreToolUse = if ($merged.hooks.ContainsKey('PreToolUse') -and $merged.hooks.PreToolUse) {
+                @($merged.hooks.PreToolUse)
+            } else {
+                @()
+            }
+            $foreignEntries = $existingPreToolUse | Where-Object {
+                -not ($_.hooks | Where-Object { $_.command -match 'ai-reference-guard\.sh' })
+            }
+            $aiReferenceEntries = @($sourceHooks.hooks.PreToolUse) | Where-Object {
+                $_.hooks | Where-Object { $_.command -match 'ai-reference-guard\.sh' }
+            }
+            $merged.hooks.PreToolUse = @($foreignEntries) + @($aiReferenceEntries)
         }
 
         $existingSessionStart = if ($merged.hooks.ContainsKey('SessionStart') -and $merged.hooks.SessionStart) {
@@ -1405,7 +1469,7 @@ function Install-Codex {
         $dir = Split-Path $hooksJsonDest
         if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
         ($merged | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath $hooksJsonDest
-        $mergedKeys = @(if (-not $skipGuardrailMerge) { 'hooks.PreToolUse' }) + @(if (-not $skipSessionStartMerge) { 'hooks.SessionStart' })
+        $mergedKeys = @(if ((-not $skipGuardrailMerge) -or (-not $skipAiReferenceGuardMerge)) { 'hooks.PreToolUse' }) + @(if (-not $skipSessionStartMerge) { 'hooks.SessionStart' })
         if ($mergedKeys) {
             Write-Ok "Merged:     $hooksJsonDest ($($mergedKeys -join ', '))"
         } else {
