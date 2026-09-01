@@ -162,6 +162,28 @@ Describe 'pi/extensions/ai-reference-guard.ts' {
         }
     }
 
+    Context 'commit-shaped command with an unquoted wordlist match denies' {
+        It 'blocks <Command>' -TestCases @(
+            @{ Command = 'git commit -m Claude' }
+            @{ Command = 'git commit -m Generated-with-Claude' }
+            @{ Command = 'az boards work-item update --fields System.Description=Generated-with-Claude' }
+            @{ Command = 'gh pr create --title Claude-reviewed' }
+            @{ Command = 'git commit -am Claude' }
+            @{ Command = 'gh pr create -t Claude-reviewed' }
+            @{ Command = 'az boards work-item update --id 5 --fields System.Title=Fix System.Description=Generated-with-Claude' }
+        ) {
+            param($Command)
+            $results = Invoke-AiReferenceGuard -Command $Command
+            $results[$Command] | Should -BeTrue
+        }
+
+        It 'allows a clean --fields run alongside another populated pair (guards the widened multi-pair scan)' {
+            $command = 'az boards work-item update --id 5 --fields System.Title=Normal System.Description=Normal-work'
+            $results = Invoke-AiReferenceGuard -Command $command
+            $results[$command] | Should -BeFalse
+        }
+    }
+
     Context 'commit-shaped command without a wordlist match allows' {
         It 'allows <Command>' -TestCases @(
             @{ Command = 'git commit -m "fix the login bug"' }
@@ -193,6 +215,12 @@ Describe 'pi/extensions/ai-reference-guard.ts' {
         It 'allows git push -n (dry-run, not --no-verify)' {
             $results = Invoke-AiReferenceGuard -Command 'git push -n origin main'
             $results['git push -n origin main'] | Should -BeFalse
+        }
+
+        It 'allows a chained command where -n belongs to a different subcommand, not commit' {
+            $command = 'git commit -m "fix" && git log -n 1'
+            $results = Invoke-AiReferenceGuard -Command $command
+            $results[$command] | Should -BeFalse
         }
     }
 

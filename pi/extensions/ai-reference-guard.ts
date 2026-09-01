@@ -70,18 +70,63 @@ function scrubQuoted(command: string): string {
 }
 
 // Collects the content of every quoted span in the RAW (unscrubbed) command — the exact
-// spans scrubQuoted would delete. The wordlist is matched against this, not the scrubbed
-// command and not the whole raw command string: a banned term usually sits deliberately
-// inside a -m message / --title / --body / --fields value, and matching the whole raw
-// command would false-positive on this repo's own `claude/` and `codex/` path segments.
+// spans scrubQuoted would delete — plus the VALUE(s) of -m/--message/--title/--body/
+// --description/--fields/--route-parameters arguments even when unquoted. The wordlist is
+// matched against this, not the scrubbed command and not the whole raw command string: a
+// banned term usually sits deliberately inside one of these values, and shell quoting is
+// often unnecessary for it (a hyphenated value like `Generated-with-Claude`, or a `key=value`
+// pair like `--fields System.Description=Generated-with-Claude`), so scanning only quoted
+// spans misses that case entirely. Matching the whole raw command instead would false-
+// positive on this repo's own `claude/` and `codex/` path segments, so the unquoted scan
+// stays scoped to these named flags' values, not the whole command.
 function collectQuotedContent(command: string): string {
 	const spans: string[] = [];
-	const pattern = /"((?:\\.|[^"\\])*)"|'([^']*)'/g;
-	let match: RegExpExecArray | null = pattern.exec(command);
+	const quotePattern = /"((?:\\.|[^"\\])*)"|'([^']*)'/g;
+	let match: RegExpExecArray | null = quotePattern.exec(command);
 	while (match !== null) {
 		spans.push(match[1] !== undefined ? match[1] : (match[2] ?? ""));
-		match = pattern.exec(command);
+		match = quotePattern.exec(command);
 	}
+
+	const unquote = (raw: string): string => {
+		const doubleQuoted = /^"(.*)"$/.exec(raw);
+		const singleQuoted = /^'(.*)'$/.exec(raw);
+		return doubleQuoted ? doubleQuoted[1] : singleQuoted ? singleQuoted[1] : raw;
+	};
+
+	// Single-value flags. `-[A-Za-z]*m` covers git's -m short flag alone or clustered with
+	// other short flags (`-am`, `-sm`). `-t`/`-b` are gh's short forms of --title/--body,
+	// scoped to `gh pr create|edit` commands only (isGhPr below) — those letters mean
+	// something else for other commands (e.g. git commit -t <template-file>), so scanning
+	// them everywhere would risk an unrelated false positive.
+	const isGhPr = /(^|\s)gh\s+pr\s+(create|edit)(\s|$)/.test(command);
+	const singleValueFlags = ["-[A-Za-z]*m", "--message", "--title", "--body", "--description"];
+	if (isGhPr) {
+		singleValueFlags.push("-t", "-b");
+	}
+	const singleValuePattern = new RegExp(
+		`(?:^|\\s)(?:${singleValueFlags.join("|")})(?=[=\\s])(?:=|\\s+)("(?:\\\\.|[^"\\\\])*"|'[^']*'|[^\\s"']+)`,
+		"g",
+	);
+	let singleMatch: RegExpExecArray | null = singleValuePattern.exec(command);
+	while (singleMatch !== null) {
+		spans.push(unquote(singleMatch[1]));
+		singleMatch = singleValuePattern.exec(command);
+	}
+
+	// Multi-value flags: --fields/--route-parameters take a run of space-separated
+	// `key=value` pairs (e.g. `az boards work-item update --fields System.Title=Fix
+	// System.Description=Generated-with-Claude`), so the whole run is scanned, not just the
+	// first pair — stopping at the next `-`-prefixed flag, a shell separator (`;`/`&`/`|`),
+	// or end of command.
+	const multiValuePattern =
+		/(?:^|\s)(?:--fields|--route-parameters)(?=[=\s])(?:=|\s+)((?:"(?:\\.|[^"\\])*"|'[^']*'|[^\s"';&|-]\S*)(?:\s+(?:"(?:\\.|[^"\\])*"|'[^']*'|[^\s"';&|-]\S*))*)/g;
+	let multiMatch: RegExpExecArray | null = multiValuePattern.exec(command);
+	while (multiMatch !== null) {
+		spans.push(multiMatch[1]);
+		multiMatch = multiValuePattern.exec(command);
+	}
+
 	return spans.join("\n");
 }
 
@@ -99,10 +144,14 @@ const COMMIT_SHAPED_PATTERNS: RegExp[] = [
 // Unconditional denies: these bypass the commit/push hooks that would otherwise catch a
 // banned reference, regardless of wordlist content. -n is git commit's own --no-verify
 // short flag; git push's own -n means --dry-run, not --no-verify, so the alternation is
-// deliberately NOT shared across both commands.
+// deliberately NOT shared across both commands. The `[^;&|]*` gap between the subcommand
+// and the flag keeps the match scoped to the same shell segment (mirrors
+// codex/ai-reference-guard.sh's sibling bound and its regression test) — without it, a
+// chained `git commit -m "fix" && git log -n 1` would match `-n` from the unrelated `log`
+// segment and deny a perfectly clean chained command.
 const NO_VERIFY_PATTERNS: RegExp[] = [
-	/git\s+(.*\s+)?commit\s.*(--no-verify|-n\b)/,
-	/git\s+(.*\s+)?push\s.*--no-verify/,
+	/git\s+(.*\s+)?commit\s[^;&|]*(--no-verify|-n\b)/,
+	/git\s+(.*\s+)?push\s[^;&|]*--no-verify/,
 ];
 
 // Pure matcher: given a raw command string and an already-parsed wordlist, returns a
