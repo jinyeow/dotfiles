@@ -61,17 +61,12 @@ checks, review, commit.
    dispatching the first child — same detection as `/implement`'s own first step
    (`implement/SKILL.md`, `AGENTS.d/git-worktrees.md`), named `<type>/<epic#>-<slug>` when the
    invocation shares a spec/epic, else `<type>/<ticket#>-<slug>` off the first ticket listed, in
-   invocation order. For a sequential run this makes each
-   child's own `/implement` call find itself already off the default branch and commit straight
-   to it in turn, as originally designed. For a parallel run this matters just as much: step 6
-   cherry-picks each isolated child's range onto *the invoking branch*, so if the invoking branch
-   were still the default branch, every ticket's commits would land there regardless of the
-   child's own isolated branch being fine. Skipping this and leaving the invoking branch as the
-   default branch would spawn throwaway worktrees per ticket and land every cherry-pick back onto
-   the default branch in step 6 — the exact outcome this whole mechanism exists to prevent.
-6. **Integrate parallel children** (sequential children skip this — step 5 already put the
-   invoking branch off the default branch before the first one was dispatched, so each commits
-   straight to the invoking branch in turn, same as before this ADR). An isolated child commits to
+   invocation order. Step 6 cherry-picks each parallel child's range onto the invoking branch, so
+   the invoking branch must not be the default branch; see
+   `docs/adr/implement-enforces-worktree-per-ticket-in-its-own-first-step.md` for the full
+   rationale.
+6. **Integrate parallel children** (sequential children skip this — they commit straight to the
+   invoking branch in turn, which step 5 guarantees is never the default branch). An isolated child commits to
    its own branch in its own worktree, so its work is not on the invoking branch until you bring it
    over. Before dispatch, capture each child's pre-dispatch `HEAD` — that commit is the range base
    for that child's cherry-pick. Once every parallel child has returned, for each in ticket order
