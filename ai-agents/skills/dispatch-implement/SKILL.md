@@ -56,21 +56,35 @@ checks, review, commit.
    (see Override below).
 5. **Dispatch**, one subagent per ticket, each prompted to run `/implement` on that ticket and
    nothing else. Parallel units go out in a single message so they actually run concurrently;
-   sequential units wait for the previous unit's result before the next dispatch.
-6. **Integrate parallel children** (sequential children skip this — they already committed to the
-   current branch, in turn). An isolated child commits to its own branch in its own worktree, so its
-   work is not on the invoking branch until you bring it over. Before dispatch, capture each child's
-   pre-dispatch `HEAD` — that commit is the range base for that child's cherry-pick. Once every
-   parallel child has returned, for each in ticket order cherry-pick `base..tip` (its own branch tip)
-   onto the invoking branch — the full range, since `/implement` does not promise exactly one commit —
-   then run the project's fast checks once over the integrated result. The full suite is not re-run
-   post-integration: each child already ran it in isolation before its own commit, per `/implement`'s
-   own contract; this is an accepted tradeoff for a thin wrapper, not an oversight. On a cherry-pick
-   conflict, run `git cherry-pick --abort` to leave the invoking branch clean, then stop and hand back
-   the child branch and worktree names; do not resolve it silently, since a conflict here means the
-   non-overlapping judgment in step 3 was wrong. Once integration succeeds, remove the child worktrees
-   and delete the child branches — their commits are now fully represented on the invoking branch via
-   the cherry-picks, so there is no reason to keep them.
+   sequential units wait for the previous unit's result before the next dispatch. **Any run —
+   parallel or sequential — starting on the default branch:** branch off once, here, before
+   dispatching the first child — same detection as `/implement`'s own first step
+   (`implement/SKILL.md`, `AGENTS.d/git-worktrees.md`), named `<type>/<epic#>-<slug>` when the
+   invocation shares a spec/epic, else `<type>/<ticket#>-<slug>` off the first ticket listed, in
+   invocation order. For a sequential run this makes each
+   child's own `/implement` call find itself already off the default branch and commit straight
+   to it in turn, as originally designed. For a parallel run this matters just as much: step 6
+   cherry-picks each isolated child's range onto *the invoking branch*, so if the invoking branch
+   were still the default branch, every ticket's commits would land there regardless of the
+   child's own isolated branch being fine. Skipping this and leaving the invoking branch as the
+   default branch would spawn throwaway worktrees per ticket and land every cherry-pick back onto
+   the default branch in step 6 — the exact outcome this whole mechanism exists to prevent.
+6. **Integrate parallel children** (sequential children skip this — step 5 already put the
+   invoking branch off the default branch before the first one was dispatched, so each commits
+   straight to the invoking branch in turn, same as before this ADR). An isolated child commits to
+   its own branch in its own worktree, so its work is not on the invoking branch until you bring it
+   over. Before dispatch, capture each child's pre-dispatch `HEAD` — that commit is the range base
+   for that child's cherry-pick. Once every parallel child has returned, for each in ticket order
+   cherry-pick `base..tip` (its own branch tip) onto the invoking branch — the full range, since
+   `/implement` does not promise exactly one commit — then run the project's fast checks once over
+   the integrated result. The full suite is not re-run post-integration: each child already ran it
+   in isolation before its own commit, per `/implement`'s own contract; this is an accepted
+   tradeoff for a thin wrapper, not an oversight. On a cherry-pick conflict, run
+   `git cherry-pick --abort` to leave the invoking branch clean, then stop and hand back the child
+   branch and worktree names; do not resolve it silently, since a conflict here means the
+   non-overlapping judgment in step 3 was wrong. Once integration succeeds, remove the child
+   worktrees and delete the child branches — their commits are now fully represented on the invoking
+   branch via the cherry-picks, so there is no reason to keep them.
 7. **Report** per ticket: model used, parallel or sequential and why, the child's outcome, and for a
    parallel run the integration result (integrated cleanly, or which branches are left for the user).
 
