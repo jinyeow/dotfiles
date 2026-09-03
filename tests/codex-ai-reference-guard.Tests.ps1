@@ -105,8 +105,14 @@ BeforeAll {
     # PATH parser treats as a separate, bogus entry, so the real python3/python stay
     # resolvable. Convert the stub dir to Git Bash's own POSIX path form (cygpath -u,
     # e.g. `/c/Users/...`) first — verified empirically that only the POSIX form actually
-    # shadows `command -v python3`/`python` in this environment.
-    $script:NoPythonStubDirPosix = (& $script:Bash -c 'cygpath -u "$1"' _ $script:NoPythonStubDir).Trim()
+    # shadows `command -v python3`/`python` in this environment. On a real (non-Git-Bash)
+    # bash, `$script:NoPythonStubDir` is already a native POSIX path and `cygpath` doesn't
+    # exist there, so only convert on Windows.
+    $script:NoPythonStubDirPosix = if ($IsWindows) {
+        (& $script:Bash -c 'cygpath -u "$1"' _ $script:NoPythonStubDir).Trim()
+    } else {
+        $script:NoPythonStubDir
+    }
 
     function Invoke-GuardrailHookNoPython {
         param([string] $Command, [string] $Repo = $script:ScopedRepo)
