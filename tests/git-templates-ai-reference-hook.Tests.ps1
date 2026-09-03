@@ -238,7 +238,11 @@ Describe 'git/templates/hooks/commit-msg' -Skip:(-not $script:HasBash) {
         Copy-Item -Path $script:CommitMsgHook -Destination (Join-Path $fakeHooksDir 'commit-msg')
         $fakeWordlist = Join-Path $fakeSharedDir 'banned-ai-terms.txt'
         Set-Content -Path $fakeWordlist -Value 'claude' -NoNewline
-        icacls $fakeWordlist /deny "$($env:USERNAME):(R)" | Out-Null
+        if ($IsWindows) {
+            icacls $fakeWordlist /deny "$($env:USERNAME):(R)" | Out-Null
+        } else {
+            chmod 000 $fakeWordlist
+        }
         try {
             # Precondition: confirm the deny actually blocks a real read through the same
             # bash used to run the hook. If it doesn't bite on this machine, skip rather
@@ -264,7 +268,11 @@ Describe 'git/templates/hooks/commit-msg' -Skip:(-not $script:HasBash) {
             $rc | Should -Not -Be 0
             $out | Should -Match 'AI-reference scan blocked'
         } finally {
-            icacls $fakeWordlist /reset 2>&1 | Out-Null
+            if ($IsWindows) {
+                icacls $fakeWordlist /reset 2>&1 | Out-Null
+            } else {
+                chmod 644 $fakeWordlist
+            }
             Remove-Item -Path $fakeRoot -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
@@ -398,7 +406,11 @@ Describe 'git/templates/hooks/pre-commit AI-reference section' -Skip:(-not $scri
         Copy-Item -Path $script:PreCommitHook -Destination (Join-Path $fakeHooksDir 'pre-commit')
         $fakeWordlist = Join-Path $fakeSharedDir 'banned-ai-terms.txt'
         Set-Content -Path $fakeWordlist -Value 'claude' -NoNewline
-        icacls $fakeWordlist /deny "$($env:USERNAME):(R)" | Out-Null
+        if ($IsWindows) {
+            icacls $fakeWordlist /deny "$($env:USERNAME):(R)" | Out-Null
+        } else {
+            chmod 000 $fakeWordlist
+        }
         try {
             $probe = & $script:TestBash -c "cat `"$($fakeWordlist -replace '\\', '/')`"" 2>&1
             $probeReadable = ($LASTEXITCODE -eq 0)
@@ -420,7 +432,11 @@ Describe 'git/templates/hooks/pre-commit AI-reference section' -Skip:(-not $scri
             $rc | Should -Not -Be 0
             $out | Should -Match 'AI-reference scan blocked'
         } finally {
-            icacls $fakeWordlist /reset 2>&1 | Out-Null
+            if ($IsWindows) {
+                icacls $fakeWordlist /reset 2>&1 | Out-Null
+            } else {
+                chmod 644 $fakeWordlist
+            }
             Remove-Item -Path $fakeRoot -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
