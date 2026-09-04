@@ -9,6 +9,15 @@
             "command": "bash ~/.codex/block-dangerous-git.sh"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.codex/ai-reference-guard.sh"
+          }
+        ]
       }
     ],
     "SessionStart": [

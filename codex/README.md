@@ -38,7 +38,9 @@ conventions in `ai-agents/AGENTS.md` only; re-run the installer to push the copy
 | `../ai-agents/AGENTS.md` (shared) | `~/.codex/AGENTS.md` | Personal conventions (sourced from the ai-agents module) |
 | `../ai-agents/AGENTS.d/` (shared) | `~/.codex/AGENTS.d/` | Progressive-disclosure satellite files `AGENTS.md` links out to on demand (sourced from the ai-agents module) |
 | `block-dangerous-git.sh` | `~/.codex/block-dangerous-git.sh` | `PreToolUse` hook that denies dangerous git commands — see "Git guardrails" below. Installed by `setup.ps1 -Module codex` only; `setup.sh` does not copy this file yet |
-| `hooks.json` | merged into `~/.codex/hooks.json` | Tracked `hooks.PreToolUse` + `hooks.SessionStart` fragment; the installer merges both event keys, preserving any pre-existing foreign entry or hook in either (e.g. herdr's own `SessionStart` entry). Merged by `setup.ps1 -Module codex` only; `setup.sh` does not merge it yet |
+| `ai-reference-guard.sh` | `~/.codex/ai-reference-guard.sh` | `PreToolUse` hook that hard-blocks AI/Claude/Codex/Copilot/co-authored-by references from landing in a commit, PR, or Azure Boards item — see "AI-reference hard-block" below. Installed by `setup.ps1 -Module codex` only; `setup.sh` does not copy this file yet |
+| `../ai-agents/_shared/banned-ai-terms.txt` (shared) | `~/.codex/banned-ai-terms.txt` | Wordlist `ai-reference-guard.sh` reads as a sibling file — shared with the same hook's Claude Code and Pi ports (issue #219) |
+| `hooks.json` | merged into `~/.codex/hooks.json` | Tracked `hooks.PreToolUse` (two entries: `block-dangerous-git.sh`, `ai-reference-guard.sh`) + `hooks.SessionStart` fragment; the installer merges all three, preserving any pre-existing foreign entry or hook in either event key (e.g. herdr's own `SessionStart` entry). Merged by `setup.ps1 -Module codex` only; `setup.sh` does not merge it yet |
 | `ai-agents/skills/<name>/` (portable) | `~/.codex/skills/<name>/` | Portable global skills |
 | `codex/skills/<name>/` | `~/.codex/skills/<name>/` | Codex-native skills (win on name collision) |
 | `templates/work-AGENTS.md` | — (manual copy) | Drop into an Azure work repo root as `AGENTS.md` |
@@ -65,9 +67,11 @@ user-scope (`~/.codex/hooks.json`), matching this repo's own Claude Code guardra
 choice (`~/.claude/settings.json`). Because `~/.codex/hooks.json` may already carry herdr's own
 `SessionStart` entry, the installer merges `hooks.PreToolUse` and `hooks.SessionStart` rather
 than overwriting the file — `PreToolUse` filters out a whole foreign entry if any hook inside it
-matches the guardrail, while `SessionStart` filters at the individual-hook level so a foreign
-hook sharing an entry with a stale project-brain hook is kept — see `Install-Codex` in
-`setup.ps1`.
+matches either of the two guardrail scripts (each merged in its own independent pass, keyed by
+the script's own filename, so one guardrail's install problem can't silently break the other's
+entry — see the "AI-reference hard-block" section below), while `SessionStart` filters at the
+individual-hook level so a foreign hook sharing an entry with a stale project-brain hook is
+kept — see `Install-Codex` in `setup.ps1`.
 
 Today this hook is installed only by `setup.ps1 -Module codex`; `setup.sh` does not yet copy
 `block-dangerous-git.sh` or merge `hooks.json`, so it is not present on a Linux/WSL install.
@@ -89,6 +93,40 @@ expect Codex to prompt for this the first time a `Bash` tool call reaches the gu
 `setup.ps1 -Module codex` has run. `--dangerously-bypass-hook-trust` skips the trust check for
 one invocation — intended for automation that already vets its hook sources outside Codex, not
 for routine interactive use.
+
+## AI-reference hard-block
+
+`setup.ps1 -Module codex` also installs a second `PreToolUse` hook (matcher `Bash`,
+`ai-reference-guard.sh`) that hard-blocks AI/Claude/Codex/Copilot/co-authored-by references
+from being written into a `git commit`, a PR (`gh pr create`/`edit`, `az repos pr
+create`/`update`), or an Azure Boards item (`az boards ...`, `az devops invoke`) — replacing a
+prompt-level "don't reference AI tools" rule that already failed once (issue #219). It also
+denies `git commit`/`git push` using `--no-verify`, or `-n` clustered anywhere in a short-flag
+token (e.g. `-nm`, valid git for `--no-verify -m`) on commit, outright — since that flag
+bypasses this repo's global `commit-msg`/`pre-commit` git hooks (see `git/README.md`) that
+carry the same scan — and denies an exported `SKIP_AI_REFERENCE_SCAN`/`SKIP_GITLEAKS=1`
+bypassing those same hooks the same way.
+
+Scoped to Hollard/Azure DevOps repos only, mirroring `git/README.md`'s `commit-msg` scoping:
+`git remote get-url origin` must contain both `dev.azure.com` and `HollardInsuranceRetail`.
+The check runs against `git -C <path>`'s actual target repo when the command carries one
+(quoted or bare), not just the hook's inherited cwd; `cd <path> && git ...` shell-state
+tracking remains a known, accepted limitation.
+
+Ported in structure from `block-dangerous-git.sh` (same stdin JSON extraction tiers, same
+`BLOCKED:`/`Reason:` stderr format); the wordlist scan itself is new. Reads
+`ai-agents/_shared/banned-ai-terms.txt` (one case-insensitive extended regex per line,
+`#`-comments and blank lines ignored) as a sibling file next to itself at
+`~/.codex/banned-ai-terms.txt` — copied alongside the script by `setup.ps1 -Module codex`, not
+hardcoded. Fails **closed** (exit 2) only when that wordlist file is missing or unreadable;
+fails open for every other non-match condition, matching `block-dangerous-git.sh`'s own
+posture. If the wordlist source is missing from the repo at install time, the installer skips
+merging this hook's entry entirely (warns instead) rather than installing a broken guardrail
+that would fail closed on every Codex `Bash` call — see `Install-Codex` in `setup.ps1`.
+
+Mere prose mentioning a banned term in an unrelated command passes through silently — this is
+not a blanket "any command mentioning Claude" denier, only these guarded command shapes gated
+on an actual wordlist match.
 
 ## Project-brain SessionStart hook
 
