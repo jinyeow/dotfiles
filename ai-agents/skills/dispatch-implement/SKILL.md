@@ -56,21 +56,30 @@ checks, review, commit.
    (see Override below).
 5. **Dispatch**, one subagent per ticket, each prompted to run `/implement` on that ticket and
    nothing else. Parallel units go out in a single message so they actually run concurrently;
-   sequential units wait for the previous unit's result before the next dispatch.
-6. **Integrate parallel children** (sequential children skip this — they already committed to the
-   current branch, in turn). An isolated child commits to its own branch in its own worktree, so its
-   work is not on the invoking branch until you bring it over. Before dispatch, capture each child's
-   pre-dispatch `HEAD` — that commit is the range base for that child's cherry-pick. Once every
-   parallel child has returned, for each in ticket order cherry-pick `base..tip` (its own branch tip)
-   onto the invoking branch — the full range, since `/implement` does not promise exactly one commit —
-   then run the project's fast checks once over the integrated result. The full suite is not re-run
-   post-integration: each child already ran it in isolation before its own commit, per `/implement`'s
-   own contract; this is an accepted tradeoff for a thin wrapper, not an oversight. On a cherry-pick
-   conflict, run `git cherry-pick --abort` to leave the invoking branch clean, then stop and hand back
-   the child branch and worktree names; do not resolve it silently, since a conflict here means the
-   non-overlapping judgment in step 3 was wrong. Once integration succeeds, remove the child worktrees
-   and delete the child branches — their commits are now fully represented on the invoking branch via
-   the cherry-picks, so there is no reason to keep them.
+   sequential units wait for the previous unit's result before the next dispatch. **Any run —
+   parallel or sequential — starting on the default branch:** branch off once, here, before
+   dispatching the first child — same detection as `/implement`'s own first step
+   (`implement/SKILL.md`, `AGENTS.d/git-worktrees.md`), named `<type>/<epic#>-<slug>` when the
+   invocation shares a spec/epic, else `<type>/<ticket#>-<slug>` off the first ticket listed, in
+   invocation order. Step 6 cherry-picks each parallel child's range onto the invoking branch, so
+   the invoking branch must not be the default branch; see
+   `docs/adr/implement-enforces-worktree-per-ticket-in-its-own-first-step.md` for the full
+   rationale.
+6. **Integrate parallel children** (sequential children skip this — they commit straight to the
+   invoking branch in turn, which step 5 guarantees is never the default branch). An isolated child commits to
+   its own branch in its own worktree, so its work is not on the invoking branch until you bring it
+   over. Before dispatch, capture each child's pre-dispatch `HEAD` — that commit is the range base
+   for that child's cherry-pick. Once every parallel child has returned, for each in ticket order
+   cherry-pick `base..tip` (its own branch tip) onto the invoking branch — the full range, since
+   `/implement` does not promise exactly one commit — then run the project's fast checks once over
+   the integrated result. The full suite is not re-run post-integration: each child already ran it
+   in isolation before its own commit, per `/implement`'s own contract; this is an accepted
+   tradeoff for a thin wrapper, not an oversight. On a cherry-pick conflict, run
+   `git cherry-pick --abort` to leave the invoking branch clean, then stop and hand back the child
+   branch and worktree names; do not resolve it silently, since a conflict here means the
+   non-overlapping judgment in step 3 was wrong. Once integration succeeds, remove the child
+   worktrees and delete the child branches — their commits are now fully represented on the invoking
+   branch via the cherry-picks, so there is no reason to keep them.
 7. **Report** per ticket: model used, parallel or sequential and why, the child's outcome, and for a
    parallel run the integration result (integrated cleanly, or which branches are left for the user).
 
