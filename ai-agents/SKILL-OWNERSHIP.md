@@ -25,8 +25,10 @@ is the orchestrating session's own top-level `sandbox_mode` — which may itself
 findings-store write path on Codex hosts remains an open gap. `storm-research` is portable
 too, as of #172 resolving the #95 spike below: its five expert-lens prompts and
 citation-verifier fan-out need only parallel dispatch with distinct per-child prompts, no
-per-child tool scoping, on Pi via `pi-subagents`' `subagent({ tasks: [...] })` reusing the
-builtin `researcher` agent; see `ai-agents/skills/storm-research/DISPATCH.md`. `walkthrough`
+per-child tool scoping. At the pinned `pi-subagents@0.60.0` this is `subagent({ workflowScript:
+"return runs.all([...])" })` reusing the builtin `researcher` agent — the top-level
+`tasks: [...]` call shape this note previously named was removed upstream at 0.41.0; see
+`ai-agents/skills/storm-research/DISPATCH.md`. `walkthrough`
 is portable too, as of #91: its `~/.claude/learner-profile.md` path now resolves to the
 runtime's own config home (`~/.claude/`, `~/.codex/`, `~/.pi/agent/`); its stale
 `.claude/tickets.md`/`.claude/specs/*.md` reference was corrected to the current
@@ -45,7 +47,22 @@ all three runtimes, but only Claude Code's dispatch is wired (the `Agent` tool, 
 `isolation: "worktree"` for parallel children so they do not race one shared `.git/index`); on
 Codex CLI (`[agents.implementer]` + `spawn_agent`, #211) and Pi (`pi-subagents`, #212) the skill
 stops and reports instead of dispatching until those tickets land. Parallel dispatch is gated off
-in favor of sequential-only until #213 confirms the base flow against real usage.
+in favor of sequential-only until #213 confirms the base flow against real usage. `implement-spec`
+is portable too: it only orchestrates calls into `to-spec`, `to-tickets`, `dispatch-implement`,
+`review-fix-loop`, and `to-pullrequest` — all already portable or tracked as such — so it carries
+no runtime-specific mechanics of its own. It inherits `dispatch-implement`'s current Claude-Code-
+only dispatch and sequential-only gate at each frontier batch until that skill's own blockers
+clear. `critique-plan`
+is portable too, and new: it dispatches one isolated read-only subagent to critique a drafted
+plan against the domain model, reusing `domain-modeling`'s `CONTEXT.md`/`ADR-FORMAT.md`/
+`CONTEXT-FORMAT.md` conventions rather than a runtime-specific mechanism. Marked trial in
+`ai-agents/README.md` — adapted from
+[ayoubben18/ab-method](https://github.com/ayoubben18/ab-method) (MIT); not yet a settled
+convention. `domain-modeling` is portable too, split out of `grill-with-docs` to match
+[mattpocock/skills](https://github.com/mattpocock/skills)' current design: the CONTEXT.md/ADR
+discipline stands on its own, independently model-invocable, while `grilling` (also
+mattpocock/skills) carries the interview mechanics and `grill-with-docs` is now a thin pointer
+skill invoking both. No runtime-specific mechanism involved.
 
 ## Portable support (`ai-agents/skills/_shared/`)
 

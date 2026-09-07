@@ -28,20 +28,21 @@ Two **category** roles:
 - `bug` — something is broken
 - `enhancement` — new feature or improvement
 
-Four **state** roles:
+Five **state** roles:
 
 - `triaged` — assessed and scoped, but not yet ready to implement
 - `ready` — fully specified; an agent may grab it and implement
+- `ready-for-human` — needs human implementation
 - `needs-info` — waiting on reporter for more information
 - `wontfix` — will not be actioned
 
-For a PR, the same states read against the attached code: `ready` means a brief is attached and an agent should take the next step on the diff; `triaged` means it's been assessed but the diff needs more work first.
+For a PR, the same states read against the attached code: `ready` means a brief is attached and an agent should take the next step on the diff; `ready-for-human` means it's ready for a human to merge; `triaged` means it's been assessed but the diff needs more work first.
 
 Every triaged issue should carry exactly one category role and one state role. If state roles conflict, flag it and ask the maintainer before doing anything else.
 
 These are canonical role names — the actual label strings used in the issue tracker may differ. Read the mapping from repository-root `.agents/workflow.local.md` when present, otherwise repository-root `.agents/workflow.md`; run `/setup-agent-skills` if neither exists.
 
-State transitions: an unlabeled issue is untriaged; from there it moves to `triaged`, `needs-info`, `ready`, or `wontfix`. `needs-info` returns to untriaged for re-evaluation once the reporter replies. The maintainer can override at any time — flag transitions that look unusual and ask before proceeding.
+State transitions: an unlabeled issue is untriaged; from there it moves to `triaged`, `needs-info`, `ready`, `ready-for-human`, or `wontfix`. `needs-info` returns to untriaged for re-evaluation once the reporter replies. The maintainer can override at any time — flag transitions that look unusual and ask before proceeding.
 
 ## Invocation
 
@@ -72,10 +73,11 @@ Show counts and a one-line summary per item. Let the maintainer pick.
 
 3. **Verify the claim.** Before any grilling, check that the claim holds up. For a bug, reproduce it from the reporter's steps. For a PR, confirm the diff does what it claims — check it out, run the relevant tests or commands. Report what happened: confirmed (with code path), failed, or insufficient detail (a strong `needs-info` signal). A confirmed verification makes a much stronger agent brief.
 
-4. **Grill (if needed).** If the request needs fleshing out, pause and ask the maintainer to run `/grill-with-docs` — grill it into shape one question at a time, sharpening domain terms and updating `CONTEXT.md`/ADRs inline as decisions land.
+4. **Grill (if needed).** If the request needs fleshing out, pause and ask the maintainer to run `/grill-with-docs` — grill it into shape, sharpening domain terms and updating `CONTEXT.md`/ADRs inline as decisions land.
 
 5. **Apply the outcome:**
    - `ready` — post an agent brief comment ([AGENT-BRIEF.md](AGENT-BRIEF.md)). An agent may grab and implement it autonomously.
+   - `ready-for-human` — same structure as an agent brief, but note why it can't be delegated (judgment calls, external access, design decisions, manual testing).
    - `needs-info` — post triage notes (template below).
    - `wontfix` — close, with the comment depending on *why*:
      - **Already implemented** — the change already exists in the codebase. Point to where it lives; do **not** write to `.out-of-scope/` (that KB is for *rejected* requests, not built ones).

@@ -11,6 +11,6 @@ A private `.agents/workflow.local.md` takes precedence when present. Run
 - **Specs**: `.agents/specs/`
 - **High-level designs**: `docs/design/`
 - **Tickets**: GitHub Issues in `jinyeow/dotfiles`
-- **Labels**: `spec-ready`, `design-ready`, `triaged`, `ready`, `needs-info`, `wontfix`
+- **Labels**: `spec-ready`, `design-ready`, `triaged`, `ready`, `ready-for-human`, `needs-info`, `wontfix`
 - **Domain docs**: single-context layout with root `CONTEXT.md` and `docs/adr/`
 - **Wayfinding**: GitHub parent/child issues for maps; use `wayfinder:map`, `wayfinder:research`, `wayfinder:prototype`, `wayfinder:grilling`, and `wayfinder:task`; use GitHub's native blocking relationships; frontier means open, unblocked, unassigned child issues; claim by assigning the issue to the implementing developer.

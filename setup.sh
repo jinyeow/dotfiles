@@ -451,11 +451,11 @@ install_pi() {
     if command -v pi >/dev/null 2>&1; then
         ok 'pi is already installed.'
     elif [[ $DRY_RUN -eq 1 ]]; then
-        info '[DRY RUN] would install Pi via npm (@mariozechner/pi-coding-agent)'
+        info '[DRY RUN] would install Pi via npm (@earendil-works/pi-coding-agent)'
     elif ! command -v npm >/dev/null 2>&1; then
         fail 'npm not found — Pi setup stopped before changing Pi configuration.'
         return
-    elif ! npm install --global '@mariozechner/pi-coding-agent' || ! command -v pi >/dev/null 2>&1; then
+    elif ! npm install --global '@earendil-works/pi-coding-agent' || ! command -v pi >/dev/null 2>&1; then
         fail 'Pi installation failed — no Pi configuration or resources were changed.'
         return
     else

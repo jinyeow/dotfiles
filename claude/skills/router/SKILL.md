@@ -51,7 +51,7 @@ Not feature work — upkeep.
 - **`/techdebt`** — the non-architectural counterpart: inventories dependency health, dead code, stale TODOs, test debt, duplication, suppressed checks, toolchain drift, and doc/config drift from existing tool output, then hands approved findings to `/to-tickets`. Not for shallow modules or tight coupling — that's `/improve-codebase-architecture`.
 - **`/codebase-design`** — the deep-module vocabulary (module, interface, depth, seam, adapter, leverage, locality) for designing a module's *shape*. The bench you design a chosen candidate on. `/tdd` and `/improve-codebase-architecture` both speak it.
 
-*Domain modeling has no separate skill because `/grill-with-docs` carries the full active discipline — challenging terms, keeping `CONTEXT.md` a clean glossary, recording ADRs, with its own `CONTEXT-FORMAT.md` / `ADR-FORMAT.md`. `/codebase-design` owns module shape. Between them the vocabulary is covered.*
+*Domain modeling is its own skill, `/domain-modeling` — challenging terms, keeping `CONTEXT.md` a clean glossary, recording ADRs, with its own `CONTEXT-FORMAT.md` / `ADR-FORMAT.md`. `/grill-with-docs` is a thin pointer invoking it alongside `/grilling`. `/codebase-design` owns module shape. Between them the vocabulary is covered.*
 
 ## Reviewing & verifying — a ladder by target
 
