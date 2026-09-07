@@ -11,18 +11,102 @@
 # binary is never blocked — the gitleaks CI job is the backstop.
 # Bypass one commit:  SKIP_GITLEAKS=1 git commit ...
 
-[ "$SKIP_GITLEAKS" = "1" ] && exit 0
-
-if ! command -v gitleaks >/dev/null 2>&1; then
-    echo "gitleaks not on PATH — skipping local secret scan (install: winget install gitleaks.gitleaks)." >&2
-    exit 0
+# Wrapped in an `if` rather than top-level early `exit 0`s: SKIP_GITLEAKS=1 or a
+# missing gitleaks binary must only skip the gitleaks check itself. Execution
+# must always continue into the independent AI-reference section below.
+if [ "$SKIP_GITLEAKS" != "1" ]; then
+    if ! command -v gitleaks >/dev/null 2>&1; then
+        echo "gitleaks not on PATH — skipping local secret scan (install: winget install gitleaks.gitleaks)." >&2
+    else
+        gitleaks git --pre-commit --redact --staged --no-banner
+        status=$?
+        if [ "$status" -ne 0 ]; then
+            echo "" >&2
+            echo "gitleaks blocked this commit: a staged change looks like a secret (values redacted above)." >&2
+            echo "Fix it, or bypass this one commit with:  SKIP_GITLEAKS=1 git commit ..." >&2
+            exit "$status"
+        fi
+    fi
 fi
 
-gitleaks git --pre-commit --redact --staged --no-banner
-status=$?
-if [ "$status" -ne 0 ]; then
-    echo "" >&2
-    echo "gitleaks blocked this commit: a staged change looks like a secret (values redacted above)." >&2
-    echo "Fix it, or bypass this one commit with:  SKIP_GITLEAKS=1 git commit ..." >&2
+# ----------------------------------------------------------------------------
+# AI-reference scan on staged code comments — layer 2 of #219, alongside
+# commit-msg's scan of the message text. A single logically-distinct check
+# added inline rather than split into its own file: git only recognizes one
+# literal `pre-commit` per hooks dir, and (like gitleaks above) this only
+# shells out to POSIX git/grep, so a .ps1/.sh split would duplicate identical
+# logic for no reason (see git/README.md's "Why this splits when pre-commit
+# doesn't").
+#
+# Scoped to Hollard/Azure DevOps repos only, via the same signal git/gitconfig's
+# [includeIf] uses for work identity: origin URL contains both dev.azure.com and
+# HollardInsuranceRetail, case-insensitive. GitHub repos (dotfiles, wiki, brain)
+# legitimately say "Claude"/"Codex" in their own subject matter and must stay
+# unscanned. If `git remote get-url origin` fails or the URL doesn't match, ALLOW.
+#
+# Scans only ADDED lines of the staged diff (excluding the `+++` file header) —
+# a banned term in a REMOVED line must not block. Fails OPEN on everything
+# except one case: scoped-in AND the wordlist itself is missing/unreadable,
+# which fails CLOSED, mirroring gitconfig-work's [hook "work-policy"] reasoning
+# (fail-open covers "not installed yet", never "installed but broken").
+#
+# Bypass one commit:  SKIP_AI_REFERENCE_SCAN=1 git commit ...
+
+DIR="$(cd "$(dirname "$0")" && pwd)"
+# ~/.git_templates is a whole-directory junction to git/templates (not git/), so
+# from git/templates/hooks/ the repo root is THREE levels up — verified against
+# the live junction; do not shorten without re-checking.
+WORDLIST="$DIR/../../../ai-agents/_shared/banned-ai-terms.txt"
+
+origin_url=$(git remote get-url origin 2>/dev/null) || exit 0
+if printf '%s' "$origin_url" | grep -qi 'dev\.azure\.com' && \
+   printf '%s' "$origin_url" | grep -qi 'HollardInsuranceRetail'; then
+
+    if [ "$SKIP_AI_REFERENCE_SCAN" != "1" ]; then
+        if [ ! -r "$WORDLIST" ]; then
+            echo "AI-reference scan blocked this commit: wordlist not found or unreadable at $WORDLIST (this repo is scoped in for the check — see git/README.md)." >&2
+            exit 1
+        fi
+
+        # The wordlist's '#' comments and blank lines are documented as
+        # consumer-stripped, not grep-safe as-is (a comment line containing an
+        # unbalanced paren breaks grep -E). Filter to a scratch patterns file.
+        PATTERNS=$(mktemp) || exit 1
+        trap 'rm -f "$PATTERNS"' EXIT
+        grep -Ev '^#|^$' "$WORDLIST" > "$PATTERNS"
+
+        # Belt-and-braces on top of the -r check above: on Windows/MSYS bash,
+        # [ -r ] can report a file readable even when an NTFS ACL deny blocks
+        # the actual read (a verified platform quirk, not a hypothetical),
+        # which would otherwise silently empty PATTERNS and let grep -Eiqf
+        # match nothing below. Any wordlist that yields zero usable patterns —
+        # unreadable or genuinely empty — is "installed but broken", which
+        # fails CLOSED per this hook's documented contract.
+        if [ ! -s "$PATTERNS" ]; then
+            echo "AI-reference scan blocked this commit: wordlist at $WORDLIST yielded no usable patterns (unreadable or empty)." >&2
+            exit 1
+        fi
+
+        # Added lines only: a leading '+' from the diff format, excluding the
+        # literal '+++ ' file-header line. Anchored on the header's known shape
+        # (not "next char isn't +") so an added line whose own content starts
+        # with '+' (e.g. "++i; // ...") is still scanned — --no-color guards
+        # against grep seeing ANSI codes if color.diff=always is configured.
+        # The header exclusion is further narrowed to require one of git's own
+        # default diff path prefixes right after '+++ ' (a/, b/, /dev/null): a
+        # bare '^\+\+\+ ' would also match an added line whose own content
+        # starts with '++ ' (e.g. "++ i; // ..."), wrongly treating it as the
+        # file header and skipping it from the scan. --src-prefix/--dst-prefix
+        # force those a/ b/ prefixes on the command line regardless of a
+        # repo's diff.noprefix or diff.mnemonicPrefix config, so the exclusion
+        # keeps matching the real header instead of over-scanning it as content.
+        if git diff --cached --no-color --src-prefix=a/ --dst-prefix=b/ -U0 | grep -E '^\+' | grep -Ev '^\+\+\+ (a/|b/|/dev/null)' | grep -Eiqf "$PATTERNS"; then
+            echo "" >&2
+            echo "AI-reference scan blocked this commit: a staged added line matches a banned AI/Claude/Codex/Copilot/co-authorship term (ai-agents/_shared/banned-ai-terms.txt)." >&2
+            echo "Fix it, or bypass this one commit with:  SKIP_AI_REFERENCE_SCAN=1 git commit ..." >&2
+            exit 1
+        fi
+    fi
 fi
-exit "$status"
+
+exit 0

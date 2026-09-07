@@ -1,0 +1,42 @@
+# Shared banned-term wordlist for the AI-reference hard-block layer (issue #219).
+#
+# One case-insensitive ERE per line, \b-bounded (GNU grep -E, .NET regex, and JS regex all
+# support \b, so this file is consumed as-is by every layer without reformatting). Comment
+# lines start with #; blank lines are ignored.
+#
+# Consumers (read this file, don't hardcode a copy of these terms):
+#   - git/templates/hooks/commit-msg, git/templates/hooks/pre-commit
+#   - claude/no-claude-session-trailer.sh
+#   - codex hooks.json PreToolUse entry
+#   - pi/extensions/ai-reference-guard.ts
+#
+# Deliberately NOT bare \bai\b or bare \bcopilot\b: this user's real Azure DevOps work
+# legitimately references "AI Runway", "Azure AI Search", "M365 Copilot" etc. Those two are
+# phrase-scoped below instead of banned outright.
+
+# Vendor / company
+\bAnthropic\b
+
+# Model / product names
+\bClaude\b
+\bFable\b
+\bOpus\b
+\bSonnet\b
+\bHaiku\b
+\bCodex\b
+
+# AI-authorship phrases (bare "AI" is intentionally not banned — see header)
+\bAI[- ]generated\b
+\bAI[- ]assisted\b
+\bwritten by AI\b
+\bwith AI assistance\b
+
+# Copilot (bare "Copilot" is intentionally not banned — see header)
+\bGitHub[- ]Copilot\b
+\bCopilot[- ]generated\b
+
+# Co-authorship trailers and generated-with markers
+\bCo-Authored-By\b
+\bClaude-Session:
+\bGenerated with\b
+🤖

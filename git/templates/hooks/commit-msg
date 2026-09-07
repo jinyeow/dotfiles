@@ -1,0 +1,70 @@
+#!/bin/sh
+# Hard-blocks AI/Claude/Codex/Copilot/co-authorship references in commit messages.
+# Layer 2 of #219 — a hard-block backstop for the prompt-level "don't reference AI
+# tools in commits" rule, which already failed once. Global hook via
+# core.hooksPath = ~/.git_templates/hooks; git invokes commit-msg as
+# `commit-msg <path-to-commit-msg-file>`, which already gives the final message
+# text regardless of -m/-F/editor/--amend/merge — no need to parse argv.
+#
+# Scoped to Hollard/Azure DevOps repos only, via the same signal git/gitconfig's
+# [includeIf] uses for work identity: origin URL contains both dev.azure.com and
+# HollardInsuranceRetail, case-insensitive (covers both the HTTPS and SSH remote
+# forms). GitHub repos (dotfiles, wiki, brain) legitimately say "Claude"/"Codex" in
+# their own subject matter and must stay unscanned. If `git remote get-url origin`
+# fails (no remote, not a repo) or the URL doesn't match, ALLOW.
+#
+# Fails OPEN on everything except one case: scoped-in AND the wordlist itself is
+# missing/unreadable, which fails CLOSED. That mirrors gitconfig-work's
+# [hook "work-policy"] reasoning (see git/README.md and git/gitconfig-work) —
+# fail-open covers "not installed yet", never "installed but broken"; a missing
+# wordlist in a scoped-in repo is the latter.
+#
+# Bypass one commit:  SKIP_AI_REFERENCE_SCAN=1 git commit ...
+
+MSG_FILE="$1"
+
+# Resolve the wordlist relative to this script's own location. ~/.git_templates is
+# a whole-directory junction to git/templates (not git/), so from
+# git/templates/hooks/ the repo root is THREE levels up (hooks -> templates -> git
+# -> root), not two — verified empirically against the live junction; do not
+# shorten this without re-checking.
+DIR="$(cd "$(dirname "$0")" && pwd)"
+WORDLIST="$DIR/../../../ai-agents/_shared/banned-ai-terms.txt"
+
+origin_url=$(git remote get-url origin 2>/dev/null) || exit 0
+printf '%s' "$origin_url" | grep -qi 'dev\.azure\.com' || exit 0
+printf '%s' "$origin_url" | grep -qi 'HollardInsuranceRetail' || exit 0
+
+[ "$SKIP_AI_REFERENCE_SCAN" = "1" ] && exit 0
+
+if [ ! -r "$WORDLIST" ]; then
+    echo "AI-reference scan blocked this commit: wordlist not found or unreadable at $WORDLIST (this repo is scoped in for the check — see git/README.md)." >&2
+    exit 1
+fi
+
+# The wordlist's '#' comments and blank lines are documented as consumer-stripped,
+# not grep-safe as-is (a comment line containing an unbalanced paren breaks
+# grep -E). Filter to a scratch file of patterns only.
+PATTERNS=$(mktemp) || exit 1
+trap 'rm -f "$PATTERNS"' EXIT
+grep -Ev '^#|^$' "$WORDLIST" > "$PATTERNS"
+
+# Belt-and-braces on top of the -r check above: on Windows/MSYS bash, [ -r ] can
+# report a file readable even when an NTFS ACL deny blocks the actual read (a
+# verified platform quirk, not a hypothetical), which would otherwise silently
+# empty PATTERNS and let grep -Eiqf match nothing below. Any wordlist that
+# yields zero usable patterns — unreadable or genuinely empty — is "installed
+# but broken", which fails CLOSED per this hook's documented contract.
+if [ ! -s "$PATTERNS" ]; then
+    echo "AI-reference scan blocked this commit: wordlist at $WORDLIST yielded no usable patterns (unreadable or empty)." >&2
+    exit 1
+fi
+
+if grep -Eiqf "$PATTERNS" "$MSG_FILE"; then
+    echo "" >&2
+    echo "AI-reference scan blocked this commit: the message matches a banned AI/Claude/Codex/Copilot/co-authorship term (ai-agents/_shared/banned-ai-terms.txt)." >&2
+    echo "Fix the message, or bypass this one commit with:  SKIP_AI_REFERENCE_SCAN=1 git commit ..." >&2
+    exit 1
+fi
+
+exit 0

@@ -30,6 +30,45 @@ refined `claude/block-destructive-vcs.ps1`, not that skill's naive `block-danger
 so a destructive phrase quoted inside e.g. a commit message doesn't false-block, and
 `git stash push` is excluded from the push pattern by name.
 
+`pi/extensions/ai-reference-guard.ts` hard-blocks AI/Claude/Codex/Copilot/co-authored-by
+references from being written into a commit, PR, or Azure Boards item via Pi (issue #219,
+layer 5), replacing a prompt-level rule that already failed once. It shares
+`git-guardrails.ts`'s `tool_call` event shape and bash-tool narrowing but not its quote
+handling: `git-guardrails.ts` scrubs quoted content away before matching so a destructive
+phrase inside a commit message can't false-match a command-shape pattern, while this
+extension matches its wordlist against recognized message-bearing flag values (message/
+title/body/fields, quoted or unquoted), since that is exactly where a banned reference is
+meant to land — scrubbing it away first would defeat the check on its own target case. It
+denies `git commit`, `gh pr create`/`gh pr edit`, `az repos pr create`/`az repos pr update`,
+`az boards ...`, and `az devops invoke` only when a recognized flag's value also matches the
+wordlist, and denies `git commit --no-verify`/`-n` (including `-n` clustered anywhere in a
+short-flag token, e.g. `-nm`) and `git push --no-verify` unconditionally, plus an exported
+`SKIP_AI_REFERENCE_SCAN`/`SKIP_GITLEAKS=1` bypassing the git-hook layer the same way.
+
+Scoped to Hollard/Azure DevOps repos only, mirroring the git hooks' own scoping: `git remote
+get-url origin` (run via `execFileSync` with an argv array, never a shell-interpolated
+string, so a crafted path can't be abused to run anything beyond a safely-failing `git`
+lookup) must contain both `dev.azure.com` and `HollardInsuranceRetail`. The check runs
+against `git -C <path>`'s actual target repo when the command carries one, not just the
+extension's inherited cwd; `cd <path> && git ...` shell-state tracking remains a known,
+accepted limitation.
+
+The wordlist (`ai-agents/_shared/banned-ai-terms.txt`, one case-insensitive `\b`-bounded ERE
+per line) is read from a sibling file projected next to `~/.pi/agent/` (a `New-FileSymlink`
+entry in `setup.ps1`, deliberately OUTSIDE the whole-directory `extensions/` junction so the
+symlink doesn't land inside this tracked repo). Path resolution tries a
+relative-to-this-module candidate first, falling back to a `$HOME`-derived candidate, since
+directory-junction resolution behavior for `import.meta.url` isn't guaranteed consistent
+across loaders. A missing or unreadable wordlist (both candidates absent) fails closed
+(blocks with a reason naming the path); every other non-match condition fails open.
+Visibility check: Pi's `tool_call` event also exposes
+`edit` and `write` tool calls with their full `path`/`edits[].newText`/`content` payloads
+(confirmed in the installed package's extension types), so staged-content leaks via those
+tools are technically visible to an extension — but this extension does not scan them,
+because the wordlist's bare product-name terms (`\bClaude\b`, `\bCodex\b`, `\bSonnet\b`, …)
+would self-block edits to this repo's own legitimate files (this README, `claude/CLAUDE.md`,
+the extension's own source) with no narrower scope defined for that surface.
+
 `pi/extensions/project-brain-autoload.ts` injects the active project-brain initiative's
 `core.md` + `STATUS.md` once per session, mirroring Claude Code's and Codex's own
 SessionStart hooks (#186). It uses Pi's `before_agent_start` extension event (the only one
