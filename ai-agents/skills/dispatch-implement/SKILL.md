@@ -51,9 +51,9 @@ checks, review, commit.
    risks two subagents writing the same file (`ai-agents/AGENTS.md` — "Lock the contract first", "No
    writes to shared files without a merge step").
 4. **Pick a model per ticket** — judged from that ticket's size and difficulty, not fixed. On Claude
-   Code the implement stage is pinned to **Opus or Sonnet, never Fable** (`claude/CLAUDE.md`), so a
-   trivial ticket goes to Sonnet and a hard one to Opus. An explicit override replaces the judgment
-   (see Override below).
+   Code the implement stage is pinned to **Opus 4.8 / 4.7 / 4.6, or Sonnet 5 (or lower) — never Opus
+   5, never Fable** (`claude/CLAUDE.md`), so a trivial ticket goes to Sonnet and a hard one to a
+   versioned Opus. An explicit override replaces the judgment (see Override below).
 5. **Dispatch**, one subagent per ticket, each prompted to run `/implement` on that ticket and
    nothing else. Parallel units go out in a single message so they actually run concurrently;
    sequential units wait for the previous unit's result before the next dispatch. **Any run —
@@ -105,9 +105,15 @@ Use the `Agent` tool, one call per ticket:
 The `Agent` tool's model aliases are `opus`, `sonnet`, `haiku`, `fable`. Anything else is an error —
 say which aliases exist and stop, never substitute a model the user did not ask for.
 
-- **`opus` and `sonnet`** are honored directly; they satisfy the implement-stage pin.
-- **`haiku` and `fable`** collide with it (`claude/CLAUDE.md`: Opus or Sonnet, never Fable). Stop and
-  ask rather than honoring or refusing either silently.
+- **`sonnet`** is honored directly; it satisfies the implement-stage pin.
+- **Bare `opus`** does **not** satisfy the pin: the alias resolves to the current default Opus
+  (Opus 5 today), which the pin excludes (`claude/CLAUDE.md`), same caveat as
+  [`../fix-findings/SKILL.md`](../fix-findings/SKILL.md) § Notes. A step-1 natural-language "using
+  Opus" override hits the same problem — it names no version, so as given it does not satisfy the
+  pin either. Stop and ask which versioned Opus (4.8/4.7/4.6) is meant rather than silently
+  substituting the bare alias.
+- **`haiku` and `fable`** collide with it (`claude/CLAUDE.md`: versioned Opus or Sonnet, never
+  Fable). Stop and ask rather than honoring or refusing either silently.
 - **Effort** has no `Agent` tool parameter — dispatch takes `model` only. Record the requested effort
   and say once that it was not applied; do not invent a field. Same gap as
   [`../_shared/reviewer-models.md`](../_shared/reviewer-models.md) § Effort.
