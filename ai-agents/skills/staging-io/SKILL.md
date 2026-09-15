@@ -1,6 +1,6 @@
 ---
 name: staging-io
-description: "Use when handing a script, command, or manual steps to the work PC (WPC) via the plain-text staging folder at E:\\HollardInsuranceRetail\\staging\\, or when reading back any file the engineer pasted from the WPC. Covers writing to agent-outputs\\, reading replies from agent-inputs\\, the initiative-subfolder layout, naming and header conventions, redaction guardrails, and the close-out archive triage. Does not fire for work that never crosses the staging folder."
+description: "Use when handing a script, command, or manual steps to the work PC (WPC) via the plain-text staging folder at E:\\HollardInsuranceRetail\\agent-staging\\, or when reading back any file the engineer pasted from the WPC. Covers writing to agent-outputs\\, reading replies from agent-inputs\\, the initiative-subfolder layout, naming and header conventions, redaction guardrails, and the close-out archive triage. Does not fire for work that never crosses the staging folder."
 metadata:
   author: justin
   version: "1.1.0"
@@ -8,12 +8,12 @@ metadata:
 
 # Staging folder I/O (WPC hand-carry)
 
-Drives the plain-text hand-carry lanes at `E:\HollardInsuranceRetail\staging\` between this
+Drives the plain-text hand-carry lanes at `E:\HollardInsuranceRetail\agent-staging\` between this
 device (Conditional Access blocks Azure DevOps here) and the work PC (WPC). This is prose
 instructions only. There is no wrapper script, CLI, or module, and none should be added; the
 staging folder itself stays a dumb folder with no daemon or sync.
 
-Fixed root: `E:\HollardInsuranceRetail\staging\`
+Fixed root: `E:\HollardInsuranceRetail\agent-staging\`
 - `agent-outputs\` is the agent's outputs. This skill writes scripts and prose steps here.
 - `agent-inputs\` is the agent's inputs. The engineer pastes WPC output or error text here.
 - `done\<YYYY-MM-DD>\agent-outputs\` and `done\<YYYY-MM-DD>\agent-inputs\` are the archive,
@@ -103,7 +103,7 @@ variable group name), never the value. Assume `az login` is already done on the 
 commands that print or export credentials.
 
 Inputs: the engineer redacts before pasting into `agent-inputs\`. Point them at
-`E:\HollardInsuranceRetail\staging\INBOUND-SAFETY.txt` for the full rules rather than repeating
+`E:\HollardInsuranceRetail\agent-staging\INBOUND-SAFETY.txt` for the full rules rather than repeating
 them here. If a secret lands in `agent-inputs\` anyway, the file gets deleted and the secret
 rotated. It is never edited to strip the secret and kept.
 
