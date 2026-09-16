@@ -4,7 +4,7 @@
     "pr": "",
     "sessionUrl": false
   },
-  "model": "sonnet",
+  "model": "claude-opus-4-8",
   "hooks": {
     "SessionStart": [
       {
@@ -184,5 +184,10 @@
     ]
   },
   "disableWorkflows": true,
-  "disableAiConnectors": true
+  "disableAiConnectors": true,
+  "modelSettings": {
+    "claude-opus-4-8": {
+      "effortLevel": "high"
+    }
+  }
 }
