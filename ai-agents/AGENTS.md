@@ -85,6 +85,7 @@ Applies when proposing or building new agentic-workflow tooling — skills, comm
 - Don't recommend for or against a code pattern on "it matches the repo convention" / consistency alone — a convention that serves no real benefit isn't worth keeping. Lead with measured evidence. When you benchmark, use a `for` loop, not a piped `ForEach-Object` (the pipeline's own overhead sits in both arms and compresses the real gap), and report absolute per-call cost alongside the ratio.
 - Don't pad arguments with extra spaces to align them into columns (e.g. `make_symlink "$src"          "$dest"`) — use a single space between arguments/values. Column alignment makes noisy diffs: any item longer than the current widest forces re-aligning every other line, obscuring the real change. Applies to all files; leave existing alignment you didn't write alone.
 - For existence checks, prefer the positive truthiness form (`if ($x)` / `if (x)`) over an explicit null comparison — it reads cleaner. Switch to an explicit null/None check **only** when a falsy-but-valid value (`0`, `''`, `false`, an empty collection) must be distinguished from absence. In PowerShell, when you do compare to null put `$null` on the **left** (`$null -eq $x` / `$null -ne $x`) so a right-hand collection is compared, not filtered.
+- PowerShell: use parameter splatting for a multi-parameter call, not backtick line-continuation.
 - Comments in English only.
 - Use strict typing everywhere — function returns, variables, collections. Avoid untyped variables and generic types like `Any`, `unknown`, `List[Dict[str, Any]]`; use the language's strict type features.
 - Create proper type definitions for complex data structures; prefer structured data models over loose dictionaries.
@@ -143,3 +144,9 @@ See [`AGENTS.d/git-worktrees.md`](AGENTS.d/git-worktrees.md) — only applies to
 ## Commits
 
 - Use conventional commits.
+
+## Pull requests
+
+- When replying to review comments as the code's author (or on the author's behalf), reply or push a
+  fix, but never mark the thread resolved yourself — resolution is the reviewer's call, not the
+  author's. Applies on ADO and GitHub alike.
