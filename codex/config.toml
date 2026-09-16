@@ -50,7 +50,7 @@ args = ["-y", "Azure.Bicep.McpServer"]
 # ai-agents/skills/deep-review/DISPATCH.md (Codex CLI section) for the dispatch shape.
 #
 # At the pinned codex-cli 0.147.0, an `[agents.<name>]` table only recognizes `config_file`,
-# `description`, and `nickname_candidates` — per-role `sandbox_mode` / `developer_instructions`
+# `description`, and `nickname_candidates` — per-role `model` / `model_reasoning_effort` / `sandbox_mode` / `developer_instructions`
 # / `mcp_servers` keys are silently DROPPED. The read-only/write-access intent below is carried
 # only in `description` (model-visible spawn guidance, not runtime-enforced); real enforcement
 # is the orchestrating session's own top-level `sandbox_mode` above — which may itself be

@@ -1,6 +1,6 @@
 # Agent coding conventions
 
-Shared conventions for every coding agent (Claude Code and Codex CLI). Tool-specific
+Shared conventions for every coding agent (Claude Code, Codex CLI, and Pi). Tool-specific
 behaviour lives elsewhere: Claude in `~/.claude/CLAUDE.md` (which imports this file),
 Codex reads this file directly as `~/.codex/AGENTS.md`.
 
@@ -31,8 +31,9 @@ Codex reads this file directly as `~/.codex/AGENTS.md`.
 
 - **Parallel by default**. Decompose independent work across subagents in one message; relay their conclusions, not their file dumps. Claude Code dispatches via its `Agent` tool; Codex CLI's Multi-Agent v2 runtime dispatches via `[agents.<name>]` tables in `codex/config.toml` (installed to `~/.codex/config.toml`), resolved by table name as `spawn_agent`'s `agent_type` — same principle, different mechanism per tool.
 - **Orchestrator mode**. Applies to the top-level session only, never inside a subagent. On when the main model is the judgement tier (Claude Code: Fable); Codex has no such tier, so there it is on only by phrase. Force it with "orchestrator mode on" / "orchestrator mode off", and record `orchestrator mode: on|off (auto|forced)` as the first line of the checkpoint so a fresh session can read it back. While on, the main agent plans, judges, decides, and relays; research, implementation, fixes, review, tests, and lint go to subagents. An item is one unit of the batch: a review finding, a ticket task, a checklist row. Per item: decide, dispatch, verify, checkpoint, next; independent items still fan out in one message per "Parallel by default". Ask me only per "Surface assumptions and tradeoffs".
-- **Every dispatch names its model and effort**. A subagent otherwise inherits the main model, which defeats the point. Mechanics live in each runtime's adapter. At the pinned Codex 0.147.0 a role table has no model or effort keys (see the header comment in `codex/config.toml`), so Codex dispatch inherits the top-level model until that is solved. Subagents return conclusions, never file dumps or pasted diffs.
+- **Every dispatch names its model and effort**. A subagent otherwise inherits the main model, which defeats the point. Mechanics live in each runtime's adapter. On Codex, check whether a role table supports model or effort keys (see the header comment in `codex/config.toml`, verified against the installed `codex` version); where it does not, Codex dispatch inherits the top-level model until that is solved. Subagents return conclusions, never file dumps or pasted diffs.
 - **Inline carve-out**. Per item the main agent may read a file to frame a decision or spot-check a subagent's claim (per "Primary artifact over prose"), run one cheap verification command (per "Verify state before asserting it"; enough verification for a small item), and edit the checkpoint. Test and lint runs and everything else go to a subagent.
+- **Integrate once.** Do not redo a subagent's work; integrate and verify once at the end of a normal batch, or once per item in orchestrator mode.
 - **Checkpoint**. Inside a project-brain initiative it is that initiative's `STATUS.md`; otherwise `.claude/handoff.md` (Claude Code's `handoff` skill writes it; Codex writes it by hand). Update it when a ticket task completes, a decision or blocker lands, every five smaller items, and at batch end. At batch end, open the PR when I say so.
 
 ## Project brain
@@ -43,8 +44,8 @@ See [`AGENTS.d/project-brain.md`](AGENTS.d/project-brain.md) — only applies wh
 
 Three tiers exist for durable-ish facts. Route a new fact to exactly one, by what it is:
 
-- **Project brain** (`core.md`/`STATUS.md`/ADRs/research, per [`AGENTS.d/project-brain.md`](AGENTS.d/project-brain.md)) — deliberate, cross-repo *initiative* knowledge: a decision, a status-relevant event, a research/report artifact. Git-repo-external, versioned, human-reviewable. Portable across Claude Code and Codex CLI.
-- **Per-fact `~/.claude` memory** (`memory/*.md` + `MEMORY.md` index, per `CLAUDE.md`'s Memory section) — a genuinely session-scoped feedback/gotcha or user preference with no more durable home (not a standing rule, not cross-repo initiative knowledge, not a decision-with-alternatives). Fallback tier only; raise the save bar before using it. Claude Code-only.
+- **Project brain** (`core.md`/`STATUS.md`/ADRs/research, per [`AGENTS.d/project-brain.md`](AGENTS.d/project-brain.md)) — deliberate, cross-repo *initiative* knowledge: a decision, a status-relevant event, a research/report artifact. Git-repo-external, versioned, human-reviewable. Portable across Claude Code, Codex CLI, and Pi.
+- **Per-fact `~/.claude` memory** (`memory/*.md` + `MEMORY.md` index, per `CLAUDE.md` → "Auto-memory hygiene") — a genuinely session-scoped feedback/gotcha or user preference with no more durable home (not a standing rule, not cross-repo initiative knowledge, not a decision-with-alternatives). Fallback tier only; raise the save bar before using it. Claude Code-only.
 
 When unsure which tier a fact belongs in, check whether a more durable home already covers it first (a standing rule → this file or `CLAUDE.md`; a decision with rejected alternatives → an ADR) before defaulting to per-fact memory.
 
