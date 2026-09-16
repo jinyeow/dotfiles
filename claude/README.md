@@ -119,6 +119,24 @@ source tree (a per-file pass can miss violations in untouched files). It is non-
 (`additionalContext`, not `decision: block`), so findings are surfaced for fixing without
 halting the turn.
 
+### Serena MCP troubleshooting
+
+Only the user-scope `serena` MCP (`mcp__serena__*`, installed via `setup.ps1 -Module serena`)
+runs here; the plugin-managed `serena@claude-plugins-official` duplicate was removed. If
+Serena activation fails with `KeyError: 'languages'`, the project's `.serena/project.yml`
+schema is out of date: a newer Serena expects `language_servers:` instead of, or alongside,
+the older `languages:` key. Add both keys to the affected `project.yml` and retry. This is a
+stale project-config schema, so fix the schema before you assume the install itself is broken.
+
+### Serena per-language reliability
+
+Trust level for Serena's symbol-scoped edit tools is language-dependent (checked
+2026-08-12): reliable on **C#**, **PowerShell**, **Python**; treat **Go**/**TypeScript**
+results with suspicion (both have had Windows-specific silent-failure issues upstream —
+an empty result can mean the backend died, not that there's nothing to find); never use
+on **Zig** (its `zls` backend hard-errors on Windows); **Bicep** has no Serena backend at
+all.
+
 ## Notifications
 
 Alerts when Claude finishes (`Stop`) or is waiting on you (`Notification`), tuned for
