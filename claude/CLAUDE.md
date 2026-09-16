@@ -5,25 +5,9 @@
 The shared coding conventions live in `ai-agents/AGENTS.md` (imported above), so Claude Code and
 Codex CLI follow the same rules. Everything below is Claude-specific.
 
-## Claude Code Workflow
-
-- Read the existing code and relevant `CLAUDE.md` files before editing
-- Keep changes minimal and related to the current request
-- Match the existing style of the repository even if it differs from my personal preference
-- Do not revert unrelated changes
-- If you are unsure, inspect the codebase instead of inventing patterns
-- When project instructions include test or lint commands, run them before finishing
-
 ## Code intelligence tools
 
-For code navigation and edits, split by capability — but the built-in `LSP` tool only covers
-what has a language-server *plugin* actually enabled (`claude plugin list`), which today is
-just `csharp-lsp` and `lua-lsp`. There is no marketplace plugin for PowerShell, Python, Go,
-TypeScript, Zig, Gleam, or Bicep, so `LSP` errors outright on those files — Serena's read tools
-are the only working option there, not a redundant fallback. This is documentation-only
-guidance, not a `permissions.deny` block: a hard block would need to be file-extension-aware
-(a `PreToolUse` hook), since blocking Serena's read tools globally would leave those languages
-with no working read path at all.
+Route by capability and language; see `ai-agents/AGENTS.md` → "Code navigation" for the portable principle behind this split.
 
 - **Reading, `.cs`/`.lua` files**: prefer the built-in `LSP` tool (go-to-definition,
   find-references, hover, symbol overview, call hierarchy) — no separate process, no
@@ -34,12 +18,8 @@ with no working read path at all.
   no `LSP`-tool backend exists — use Serena's read tools.
 - **Editing** (symbol-scoped rename/replace/insert/delete), any language: use Serena's
   `rename_symbol`, `replace_symbol_body`, `insert_before_symbol`, `insert_after_symbol`,
-  `safe_delete_symbol` — the built-in `LSP` tool has no edit operations. Trust level is
-  language-dependent (checked 2026-08-12): reliable on **C#**, **PowerShell**, **Python**;
-  treat **Go**/**TypeScript** results with suspicion (both have had Windows-specific
-  silent-failure issues upstream — an empty result can mean the backend died, not that
-  there's nothing to find); never use on **Zig** (its `zls` backend hard-errors on Windows);
-  **Bicep** has no Serena backend at all.
+  `safe_delete_symbol` — the built-in `LSP` tool has no edit operations. Per-language Serena
+  reliability: see `claude/README.md`.
 - **Always re-diff after a Serena edit** before treating it as done — its issue tracker
   documents cases where a rename reports success while silently omitting edits in files
   that weren't already open.
@@ -47,17 +27,6 @@ with no working read path at all.
   `replace_content`, `replace_in_files`, `create_text_file`, and Serena's project-memory
   tools (`write_memory`/`read_memory`/`list_memories`) have no `LSP`-tool equivalent and
   stay available regardless of language.
-- Only the user-scope `serena` MCP (from `setup.ps1 -Module serena`, tools namespaced
-  `mcp__serena__*`) is installed — the plugin-managed `serena@claude-plugins-official`
-  duplicate was uninstalled (2026-08-12) after it turned out to be the actual source of
-  cross-repo startup errors: its live `git+main` pull had migrated Serena's project-config
-  schema (`languages:` → `language_servers:`) ahead of the pinned `uv tool install`
-  (v1.6.1), so any `.serena/project.yml` the plugin last touched fatal-errored the pinned
-  server with `KeyError: 'languages'` on activation — not scoped to one project, since
-  `--project-from-cwd` loads the whole global registry (`~/.serena/serena_config.yml`) on
-  every startup, so one stale entry broke every directory. Fixed by adding both keys to the
-  affected `project.yml` files; if a `KeyError` on activation recurs, check the file's schema
-  against both key names before assuming the install is broken.
 
 ## Auto-memory hygiene
 
@@ -81,8 +50,8 @@ Claude-Code-only, so keep it small and prefer a durable, discoverable home over 
 
 See `AGENTS.md` → "Subagent Orchestration" for the tool-agnostic parallel-dispatch default; the rest below is Claude Code-specific.
 
-- **Plan → implement → review loop**. Non-trivial changes run this loop, each stage dispatched to a fit-for-purpose subagent: **plan** — a Fable subagent is fine; **implement** — Opus or Sonnet subagents, never Fable; **review** — a Fable subagent for a light pass, or the `council` skill with Opus/Sonnet seats for a thorough one. The **`review-fix-loop`** reviews on **Opus or Sonnet, never Fable unless I explicitly ask** (its `--reviewers` flag overrides that per run), and its `fix-findings` children run on **Opus 4.8/4.7/4.6 or Sonnet 5 (or lower) — never Opus 5, never Fable**, for now (Opus 5 over-engineers simple fixes; Fable hits token limits on fixer-sized diffs). Haiku 4.5 is fine for a fully specified single-hunk edit.
-- **Model to task**. Fable for judgement work: planning, design, review, decisions. Sonnet for execution. Opus for reviews, refactors, or execution that needs more judgement than Sonnet gives. Prefer per-task `/effort` over a model downgrade for routine work.
+- **Plan → implement → review loop**. Non-trivial changes run this loop, each stage dispatched to a fit-for-purpose subagent: **plan** — a Fable subagent is fine; **implement** — Opus or Sonnet subagents, never Fable; **review** — a Fable subagent for a light pass, or the `council` skill for a thorough one. Council and fixer seat model selection, including what the `opus`/`sonnet`/`haiku`/`fable` aliases resolve to today (the bare `opus` alias is whatever Opus build Claude Code currently defaults to, Opus 5 today), is centralized in [`ai-agents/skills/_shared/reviewer-models.md`](../ai-agents/skills/_shared/reviewer-models.md). The **`review-fix-loop`** reviews on **Opus or Sonnet, never Fable unless I explicitly ask** (its `--reviewers` flag overrides that per run); its `fix-findings` children stay pinned per that same doc's Fixer pin section.
+- **Model to task**. Fable 5.1 for judgement work: planning, design, review, decisions. Sonnet for execution. Opus for reviews, refactors, or execution that needs more judgement than Sonnet gives. For effort on routine execution, run Sonnet 5 at `high`, stepping down to `medium` where quality holds; reserve `xhigh`/`max` for hard or agentic coding, or when correctness outweighs cost. Prefer per-task `/effort` over a model downgrade for routine work.
 - **Fable subagents**. Subagents often run Fable even under the pinned main-loop model, so lever-5 prompting hygiene applies to the prompts you write for them — never demand their private step-by-step reasoning (a standing 'explain your reasoning step by step' trips Fable's `reasoning_extraction` → Opus fallback); ask for short rationale + assumptions + evidence instead. See `AGENTS.md` → "Prompting downstream models" for the full lever set.
 - **Lock the contract first**. Fix shared schemas/signatures and assign non-overlapping files before fanning out.
 - **Orchestrator stays lean**. Don't redo an agent's work; integrate and verify once at the end, or once per item in orchestrator mode (see AGENTS.md → "Subagent Orchestration").

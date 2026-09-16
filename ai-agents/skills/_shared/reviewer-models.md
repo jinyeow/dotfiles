@@ -24,10 +24,8 @@ when it is itself the host
 ([`../deep-review/DISPATCH.md`](../deep-review/DISPATCH.md)).
 
 **Reviewer-only.** `--reviewers` selects the models for reviewer subagents — the fan-out participants,
-nothing else. It does not select verifier models, and it never
-touches fixer model selection — `fix-findings` fixers stay pinned by their own skill (Opus 4.8/4.7/4.6
-or Sonnet 5 or lower; never Opus 5, never Fable). A `--reviewers` value is not a licence to dispatch a
-fixer on it.
+nothing else. It does not select verifier models, and it never touches fixer model selection — see
+"Fixer pin" below for that policy. A `--reviewers` value is not a licence to dispatch a fixer on it.
 
 ## Grammar
 
@@ -54,6 +52,24 @@ fixer on it.
 
 An alias not in this table is an error — say which aliases exist and stop; never silently substitute a
 model the user did not ask for.
+
+## Fixer pin
+
+This is the single home for fixer-subagent model selection. It applies to `fix-findings` and
+`review-fix-loop`'s fixer children, and to any other seat whose child applies and commits code
+rather than just reviewing (for example a council seat asked to implement, not just critique).
+
+- Default: **Sonnet 5** (`sonnet`). **Haiku 4.5** (`haiku`) is fine for a fully specified
+  single-hunk edit. Never `fable`.
+- The intended Opus tier is **Opus 4.8**, never Opus 5, for now. No per-call mechanism dispatches
+  that specific build today: the `Agent` tool's `model` param takes only the aliases in the table
+  above, and the bare `opus` alias resolves to the current default Opus, Opus 5 today, which this
+  pin excludes. Do not dispatch a fixer on `opus`. Use Sonnet 5, or ask which Opus build is meant
+  before dispatching one.
+- The same alias limit applies to any other seat that wants Opus 4.8 by name, including a council
+  reviewer seat: `opus` names whichever Opus build Claude Code currently defaults to, and that
+  default moves between releases without guaranteeing a specific point build. Treat any "Opus 4.8"
+  reference for such a seat as this same constraint rather than a separate capability.
 
 ## Effort
 
