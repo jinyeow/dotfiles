@@ -5,4 +5,4 @@ Durable cross-repo initiative knowledge (per-initiative `core.md` plus volatile 
 2. Read that brain's `registry.json`, find the initiative whose `dirs` glob matches cwd, and read its `core.md` and `STATUS.md` (read `research/`, `adr/`, `reports/` only on demand).
 3. If `STATUS.md`'s `updated:` is more than 7 days old, flag that before trusting it.
 
-The full contract (record decisions as ADRs, file research/reports, refresh STATUS, append to the brain log on session close) is in `~/.claude/skills/project-brain/SKILL.md`.
+The full contract (record decisions as ADRs, file research/reports, refresh STATUS, append the session narrative to the initiative's `log.md`, then append to the brain's root log on session close) is in `~/.claude/skills/project-brain/SKILL.md`.

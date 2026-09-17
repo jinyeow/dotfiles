@@ -23,7 +23,8 @@ and regenerate-able; the brain's truth source is the work. Design rationale: `<b
   `initiatives/<id>/`, and optionally `learner.md` — the `/walkthrough` skill's area-level learner
   profile (domain knowledge the user has demonstrated; written by walkthrough close-out, read to
   pitch tour depth). Area-level, not per-initiative, because the user's knowledge spans initiatives.
-- An initiative: `core.md` (stable, auto-loaded), `STATUS.md` (volatile, auto-loaded), `adr/`,
+- An initiative: `core.md` (stable, auto-loaded), `STATUS.md` (volatile, auto-loaded),
+  `log.md` (session history for this initiative, read on demand, not auto-loaded), `adr/`,
   `research/` (+ `index.md`), `reports/`, `spikes/`, and — per initiative role — `tickets/` (per-PBI
   ticket files) or a one-off `kanban.md`.
 - Single-directory work uses the same schema in the repo's gitignored `.claude/brain/` instead.
@@ -38,7 +39,8 @@ rationale: `docs/adr/adopt-okf-for-project-brain-markdown.md` in the dotfiles re
 Per-initiative directories are not separate bundles and get no `index.md` of their own.
 
 **`type:` enum** — one non-reserved concept type per directory role. `index.md` and `log.md` are
-reserved role filenames and carry no `type:`.
+reserved role filenames and carry no `type:`. A per-initiative `log.md` is the same reserved-role
+filename as the brain-root `log.md` and carries no `type:` either.
 
 | `type:` | File(s) |
 |---|---|
@@ -114,21 +116,26 @@ an earlier one's initiative, not its own).
 
 **On resume (usually automatic):** trust the injected `core.md` + `STATUS.md`; check the staleness date;
 read a specific ADR/research item from the map only if the task needs it. Do not read `research/` wholesale.
+Read the initiative's `log.md` on demand only, for example when `STATUS.md` points at it or the task
+needs session history.
 
 **On a decision** (anything you'd not want re-litigated): write a new `adr/NNNN-slug.md` from
 `templates/adr.md` (MADR-lite). Never edit an accepted ADR - supersede it. Add a one-line link under
 `core.md`'s "Key decisions". Cross-cutting decisions (spanning initiatives) go in the brain's top-level `adr/`.
 
 **On a status-relevant event** (build/run result, PR merged, gate passed/failed, blocker found/cleared):
-edit `STATUS.md` now - refresh `Now` / `Blocked on` / `Next action`, bump `updated:`.
+edit `STATUS.md` now - refresh `Now` / `Blocked on` / `Next action`, bump `updated:`. `STATUS.md` holds
+the current state only; session narrative goes to the initiative `log.md` instead.
 
 **On producing research or a report:** file research under `research/` with a one-line entry in
 `research/index.md` (date, question, verdict); file HTML/other reports under `reports/` named
 `YYYY-MM-DD-<slug>` with an entry in `reports/index.md`. Never leave durable outputs in tmp.
 
-**On session close:** (1) refresh `STATUS.md`; (2) append 2-5 lines to the brain's `log.md`
-(`## [date] <op> | <initiative> - <what moved>`); (3) `git -C <brain> add -A && git commit` (conventional
-message); (4) delete anything this session duplicated outside the brain.
+**On session close:** (1) refresh `STATUS.md` to current state only, about 60 lines or under; move
+anything that is history into the initiative `log.md`; (2) append the session narrative to
+`initiatives/<id>/log.md` (a dated heading, what was done, evidence, links); (3) append 2-5 lines to
+the brain's root `log.md` (`## [date] <op> | <initiative> - <what moved>`); (4) `git -C <brain> add -A
+&& git commit` (conventional message); (5) delete anything this session duplicated outside the brain.
 
 **On landing** (initiative changes a durable fact the code wiki asserts): promote that fact into
 `<area>/wiki/` via a wiki ingest and log it. Volatile status never goes to the wiki. The brain may link to
@@ -145,7 +152,7 @@ in-repo under `.claude/brain/`):
 2. Find the `brains.json` entry whose `scope` is an ancestor of that. **Confirm the target brain/scope
    with the user before scaffolding** (always, even when a scope matches). If none matches, run "new area".
 3. Key it `<PBI-id>-<slug>` (bare slug if no PBI). Create `initiatives/<id>/` from `templates/` (`core.md`,
-   `STATUS.md`, `adr/`, `research/index.md`, `reports/index.md`).
+   `STATUS.md`, `log.md`, `adr/`, `research/index.md`, `reports/index.md`).
 4. Add a `registry.json` entry: `"<id>": { "title", "status": "active", "dirs": ["<glob>", ...] }`, where
    each glob matches (`-like`, forward slashes) the cwd of a spanned directory. If a later follow-up PBI
    continues this same initiative under a different ID, append `— aka PBI <id>, <short reason>` to
@@ -155,7 +162,8 @@ in-repo under `.claude/brain/`):
 
 **New area** (a whole new brain, e.g. personal projects): propose the common ancestor as the `scope` root
 and **confirm with the user**. Then `git init` `<scope>/brain/`, scaffold `index.md`/`log.md`/
-`registry.json`/`templates/`/`adr/`, and append `{ scope, path }` to `brains.json`.
+`registry.json`/`templates/`/`adr/`, and append `{ scope, path }` to `brains.json`. `templates/` must
+include a per-initiative `log.md` template alongside `core.md`/`STATUS.md`.
 
 **Initiative close:** move `initiatives/<id>/` to `initiatives/_archive/`, remove its `registry.json`
 entry, add a closing `log.md` line, commit.
