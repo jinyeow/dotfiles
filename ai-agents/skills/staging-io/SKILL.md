@@ -67,7 +67,7 @@ for ticket `814107` being `01`:
 # Needs: az login done; no secrets in this file
 ```
 
-`814107-01-create-three-prs.ps1` matches `^(\d+|adhoc)-\d{2}-[a-z0-9-]+\.[a-z0-9]+$`, and the
+`814107-01-create-three-prs.ps1` matches `^(\d+|adhoc)-(0[1-9]|[1-9]\d)-[a-z0-9-]+\.[a-z0-9]+$`, and the
 `Paste output into:` line's initiative (`sprint-42`), ticket (`814107`), and seq (`01`) match
 the file's own path and name.
 
@@ -86,7 +86,9 @@ lane. The slug is for humans only and is never used for pairing.
 
 - `out` means the command ran; this is its output.
 - `err` means the command failed; this is the error text.
-- `retryNN` (`NN` two digits from `01`) means the same output file was re-run as-is.
+- `retryNN` (`NN` two digits from `01`) means the same output file was re-run as-is. A retry
+  name carries no `out`/`err` marker, so read the file's content to judge whether the re-run
+  passed or failed.
 
 When asked to read back a WPC result, locate the `agent-inputs\<initiative>\<ticket>-<seq>-*`
 file(s) and report which reply kind arrived. On an `err`, decide the cause before reacting:
