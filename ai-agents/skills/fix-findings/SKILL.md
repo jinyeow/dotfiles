@@ -121,12 +121,10 @@ store reflects reality.
 ## Notes
 
 - **Introduced only.** Pre-existing findings are reported by `deep-review`, never auto-fixed here.
-- **Model.** On Claude Code, fixers apply code (the implement arm of the loop) — dispatch on
-  **Opus 4.8 / 4.7 / 4.6, or Sonnet 5 (or lower) — never Opus 5, never Fable**, for now, unless the
-  user explicitly asks. The reviewer-side `--reviewers` argument does not apply here: it never
-  selects a fixer model. Set the `model` param to a version that satisfies the pin — the bare `opus`
-  alias resolves to the current default Opus (Opus 5 today) and therefore does **not** satisfy it.
-  Other runtimes select through their own defaults — no equivalent pin is defined yet.
+- **Model.** Fixer model selection is centralized in
+  [`../_shared/reviewer-models.md`](../_shared/reviewer-models.md) § Fixer pin — read it before
+  dispatching. The reviewer-side `--reviewers` argument does not apply here: it never selects a
+  fixer model. Other runtimes select through their own defaults — no equivalent pin is defined yet.
 - **Sole writer + committer.** Fixers return results; you write the store and commit — this is what
   makes parallel fixers safe (findings-schema.md).
 - **Conflict-set, not raw file count** — a finding may span files; partition on what each fix touches.

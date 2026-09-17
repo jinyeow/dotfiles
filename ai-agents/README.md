@@ -67,6 +67,7 @@ own `SKILL.md` frontmatter, trimmed to one line. Claude-native skills live in `.
 - **`improve-codebase-architecture`** — Find deepening opportunities in a codebase, informed by the domain language in CONTEXT.md and the decisions in docs/adr/.
 - **`jj`** — Use when working in a Jujutsu (jj) repository: making/describing changes, syncing with a remote, rewriting history, managing bookmarks or workspaces, or recovering via the op log.
 - **`linkedin-jobs`** — Read LinkedIn job alert emails and recruiter InMails, extract role details, and present them as structured cards grouped by inferred category.
+- **`llmwiki-insights`** — Read an LLM-maintained wiki (Karpathy's LLM Wiki pattern) and synthesize prioritized, actionable findings about the subject matter it documents.
 - **`project-brain`** — Load and maintain the "project brain": durable cross-repo initiative knowledge (core context, volatile STATUS, ADRs, research, reports) that lives in a git repo outside any single code repo, so work spanning multiple repos/worktrees/spikes stays coherent between sessions.
 - **`prompt-draft`** — Draft a new prompt from a task description, applying the 12-lever prompting checklist from scratch.
 - **`prompt-lint`** — Score, critique, and rewrite an existing prompt against the 12-lever prompting checklist: output format, acceptance criteria, scope, and reasoning-extraction risk.

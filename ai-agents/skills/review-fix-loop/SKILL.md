@@ -94,12 +94,9 @@ loop's own gate, rails, or store handling.
   resolution — unsupported on Codex CLI: if the host runtime is Codex CLI and `--reviewers` was
   passed, stop and report an actionable error instead of proceeding —
   [`../_shared/reviewer-models.md`](../_shared/reviewer-models.md).
-- **Fixer model.** On Claude Code, fixers apply and commit code, so they stay pinned regardless of
-  `--reviewers`: **Opus 4.8 / 4.7 / 4.6, or Sonnet 5 (or lower) — never Opus 5, never Fable**, for now,
-  unless the user explicitly asks. Dispatch with the `model` param set to a version that satisfies
-  this; the bare `opus` alias resolves to the current default Opus (Opus 5 today) and therefore does
-  **not** satisfy the pin — name the version explicitly, or ask the user rather than guessing. Other
-  runtimes select through their own defaults — no equivalent pin is defined yet.
+- **Fixer model.** Fixers apply and commit code, so they stay pinned regardless of `--reviewers`.
+  Centralized in [`../_shared/reviewer-models.md`](../_shared/reviewer-models.md) § Fixer pin.
+  Other runtimes select through their own defaults — no equivalent pin is defined yet.
 - **Thin.** Reviewing is `quick-review` / `deep-review`; fixing is `fix-findings`. This skill sequences
   them, owns the store's state transitions across cycles, and decides stop-vs-go. Don't reimplement
   review or fix here.

@@ -190,13 +190,23 @@ Describe 'review skill split' {
         $reviewerModels | Should -Match 'never\s+touches fixer model selection'
     }
 
-    It 'pins fixer models to the current allowed set in the fixer-dispatching skills and the Claude adapter' {
-        foreach ($content in @($loop, $fixFindings, $claudeAdapter)) {
-            $content | Should -Match 'Opus 4\.8'
-            $content | Should -Match 'Sonnet 5'
-            $content | Should -Match 'never Opus 5'
-            $content | Should -Match 'never Fable'
+    It 'centralizes the fixer model pin at _shared/reviewer-models.md and points every dispatching doc at it' {
+        # Canonical home carries the literal policy.
+        $reviewerModels | Should -Match 'Fixer pin'
+        $reviewerModels | Should -Match 'Opus 4\.8'
+        $reviewerModels | Should -Match 'Sonnet 5'
+        $reviewerModels | Should -Match 'never Opus 5'
+        $reviewerModels | Should -Match 'Never `fable`|never `fable`'
+
+        # Every dispatching doc points at the canonical home instead of restating the pin.
+        foreach ($content in @($loop, $fixFindings)) {
+            $content | Should -Match ([regex]::Escape('_shared/reviewer-models.md'))
+            $content | Should -Match 'Fixer pin'
+            $content | Should -Not -Match 'Opus 4\.8'
         }
+        $claudeAdapter | Should -Match ([regex]::Escape('ai-agents/skills/_shared/reviewer-models.md'))
+        $claudeAdapter | Should -Match 'Fixer pin'
+        $claudeAdapter | Should -Not -Match 'Opus 4\.8'
     }
 
     It 'sets the Codex sandbox and approval policy per call in both reviewer skills' {

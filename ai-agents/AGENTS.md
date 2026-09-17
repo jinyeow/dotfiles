@@ -1,20 +1,19 @@
 # Agent coding conventions
 
-Shared conventions for every coding agent (Claude Code and Codex CLI). Tool-specific
+Shared conventions for every coding agent (Claude Code, Codex CLI, and Pi). Tool-specific
 behaviour lives elsewhere: Claude in `~/.claude/CLAUDE.md` (which imports this file),
 Codex reads this file directly as `~/.codex/AGENTS.md`.
 
 ## Global preferences
 
-- Keep explanations concise. When reporting to me, be extremely concise — sacrifice grammar for concision.
 - Prefer composition over inheritance.
 - Do not add references to AI or "Co-Authored-By" statements to commits or other documents.
 
 ## Working style
 
 - **No preamble**. Skip "great question", "you're right". Lead with the answer.
-- **No AI-sounding wording in chat replies**. Applies live, to every response — condensed from the `write` skill's Tell Catalog (`ai-agents/skills/write/references/write-en.md` has the full reference for editing existing prose): no em-dash; skip AI-vocabulary crutches (delve, leverage, utilize, robust, streamline, harness, navigate, unpack, paradigm, synergy, ecosystem, tapestry, landscape, game-changer, deep dive, moving forward) — say the plain word; prefer the short word over the long one where a short one will do, and never a jargon or foreign-phrase word when a plain English one exists (Orwell's rules); no rhetorical self-questions ("Here's the thing", "The result?"); no negative-parallelism contrasts in either order ("Not X. It's Y.", "It's Y, not X." — state Y directly); no bold-first bullet labels; active voice; don't assign human intent or judgment to an inanimate subject ("the complaint becomes a fix" — name who fixed it) — this doesn't ban real state changes ("the build fails", "the config becomes invalid"). Scoped to chat output only for now — commit messages and code comments are out of scope here (tracked separately in #120).
-  Every PR/ticket description, README, and code/doc comment you write or revise carries its own, wider set of rules on top of the chat-only scope above: the negative-parallelism ban (including in headings) applies there too — state the positive fact directly instead of "X, not Y" / "not X, it's Y" / "not X — Y". In addition: never link or cite a local document, file, or path that doesn't exist in the current diff/repo — verify the target exists before writing a link or citation; never reference a ticket ID, work-item number, or internal tracking reference unless it's genuinely part of the deliverable's scope (state the caveat directly instead of inventing a citation for it); never cite an internal build number, run ID, or other session/investigation-only artifact — describe the underlying fact or bug directly instead; never describe a decision as current practice if it was reverted, rolled back, or superseded, and never reference work that doesn't exist in the actual diff being documented. When writing plain factual/technical documentation prose (not chat replies), default to ASD-STE100 Simplified Technical English conventions: short sentences, one main clause per sentence where possible, plain approved vocabulary, no stacked subordinate clauses.
+- **No AI-sounding wording in chat replies**. Applies live, to every response - condensed from the `write` skill's Tell Catalog (`ai-agents/skills/write/references/write-en.md` has the full reference for editing existing prose): no em-dash; skip AI-vocabulary crutches (delve, leverage, utilize, robust, streamline, harness, navigate, unpack, paradigm, synergy, ecosystem, tapestry, landscape, game-changer, deep dive, moving forward) - say the plain word; prefer the short word over the long one where a short one will do, and never a jargon or foreign-phrase word when a plain English one exists (Orwell's rules); no rhetorical self-questions ("Here's the thing", "The result?"); no negative-parallelism contrasts in either order ("Not X. It's Y.", "It's Y, not X." - state Y directly); no bold-first bullet labels; active voice; don't assign human intent or judgment to an inanimate subject ("the complaint becomes a fix" - name who fixed it) - this doesn't ban real state changes ("the build fails", "the config becomes invalid"). This full list applies to chat output; commit messages, code comments, and other written artifacts follow the next paragraph's rule set instead.
+  Every PR/ticket description, README, commit message, and code/doc comment you write or revise carries its own, additional set of rules on top of the chat-only scope above: the negative-parallelism ban (including in headings) applies there too - state the positive fact directly instead of "X, not Y" / "not X, it's Y" / "not X - Y". In addition: never link or cite a local document, file, or path that doesn't exist in the current diff/repo - verify the target exists before writing a link or citation; never reference a ticket ID, work-item number, or internal tracking reference unless it's genuinely part of the deliverable's scope (state the caveat directly instead of inventing a citation for it); never cite an internal build number, run ID, or other session/investigation-only artifact - describe the underlying fact or bug directly instead; never describe a decision as current practice if it was reverted, rolled back, or superseded, and never reference work that doesn't exist in the actual diff being documented. When writing plain factual/technical documentation prose (not chat replies), default to ASD-STE100 Simplified Technical English conventions: short sentences, one main clause per sentence where possible, plain approved vocabulary, no stacked subordinate clauses.
 - **Output contract for action turns** (turns where you run tools / change things — plain questions get a direct answer, not this scaffolding):
   - *Between actions*: at most **one short line before a batch of related actions** (e.g. "Editing prompt + statusline"), never a line per tool call and never play-by-play narration. Silence while working is fine; the batch line is a signpost, not a diary. A blocking question I genuinely need answered still interrupts.
   - *Final wrap-up*: open by stating whether the request is done, not done, or partially done — if not done, say why before adding detail. Then **tight bullets**, each a concrete change traceable to your request (prefer `file:line`), no preamble and no restating what I asked. When there is something runnable to check, end with a `Verify:` line giving the exact command; omit it for pure investigation/read-only turns where nothing changed.
@@ -32,8 +31,9 @@ Codex reads this file directly as `~/.codex/AGENTS.md`.
 
 - **Parallel by default**. Decompose independent work across subagents in one message; relay their conclusions, not their file dumps. Claude Code dispatches via its `Agent` tool; Codex CLI's Multi-Agent v2 runtime dispatches via `[agents.<name>]` tables in `codex/config.toml` (installed to `~/.codex/config.toml`), resolved by table name as `spawn_agent`'s `agent_type` — same principle, different mechanism per tool.
 - **Orchestrator mode**. Applies to the top-level session only, never inside a subagent. On when the main model is the judgement tier (Claude Code: Fable); Codex has no such tier, so there it is on only by phrase. Force it with "orchestrator mode on" / "orchestrator mode off", and record `orchestrator mode: on|off (auto|forced)` as the first line of the checkpoint so a fresh session can read it back. While on, the main agent plans, judges, decides, and relays; research, implementation, fixes, review, tests, and lint go to subagents. An item is one unit of the batch: a review finding, a ticket task, a checklist row. Per item: decide, dispatch, verify, checkpoint, next; independent items still fan out in one message per "Parallel by default". Ask me only per "Surface assumptions and tradeoffs".
-- **Every dispatch names its model and effort**. A subagent otherwise inherits the main model, which defeats the point. Mechanics live in each runtime's adapter. At the pinned Codex 0.147.0 a role table has no model or effort keys (see the header comment in `codex/config.toml`), so Codex dispatch inherits the top-level model until that is solved. Subagents return conclusions, never file dumps or pasted diffs.
+- **Every dispatch names its model and effort**. A subagent otherwise inherits the main model, which defeats the point. Mechanics live in each runtime's adapter. On Codex, check whether a role table supports model or effort keys (see the header comment in `codex/config.toml`, verified against the installed `codex` version); where it does not, Codex dispatch inherits the top-level model until that is solved. Subagents return conclusions, never file dumps or pasted diffs.
 - **Inline carve-out**. Per item the main agent may read a file to frame a decision or spot-check a subagent's claim (per "Primary artifact over prose"), run one cheap verification command (per "Verify state before asserting it"; enough verification for a small item), and edit the checkpoint. Test and lint runs and everything else go to a subagent.
+- **Integrate once.** Do not redo a subagent's work; integrate and verify once at the end of a normal batch, or once per item in orchestrator mode.
 - **Checkpoint**. Inside a project-brain initiative it is that initiative's `STATUS.md`; otherwise `.claude/handoff.md` (Claude Code's `handoff` skill writes it; Codex writes it by hand). Update it when a ticket task completes, a decision or blocker lands, every five smaller items, and at batch end. At batch end, open the PR when I say so.
 
 ## Project brain
@@ -44,9 +44,8 @@ See [`AGENTS.d/project-brain.md`](AGENTS.d/project-brain.md) — only applies wh
 
 Three tiers exist for durable-ish facts. Route a new fact to exactly one, by what it is:
 
-- **Project brain** (`core.md`/`STATUS.md`/ADRs/research, per [`AGENTS.d/project-brain.md`](AGENTS.d/project-brain.md)) — deliberate, cross-repo *initiative* knowledge: a decision, a status-relevant event, a research/report artifact. Git-repo-external, versioned, human-reviewable. Portable across Claude Code and Codex CLI.
-- **Per-fact `~/.claude` memory** (`memory/*.md` + `MEMORY.md` index, per `CLAUDE.md`'s Memory section) — a genuinely session-scoped feedback/gotcha or user preference with no more durable home (not a standing rule, not cross-repo initiative knowledge, not a decision-with-alternatives). Fallback tier only; raise the save bar before using it. Claude Code-only.
-- **Automatic tool-usage-capture tools** (e.g. claude-mem: hooks record every tool call into a local SQLite/Chroma store, auto-surfaced by semantic search) — explicitly not adopted here (see #107). Not diffable, not human-reviewable, and would duplicate the two tiers above with a heavier, Claude-Code-primary mechanism. Do not add a fourth overlapping memory system without a new decision that revisits this.
+- **Project brain** (`core.md`/`STATUS.md`/ADRs/research, per [`AGENTS.d/project-brain.md`](AGENTS.d/project-brain.md)) — deliberate, cross-repo *initiative* knowledge: a decision, a status-relevant event, a research/report artifact. Git-repo-external, versioned, human-reviewable. Portable across Claude Code, Codex CLI, and Pi.
+- **Per-fact `~/.claude` memory** (`memory/*.md` + `MEMORY.md` index, per `CLAUDE.md` → "Auto-memory hygiene") — a genuinely session-scoped feedback/gotcha or user preference with no more durable home (not a standing rule, not cross-repo initiative knowledge, not a decision-with-alternatives). Fallback tier only; raise the save bar before using it. Claude Code-only.
 
 When unsure which tier a fact belongs in, check whether a more durable home already covers it first (a standing rule → this file or `CLAUDE.md`; a decision with rejected alternatives → an ADR) before defaulting to per-fact memory.
 
@@ -63,14 +62,14 @@ Applies to every prompt you author for a downstream model — subagent prompts, 
 - **Make it prove it**. Require evidence before "done" — cite file:line or command output rather than asserting completion. Cuts fabricated status on long runs (hygiene, not a guarantee).
 - **Set provenance rules for research prompts**. Cite sources, quote evidence, say "unknown" when unsupported.
 - **Iterate, don't one-shot**. For artifact-producing prompts (drafts, docs, designs), ask for draft → self-critique → revise, not a single pass.
-- **Never demand the model's private step-by-step reasoning or chain-of-thought**. A prompt like `'explain your reasoning step by step'` can trip Claude Fable 5's `reasoning_extraction` refusal and fall back to Opus (Claude Code shows a transcript notice; the raw API returns `stop_reason: refusal`). Ask for a short rationale + assumptions + evidence instead.
+- **Never demand the model's private step-by-step reasoning or chain-of-thought**. A prompt like `'explain your reasoning step by step'` can trip Fable's (5 and 5.1) `reasoning_extraction` refusal and fall back to Opus (Claude Code shows a transcript notice; the raw API returns `stop_reason: refusal`). Ask for a short rationale + assumptions + evidence instead.
 
 ## Authoring agent tooling
 
 Applies when proposing or building new agentic-workflow tooling — skills, commands, standing rules, conventions.
 
 - **Default to agent-agnostic placement.** A new rule, convention, or skill applies to Claude Code, Codex CLI, and Pi alike unless it genuinely depends on one tool's mechanics. Put standing rules in this shared `AGENTS.md`, not the Claude-only `~/.claude/CLAUDE.md`; prefer portable skills under `ai-agents/skills/` over tool-native `claude/skills/`, `codex/skills/`, or `pi/skills/`. Scope to one tool only when the behaviour needs that tool's hooks, skill-invocation model, or subagent tooling the others don't share — otherwise the Claude-only file silently excludes Codex and Pi from a rule with nothing tool-specific about it.
-- **Minimize manually-invoked skills.** Keep the set of skills I must remember to invoke small and mapped to my actual working chain (grill-with-docs → to-spec → to-tickets → implement → review-fix-loop → review-me, plus utilities like board-triage). Before proposing a new standalone manual skill, prefer: folding the behaviour into a skill already in that chain, or making it automatic (a hook or a standing rule that fires without being remembered). A rarely-reached skill I have to remember costs more in recall than it saves, however good the idea; propose a brand-new manual skill only when neither fits and it's a step I'll hit often enough to remember on its own.
+- **Minimize manually-invoked skills.** Keep the set of skills I must remember to invoke small and mapped to my actual working chain (grill-with-docs → to-spec → to-tickets → implement → review-fix-loop → review-me). Before proposing a new standalone manual skill, prefer: folding the behaviour into a skill already in that chain, or making it automatic (a hook or a standing rule that fires without being remembered). A rarely-reached skill I have to remember costs more in recall than it saves, however good the idea; propose a brand-new manual skill only when neither fits and it's a step I'll hit often enough to remember on its own.
 - **Dedup correction-driven rules before appending.** When a correction from me prompts adding a new standing rule to AGENTS.md/CLAUDE.md/a project doc, scan the target file first for an existing rule covering the same ground and extend or reword that rule instead of adding a near-duplicate. If the new rule would conflict with an existing one, flag the conflict explicitly and let me resolve it — never silently overwrite the existing rule's intent.
 
 ## Surgical changes
@@ -86,8 +85,8 @@ Applies when proposing or building new agentic-workflow tooling — skills, comm
 - Don't recommend for or against a code pattern on "it matches the repo convention" / consistency alone — a convention that serves no real benefit isn't worth keeping. Lead with measured evidence. When you benchmark, use a `for` loop, not a piped `ForEach-Object` (the pipeline's own overhead sits in both arms and compresses the real gap), and report absolute per-call cost alongside the ratio.
 - Don't pad arguments with extra spaces to align them into columns (e.g. `make_symlink "$src"          "$dest"`) — use a single space between arguments/values. Column alignment makes noisy diffs: any item longer than the current widest forces re-aligning every other line, obscuring the real change. Applies to all files; leave existing alignment you didn't write alone.
 - For existence checks, prefer the positive truthiness form (`if ($x)` / `if (x)`) over an explicit null comparison — it reads cleaner. Switch to an explicit null/None check **only** when a falsy-but-valid value (`0`, `''`, `false`, an empty collection) must be distinguished from absence. In PowerShell, when you do compare to null put `$null` on the **left** (`$null -eq $x` / `$null -ne $x`) so a right-hand collection is compared, not filtered.
+- PowerShell: use parameter splatting for a multi-parameter call, not backtick line-continuation.
 - Comments in English only.
-- Follow DRY, KISS, and YAGNI principles.
 - Use strict typing everywhere — function returns, variables, collections. Avoid untyped variables and generic types like `Any`, `unknown`, `List[Dict[str, Any]]`; use the language's strict type features.
 - Create proper type definitions for complex data structures; prefer structured data models over loose dictionaries.
 - Check if logic already exists before writing new code.
@@ -124,6 +123,12 @@ Applies when proposing or building new agentic-workflow tooling — skills, comm
 - Display diffs with `delta --side-by-side` (e.g. `git -c core.pager='delta --side-by-side' diff`).
 - Prefer `fd` for finding files and `rg` for searching code/content; avoid `find`. Both are installed.
 
+## Code navigation
+
+- Prefer `rg`/grep for broad code search and exploration.
+- Reach for symbol-level tools (a language server, or a semantic/symbol MCP) for precision tasks such as find-all-references or a scoped rename.
+- Always re-diff after any symbol-scoped edit: these tools can report success while applying a partial or empty edit.
+
 ## Documentation
 
 - Code is the primary documentation — use clear naming, types, and docstrings.
@@ -139,3 +144,9 @@ See [`AGENTS.d/git-worktrees.md`](AGENTS.d/git-worktrees.md) — only applies to
 ## Commits
 
 - Use conventional commits.
+
+## Pull requests
+
+- When replying to review comments as the code's author (or on the author's behalf), reply or push a
+  fix, but never mark the thread resolved yourself — resolution is the reviewer's call, not the
+  author's. Applies on ADO and GitHub alike.

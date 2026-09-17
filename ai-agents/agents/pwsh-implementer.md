@@ -78,6 +78,7 @@ Never assume the local ruleset — verify against the file CI uses.
 - Correctness over cleverness. Use boring, readable PS7 — reach for ternary / pipeline-chain
   / null-conditional operators only when they genuinely read better, not to look modern.
 - All imports/`using` at the top of the file. Comments in English only.
+- **Multi-parameter calls**: use parameter splatting, not backtick line-continuation.
 - **Existence checks**: prefer the positive `if ($x)` over `if ($null -ne $x)` — it reads
   cleaner. Use an explicit null comparison only when a falsy-but-valid value (`0`, `''`,
   `$false`, `@()`) must be told apart from absence; then put `$null` on the left
