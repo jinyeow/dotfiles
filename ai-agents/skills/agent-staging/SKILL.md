@@ -1,6 +1,6 @@
 ---
 name: agent-staging
-description: "Use for the per-workspace drop and exchange zone where the developer and their agents (Claude, Codex, Pi) leave files for each other across sessions, resolved from the current repo's pseudo-root, with two lanes agent-inputs\\ (developer-to-agent) and agent-outputs\\ (agent-to-developer). Covers folder resolution from the working directory, slug naming, the age purge, secret hygiene, and the scoped work-PC (WPC) hand-carry sub-section that adds ticket-seq naming, reply pairing, header blocks, encoding checks, and close-out archive triage when a file must cross to the work PC. Does not fire for work that stays inside the repo and never uses a staging folder."
+description: "Use for the per-workspace drop and exchange zone where the developer and their agents (Claude, Codex, Pi) leave files for each other across sessions, resolved from the current repo's pseudo-root, with two lanes agent-inputs\\ (developer-to-agent) and agent-outputs\\ (agent-to-developer). Covers folder resolution from the working directory, slug naming, the age purge, secret hygiene, and the scoped work-PC (WPC) hand-carry sub-section that adds ticket-seq naming, reply pairing, header blocks, encoding checks, and close-out archive triage when a file must cross to the work PC or when reading back a result pasted from it. Does not fire for work that stays inside the repo and never uses a staging folder."
 metadata:
   author: justin
   version: "2.0.0"
@@ -9,13 +9,18 @@ metadata:
 # Agent staging (per-pseudo-root drop and exchange)
 
 `agent-staging\` is a per-pseudo-root drop and exchange zone where the developer and their agents
-(Claude, Codex, Pi) leave files for each other across sessions. A pseudo-root is a workspace
-directory that holds repos. The active `agent-staging\` folder sits at the pseudo-root, defined as
-the parent of the current repo's top-level directory.
+(Claude, Codex, Pi) leave files for each other across sessions. A pseudo-root is the workspace
+directory that holds your repos. The active `agent-staging\` folder sits at the pseudo-root.
+Resolve it from where you are working:
 
-Worked example: working in `E:\Personal Projects\dotfiles\main` resolves the repo root
-`E:\Personal Projects\dotfiles\`, then the pseudo-root `E:\Personal Projects\`, so the active folder
-is `E:\Personal Projects\agent-staging\`.
+- Normal clone: the pseudo-root is the parent of the repo's top-level directory. Working in
+  `E:\Personal Projects\myrepo` gives the pseudo-root `E:\Personal Projects\`.
+- Bare-worktree layout (a container directory holding `.bare\` and sibling worktree folders): the
+  pseudo-root is the parent of that container, not the parent of the individual worktree. Working
+  in `E:\Personal Projects\dotfiles\main` (or any sibling worktree such as
+  `E:\Personal Projects\dotfiles\feat-x`) resolves the container `E:\Personal Projects\dotfiles\`,
+  then the pseudo-root `E:\Personal Projects\`, so the active folder is
+  `E:\Personal Projects\agent-staging\`.
 
 The two current roots are concrete examples:
 - `E:\Personal Projects\` (personal), giving `E:\Personal Projects\agent-staging\`.
@@ -39,7 +44,9 @@ ticket-`seq` scheme is WPC-only and lives in the sub-section below.
 ## Lifecycle
 
 The folder is a temporary store. Purge stale files manually on an age rule at roughly 7 to 14 days.
-There is no daemon and no sync.
+There is no daemon and no sync. This general purge applies to non-WPC pseudo-roots. The work
+pseudo-root follows the stricter WPC lifecycle instead (open-ticket files kept until the ADO PBI
+reaches Done, then archived; 30-day archive purge), see the sub-section below.
 
 ## Secret hygiene
 
