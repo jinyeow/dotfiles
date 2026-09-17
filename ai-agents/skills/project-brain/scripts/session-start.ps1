@@ -9,8 +9,8 @@
 #      then that brain's registry.json (dir-glob -> initiative) picks the initiative.
 # Fails safe: any error, or no match, exits 0 with no output (never blocks a session).
 $ErrorActionPreference = 'Stop'
-# Soft cap for STATUS.md (spec: per-initiative log.md contract, decision D1). Above this, the
-# emitted context gets one extra fail-safe warning line naming the real line count.
+# Soft cap for STATUS.md. Above this, the emitted context gets one extra fail-safe warning line
+# naming the real line count, so sessions move history to the initiative log.md.
 $script:StatusLineCap = 60
 # core.md/STATUS.md content is echoed back verbatim; without this, non-ASCII characters (e.g. "->")
 # get mangled to stray control bytes by the console's default (non-UTF-8) output codepage, which

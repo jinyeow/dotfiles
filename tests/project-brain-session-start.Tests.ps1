@@ -1,9 +1,8 @@
 #Requires -Version 7
 # Behavioural tests for ai-agents/skills/project-brain/scripts/session-start.ps1 — the SessionStart
 # hook that injects an initiative's core.md + STATUS.md as additionalContext. Pins the fail-safe
-# over-cap warning line (spec: adhoc-02-project-brain-initiative-log-spec.md section 3 D3) appended
-# when STATUS.md exceeds the ~60 line soft cap. Drives the real script as a child process with
-# SessionStart-shaped JSON on stdin, against the in-repo self-contained brain path
+# over-cap warning line appended when STATUS.md exceeds the ~60 line soft cap. Drives the real
+# script as a child process with SessionStart-shaped JSON on stdin, against the in-repo self-contained brain path
 # (session-start.ps1:52-65: an ancestor .claude/brain/core.md wins with no brains.json/$HOME
 # involved), asserting on the emitted hookSpecificOutput.additionalContext JSON since that is the
 # contract.
