@@ -9,6 +9,9 @@
 #      then that brain's registry.json (dir-glob -> initiative) picks the initiative.
 # Fails safe: any error, or no match, exits 0 with no output (never blocks a session).
 $ErrorActionPreference = 'Stop'
+# Soft cap for STATUS.md (spec: per-initiative log.md contract, decision D1). Above this, the
+# emitted context gets one extra fail-safe warning line naming the real line count.
+$script:StatusLineCap = 60
 # core.md/STATUS.md content is echoed back verbatim; without this, non-ASCII characters (e.g. "->")
 # get mangled to stray control bytes by the console's default (non-UTF-8) output codepage, which
 # breaks the emitted JSON.
@@ -28,8 +31,13 @@ function Format-BrainContext([string]$id, [string]$title, [string]$homePath, [st
     $lines.Add($header + ".")
     $lines.Add("Home: $homePath  (read research/, adr/, reports/ on demand per core.md's map; maintain per the project-brain skill's update contract).")
     if ($core) { $lines.Add("`n===== core.md =====`n$core") }
-    if ($status) { $lines.Add("`n===== STATUS.md =====`n$status") }
-    else { $lines.Add("`n(No STATUS.md yet - this initiative may be newly scaffolded.)") }
+    if ($status) {
+        $lines.Add("`n===== STATUS.md =====`n$status")
+        $statusLineCount = (($status -replace "`r?`n\z", '') -split "`r`n|`n").Count
+        if ($statusLineCount -gt $script:StatusLineCap) {
+            $lines.Add("[project-brain] STATUS.md is $statusLineCount lines; the contract caps it at about $($script:StatusLineCap). Move history to log.md in this initiative at the next status update.")
+        }
+    } else { $lines.Add("`n(No STATUS.md yet - this initiative may be newly scaffolded.)") }
     return ($lines -join "`n")
 }
 
