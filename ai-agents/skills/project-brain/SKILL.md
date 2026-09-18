@@ -112,6 +112,14 @@ troubleshooting"), grep the brain's `log.md` and `registry.json` (titles + notes
 An initiative may already own it under a different key (e.g. a follow-up PBI tracked as a continuation of
 an earlier one's initiative, not its own).
 
+**Two lines the SessionStart hook may print, and what to do with each:**
+- `[project-brain] N initiatives past stale_after: ...` (optionally with an `Over the size cap:`
+  clause) — mention it to the user. Do not act on it unasked.
+- `[project-brain] A registered initiative also matches this directory and was NOT loaded: <id> ...`
+  (a shadow notice, printed when an in-repo `.claude/brain/` wins over a registered brain match) —
+  read the named initiative's `core.md`/`STATUS.md` only if the current task concerns it. The
+  in-repo brain still wins and stays loaded; this is by design, not a bug to fix.
+
 ## Update contract
 
 **On resume (usually automatic):** trust the injected `core.md` + `STATUS.md`; check the staleness date;
@@ -162,11 +170,27 @@ in-repo under `.claude/brain/`):
 
 **New area** (a whole new brain, e.g. personal projects): propose the common ancestor as the `scope` root
 and **confirm with the user**. Then `git init` `<scope>/brain/`, scaffold `index.md`/`log.md`/
-`registry.json`/`templates/`/`adr/`, and append `{ scope, path }` to `brains.json`. `templates/` must
-include a per-initiative `log.md` template alongside `core.md`/`STATUS.md`.
+`registry.json`/`templates/`/`adr/`, and append `{ scope, path }` to `brains.json`. The scaffolded
+`index.md` must include an empty `## Archived` section, so the first initiative close has somewhere
+to move a row into. `templates/` must include a per-initiative `log.md` template alongside
+`core.md`/`STATUS.md`.
 
-**Initiative close:** move `initiatives/<id>/` to `initiatives/_archive/`, remove its `registry.json`
-entry, add a closing `log.md` line, commit.
+**Initiative close:**
+1. Move `initiatives/<id>/` to `initiatives/_archive/<id>/`.
+2. Remove its `registry.json` entry. If a parent initiative's entry lists this id under
+   `children`, remove it there too.
+3. Move (do not delete) the initiative's row from the active section of the brain's
+   `index.md` into its `## Archived` section, adding the closed date. The Archived table's
+   columns are `| Initiative | Title | Closed |`, with the Initiative cell a bundle-root-absolute
+   link, e.g. `[<id>](/initiatives/_archive/<id>/core.md)` — the link path gains `_archive/`
+   because the folder moved.
+4. Fix relative paths inside the moved files that broke because the folder is now one level
+   deeper: from `_archive/<id>/`, the brain root is `../../../` and an area wiki is
+   `../../../../wiki/`. This is separate from the index-row link in step 3, which is
+   root-absolute. A 2026-09-17 review found four archived files with paths broken by exactly
+   this move — the path fix is not optional.
+5. Add a closing `log.md` line.
+6. Commit.
 
 ## Portability
 
