@@ -1,7 +1,8 @@
 // project-brain-autoload.ts
 // Pi before_agent_start extension — injects the active project-brain initiative's
 // core.md + STATUS.md once per session, mirroring Claude Code's SessionStart hook and
-// Codex's PreToolUse-adjacent SessionStart hook (#186).
+// Codex's PreToolUse-adjacent SessionStart hook (#186). It also forwards session-start.ps1's
+// advisory shadow-match and stale-initiative lines verbatim, same as those two hooks.
 //
 // Rather than reimplementing the resolve-and-read procedure (in-repo .claude/brain/ ->
 // global brains.json -> registry.json -> initiative) in TypeScript, this shells out to
