@@ -13,10 +13,12 @@ BeforeAll {
 
     # Runs the real hook as a fresh child. On Windows the child derives $HOME from
     # $env:USERPROFILE (verified: setting only USERPROFILE, leaving HOMEDRIVE/HOMEPATH
-    # pointed at the real home, still moves the child's $HOME), so we point USERPROFILE
-    # at an isolated fixture home for the child launch and restore it in finally. Default
-    # home is an empty temp dir so path-1 (in-repo brain) tests never read the real
-    # ~/.claude/project-brain/brains.json and stay machine-independent.
+    # pointed at the real home, still moves the child's $HOME); on Linux/macOS pwsh derives
+    # $HOME from $env:HOME instead. We set both env vars to the fixture home for the child
+    # launch and restore both (including unsetting when they were previously unset) in
+    # finally, so isolation holds on every OS. Default home is an empty temp dir so path-1
+    # (in-repo brain) tests never read the real ~/.claude/project-brain/brains.json and stay
+    # machine-independent.
     function Invoke-SessionStart {
         param([string] $Payload, [string] $Cwd, [string] $HomeDir)
         if (-not $Payload) { $Payload = @{ cwd = $Cwd } | ConvertTo-Json -Compress }
@@ -27,13 +29,16 @@ BeforeAll {
             $ownHome = $true
         }
         $savedUserProfile = $env:USERPROFILE
+        $savedHome = $env:HOME
         try {
             $env:USERPROFILE = $HomeDir
+            $env:HOME = $HomeDir
             $out = ($Payload | & pwsh -NoProfile -File $script:Script 2>&1 | Out-String).Trim()
             $script:LastExitCode = $LASTEXITCODE
             return $out
         } finally {
             $env:USERPROFILE = $savedUserProfile
+            $env:HOME = $savedHome
             if ($ownHome) { Remove-Item -LiteralPath $HomeDir -Recurse -Force -ErrorAction SilentlyContinue }
         }
     }

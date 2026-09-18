@@ -292,30 +292,37 @@ $payload = [Console]::In.ReadToEnd() | ConvertFrom-Json
 
             # session-start.ps1 derives $HOME (used for '.claude/project-brain/brains.json')
             # from the process environment; on Windows that traces back to USERPROFILE, and
-            # env propagates node -> the spawned pwsh child unmodified (resolveBrainContext
-            # passes `env: { ...process.env, ... }`), so overriding USERPROFILE here before
-            # the node harness runs is enough to point the real script at a fixture home.
-            # The fixture home needs a physical '<HomeDir>/AppData/Local' on disk: the local
-            # `node` on this machine is a Volta shim that resolves %LocalAppData% off
-            # USERPROFILE at startup and fails ("Volta error: Could not determine
-            # LocalAppData directory") if that path doesn't exist, breaking node's own
-            # startup before it ever reaches the pwsh child - discovered manually while
+            # on Linux/macOS pwsh derives $HOME from $env:HOME instead. env propagates node
+            # -> the spawned pwsh child unmodified (resolveBrainContext passes
+            # `env: { ...process.env, ... }`), so overriding both USERPROFILE and HOME here
+            # before the node harness runs is enough to point the real script at a fixture
+            # home on either OS.
+            # The fixture home needs a physical '<HomeDir>/AppData/Local' on disk on Windows
+            # only: the local `node` on this machine is a Volta shim that resolves
+            # %LocalAppData% off USERPROFILE at startup and fails ("Volta error: Could not
+            # determine LocalAppData directory") if that path doesn't exist, breaking node's
+            # own startup before it ever reaches the pwsh child - discovered manually while
             # writing this test (the RuntimeException it threw carried no stdout/stderr, and
             # -Output Detailed was needed to see Volta's own stderr line; confirmed the root
             # cause by reproducing plain `node --version` failing the same way against a
             # USERPROFILE override with no AppData/Local subfolder, and succeeding once one
-            # was created).
+            # was created). Linux node is not a Volta shim and needs no AppData/Local.
             function Invoke-ResolveBrainContextWithHome {
                 param([string] $Cwd, [string] $ScriptPath, [string] $HomeDir)
 
-                New-Item -ItemType Directory -Path (Join-Path $HomeDir 'AppData/Local') -Force | Out-Null
+                if ($IsWindows) {
+                    New-Item -ItemType Directory -Path (Join-Path $HomeDir 'AppData/Local') -Force | Out-Null
+                }
 
                 $originalUserProfile = $env:USERPROFILE
+                $originalHome = $env:HOME
                 $env:USERPROFILE = $HomeDir
+                $env:HOME = $HomeDir
                 try {
                     return Invoke-ResolveBrainContext -Cwd $Cwd -ScriptPath $ScriptPath
                 } finally {
                     $env:USERPROFILE = $originalUserProfile
+                    $env:HOME = $originalHome
                 }
             }
         }
