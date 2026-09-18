@@ -278,4 +278,97 @@ $payload = [Console]::In.ReadToEnd() | ConvertFrom-Json
             { Invoke-Handler -Cwd '__LONG_CWD__' -ScriptPath $fastExitScript } | Should -Not -Throw
         }
     }
+
+    Context 'advisory lines forwarded from the real session-start.ps1 (parity with Claude Code / Codex hooks)' {
+        # Points PI_PROJECT_BRAIN_SESSION_START_SCRIPT at the REAL script (not a fixture
+        # pwsh stand-in) so these pin that the Pi path forwards the two advisory lines
+        # session-start.ps1 emits verbatim through additionalContext, with zero .ts logic
+        # of its own to diverge from Claude Code's/Codex's hooks (E4 parity).
+        BeforeAll {
+            $script:RealSessionStartScript = Join-Path $script:RepoRoot 'ai-agents/skills/project-brain/scripts/session-start.ps1'
+            if (-not (Test-Path $script:RealSessionStartScript)) {
+                throw "Real session-start.ps1 not found: $script:RealSessionStartScript"
+            }
+
+            # session-start.ps1 derives $HOME (used for '.claude/project-brain/brains.json')
+            # from the process environment; on Windows that traces back to USERPROFILE, and
+            # env propagates node -> the spawned pwsh child unmodified (resolveBrainContext
+            # passes `env: { ...process.env, ... }`), so overriding USERPROFILE here before
+            # the node harness runs is enough to point the real script at a fixture home.
+            # The fixture home needs a physical '<HomeDir>/AppData/Local' on disk: the local
+            # `node` on this machine is a Volta shim that resolves %LocalAppData% off
+            # USERPROFILE at startup and fails ("Volta error: Could not determine
+            # LocalAppData directory") if that path doesn't exist, breaking node's own
+            # startup before it ever reaches the pwsh child - discovered manually while
+            # writing this test (the RuntimeException it threw carried no stdout/stderr, and
+            # -Output Detailed was needed to see Volta's own stderr line; confirmed the root
+            # cause by reproducing plain `node --version` failing the same way against a
+            # USERPROFILE override with no AppData/Local subfolder, and succeeding once one
+            # was created).
+            function Invoke-ResolveBrainContextWithHome {
+                param([string] $Cwd, [string] $ScriptPath, [string] $HomeDir)
+
+                New-Item -ItemType Directory -Path (Join-Path $HomeDir 'AppData/Local') -Force | Out-Null
+
+                $originalUserProfile = $env:USERPROFILE
+                $env:USERPROFILE = $HomeDir
+                try {
+                    return Invoke-ResolveBrainContext -Cwd $Cwd -ScriptPath $ScriptPath
+                } finally {
+                    $env:USERPROFILE = $originalUserProfile
+                }
+            }
+        }
+
+        It 'forwards the P2 shadow notice (in-repo brain present, a registered initiative also matches) alongside the in-repo core.md' {
+            $repoDir = Join-Path $TestDrive 'p2-repo'
+            New-Item -ItemType Directory -Path (Join-Path $repoDir '.claude/brain') -Force | Out-Null
+            '# core' | Set-Content -Path (Join-Path $repoDir '.claude/brain/core.md') -NoNewline -Encoding utf8
+
+            $fixtureHome = Join-Path $TestDrive 'p2-home'
+            $brainPath = Join-Path $fixtureHome '.claude/project-brain'
+            New-Item -ItemType Directory -Path (Join-Path $brainPath 'initiatives/shadow-init') -Force | Out-Null
+
+            $repoDirNorm = ($repoDir -replace '\\', '/')
+            $brainPathNorm = ($brainPath -replace '\\', '/')
+            @{ brains = @(@{ scope = $repoDirNorm; path = $brainPathNorm }) } |
+                ConvertTo-Json -Depth 5 | Set-Content -Path (Join-Path $brainPath 'brains.json') -Encoding utf8
+            @{ initiatives = @{ 'shadow-init' = @{ title = 'Shadow Init'; dirs = @($repoDirNorm) } } } |
+                ConvertTo-Json -Depth 5 | Set-Content -Path (Join-Path $brainPath 'registry.json') -Encoding utf8
+            'shadow status' | Set-Content -Path (Join-Path $brainPath 'initiatives/shadow-init/STATUS.md') -Encoding utf8
+
+            $result = Invoke-ResolveBrainContextWithHome -Cwd $repoDirNorm -ScriptPath $script:RealSessionStartScript -HomeDir $fixtureHome
+
+            $result | Should -Match ([regex]::Escape('[project-brain] A registered initiative also matches this directory and was NOT loaded: shadow-init at'))
+            $result | Should -Match '# core'
+        }
+
+        It 'forwards the P1 staleness notice (cwd resolves to a registered initiative, another active initiative is past stale_after)' {
+            $repoDir = Join-Path $TestDrive 'p1-repo'
+            New-Item -ItemType Directory -Path $repoDir -Force | Out-Null
+
+            $fixtureHome = Join-Path $TestDrive 'p1-home'
+            $brainPath = Join-Path $fixtureHome '.claude/project-brain'
+            New-Item -ItemType Directory -Path (Join-Path $brainPath 'initiatives/active-init') -Force | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $brainPath 'initiatives/stale-init') -Force | Out-Null
+
+            $repoDirNorm = ($repoDir -replace '\\', '/')
+            $brainPathNorm = ($brainPath -replace '\\', '/')
+            @{ brains = @(@{ scope = $repoDirNorm; path = $brainPathNorm }) } |
+                ConvertTo-Json -Depth 5 | Set-Content -Path (Join-Path $brainPath 'brains.json') -Encoding utf8
+            @{ initiatives = @{ 'active-init' = @{ title = 'Active Init'; dirs = @($repoDirNorm) } } } |
+                ConvertTo-Json -Depth 5 | Set-Content -Path (Join-Path $brainPath 'registry.json') -Encoding utf8
+            'active status' | Set-Content -Path (Join-Path $brainPath 'initiatives/active-init/STATUS.md') -Encoding utf8
+            @'
+---
+stale_after: 2020-01-01
+---
+stale status content
+'@ | Set-Content -Path (Join-Path $brainPath 'initiatives/stale-init/STATUS.md') -Encoding utf8
+
+            $result = Invoke-ResolveBrainContextWithHome -Cwd $repoDirNorm -ScriptPath $script:RealSessionStartScript -HomeDir $fixtureHome
+
+            $result | Should -Match ([regex]::Escape('[project-brain] 1 initiatives past stale_after: stale-init (2020-01-01)'))
+        }
+    }
 }
