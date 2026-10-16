@@ -40,11 +40,13 @@ nvim/
     ├── lsp.lua
     ├── dap.lua        # PowerShell debugging via PSES (DebugServiceOnly + pipe)
     ├── gitsigns.lua
-    └── ui.lua
+    ├── ui.lua
+    └── statusline.lua # statusline, winbar, tabline (see Bars)
 ```
 
 Load order: `performance` → `user` → `plugins` → `options` → `keymaps` →
-`autocmds` → `treesitter` → `autopairs` → `orgmode` → `lsp` → `dap` → `gitsigns` → `ui`
+`autocmds` → `treesitter` → `autopairs` → `orgmode` → `lsp` → `dap` → `gitsigns` →
+`diffview` → `ui` → `statusline`
 
 ## Install
 
@@ -145,6 +147,42 @@ Falls back to sunrise/sunset window if detection fails.
 |---|---|---|
 | full | catppuccin-mocha | catppuccin-latte |
 | minimal | habamax (built-in) | lunaperche (built-in) |
+
+## Bars
+
+`lua/config/statusline.lua` replaces the default statusline, winbar, and tabline with
+native Lua bars. It loads in both profiles, after `ui` so its highlights derive from the
+active colorscheme (re-derived on `ColorScheme`).
+
+```text
+winbar:     ~/dotfiles/main [win]                                                  2/7
+statusline: N  main +1 ~1 │ README.md [+]                       E1 W2 lua_ls CRLF 1:1 0%
+tabline:    01 README.md  02 AGENTS.md  03 [No Name]
+```
+
+| Bar | Shows |
+|---|---|
+| Winbar (per window) | Working directory (`~`-shortened, `[win]` after `:lcd`, `[tab]` after `:tcd`); current buffer's position among listed buffers (`-/N` when unlisted) |
+| Statusline (per window, `laststatus=2`) | Mode initial in a mode-coloured block (current window only; other windows start with a space); git branch with gitsigns `+a ~c -r` counts and a `│` separator (omitted outside git); file path relative to the window's directory (full path outside it or for the directory itself; URI-style names such as `oil://` and `term://` as they are) with `[+]` / `[RO]` (`[RO]` for `readonly`, or for a non-modifiable normal buffer, so terminals show none); then diagnostic counts, LSP client names, `CRLF` for `dos` files, a non-UTF-8 encoding, and `line:col percent` |
+| Tabline (two or more tabs) | `NN name` per tab, clickable; `NN` is the number for `{N}gt` |
+
+The branch comes from gitsigns when it has attached. Otherwise (and always in the
+minimal profile) one async `git -C <dir> rev-parse --abbrev-ref HEAD` runs per
+directory. For a file buffer the directory is the file's own, so a file from another
+repository shows that repository's branch. Other buffers use the window's working
+directory. Results are cached until `DirChanged` or `FocusGained`, and a lookup that was
+in flight at that point is discarded. No shell command runs on a redraw. When `git` is
+not on `PATH` at startup, no fallback branch shows and one warning appears per session.
+In a narrow window the file name truncates first.
+
+Neovim draws each bar part on top of its bar's highlight group (`StatusLine`,
+`StatusLineNC`, `WinBar`, `WinBarNC`). Each part therefore sets only its text colour and
+keeps the bar's background, with one group per bar (`StlDim`, `StlNCDim`, `WbDim`,
+`WbNCDim`, ...). For a bar with `reverse`, the part sets the background instead, which
+the reverse draws as the text colour.
+
+`tests/nvim-statusline.Tests.ps1` renders the bars in headless Neovim (`--clean`, this
+module only) and asserts the text; it needs `nvim` on `PATH`.
 
 ## Plugins
 

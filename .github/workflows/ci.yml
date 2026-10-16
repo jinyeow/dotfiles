@@ -51,6 +51,14 @@ jobs:
           }
           Write-Host "PSScriptAnalyzer: clean."
 
+      # Neovim is not on the runner image, and tests/nvim-statusline.Tests.ps1 fails without it.
+      # The pin matches the version the bars were developed on, because statusline and
+      # vim.pack behaviour can change between releases.
+      - uses: rhysd/action-setup-vim@v1.6.1
+        with:
+          neovim: true
+          version: v0.12.6
+
       - name: Pester (tests/)
         run: |
           $config = New-PesterConfiguration
@@ -78,6 +86,12 @@ jobs:
           }
           Get-Module -ListAvailable Pester | Select-Object Name, Version
 
+      # Same pinned Neovim as the Windows job (see the comment there).
+      - uses: rhysd/action-setup-vim@v1.6.1
+        with:
+          neovim: true
+          version: v0.12.6
+
       - name: Pester (tests/, platform-agnostic suites)
         run: |
           $config = New-PesterConfiguration
@@ -85,6 +99,26 @@ jobs:
           $config.Run.Exit = $true
           $config.Output.Verbosity = 'Detailed'
           Invoke-Pester -Configuration $config
+
+      # Startup smoke test. It runs in this job and uses the Neovim installed above. The minimal
+      # profile loads no plugins, so it needs no network. XDG dirs are isolated so nothing from
+      # the runner leaks in, and the repo's nvim/ is symlinked in as the config. Any startup
+      # error sets v:errmsg and fails the step.
+      - name: Neovim minimal-profile startup smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          scratch="$(mktemp -d)"
+          mkdir -p "$scratch/config" "$scratch/data" "$scratch/state" "$scratch/cache"
+          ln -s "$PWD/nvim" "$scratch/config/nvim"
+          NVIM_PROFILE=minimal \
+            XDG_CONFIG_HOME="$scratch/config" \
+            XDG_DATA_HOME="$scratch/data" \
+            XDG_STATE_HOME="$scratch/state" \
+            XDG_CACHE_HOME="$scratch/cache" \
+            nvim --headless \
+              -c 'if v:errmsg != "" | echoerr v:errmsg | cquit 1 | endif' \
+              -c 'qa'
 
       # setup.ps1's Windows-only suites (e.g. the -Module all smoke) self-skip on this OS
       # (-Skip:(-not $IsWindows)) rather than failing, so the run above still needs to exit 0.
