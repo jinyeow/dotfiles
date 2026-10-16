@@ -34,9 +34,9 @@ if ($script:TestBash) {
         $driveLetter = $gitRootShort.Substring(0, 1).ToLowerInvariant()
         $restOfPath = ($gitRootShort.Substring(2)) -replace '\\', '/'
         $posixRoot = "/$driveLetter$restOfPath"
-        $mingwBin = "$posixRoot/mingw64/bin"
+        $gitCmdDir = "$posixRoot/cmd"
         $usrBin = "$posixRoot/usr/bin"
-        $script:NoGitleaksPath = "${mingwBin}:${usrBin}"
+        $script:NoGitleaksPath = "${gitCmdDir}:${usrBin}"
     } catch {
         $script:NoGitleaksPath = $null
     }
@@ -55,9 +55,9 @@ BeforeAll {
             $driveLetter = $gitRootShort.Substring(0, 1).ToLowerInvariant()
             $restOfPath = ($gitRootShort.Substring(2)) -replace '\\', '/'
             $posixRoot = "/$driveLetter$restOfPath"
-            $mingwBin = "$posixRoot/mingw64/bin"
+            $gitCmdDir = "$posixRoot/cmd"
             $usrBin = "$posixRoot/usr/bin"
-            $script:NoGitleaksPath = "${mingwBin}:${usrBin}"
+            $script:NoGitleaksPath = "${gitCmdDir}:${usrBin}"
         } catch {
             $script:NoGitleaksPath = $null
         }
