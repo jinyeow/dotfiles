@@ -1,4 +1,4 @@
-# AGENTS.md — work overlay template (Azure / Hollard TSC)
+# AGENTS.md — work overlay template (Azure)
 
 > Drop this into the ROOT of an Azure work repo as `AGENTS.md`. Codex reads it natively;
 > for Claude Code, add `@AGENTS.md` to that repo's `CLAUDE.md` (or rename to `CLAUDE.md`).
@@ -10,7 +10,7 @@
 
 ## Project context
 
-- **Team:** TSC Cloud Platform Engineering, Hollard
+- **Team:** Cloud Platform Engineering
 - **Stack:** Azure Bicep (IaC), Azure DevOps Pipelines (CI/CD), PowerShell (automation/tooling)
 - **Architecture:** Hub-and-spoke Azure Landing Zone with a management group hierarchy
 - **Source control:** Azure DevOps Git, trunk-based development with feature branches

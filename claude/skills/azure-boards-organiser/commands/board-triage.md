@@ -79,14 +79,14 @@ $items = az boards query --wiql $wiql --project $cfg.project --organization $org
 Read `E:/HollardInsuranceRetail/brain/registry.json`. Resolve each work-item ID to an initiative in **two
 passes** — one pass alone leaves most of the board unmatched:
 
-1. **Direct** — the initiative key whose leading digit run equals the work-item ID (`790001` →
-   `790001-arc-cisco-access`).
-2. **Via parent** — on a miss, retry with the item's `System.Parent`. The SNOW PBIs all hang off Feature
-   `786545` and match only this way.
+1. **Direct** — the initiative key whose leading digit run equals the work-item ID (`700201` →
+   `700201-network-access`).
+2. **Via parent** — on a miss, retry with the item's `System.Parent`. The access-request PBIs all hang off Feature
+   `700100` and match only this way.
 
 > **Each pass must resolve to exactly one key.** Take the key's *maximal* leading run of digits and compare
-> it to the ID as a whole number — not as a string prefix. `786` does not match `786545-snow-access-requests`,
-> because that key's digit run is `786545`. Then: **one** match resolves the pass; **zero** matches fall
+> it to the ID as a whole number — not as a string prefix. `700` does not match `700100-access-requests`,
+> because that key's digit run is `700100`. Then: **one** match resolves the pass; **zero** matches fall
 > through to the next pass; **two or more** matches are reported as an ambiguous join and the item is
 > **unknown** — never resolved by iteration order, which is arbitrary (see `core.md` on `registry.json` key
 > order deciding overlapping globs).
@@ -96,23 +96,23 @@ passes** — one pass alone leaves most of the board unmatched:
 > If the ID appears nowhere, the item is **unknown** — an initiative's blockers cover its own headline work,
 > not automatically every child PBI.
 
-> **The order is load-bearing — pass 1 must win.** Feature `786545` is the parent of 9 of the 15 live items,
-> including `790001` and `793186`, which have initiatives of their own. Consulting the parent first (or
-> letting it override) collapses those two into `786545-snow-access-requests` and attaches the wrong
+> **The order is load-bearing — pass 1 must win.** Feature `700100` is the parent of 9 of the 15 live items,
+> including `700201` and `700202`, which have initiatives of their own. Consulting the parent first (or
+> letting it override) collapses those two into `700100-access-requests` and attaches the wrong
 > `Blocked on` to both. Only use the parent when the direct ID match has already failed.
 
 Anything still unmatched is **uncovered**: list it, and say the brain has no context for it rather than
 guessing from the title.
 
-> **The ADO title is not a join validator.** PBI `790487` is titled "Investigate two things about EDI
-> database access" while its initiative is the SQL permissions audit — the initiative's own `STATUS.md`
+> **The ADO title is not a join validator.** PBI `700305` is titled "Investigate database access for the
+> reporting service" while its initiative is the database permissions audit — the initiative's own `STATUS.md`
 > confirms the link. Trust the ID, not the wording.
 
 For each matched item read that initiative's `STATUS.md` **in full** — Step 4 searches the whole file for the
 item's ID — but *report* from two things only: **`Blocked on`** and **`Next action`**. Reading the rest is
 for locating the ID and reading the sentence that names it; it is not licence to summarise other sections.
 
-> **The blocker section is not always called `Blocked on`.** `790001-arc-cisco-access` uses `## Open`
+> **The blocker section is not always called `Blocked on`.** `700201-network-access` uses `## Open`
 > instead. Fall back to `## Open` when `## Blocked on` is absent. Step 4 alone decides the next actor — this
 > step supplies the text and never classifies.
 
@@ -148,15 +148,15 @@ every item lands in exactly one bucket, and no two can both decide an item:
 Rules 1–6 are the unknown gates; 7 and 8 split everything that survives them.
 
 > **Illustrative only — verdicts dated 2026-07-30. Always re-derive from the current files; never carry a
-> verdict below into a run.** 786549 was `Blocked` in ADO and absent from 786545's `Blocked on`, but its
+> verdict below into a run.** 700150 was `Blocked` in ADO and absent from 700100's `Blocked on`, but its
 > `Next action` named it and said the hold was lifted and the PRs needed shepherding — rule 8, **you**.
-> 789905, 789906 and 789911 hung off Feature 786545 and matched the join, but the initiative's `STATUS.md`
+> 700161, 700162 and 700163 hung off Feature 700100 and matched the join, but the initiative's `STATUS.md`
 > never mentioned them — rule 5, **unknown**.
 
 > **The "live ADO wins over `STATUS.md`" rule is scoped to item state — not to who acts next.** ADO is
 > authoritative for state, column, assignment and PR status. It carries no next-actor field at all, so the
 > brain is the *only* source for that, and an ADO state of `Blocked` does not by itself make the next actor
-> someone else. 786549 was the worked example — `Blocked` in ADO, next actor you, as at 2026-07-30; re-derive
+> someone else. 700150 was the worked example — `Blocked` in ADO, next actor you, as at 2026-07-30; re-derive
 > it, do not assume it still holds.
 
 Report the **unknown** count separately and do **not** fold it into the load. Say so explicitly when it is
@@ -194,7 +194,7 @@ foreach ($id in $shortlist) {
 
 `status = active` **and** `mergeStatus = succeeded` **and** every `reviewers[].vote` equal to `0` is the only
 shape that satisfies "ready to land". A merged PR does not satisfy it, and does not unblock an item —
-`core.md` records four SNOW PRs that merged while their items stayed Blocked on substance.
+`core.md` records four access-request PRs that merged while their items stayed Blocked on substance.
 
 > **An empty `reviewers` array counts as "no reviewer vote".** Both shapes qualify — nobody assigned, and
 > assigned-but-not-voted — because in each the work is spent and only shepherding remains; they differ only
