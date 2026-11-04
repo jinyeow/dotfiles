@@ -100,8 +100,7 @@ Discovered only once the tickets were being dispatched, not during the grilling 
 
 - **`jinyeow/dotfiles` is a public repo.** The Hollard migration tickets (#198-204)
   originally named real PBI numbers and person-identifying initiative folders
-  (`793186-thilina-access`, `801442-801443-hngo-sdb-access`, etc.) in their public titles
-  and bodies. Redacted to generic labels (Initiative A, B, C, ...) with the real
+  in their public titles and bodies. Redacted to generic labels (Initiative A, B, C, ...) with the real
   local-path mapping kept out of the public tracker.
 - **The Hollard brain repo has a single working tree, no worktree fleet** — its 7
   migration batches (#198-204) cannot run as parallel subagents each committing

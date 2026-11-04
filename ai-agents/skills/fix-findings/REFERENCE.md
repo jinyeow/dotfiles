@@ -42,7 +42,7 @@ Run the full suite once after all fixers return (Step 4).
 | `Cargo.toml` | `cargo test` |
 | `go.mod` | `go test ./...` |
 
-If multiple test suites exist (e.g. both `Hollard.Permissions` and `Hollard.EntraID`), run all of them.
+If multiple test suites exist (e.g. both `Contoso.Permissions` and `Contoso.EntraID`), run all of them.
 
 ---
 
@@ -60,7 +60,7 @@ AI/Claude attribution, no `Co-Authored-By`, no `--no-verify`.
 
 ---
 
-## PowerShell-specific conventions (Hollard project)
+## PowerShell-specific conventions (work project)
 
 - `$null = Command` not `| Out-Null`
 - `foreach ($singular in $plural)` — e.g. `foreach ($role in $roles)`
