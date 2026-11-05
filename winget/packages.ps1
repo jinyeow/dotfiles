@@ -39,6 +39,7 @@ Write-Host "`n=== Terminal / shell utilities ===" -ForegroundColor Green
 Install-Package 'Microsoft.PowerShell'
 Install-Package 'Microsoft.WindowsTerminal'
 Install-Package 'Zellij.Zellij'
+Install-Package 'marlocarlo.psmux'
 Install-Package 'sxyazi.yazi'
 Install-Package 'sharkdp.bat'
 Install-Package 'BurntSushi.ripgrep.GNU'
@@ -52,6 +53,7 @@ Install-Package 'eza-community.eza'
 Install-Package 'chmln.sd'
 Install-Package 'jqlang.jq'
 Install-Package 'MikeFarah.yq'
+Install-Package 'koalaman.shellcheck'
 
 # ── Git ───────────────────────────────────────────────────────────────────────
 Write-Host "`n=== Git ===" -ForegroundColor Green
@@ -61,6 +63,7 @@ Install-Package 'GitTools.GitVersion'
 Install-Package 'jj-vcs.jj'
 Install-Package 'JesseDuffield.lazygit'
 Install-Package 'JesseDuffield.Lazydocker'
+Install-Package 'gitleaks.gitleaks'
 
 # ── Languages ─────────────────────────────────────────────────────────────────
 Write-Host "`n=== Languages ===" -ForegroundColor Green
@@ -73,6 +76,8 @@ Install-Package 'astral-sh.uv'
 Install-Package 'Erlang.ErlangOTP'
 Install-Package 'Gleam.Gleam'
 Install-Package 'odin-lang.Odin'
+Install-Package 'zig.zig'
+Install-Package 'tree-sitter.tree-sitter-cli'
 Install-Package 'Microsoft.DotNet.SDK.10'
 Install-Package 'Microsoft.NuGet'
 
