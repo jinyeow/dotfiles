@@ -26,10 +26,13 @@ Personal dotfiles for Windows (primary) and Linux/WSL.
 | `yazi/` | Yazi terminal file manager config | Windows |
 | `codex/` | Codex CLI config (read-only second-opinion reviewer) | Windows + Linux |
 | `eza/` | eza (`ls` replacement) Catppuccin theme | Windows |
+| `pi/` | Pi coding agent settings, extensions, and skills | Windows + Linux |
+| `herdr/` | Herdr terminal workspace manager for AI coding agents | Windows + Linux |
+| `ai-agents/` | Portable agent conventions, skills, and agent definitions | Windows + Linux |
 | `tmux/` | tmux config | Linux / WSL |
 | `nix/` | Nix/Home Manager (legacy snapshot) | Linux |
 
-Legacy configs (not actively maintained): `bash/`, `vim/`, `config/bspwm/`, `config/rofi/`, `config/sxhkd/`, `config/direnv/`, `config/ranger/`, `i3/`, `tmux/`, `mpd/`, `ncmpcpp/`, `postgres/`, `ruby/`, `ctags`, `wgetrc`, `Xresources.d/`, `urxvt/`, `etc/`, `scripts/`.
+Legacy configs (not actively maintained): `vim/`, `config/bspwm/`, `config/rofi/`, `config/sxhkd/`, `config/direnv/`, `config/ranger/`, `i3/`, `mpd/`, `ncmpcpp/`, `postgres/`, `ruby/`, `ctags`, `wgetrc`, `Xresources.d/`, `urxvt/`, `etc/`, `scripts/`.
 
 ## Installation
 
