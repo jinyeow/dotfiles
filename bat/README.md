@@ -64,5 +64,4 @@ bat cache --build
 ./setup.ps1 -Module bat   # Windows
 ```
 
-No Linux `setup.sh` module yet — `bat` is Windows-only in the module list (see
-root `CLAUDE.md`).
+No Linux `setup.sh` module yet. `bat` is Windows-only in the module list.

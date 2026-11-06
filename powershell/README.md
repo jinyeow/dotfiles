@@ -38,6 +38,8 @@ comment-based help; run `Get-Help .\Scripts\<Name>.ps1 -Full`.
 | `Install-CodingFont.ps1` | Download + per-user install + session-activate Nerd Font (Mono) faces from the nerd-fonts release. `Install-CodingFont CommitMono` |
 | `New-FontComparison.ps1` | Self-contained side-by-side HTML/PNG comparison of the candidate fonts with a PowerShell/C#/Bicep language switcher. `-Fonts` filters the set |
 | `New-FontGlyphTest.ps1` | Glyph-separation torture test (rn/m, cl/d, vv/w, 1lI\|, 0O) across Commit/JetBrains/0xProto |
+| `Login-Azure.ps1` | Sign in to Azure with a service principal. Reads `SP_CLIENT_ID`, `SP_CLIENT_SECRET`, and `AZURE_TENANT_ID` from the environment (load a `.env` with PS-Dotenv) |
+| `Get-UnusedStorageAccounts.ps1` | List storage accounts with no transactions, ingress, or egress metrics in the last `-TimeAgo` months (default 3). Needs `Az` and runs `Connect-AzAccount` |
 | `New-FontLigatureTest.ps1` | Ligatures-on vs -off comparison so you can see what each font actually fuses |
 
 The `New-Font*` tools subset each font to the sample glyphs and embed them as base64 woff2,

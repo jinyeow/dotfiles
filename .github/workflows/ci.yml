@@ -41,7 +41,7 @@ jobs:
       - name: PSScriptAnalyzer (whole tree, repo settings)
         run: |
           $results = Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
-          # Vendored third-party plugins are out of scope per CLAUDE.md (psmux/plugins/ is
+          # Vendored third-party plugins are out of scope per AGENTS.md (psmux/plugins/ is
           # upstream code pinned by SHA, not ours to lint) - do not gate on them.
           $legacy = '[\\/]psmux[\\/]plugins[\\/]'
           $gated = $results | Where-Object { $_.ScriptPath -notmatch $legacy }
@@ -185,7 +185,7 @@ jobs:
       # exclusions would outnumber the inclusions and read worse. Deliberately NOT covered
       # (each carries pre-existing findings in code that works - the same carve-out the
       # PSScriptAnalyzer job makes for legacy/vendored files):
-      #   - the legacy Linux snapshot per CLAUDE.md: scripts/, config/, nvim/install.sh
+      #   - the legacy Linux snapshot per AGENTS.md: scripts/, config/, nvim/install.sh
       #   - bash/*.sh: sourced fragments with no shebang, never executed as scripts
       #   - ai-agents/**/skills/**: vendored skill payloads, not ours to lint
       #   - git/templates/hooks/{ctags,post-*}: the upstream git-ctags recipe. Its SC1007 is

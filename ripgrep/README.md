@@ -6,19 +6,17 @@ Config for [ripgrep](https://github.com/BurntSushi/ripgrep) (`rg`).
 
 | Tool | Purpose | Install |
 |---|---|---|
-| ripgrep | Fast grep replacement | `winget install BurntSushi.ripgrep.MSVC` / `brew install ripgrep` |
+| ripgrep | Fast grep replacement | `winget install BurntSushi.ripgrep.GNU` / `brew install ripgrep` |
 
 ## Files
 
 | File | Installed as | Notes |
 |---|---|---|
-| `ripgreprc` | `~/.ripgreprc` | Loaded when `RIPGREP_CONFIG_PATH` points to it |
+| `ripgreprc` | Not copied on Windows | Loaded when `RIPGREP_CONFIG_PATH` points to it |
 
-> ripgrep doesn't load `~/.ripgreprc` automatically. Set the env var:
-> ```sh
-> export RIPGREP_CONFIG_PATH="$HOME/.ripgreprc"   # bash
-> $env:RIPGREP_CONFIG_PATH = "$HOME/.ripgreprc"   # PowerShell
-> ```
+ripgrep does not load a config file on its own. On Windows, `powershell/Microsoft.PowerShell_profile.ps1`
+sets `RIPGREP_CONFIG_PATH` to the repo file, so edits apply at once. On Linux, `setup.sh` has no
+ripgrep step. Set the variable yourself (see Install).
 
 ## Settings
 
@@ -38,10 +36,9 @@ Config for [ripgrep](https://github.com/BurntSushi/ripgrep) (`rg`).
 
 ## Install
 
-`$env:RIPGREP_CONFIG_PATH` is set in `powershell/Microsoft.PowerShell_profile.ps1`
-pointing directly at the repo file — no copy needed on Windows.
+Windows: no step needed. The PowerShell profile sets `$env:RIPGREP_CONFIG_PATH` to the repo file.
 
-Linux: set manually or via `~/.bashrc`:
+Linux: set it in `~/.bashrc`:
 ```sh
 export RIPGREP_CONFIG_PATH="$HOME/dotfiles/ripgrep/ripgreprc"
 ```
