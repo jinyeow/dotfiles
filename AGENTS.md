@@ -7,8 +7,9 @@ is on the Windows-side configuration ([`powershell/`](powershell/), [`nvim/`](nv
 [`psmux/`](psmux/), [`zellij/`](zellij/), [`herdr/`](herdr/), [`yazi/`](yazi/),
 [`git/`](git/), [`curl/`](curl/), [`winget/`](winget/),
 [`windowsterminal/`](windowsterminal/), the profile-loaded tool configs, and the AI-agent
-modules). The Linux snapshot ([`config/`](config/), [`i3/`](i3/), legacy [`tmux/`](tmux/),
-[`vim/`](vim/), etc.) is legacy; touch it only when explicitly requested.
+modules). [`bash/`](bash/) and [`tmux/`](tmux/) are active on Linux machines. The rest of
+the Linux snapshot ([`config/`](config/), [`i3/`](i3/), [`vim/`](vim/), etc.) is legacy;
+touch it only when explicitly requested.
 
 Do not widen a task into installer projection, skill rehoming, or agent-directory
 reclassification. Keep deferred PowerShell/profile work and asynchronous prompt work
