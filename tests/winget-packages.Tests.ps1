@@ -21,6 +21,13 @@ Describe 'winget package lists' {
                 $node -is [System.Management.Automation.Language.CommandAst] -and
                 $node.GetCommandName() -eq 'Install-Package'
             }, $true)
+        # Every call must pass the ID as one positional string constant, or the extraction below
+        # would drop it without notice.
+        $unreadable = $calls | Where-Object {
+            $_.CommandElements.Count -ne 2 -or
+            $_.CommandElements[1] -isnot [System.Management.Automation.Language.StringConstantExpressionAst]
+        }
+        $unreadable.Extent.Text | Should -BeNullOrEmpty
         [string[]]$scriptIds = $calls | ForEach-Object { $_.CommandElements[1].Value } | Sort-Object -Unique
 
         $json = Get-Content -Raw $script:JsonPath | ConvertFrom-Json
