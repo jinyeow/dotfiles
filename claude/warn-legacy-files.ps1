@@ -1,7 +1,10 @@
 #Requires -Version 7
 # PreToolUse(Edit|Write) hook: guard the legacy / Linux-snapshot files in the dotfiles repo
-# that CLAUDE.md says to "touch only when explicitly asked" - the frozen Linux WM snapshot:
-#   - config/bspwm|sxhkd/     (legacy WM configs)
+# that AGENTS.md ("Scope and safety") says to touch only when explicitly asked - the legacy Linux snapshot:
+#   - vim/ i3/ mpd/ ncmpcpp/ postgres/ ruby/ Xresources.d/ urxvt/ etc/ scripts/
+#   - config/bspwm|rofi|sxhkd|direnv|ranger/
+#   - ctags, wgetrc (top-level files, exact match)
+# bash/ and tmux/ stay active and are not guarded.
 # Emits a PreToolUse `ask` decision so the edit pauses for confirmation rather than being denied
 # (these are edited legitimately when asked). Scoped to the dotfiles repo via $env:DOTFILES so
 # the globally-wired hook never fires on same-named files in other projects. Reads the tool-call
@@ -30,14 +33,14 @@ if (-not $full.StartsWith($rootFull + $sep, [System.StringComparison]::OrdinalIg
 
 $rel = $full.Substring($rootFull.Length).TrimStart('\', '/') -replace '\\', '/'
 
-$legacy = '^config/(bspwm|sxhkd)/'
+$legacy = '^((vim|i3|mpd|ncmpcpp|postgres|ruby|Xresources\.d|urxvt|etc|scripts|config/(bspwm|rofi|sxhkd|direnv|ranger))/|(ctags|wgetrc)$)'
 if ($rel -notmatch $legacy) { exit 0 }
 
 @{
   hookSpecificOutput = @{
     hookEventName            = 'PreToolUse'
     permissionDecision       = 'ask'
-    permissionDecisionReason = "'$rel' is a legacy / Linux-snapshot file (CLAUDE.md: edit only when explicitly asked). Confirm you intend to edit it."
+    permissionDecisionReason = "'$rel' is a legacy / Linux-snapshot file (AGENTS.md: edit only when explicitly asked). Confirm you intend to edit it."
   }
 } | ConvertTo-Json -Depth 5 -Compress
 exit 0
