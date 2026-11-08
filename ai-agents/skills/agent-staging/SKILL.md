@@ -62,7 +62,7 @@ contract. There is no mirrored `README.txt` that holds a parallel copy of the co
 ## Work-PC hand-carry (work pseudo-root only)
 
 This sub-section applies only when a file must cross to the work PC (WPC) under the work pseudo-root
-`E:\HollardInsuranceRetail\`, where Conditional Access blocks Azure DevOps on this device. It adds a
+`E:\HollardInsuranceRetail\`, where Azure DevOps is reachable only from the WPC. It adds a
 strict apparatus on top of the general rules above. It applies to the work-root folder
 `E:\HollardInsuranceRetail\agent-staging\` only; the general rules cover every other pseudo-root.
 
@@ -77,7 +77,7 @@ Fixed work root: `E:\HollardInsuranceRetail\agent-staging\`
 
 Both lanes group every file under a mandatory initiative subfolder:
 `agent-outputs\<initiative>\<file>` and `agent-inputs\<initiative>\<file>`. `<initiative>` is a
-lowercase-hyphen slug you choose (for example `sprint-42-migration`, or `814107-create-prs` for a
+lowercase-hyphen slug you choose (for example `sprint-42-migration`, or `700412-create-prs` for a
 single item). One-off checks live under the literal `adhoc`.
 
 ### Writing outputs (agent-outputs\)
@@ -110,18 +110,18 @@ device path. Ask the engineer or use a path they confirmed. The `Paste output in
 this file's own initiative, ticket, and seq with a reply suffix (`-out.txt` is the default
 expectation; the engineer uses `-err` or `-retryNN` as the outcome demands).
 
-Worked example, writing `agent-outputs\sprint-42\814107-01-create-three-prs.ps1`, next free seq for
-ticket `814107` being `01`:
+Worked example, writing `agent-outputs\sprint-42\700412-01-create-three-prs.ps1`, next free seq for
+ticket `700412` being `01`:
 
 ```
 # Creates three feature-branch PRs from the open work items in this sprint.
 # Run on: WPC from C:\Repos\HollardInsuranceRetail\api on branch feature/sprint-42
-# Paste output into: agent-inputs\sprint-42\814107-01-create-three-prs-out.txt
+# Paste output into: agent-inputs\sprint-42\700412-01-create-three-prs-out.txt
 # Needs: az login done; no secrets in this file
 ```
 
-`814107-01-create-three-prs.ps1` matches `^(\d+|adhoc)-(0[1-9]|[1-9]\d)-[a-z0-9-]+\.[a-z0-9]+$`, and
-the `Paste output into:` line's initiative (`sprint-42`), ticket (`814107`), and seq (`01`) match the
+`700412-01-create-three-prs.ps1` matches `^(\d+|adhoc)-(0[1-9]|[1-9]\d)-[a-z0-9-]+\.[a-z0-9]+$`, and
+the `Paste output into:` line's initiative (`sprint-42`), ticket (`700412`), and seq (`01`) match the
 file's own path and name.
 
 WPC encoding gotchas: the file this skill writes must already be UTF-8 without BOM, LF line endings,
