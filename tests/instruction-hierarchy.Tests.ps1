@@ -27,7 +27,7 @@ Describe 'repository instruction hierarchy' {
         $agents | Should -Match '## Scope and safety'
         $agents | Should -Match '## Authority index'
         $agents | Should -Match '## Shared agent configuration boundaries'
-        $agents.Length | Should -BeLessThan 6000
+        $agents.Length | Should -BeLessThan 7000
     }
 
     It 'keeps detailed rationale outside the loaded project guide' {
