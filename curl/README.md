@@ -17,8 +17,8 @@ Global config for [curl](https://curl.se) — applied to every curl invocation.
 | `connect-timeout = 30` | Abort if the connection phase takes more than 30 seconds |
 | `max-time = 300` | Abort if the entire request takes more than 5 minutes |
 | `compressed` | Request compressed response and auto-decompress |
-| `http2` | Use HTTP/2 where supported (falls back to HTTP/1.1) |
 | `progress-bar` | Simple `#` progress bar instead of verbose transfer stats |
+| `ssl-revoke-best-effort` | Schannel builds only: skip the revocation check when the CRL/OCSP server is unreachable (for example behind a TLS-inspecting proxy). Needs curl 7.70.0 or later; other TLS backends ignore it, older versions warn on every call |
 | `retry = 3` | Retry up to 3 times on transient errors (408, 429, 5xx) |
 | `retry-delay = 2` | Wait 2 seconds between retries |
 | `retry-max-time = 60` | Give up retrying after 60 seconds total |
@@ -30,6 +30,7 @@ Global config for [curl](https://curl.se) — applied to every curl invocation.
 | `-k` | Disabled SSL certificate verification globally — a security risk for all curl calls, including those made by scripts and tools internally |
 | `-v` | Verbose output on every request — breaks scripts that parse curl output and floods the terminal |
 | `user-agent = "MSIE 9.0..."` | IE9 spoofing causes sites to return degraded or blocked responses; also hides curl's identity which breaks APIs that expect it |
+| `http2` | Fails on curl builds without HTTP/2 support, such as the Windows System32 `curl.exe` (Schannel). curl already negotiates HTTP/2 over HTTPS when the build supports it |
 
 Pass `-k` or `-v` explicitly on the command line when you actually need them.
 
