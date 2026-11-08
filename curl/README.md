@@ -18,7 +18,7 @@ Global config for [curl](https://curl.se) — applied to every curl invocation.
 | `max-time = 300` | Abort if the entire request takes more than 5 minutes |
 | `compressed` | Request compressed response and auto-decompress |
 | `progress-bar` | Simple `#` progress bar instead of verbose transfer stats |
-| `ssl-revoke-best-effort` | Schannel builds only: skip the revocation check when the CRL/OCSP server is unreachable (for example behind a TLS-inspecting proxy). Ignored by OpenSSL builds |
+| `ssl-revoke-best-effort` | Schannel builds only: skip the revocation check when the CRL/OCSP server is unreachable (for example behind a TLS-inspecting proxy). Needs curl 7.70.0 or later; other TLS backends ignore it, older versions warn on every call |
 | `retry = 3` | Retry up to 3 times on transient errors (408, 429, 5xx) |
 | `retry-delay = 2` | Wait 2 seconds between retries |
 | `retry-max-time = 60` | Give up retrying after 60 seconds total |
