@@ -35,7 +35,7 @@ not download or change the machine.
 
 | File / Directory | Installed to | Notes |
 |---|---|---|
-| `settings.json` | `~/.claude/settings.json` | Theme, effort level, editor mode, hooks, statusline, pins `model: "sonnet"` |
+| `settings.json` | `~/.claude/settings.json` | Theme, effort level, editor mode, hooks, statusline, sets `model: "opus"` (latest Opus) with per-model effort in `modelSettings` |
 | `CLAUDE.md` | `~/.claude/CLAUDE.md` | Claude-specific instructions; imports `../ai-agents/AGENTS.md` via `@../ai-agents/AGENTS.md` |
 | `../ai-agents/AGENTS.md` | `~/.claude/AGENTS.md` | Shared coding conventions (single source). The `codex` module installs the same file to `~/.codex/AGENTS.md` so Claude Code and Codex CLI agree. See `../codex/README.md`. |
 | `../ai-agents/AGENTS.d/` | `~/.claude/AGENTS.d/` | Progressive-disclosure satellite files `AGENTS.md` links out to on demand (e.g. git worktrees, project brain), junctioned whole-dir. Also copied to `~/.codex/AGENTS.d/`. |
