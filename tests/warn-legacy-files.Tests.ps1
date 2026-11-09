@@ -37,6 +37,41 @@ Describe 'claude/warn-legacy-files.ps1' {
         } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    It 'asks before editing <Rel> (guarded legacy path)' -ForEach @(
+        @{ Rel = 'i3/config' }
+        @{ Rel = 'vim/vimrc' }
+        @{ Rel = 'config/rofi/config.rasi' }
+        @{ Rel = 'config/direnv/direnvrc' }
+        @{ Rel = 'config/ranger/rc.conf' }
+        @{ Rel = 'scripts/foo.sh' }
+        @{ Rel = 'etc/hosts' }
+        @{ Rel = 'wgetrc' }
+        @{ Rel = 'ctags' }
+    ) {
+        $root = New-Root
+        try {
+            $out = Invoke-Hook -FilePath (Join-Path $root $Rel) -Dotfiles $root
+            $out | Should -Match '"permissionDecision":"ask"'
+            $out | Should -Match 'AGENTS\.md'
+        } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'no-ops for <Rel> (active or lookalike path)' -ForEach @(
+        @{ Rel = 'bash/bashrc' }
+        @{ Rel = 'tmux/tmux.conf' }
+        @{ Rel = 'ctags-extra' }
+        @{ Rel = 'nvim/ctags' }
+        @{ Rel = 'scripts-new/x' }
+        @{ Rel = 'wgetrc.bak' }
+        @{ Rel = 'config/other/x' }
+    ) {
+        $root = New-Root
+        try {
+            $out = Invoke-Hook -FilePath (Join-Path $root $Rel) -Dotfiles $root
+            $out.Trim() | Should -BeNullOrEmpty
+        } finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     It 'no-ops when $env:DOTFILES is unset (avoids global false fires)' {
         $root = New-Root
         try {

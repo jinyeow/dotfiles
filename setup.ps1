@@ -61,7 +61,7 @@ $ErrorActionPreference = 'Stop'
 
 $Dotfiles = $PSScriptRoot
 
-# This script targets Windows (see root CLAUDE.md); $env:USERPROFILE is normally set by the
+# This script targets Windows (see root AGENTS.md); $env:USERPROFILE is normally set by the
 # OS. But its -DryRun path is also exercised by cross-platform Pester tests in CI, and pwsh on
 # non-Windows never populates $env:USERPROFILE, so every Join-Path against it below would throw
 # on a null path. $HOME is PowerShell's own cross-platform automatic variable — fall back to it.

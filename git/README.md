@@ -17,6 +17,7 @@ Git configuration, global ignore rules, commit template, and hook templates.
 | `gitconfig` | `~/.gitconfig` | Base config for all machines |
 | `gitconfig-work` | `~/.gitconfig-work` | Work overrides; auto-included per-repo via `[includeIf]` |
 | `gitignore` | `~/.gitignore` | Global ignore rules |
+| `gitignore-work` | `~/.gitignore-work` | Global ignore rules for work repos. Replaces `gitignore` there via `core.excludesFile` in `gitconfig-work`. Adds .NET, Terraform, and Azure Functions build output, plus AI tooling files |
 | `gitmessage` | `~/.gitmessage` | Commit message template |
 | `templates/` | `~/.git_templates/` | Hook templates copied into every new repo |
 | `work-hooks/` | `~/.git_work_hooks/` | Work-only hooks, wired via `[hook]` in `gitconfig-work`. **Not** under `~/.git_templates/` — see below |

@@ -76,7 +76,7 @@ It provisions three things without ever touching `github.com`:
 > ⚠️ **Parser step is out of date for the `main` migration.** The parser and org-grammar
 > steps drive nvim-treesitter's old `master` local-compile path (they read the removed
 > `ensure_installed` and don't use the `tree-sitter` CLI); they need reworking before this
-> script is usable on `main`. The plugin-staging step still works. See root `CLAUDE.md`.
+> script is usable on `main`. The plugin-staging step still works.
 
 | | Source of truth | Fetched from |
 |---|---|---|

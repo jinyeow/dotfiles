@@ -20,5 +20,5 @@ indent_size = 4
 [*.json{,c}]
 indent_size = 2
 
-[*.ps{,d,m}1]
+[*.{ps1,psd1,psm1}]
 indent_size = 4
