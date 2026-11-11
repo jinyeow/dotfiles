@@ -62,6 +62,22 @@ approves it.
      fall through to step 3.
    - Treat a merged/completed PR (with a matching head SHA) as the primary, harder-evidence
      signal — prefer it over the `STATUS.md` fallback below even if both happen to be present.
+   - **Upstream gone + PR merged ⇒ safe, user policy.** Run `git fetch --prune` first. If
+     `git for-each-ref --format='%(upstream:track)' 'refs/heads/<branch>'` prints `[gone]` and a
+     merged/completed PR from that branch exists, treat the branch as done even when its tip
+     differs from the PR head or from `main`. The user accepts the loss of local commits made
+     after the merge. Skip the step 5 ancestor check and the step 6 diff check for it: remove
+     the worktree (still never with `--force` on a dirty worktree) and add the branch to the
+     batched `-D` list.
+   - **PR CLI unavailable** (for example `az` cannot authenticate on this device): use git
+     evidence instead, and say so in the report. A squash or merge-commit PR has the same
+     patch-id as the branch's combined diff, so compare
+     `git diff "$(git merge-base 'refs/heads/main' 'refs/heads/<branch>')" 'refs/heads/<branch>' | git patch-id --stable`
+     with `git log --first-parent -m -p --format='%H' 'refs/heads/main' | git patch-id --stable`.
+     A match names the merge commit on `main` ("Merged PR <n>: ...") and counts as a merged
+     PR whose head equals the local tip. A `[gone]` upstream plus a "Merged PR" commit on
+     `main` that you can link to the branch (ticket id, title) counts as the gone+merged signal
+     above; report the link you used.
 
 3. **No remote (local-only work), or a stale/non-matching PR match on step 2 → fall back to the
    project-brain `STATUS.md`.** Resolve the
@@ -109,6 +125,16 @@ approves it.
      before `-d`). If this refuses because the worktree is dirty (uncommitted or untracked
      changes), that refusal means real local work would be lost — report the worktree and its
      dirty state to the user and stop there; never escalate to `--force`.
+   - **Submodules block removal.** If `git worktree remove` fails with "working trees
+     containing submodules cannot be moved or removed", `git submodule deinit --all` does not
+     fix it: git still sees the submodule repos under the worktree's gitdir. Check them first:
+     `git -C '<dir>' submodule foreach --recursive 'git status --porcelain; git stash list'`
+     must print nothing, and `git -C '<dir>' submodule status --recursive` must show no `+`,
+     `-` or `U` prefix (each submodule sits on the commit the superproject pins, which is
+     already on the remote). Then delete the `modules` folder under
+     `git -C '<dir>' rev-parse --absolute-git-dir` (`.bare/worktrees/<name>/modules`) and run
+     `git worktree remove '<dir>'` again. If any submodule has changes, stashes or a moved
+     HEAD, stop and report it.
    - `git branch -d '<branch>'` (non-force). This succeeds for a normal/fast-forward merge and
      is itself fully automated — no confirmation needed once step 2–4 already established
      safety and the ancestor check above passed.
@@ -137,6 +163,9 @@ approves it.
    with empty stdout — treat it as an error and stop, don't infer "safe to remove" from empty
    output alone. **Non-empty** output on a 0 exit means real, unlanded divergence — stop, surface
    the diff to the user, and do not remove the worktree or add that branch to the batch.
+   Exception: when `main` changed the same files after the merge, the diff is non-empty even
+   though everything landed. A step 2 patch-id match to a merge commit on `main` is enough
+   evidence in that case; treat it like an empty diff.
    Do **not** run `git branch -D` yourself — it is denied by a Claude Code hook, and forcing a
    branch delete is an outward, irreversible action this skill never takes unilaterally.
    Instead, collect every branch confirmed safe (empty diff) across the whole sweep and, at the
@@ -144,6 +173,15 @@ approves it.
    the printed command too** — it is copy-pasted verbatim, so an unquoted name is just as much a
    risk there as in a command you run yourself:
    `git branch -D 'branch-a' 'branch-b' 'branch-c'`.
+
+7. **Local branches with no worktree.** List every `refs/heads/*` branch that no worktree
+   holds (excluding `main`). Run the same step 2 checks on each one. Branches that pass go
+   into the batched `-D` list. Also list the local-only ones (no upstream, for example
+   `backup/*`, `tmp/*`, `scratch/*`, old feature branches), each with its tip date and how
+   many commits it is ahead of `main`, and add them to the batch only after the user
+   approves. Before printing the batch, save `<branch> <sha>` for every branch in it to a file
+   in the scratchpad and give the user that path. They can recover a branch with
+   `git branch '<branch>' '<sha>'` until `git gc` prunes the commits.
 
 ## Report
 
@@ -161,6 +199,8 @@ for any pending squash-merged branches — or state there were none.
 | Deleted a branch on a guess when no PR/STATUS signal existed | Step 4 is mandatory: prompt and wait for explicit approval |
 | Worktree removed before confirming the branch actually merged into `main` | Step 5 runs `git merge-base --is-ancestor 'refs/heads/<branch>' 'refs/heads/main'` *before* `git worktree remove` — the step 2 PR/completion signal only proves a merge into *some* target, not specifically `main` |
 | Ancestor check failure treated as "unmerged, leave it" without checking | Squash merges always fail the ancestor check; verify with `git diff 'refs/heads/main' 'refs/heads/<branch>' --stat` — empty ⇒ safe to remove and batch for `-D`, non-empty ⇒ real divergence, stop and surface it to the user |
+| `git worktree remove` refused a clean worktree that has initialised submodules | Step 5: check the submodules are clean, delete `.bare/worktrees/<name>/modules`, then retry |
+| `az repos pr list` failed with an auth error, so every branch looked unmerged | Step 2: fall back to patch-id matching against `main` and say so in the report |
 
 ## Related
 
