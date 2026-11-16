@@ -2,6 +2,8 @@
 
 Personal dotfiles for Windows (primary) and Linux/WSL.
 
+Mirrored on Codeberg at <https://codeberg.org/jinyeow/dotfiles>. GitHub is the primary repository; open issues and pull requests there.
+
 ## Structure
 
 | Directory | Tool | Platform |
