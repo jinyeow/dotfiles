@@ -1,0 +1,8 @@
+{
+  "name": "project-brain",
+  "description": "Load and maintain a project brain: durable cross-repo initiative knowledge kept in a git repo outside any single code repo. Bundles the skill and its SessionStart loader hook.",
+  "author": {
+    "name": "jinyeow"
+  },
+  "skills": "./"
+}

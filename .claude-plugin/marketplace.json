@@ -1,0 +1,15 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "dotfiles",
+  "description": "Claude Code plugins that can be installed without the rest of these dotfiles.",
+  "owner": {
+    "name": "jinyeow"
+  },
+  "plugins": [
+    {
+      "name": "project-brain",
+      "description": "Durable cross-repo initiative knowledge (core context, STATUS, ADRs, research, reports) with a SessionStart loader hook.",
+      "source": "./ai-agents/skills/project-brain"
+    }
+  ]
+}

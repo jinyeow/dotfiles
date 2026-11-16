@@ -49,8 +49,8 @@
   A single markdown file, or a directory to process recursively (all *.md files under it).
 
 .EXAMPLE
-  ./convert-to-okf.ps1 -Path 'E:\Personal Projects\brain'
-  ./convert-to-okf.ps1 -Path 'E:\Personal Projects\brain\initiatives\dotfiles\core.md'
+  ./convert-to-okf.ps1 -Path '~/work/brain'
+  ./convert-to-okf.ps1 -Path '~/work/brain/initiatives/<id>/core.md'
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
