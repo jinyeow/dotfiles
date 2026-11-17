@@ -76,3 +76,6 @@ cross-model second opinion — its strengths differ from mine, so it catches thi
   Council never implies consent: it includes external Codex only with explicit `--codex`.
   The offer-first rule above still governs all *ad-hoc* Codex use. When a run uses Codex,
   report it visibly in the run summary.
+
+## Local machine-specific context
+@~/.claude/CLAUDE.local.md
