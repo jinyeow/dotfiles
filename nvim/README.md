@@ -246,7 +246,7 @@ rather than silently degrading schema validation. The Bicep server is provisione
 Windows by the `biceptools` module (`Azure.Bicep.LangServer` dotnet global tool, providing
 `bicep-ls`), and its Neovim gate mirrors `marksman`'s: `vim.fn.executable('bicep-ls') == 1`,
 so a machine without the tool degrades to Treesitter-only instead of erroring. `bicep-ls`
-0.46.1's `initialize` response omits `hoverProvider`, `definitionProvider`, and
+0.46.1 through 0.49.2: the `initialize` response omits `hoverProvider`, `definitionProvider`, and
 `documentFormattingProvider` even though it answers those methods correctly when queried
 directly, so the bicep config's `on_init` patches `client.server_capabilities` to restore
 `K`/`gd`/format dispatch (dotfiles#157); drop the patch once an upstream release advertises

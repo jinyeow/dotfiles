@@ -160,7 +160,7 @@ if vim.fn.executable('bicep-ls') == 1 then
   vim.lsp.config('bicep', {
     cmd = { 'bicep-ls' },
     filetypes = { 'bicep', 'bicep-params' },
-    -- bicep-ls 0.46.1's `initialize` response omits hoverProvider,
+    -- bicep-ls 0.46.1 through 0.49.2: the `initialize` response omits hoverProvider,
     -- definitionProvider, and documentFormattingProvider, so Neovim's standard
     -- entry points (K, gd, format) refuse to dispatch even though the server
     -- answers those exact LSP methods correctly when queried directly
