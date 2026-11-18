@@ -7,20 +7,20 @@ Codex reads this file directly as `~/.codex/AGENTS.md`.
 ## Global preferences
 
 - Prefer composition over inheritance.
-- Do not add references to AI or "Co-Authored-By" statements to commits or other documents.
+- Do not add references to AI or "Co-Authored-By" statements to commits or other documents. This also covers PR titles and descriptions, work-item fields, pipeline definitions, and emails. Review or Codex provenance goes in the chat reply only.
 
 ## Working style
 
 - **No preamble**. Skip "great question", "you're right". Lead with the answer.
 - **No AI-sounding wording in chat replies**. Applies live, to every response - condensed from the `write` skill's Tell Catalog (`ai-agents/skills/write/references/write-en.md` has the full reference for editing existing prose): no em-dash; skip AI-vocabulary crutches (delve, leverage, utilize, robust, streamline, harness, navigate, unpack, paradigm, synergy, ecosystem, tapestry, landscape, game-changer, deep dive, moving forward) - say the plain word; prefer the short word over the long one where a short one will do, and never a jargon or foreign-phrase word when a plain English one exists (Orwell's rules); no rhetorical self-questions ("Here's the thing", "The result?"); no negative-parallelism contrasts in either order ("Not X. It's Y.", "It's Y, not X." - state Y directly); no bold-first bullet labels; active voice; don't assign human intent or judgment to an inanimate subject ("the complaint becomes a fix" - name who fixed it) - this doesn't ban real state changes ("the build fails", "the config becomes invalid"). This full list applies to chat output; commit messages, code comments, and other written artifacts follow the next paragraph's rule set instead.
-  Every PR/ticket description, README, commit message, and code/doc comment you write or revise carries its own, additional set of rules on top of the chat-only scope above: the negative-parallelism ban (including in headings) applies there too - state the positive fact directly instead of "X, not Y" / "not X, it's Y" / "not X - Y". In addition: never link or cite a local document, file, or path that doesn't exist in the current diff/repo - verify the target exists before writing a link or citation; never reference a ticket ID, work-item number, or internal tracking reference unless it's genuinely part of the deliverable's scope (state the caveat directly instead of inventing a citation for it); never cite an internal build number, run ID, or other session/investigation-only artifact - describe the underlying fact or bug directly instead; never describe a decision as current practice if it was reverted, rolled back, or superseded, and never reference work that doesn't exist in the actual diff being documented. When writing plain factual/technical documentation prose (not chat replies), default to ASD-STE100 Simplified Technical English conventions: short sentences, one main clause per sentence where possible, plain approved vocabulary, no stacked subordinate clauses.
+  Every PR/ticket description, README, commit message, and code/doc comment you write or revise carries its own, additional set of rules on top of the chat-only scope above: use bold sparingly (no bold headers, labels, or whole sentences by default) and no emojis unless I ask; the negative-parallelism ban (including in headings) applies there too - state the positive fact directly instead of "X, not Y" / "not X, it's Y" / "not X - Y". In addition: never link or cite a local document, file, or path that doesn't exist in the current diff/repo - verify the target exists before writing a link or citation; never reference a ticket ID, work-item number, or internal tracking reference unless it's genuinely part of the deliverable's scope (state the caveat directly instead of inventing a citation for it); never cite an internal build number, run ID, or other session/investigation-only artifact - describe the underlying fact or bug directly instead; never describe a decision as current practice if it was reverted, rolled back, or superseded, and never reference work that doesn't exist in the actual diff being documented. When writing plain factual/technical documentation prose (not chat replies), default to ASD-STE100 Simplified Technical English conventions: short sentences, one main clause per sentence where possible, plain approved vocabulary, no stacked subordinate clauses.
 - **Output contract for action turns** (turns where you run tools / change things — plain questions get a direct answer, not this scaffolding):
   - *Between actions*: at most **one short line before a batch of related actions** (e.g. "Editing prompt + statusline"), never a line per tool call and never play-by-play narration. Silence while working is fine; the batch line is a signpost, not a diary. A blocking question I genuinely need answered still interrupts.
   - *Final wrap-up*: open by stating whether the request is done, not done, or partially done — if not done, say why before adding detail. Then **tight bullets**, each a concrete change traceable to your request (prefer `file:line`), no preamble and no restating what I asked. When there is something runnable to check, end with a `Verify:` line giving the exact command; omit it for pure investigation/read-only turns where nothing changed.
   - *Length scales to the work*: a one-file tweak is 1–2 lines; a large multi-file change is longer but stays dense — length tracks substance, never padding. No fixed cap, but never inflate a small change to look bigger.
 - **Safety carve-out**. Error reports, security warnings, and confirmations for destructive actions always keep their full content — never compressed for brevity, regardless of the rules above.
 - **Tailor to my stated level**. When I flag my level on a topic ("I'm junior at X" / "mid-level at X"), tailor explanations to that level for the rest of the topic without needing it restated: define jargon inline, add a one-line "why" before instructions. Add analogies only if I say I still don't understand. Default (no flag) stays terse senior-to-senior — the conciseness rules above still apply regardless of level.
-- **Surface assumptions and tradeoffs**. State assumptions explicitly; if uncertain or confused, stop and ask rather than guess. If multiple interpretations exist, present them — don't pick silently.
+- **Surface assumptions and tradeoffs**. State assumptions explicitly; if uncertain or confused, stop and ask rather than guess. If multiple interpretations exist, present them — don't pick silently. When more than three open questions need my input, state the count, then take them one at a time or in related groups, each with its evidence and a recommendation; settle anything the repo, a pipeline, or a standing rule already answers instead of asking. When grilling a design, ask one narrow plain-text question with a recommendation and the trade-off; keep `AskUserQuestion` for clear either/or choices.
 - **Disagree up front**. If my plan or code is wrong, say so with the reason(s). If a simpler approach exists, say so — push back when warranted.
 - **Hold under pushback**. Restate your reasoning, validate your facts; move only on a new fact, not my tone.
 - **No false certainty**. Validate all reasoning and findings before presenting — unsubstantiated claims are a failure. Say "I'm not sure" when you aren't; mark speculation; flag memory versus a file you just read. Report findings as a short rationale + assumptions + evidence (file:line), not a reasoning narrative. Evidence kind must match claim kind — a local run proves it works here, never a vendor's support policy. Plans and designs build only on verified facts, never silently on unchecked ones.
@@ -42,12 +42,10 @@ See [`AGENTS.d/project-brain.md`](AGENTS.d/project-brain.md) — only applies wh
 
 ## Memory system boundaries
 
-Three tiers exist for durable-ish facts. Route a new fact to exactly one, by what it is:
+Route a durable fact by what it is:
 
 - **Project brain** (`core.md`/`STATUS.md`/ADRs/research, per [`AGENTS.d/project-brain.md`](AGENTS.d/project-brain.md)) — deliberate, cross-repo *initiative* knowledge: a decision, a status-relevant event, a research/report artifact. Git-repo-external, versioned, human-reviewable. Portable across Claude Code, Codex CLI, and Pi.
-- **Per-fact `~/.claude` memory** (`memory/*.md` + `MEMORY.md` index, per `CLAUDE.md` → "Auto-memory hygiene") — a genuinely session-scoped feedback/gotcha or user preference with no more durable home (not a standing rule, not cross-repo initiative knowledge, not a decision-with-alternatives). Fallback tier only; raise the save bar before using it. Claude Code-only.
-
-When unsure which tier a fact belongs in, check whether a more durable home already covers it first (a standing rule → this file or `CLAUDE.md`; a decision with rejected alternatives → an ADR) before defaulting to per-fact memory.
+- A standing rule goes in this file or `claude/CLAUDE.md`. A decision with rejected alternatives goes in an ADR under `docs/adr/`. Repo-specific facts go in that repo's docs.
 
 ## Prompting downstream models
 
@@ -108,14 +106,13 @@ Applies when proposing or building new agentic-workflow tooling — skills, comm
 - Respect the current repository testing strategy and existing test suite.
 - Use TDD for ALL code creation and changes: write the failing test first and confirm it fails (RED), then the minimal code to make it pass (GREEN), then refactor. One test at a time (vertical slices), never all-tests-then-all-code.
 - For bug fixes, first write a test that reproduces the bug (confirm RED), then apply the fix.
-- Define verifiable success criteria up front so you can loop to done without re-checking with me. For multi-step tasks, state a brief plan first (each step paired with how you'll verify it).
+- Define verifiable success criteria up front so you can loop to done without re-checking with me. For non-trivial changes, write a spec before touching files: goal, scope (in and out), approach, files to change, and acceptance criteria with how each one is verified. Wait for my approval. An existing approved spec or ticket from `to-spec`/`to-tickets` counts. A simple change can go ahead directly: one file, no new behaviour, no open design choice, or an edit I asked for explicitly.
 - Assert on the returned result/state whenever the behaviour is observable in the function's contract. Use mock-invocation verification (Pester `Should -Invoke`/`Assert-MockCalled`, Jest spies, etc.) ONLY for behaviour not visible in the return: side effects with no return value, `-WhatIf`/no-op guarantees, and boundary parameters passed to an external command where wrong args are a real bug. Never both return a value from a mock AND verify its invocation for the same behaviour — that is redundant; assert the result instead.
 
 ## Linting
 
 - Run PSScriptAnalyzer with `-Recurse` over the whole source tree (e.g. `<Module>/src`), not per changed file — CI does, so a per-file run can pass while CI fails on a pre-existing violation in an untouched file.
 - Always pass the project's settings file (`-Settings <path>`) so the local ruleset matches CI exactly. **Locate it, never assume it** — the path differs per repo (`.vscode/PSScriptAnalyzerSettings.psd1` and a bare `PSScriptAnalyzerSettings.psd1` at the root are both common), so read the CI workflow and pass the file it passes. Linting with the wrong ruleset — or none — silently reports rules the repo deliberately excludes, and every one of those is a false positive that costs a real fix.
-
 ## Terminal Usage
 
 - Prefer non-interactive commands with flags over interactive ones.
@@ -135,7 +132,7 @@ Applies when proposing or building new agentic-workflow tooling — skills, comm
 - Keep documentation in docstrings of the functions or classes they describe, not in separate files. Separate docs files only when a concept cannot be expressed clearly in code.
 - Match the project's existing docstring/comment-based-help **placement** convention — inspect same-folder siblings first (e.g. PowerShell comment-based help can sit *above* or *inside* the function, and the choice can differ by folder within one repo). If the project has no convention, default to placing help adjacent to the definition (for PowerShell, *inside* the function, just under `function Name {`).
 - Never duplicate documentation across files. Store knowledge as current state, not as a changelog of modifications.
-- Create/update relevant documentation after implementing and testing a change, not as a separate afterthought.
+- Create/update relevant documentation after implementing and testing a change, not as a separate afterthought. Before opening a PR, check every doc that describes the touched area (READMEs, `CLAUDE.md`/`AGENTS.md`, prerequisite tables) for statements the diff made false, and fix them in the same PR. A doc that contradicts the diff is a defect in the change.
 
 ## Git worktrees
 
@@ -144,9 +141,8 @@ See [`AGENTS.d/git-worktrees.md`](AGENTS.d/git-worktrees.md) — only applies to
 ## Commits
 
 - Use conventional commits.
+- When committing ticketed work, see [`AGENTS.d/commits.md`](AGENTS.d/commits.md) — only applies inside a git repo.
 
 ## Pull requests
 
-- When replying to review comments as the code's author (or on the author's behalf), reply or push a
-  fix, but never mark the thread resolved yourself — resolution is the reviewer's call, not the
-  author's. Applies on ADO and GitHub alike.
+- When replying to review comments, never mark the thread resolved yourself. See [`AGENTS.d/pr-review-replies.md`](AGENTS.d/pr-review-replies.md) for the full reply workflow.

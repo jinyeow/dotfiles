@@ -1,6 +1,6 @@
 ---
 name: codex-review
-description: "Get a read-only Codex (OpenAI) second opinion on the current code changes, as a cross-model review. Use when the user says 'codex review', 'ask codex', 'get codex's opinion', 'second opinion on this', or accepts an offer to run changes past Codex before committing. Returns findings grouped by severity; never edits files on its own."
+description: "Get a read-only Codex (OpenAI) second opinion on the current code changes, as a cross-model review. Use when the user says 'codex review', 'ask codex', 'get codex's opinion', 'second opinion on this', accepts an offer to run changes past Codex, or runs automatically after implementing a feature or non-trivial fix, before committing. Returns findings grouped by severity; never edits files on its own."
 metadata:
   author: justin
   version: "1.0.0"
@@ -17,8 +17,8 @@ Codex only returns findings.
 ## When to use
 
 - The user asks for a Codex review / second opinion, or accepts an offer to run a change past Codex.
-- After implementing a feature or non-trivial fix, before committing.
-- As a tie-breaker when stuck on a bug after a couple of attempts.
+- After implementing a feature or non-trivial fix, before committing (standing OK: run without asking).
+- As a tie-breaker when stuck on a bug after a couple of attempts, only with the user's go-ahead.
 
 ## Preconditions
 

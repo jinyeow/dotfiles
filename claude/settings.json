@@ -1,4 +1,7 @@
 {
+  "env": {
+    "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1"
+  },
   "attribution": {
     "commit": "",
     "pr": "",
@@ -12,15 +15,6 @@
           {
             "type": "command",
             "command": "pwsh -NoProfile -File ~/.claude/inject-handoff.ps1",
-            "shell": "bash"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "pwsh -NoProfile -File ~/.claude/memory-review-nudge.ps1",
             "shell": "bash"
           }
         ]
@@ -158,20 +152,21 @@
   "advisorModel": "opus",
   "teammateMode": "in-process",
   "tui": "fullscreen",
-  "theme": "dark-ansi",
+  "theme": "auto",
   "editorMode": "vim",
   "defaultShell": "powershell",
   "preferredNotifChannel": "terminal_bell",
   "inputNeededNotifEnabled": true,
   "agentPushNotifEnabled": true,
   "skipWorkflowUsageWarning": true,
+  "autoMemoryEnabled": false,
   "permissions": {
     "defaultMode": "auto",
     "allow": [
-      "PowerShell(Register-ScheduledTask:*)",
-      "PowerShell(New-ScheduledTaskAction:*)",
-      "PowerShell(New-ScheduledTaskTrigger:*)",
-      "PowerShell(Get-ScheduledTask:*)"
+      "PowerShell(Register-ScheduledTask *)",
+      "PowerShell(New-ScheduledTaskAction *)",
+      "PowerShell(New-ScheduledTaskTrigger *)",
+      "PowerShell(Get-ScheduledTask *)"
     ],
     "deny": [
       "DesignSync",
