@@ -253,6 +253,13 @@ directly, so the bicep config's `on_init` patches `client.server_capabilities` t
 them. The remaining servers are gated on a machine-specific prerequisite in `user.lua` (or on
 `dotnet`) and are installed by other means.
 
+`powershell_es` and the PowerShell debug adapter start `pwsh` through
+`user_config.pwsh_exe()` in `user.lua`. winget installs PowerShell 7.7 as an MSIX package. That
+package puts only an app-execution-alias stub on PATH, and `vim.fn.executable()` and `jobstart()`
+reject the stub. When `pwsh` fails `executable()`, `pwsh_exe()` asks pwsh for its real path once
+(`[Environment]::ProcessPath`) and caches it. The lookup runs when a PowerShell server starts,
+not at Neovim startup.
+
 ## Filetype detection
 
 Neovim core detects `*.bicep` as `bicep` and `*.bicepparam` as `bicep-params`. `autocmds.lua` adds:

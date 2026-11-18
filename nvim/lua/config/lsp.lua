@@ -189,7 +189,14 @@ if _G.user_config.pwsh_bundle_path ~= '' then
   )
 
   vim.lsp.config('powershell_es', {
-    cmd = { 'pwsh', '-NoLogo', '-NoProfile', '-Command', _pwsh_cmd },
+    -- A function, so the pwsh path is looked up when the server starts, not at startup.
+    -- vim.lsp would also reject a table cmd naming the MSIX pwsh stub; see user.lua.
+    cmd = function(dispatchers)
+      return vim.lsp.rpc.start(
+        { _G.user_config.pwsh_exe(), '-NoLogo', '-NoProfile', '-Command', _pwsh_cmd },
+        dispatchers
+      )
+    end,
     filetypes = { 'ps1' },
     root_dir = function(bufnr, cb)
       local fname = vim.api.nvim_buf_get_name(bufnr)

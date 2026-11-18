@@ -36,11 +36,38 @@ local function find_pwsh_bundle()
   return matches[1] and vim.fn.fnamemodify(matches[1], ':h') or ''
 end
 
+-- The pwsh executable to start PowerShell Editor Services with. The MSIX build of
+-- PowerShell (what winget installs since 7.7) puts only an app-execution-alias stub on
+-- PATH. vim.fn.executable() and jobstart() reject that stub, but libuv can still start
+-- it, so ask pwsh for the path of its real executable.
+local pwsh_exe_cache ---@type string?
+local function pwsh_exe()
+  if pwsh_exe_cache then
+    return pwsh_exe_cache
+  end
+  if vim.fn.executable('pwsh') == 1 then
+    pwsh_exe_cache = 'pwsh'
+    return pwsh_exe_cache
+  end
+  local argv = { 'pwsh', '-NoLogo', '-NoProfile', '-NonInteractive', '-Command', '[Environment]::ProcessPath' }
+  local res = vim.system(argv, { text = true }):wait(10000)
+  if res.code ~= 0 then
+    error(('pwsh_exe: `%s` failed (exit %d): %s'):format(table.concat(argv, ' '), res.code, vim.trim(res.stderr or '')))
+  end
+  local path = vim.trim(res.stdout or '')
+  if vim.fn.executable(path) ~= 1 then
+    error(('pwsh_exe: pwsh reported its path as %q, which is not executable'):format(path))
+  end
+  pwsh_exe_cache = path
+  return pwsh_exe_cache
+end
+
 _G.user_config = {
   profile = profile,
 
   -- LSP tool path (full profile only; silently skipped when empty)
   pwsh_bundle_path = find_pwsh_bundle(),
+  pwsh_exe = pwsh_exe,
 
   -- Sunrise/sunset hours used as fallback when OS dark-mode detection fails.
   -- Dark mode applies from sunset_hour until sunrise_hour the next morning.
