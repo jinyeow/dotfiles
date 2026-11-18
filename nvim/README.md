@@ -188,7 +188,7 @@ module only) and asserts the text; it needs `nvim` on `PATH`.
 
 | Plugin | Purpose |
 |---|---|
-| nvim-treesitter | Syntax highlighting and text objects (pinned to `main` for Neovim 0.12+; builds parsers via the tree-sitter CLI + the `zigcc.cmd` zig shim) |
+| nvim-treesitter | Syntax highlighting and text objects (pinned to `main` for Neovim 0.12+; builds parsers via the tree-sitter CLI + the `zigcc.cmd` zig shim, with concurrent builds capped by CPU count and free memory) |
 | nvim-treesitter-textobjects | Function/class text objects (pinned to `main`) |
 | fzf-lua | Fuzzy finding (files, grep, buffers, LSP symbols); needs the fzf binary on PATH, not a vim plugin |
 | vim-fugitive | Git command wrapper |
@@ -204,6 +204,26 @@ module only) and asserts the text; it needs `nvim` on `PATH`.
 | render-markdown.nvim | In-buffer markdown rendering |
 | orgmode | Org-mode: agenda + capture. Compiles its **own** `tree-sitter-org` grammar (needs Zig) — independent of nvim-treesitter, so `org` must stay out of its `ensure_installed` |
 | nvim-dap | Debug client; PowerShell adapter via PSES (needs `pwsh_bundle_path` in user.lua) |
+
+### Lockfile behaviour
+
+`vim.pack` reconciles `nvim-pack-lock.json` against the installed tree in
+`<data>/site/pack/core/opt/`. It does not treat the lockfile as a fixed pin.
+
+- A plugin directory in `opt/` that is missing from the spec gets added back to
+  the lockfile on the next launch. To remove a plugin, delete its spec and run
+  `vim.pack.del({'<name>'})`.
+- `vim.pack.update(nil, {force=true})` moves every pinned rev. To install
+  missing plugins and keep the other revs, run `nvim --headless +qa`.
+- A newly written `src` uses the `git@github.com:` form, because the
+  `url."git@github.com:".insteadOf` rewrite in `git/gitconfig` changes the
+  clone's remote. Change it back to `https://` by hand. The offline installer
+  builds codeload URLs from `src` and fails on the `git@` form.
+- Regeneration re-quotes `"version": "main"` to `"'main'"`. Revert that by hand.
+- Both dotfiles clones share one `nvim-data`. If you delete a plugin directory
+  that the other clone still specifies, its next launch reinstalls the plugin
+  and changes its lockfile. When that conflicts on `git pull --ff-only`, discard
+  the local side.
 
 ## LSP servers
 

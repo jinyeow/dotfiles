@@ -3,7 +3,7 @@
 # mechanical OKF conversion script (#196) every brain-repo migration batch (#197-204) runs
 # instead of hand-formatting the same transform. Drives the real script as a subprocess against
 # throwaway git-repo fixtures, per this repo's existing hook-test convention
-# (tests/memory-review-nudge.Tests.ps1, tests/ctags-hook.Tests.ps1).
+# (tests/inject-handoff.Tests.ps1, tests/ctags-hook.Tests.ps1).
 
 BeforeAll {
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent

@@ -188,6 +188,7 @@ RISKY_COMMAND_PATTERNS=(
   "az[[:space:]]+repos[[:space:]]+pr[[:space:]]+update"
   "az[[:space:]]+boards"
   "az[[:space:]]+devops[[:space:]]+invoke"
+  "az[[:space:]]+pipelines"
 )
 
 IS_RISKY=false

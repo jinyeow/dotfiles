@@ -68,7 +68,7 @@ own `SKILL.md` frontmatter, trimmed to one line. Claude-native skills live in `.
 - **`jj`** — Use when working in a Jujutsu (jj) repository: making/describing changes, syncing with a remote, rewriting history, managing bookmarks or workspaces, or recovering via the op log.
 - **`linkedin-jobs`** — Read LinkedIn job alert emails and recruiter InMails, extract role details, and present them as structured cards grouped by inferred category.
 - **`llmwiki-insights`** — Read an LLM-maintained wiki (Karpathy's LLM Wiki pattern) and synthesize prioritized, actionable findings about the subject matter it documents.
-- **`project-brain`** — Load and maintain the "project brain": durable cross-repo initiative knowledge (core context, volatile STATUS, ADRs, research, reports) that lives in a git repo outside any single code repo, so work spanning multiple repos/worktrees/spikes stays coherent between sessions.
+- **`project-brain`** — Load and maintain the "project brain": durable cross-repo initiative knowledge (core context, volatile STATUS, ADRs, research, reports) that lives in a git repo outside any single code repo, so work spanning multiple repos/worktrees/spikes stays coherent between sessions. Also packaged as a Claude Code plugin for machines without these dotfiles; see [Standalone project-brain plugin](#standalone-project-brain-plugin).
 - **`prompt-draft`** — Draft a new prompt from a task description, applying the 12-lever prompting checklist from scratch.
 - **`prompt-lint`** — Score, critique, and rewrite an existing prompt against the 12-lever prompting checklist: output format, acceptance criteria, scope, and reasoning-extraction risk.
 - **`prototype`** — Build a throwaway prototype to flesh out a design before committing to it.
@@ -102,3 +102,28 @@ own `SKILL.md` frontmatter, trimmed to one line. Claude-native skills live in `.
 - **`write`** — Remove AI-sounding wording from any text another human will read (commit messages, code comments, config comments, CHANGELOG and README entries, in-repo docs, drafts, long-form articles, PR and ticket descriptions, acceptance criteria, and PR/ticket comments) while preserving the author's intent and voice.
 - **`writing-great-skills`** — Reference for writing and editing skills well: the vocabulary and principles that make a skill predictable.
 - **`zoom-out`** — Tell the agent to zoom out and give broader context or a higher-level perspective.
+
+## Standalone project-brain plugin
+
+`skills/project-brain/` is also a Claude Code plugin root. It holds `.claude-plugin/plugin.json`,
+`hooks/hooks.json`, and the SessionStart loader script. The repo-root
+`.claude-plugin/marketplace.json` lists it. Use this on a machine that does not run the dotfiles
+setup:
+
+```powershell
+claude plugin marketplace add jinyeow/dotfiles
+claude plugin install project-brain@dotfiles
+```
+
+The plugin sets no `version`, so each commit is a new version. Third-party marketplaces do not
+auto-update by default. To get new commits, run `claude plugin marketplace update dotfiles`, then
+`claude plugin update project-brain@dotfiles`.
+
+The hook needs PowerShell 7 (`pwsh`) on `PATH`. The plugin does not create
+`~/.claude/project-brain/brains.json`. Until a brain area exists, the hook loads nothing. To start
+a brain, ask Claude in a session to set up a new project-brain area. The skill's "New area" flow
+creates the brain repo from the bundled `templates/` and writes `brains.json`.
+
+Do not install the plugin on a machine where `setup.ps1 -Module claude` has run. That setup
+already links the skill into `~/.claude/skills/` and registers the same hook in `settings.json`,
+so the plugin would load both twice. The Codex and Pi projections are unaffected by the plugin.

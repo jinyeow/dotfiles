@@ -11,14 +11,15 @@ description: >
 # project-brain
 
 A **brain** is a versioned knowledge base for one *area* (e.g. all work under
-`E:\HollardInsuranceRetail\`). It holds per-initiative working knowledge and is the single source of
+`~/work/`). It holds per-initiative working knowledge and is the single source of
 truth for "where are we". It is distinct from the code **wiki** (`<area>\wiki\`), which is code-derived
-and regenerate-able; the brain's truth source is the work. Design rationale: `<brain>/adr/0001-project-brain.md`.
+and regenerate-able; the brain's truth source is the work.
 
 ## Where things live
 
 - Global map: `~/.claude/project-brain/brains.json` - `[{ scope, path }]`, one per area. The SessionStart
-  hook (`~/.claude/skills/project-brain/scripts/session-start.ps1`) reads it.
+  hook (`scripts/session-start.ps1` in this skill directory, whether installed by the dotfiles setup or
+  as the Claude Code plugin) reads it.
 - A brain repo per area: `index.md`, `log.md`, `registry.json`, `adr/`, `templates/`, `reports/`,
   `initiatives/<id>/`, and optionally `learner.md` — the `/walkthrough` skill's area-level learner
   profile (domain knowledge the user has demonstrated; written by walkthrough close-out, read to
@@ -170,10 +171,11 @@ in-repo under `.claude/brain/`):
 
 **New area** (a whole new brain, e.g. personal projects): propose the common ancestor as the `scope` root
 and **confirm with the user**. Then `git init` `<scope>/brain/`, scaffold `index.md`/`log.md`/
-`registry.json`/`templates/`/`adr/`, and append `{ scope, path }` to `brains.json`. The scaffolded
-`index.md` must include an empty `## Archived` section, so the first initiative close has somewhere
-to move a row into. `templates/` must include a per-initiative `log.md` template alongside
-`core.md`/`STATUS.md`.
+`registry.json`/`templates/`/`adr/`, and append `{ scope, path }` to `brains.json`. If `brains.json`
+does not exist yet, create it as `{ "version": 1, "brains": [] }` before appending. Seed the brain's
+`templates/` by copying `templates/` from this skill directory (`core.md`, `STATUS.md`, `adr.md`,
+`log.md`). The scaffolded `index.md` must include an empty `## Archived` section, so the first
+initiative close has somewhere to move a row into.
 
 **Initiative close:**
 1. Move `initiatives/<id>/` to `initiatives/_archive/<id>/`.

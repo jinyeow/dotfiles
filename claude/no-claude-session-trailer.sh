@@ -16,6 +16,7 @@
 #   2. PR create/update: `gh pr create`/`gh pr edit`, `az repos pr create`/`az repos pr update`.
 #   3. Azure Boards: `az boards ...` (subcommands vary, matched broadly), `az devops invoke`
 #      (the generic Boards REST passthrough) — the exact case that leaked for real.
+#   4. Azure Pipelines: `az pipelines ...` (pipeline descriptions and settings).
 #
 # Independently of the wordlist, any git command using `--no-verify` (or `git commit` using the
 # `-n` short form) is denied outright: that flag bypasses this repo's git hooks (layer 2), and
@@ -102,7 +103,7 @@ flag_group="([[:space:]]+-[^[:space:]]+([[:space:]]+${flag_arg_token_re})?)*"
 commit_re="\\bgit\\b${flag_group}[[:space:]]+commit\\b"
 pr_re='\bgh\b[[:space:]]+pr[[:space:]]+(create|edit)\b|\baz\b[[:space:]]+repos[[:space:]]+pr[[:space:]]+(create|update)\b'
 gh_pr_re='\bgh\b[[:space:]]+pr[[:space:]]+(create|edit)\b'
-boards_re='\baz\b[[:space:]]+boards\b|\baz\b[[:space:]]+devops[[:space:]]+invoke\b'
+boards_re='\baz\b[[:space:]]+boards\b|\baz\b[[:space:]]+devops[[:space:]]+invoke\b|\baz\b[[:space:]]+pipelines\b'
 
 # `-n`/SKIP-var bound: `[^;&|]*` between the guarded subcommand and the flag/assignment keeps
 # the match scoped to one shell segment, mirroring codex/ai-reference-guard.sh's equivalent

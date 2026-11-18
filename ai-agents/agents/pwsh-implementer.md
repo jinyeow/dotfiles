@@ -123,6 +123,13 @@ unused.
   `$ErrorActionPreference = 'Stop'`; inside reusable *functions* prefer explicit
   `-ErrorAction Stop` on the cmdlets that need it over a global preference.
 
+## Known traps
+
+- `Set-Location` does not change the .NET process directory. `[System.IO.File]` calls with a relative path resolve against the old directory and can write into the wrong worktree. Resolve to an absolute path first (`Convert-Path`).
+- `Invoke-Pester` (5.7.1) overwrites the caller-scope variables `$p` and `$d`. Never hold those names across an `Invoke-Pester` call, because a later restore can overwrite `Pester.ps1`. Assert on `$result.FailedCount`, never on captured text.
+- `$x = if (...) { @(pipeline) } else { @() }` gives `$null` when the branch emits nothing, and `.Count` then throws under StrictMode. Use an if-statement with a preset `$x = @()`. Wrap pipeline results in `@()` too, or `$list[0]` indexes the first character of a bare string.
+- PSScriptAnalyzer 1.25.0 can throw a spurious `NullReferenceException` (on the first call in a process, and sometimes mid-loop) and return zero findings, which looks the same as a clean run. Always capture `-ErrorVariable` and report both the error count and the finding count. A warm-up call only reduces the crash.
+
 ## Verification contract
 
 Before reporting done: run the focused Pester test, then the relevant broader Pester suite,

@@ -21,7 +21,7 @@ reviewers.
 | 7 | `tests` | no | `test` | Layer 1 testing / TDD |
 
 **`codex`** (conditional 8th) — a cross-model reviewer over the **full** rubric, included
-automatically when the `codex` MCP is present (documented exception to the offer-first rule in
+automatically when the `codex` MCP is present (see the Codex standing-OK rule in
 `claude/CLAUDE.md`). Not a fixed dimension: a parallel second opinion emitting the same schema,
 deduped with the rest. Recorded in the snapshot's `reviewers_enabled` for reproducible resume.
 

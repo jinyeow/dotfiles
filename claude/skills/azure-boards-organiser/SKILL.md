@@ -109,7 +109,7 @@ Pick the backend per operation, in this order:
 | Title | System.Title | |
 | State | System.State | New → Approved → Committed → Done / Removed |
 | Work Item Type | System.WorkItemType | |
-| Assigned To | System.AssignedTo | UPN or display name |
+| Assigned To | System.AssignedTo | UPN or display name. To assign "me", use the `assignee` value from `config.json`. Never take it from `az devops user list`, which lists an admin account first. |
 | Area Path | System.AreaPath | |
 | Iteration Path | System.IterationPath | |
 | Story Points | Microsoft.VSTS.Scheduling.StoryPoints | PBI/Bug |
@@ -319,6 +319,7 @@ az boards iteration team list --team $cfg.team --project $cfg.project --organiza
 ## Notes
 
 - Strip HTML from Description/AcceptanceCriteria before including in prompts to save tokens. Re-encode (escape + `<p>`/`<ul>`) when writing back via CLI.
+- Do not create child PBIs or Tasks, and do not repeatedly offer to, when analysing a work item. Do it only when asked.
 - BacklogPriority is a float; lower value = higher stack rank. Do not set it manually — `/prioritize-backlog` recommends *iteration assignment*, it does not reorder the stack rank.
 - `@CurrentIteration('[Project]\Team')` requires the team context argument and exact name matching — verify with `az boards iteration team list`.
 - WIQL has no `LIMIT`, and `az boards query` has no `--top`. Cap client-side (`| Select-Object -First <N>`) or with a `--query` JMESPath slice.

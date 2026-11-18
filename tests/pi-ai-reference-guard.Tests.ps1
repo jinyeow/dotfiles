@@ -573,6 +573,7 @@ Describe 'pi/extensions/ai-reference-guard.ts' {
             @{ Command = 'az boards work-item comment add --id 5 --text "Written by Claude"' }
             @{ Command = 'az devops invoke --area wit --resource workitems --query-parameters "System.Description=Generated with Claude"' }
             @{ Command = 'az devops invoke --area wit --resource workitems --query-parameters System.Description=Generated-with-Claude' }
+            @{ Command = 'az pipelines create --name x --description "Generated with Claude"' }
         ) {
             param($Command)
             $results = Invoke-AiReferenceGuard -Command $Command
@@ -583,6 +584,7 @@ Describe 'pi/extensions/ai-reference-guard.ts' {
             @{ Command = 'az boards work-item update --id 5 --discussion "Looks good"' }
             @{ Command = 'az boards work-item comment add --id 5 --text "Reviewed and approved"' }
             @{ Command = 'az devops invoke --area wit --resource workitems --query-parameters "System.Description=Normal work"' }
+            @{ Command = 'az pipelines create --name x --description "Normal pipeline"' }
         ) {
             param($Command)
             $results = Invoke-AiReferenceGuard -Command $Command
