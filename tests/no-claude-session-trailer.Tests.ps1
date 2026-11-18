@@ -157,6 +157,10 @@ Describe 'claude/no-claude-session-trailer.sh' -Skip:(-not $script:HasBash) {
             $out = Invoke-Hook -Command 'az devops invoke --area wit --resource comments --route-parameters project=x --http-method POST --query-parameters text="thanks Claude"'
             $out | Should -Match '"permissionDecision":"deny"'
         }
+        It 'denies `az pipelines create` with a banned term' {
+            $out = Invoke-Hook -Command 'az pipelines create --name x --description "Generated with Claude"'
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
     }
 
     Context 'denies git --no-verify outright, independent of the wordlist' {

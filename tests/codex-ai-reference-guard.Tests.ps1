@@ -337,6 +337,11 @@ Describe 'codex/ai-reference-guard.sh' {
             $result.ExitCode | Should -Be 2
         }
 
+        It 'blocks az pipelines create --description with a banned term' {
+            $result = Invoke-GuardrailHook -Command 'az pipelines create --name x --description "Generated with Claude"'
+            $result.ExitCode | Should -Be 2
+        }
+
         It 'blocks git commit -am with a banned term' {
             $result = Invoke-GuardrailHook -Command 'git commit -am "thanks Claude"'
             $result.ExitCode | Should -Be 2

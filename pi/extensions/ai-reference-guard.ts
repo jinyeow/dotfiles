@@ -230,6 +230,7 @@ const COMMIT_SHAPED_PATTERNS: RegExp[] = [
 	/az\s+repos\s+pr\s+(create|update)(\s|$)/,
 	/az\s+boards(\s|$)/,
 	/az\s+devops\s+invoke(\s|$)/,
+	/az\s+pipelines(\s|$)/,
 ];
 
 // Unconditional denies: these bypass the commit/push hooks that would otherwise catch a
