@@ -28,6 +28,11 @@ Landed in commit `5e268ed`.
 
 ## 2. Unreadable "Write"/diff blocks in Claude Code — `theme = dark-ansi`
 
+Current state: `claude/settings.json` now sets `theme: "auto"`. Zellij is
+no longer in daily use. Under herdr on Windows Terminal, `auto` diff and Write
+blocks were checked and are readable. If you run Claude Code under Zellij
+again, set `dark-ansi` as described below.
+
 **Symptom:** Claude Code's `Write` and diff blocks show light text whose
 highlight background is indistinguishable from the terminal background — the
 block collapses into the pane and is unreadable.

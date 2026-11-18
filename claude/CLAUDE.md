@@ -28,23 +28,11 @@ Route by capability and language; see `ai-agents/AGENTS.md` → "Code navigation
   tools (`write_memory`/`read_memory`/`list_memories`) have no `LSP`-tool equivalent and
   stay available regardless of language.
 
-## Auto-memory hygiene
+## Auto-memory
 
-Auto-memory (the `~/.claude/projects/<slug>/memory/` store auto-loaded via `MEMORY.md`) is
-Claude-Code-only, so keep it small and prefer a durable, discoverable home over a new memory.
-
-- **Raise the save bar.** Before writing a memory, check whether the fact belongs somewhere
-  more durable: a standing rule/convention → `ai-agents/AGENTS.md` (shared) or `claude/CLAUDE.md`
-  (Claude-specific); cross-repo initiative knowledge → the project brain
-  (`core.md`/`STATUS.md`/ADR); a decision with rejected alternatives → an ADR under `docs/adr/`.
-  Save to auto-memory **only** when it fits none of those — a genuinely session-scoped
-  feedback/gotcha with no better home. When unsure, propose the durable home rather than
-  defaulting to a memory.
-- **Prune on review.** The `memory-review-nudge.ps1` SessionStart hook nudges (every 14 days,
-  current project only) when memories are overdue for review. On "review memory", classify each
-  entry keep / delete (stale or now-false) / migrate to a durable home, apply any moves, then —
-  on every completed review, including one that changed nothing — stamp it by writing an ISO-8601
-  UTC timestamp to the memory dir's `.last-reviewed`, or the nudge repeats every session.
+Auto-memory is off (`autoMemoryEnabled: false` in `settings.json`). When I ask you to remember
+something, write it to its durable home per `AGENTS.md` → "Memory system boundaries", and say
+where you put it.
 
 ## Subagent Orchestration
 
@@ -62,20 +50,18 @@ See `AGENTS.md` → "Subagent Orchestration" for the tool-agnostic parallel-disp
 Codex CLI is wired in as a read-only MCP reviewer (the `codex` MCP server). Use it as a
 cross-model second opinion — its strengths differ from mine, so it catches things I miss.
 
-- After implementing a feature or non-trivial fix, **offer** a Codex review before I commit:
-  one short line, e.g. "Run this past Codex? (y/n)". Do not call Codex or apply anything
-  without my yes — never review automatically, never auto-apply findings.
-- On my yes, run `/codex-review` (or call the `codex` MCP tool on the current diff), then
-  summarise the findings grouped by severity (HIGH / MEDIUM / LOW). I decide what to apply.
-- When I am stuck on a bug after ~2 attempts, suggest delegating the debugging context to
-  Codex for a second opinion before trying a third approach — again, only on my go-ahead.
+- Codex reviews have my standing OK. After implementing a feature or non-trivial fix, run
+  `/codex-review` (or call the `codex` MCP tool on the current diff) before I commit, without
+  asking first. Summarise the findings grouped by severity (HIGH / MEDIUM / LOW). I decide what
+  to apply; never auto-apply findings.
+- The standing OK covers reviews only. When I am stuck on a bug after ~2 attempts, suggest
+  delegating the debugging context to Codex before trying a third approach, and wait for my
+  go-ahead.
 - The reviewer is read-only and non-interactive; it returns findings only and cannot edit
-  my working tree. Applying fixes is your job (with my approval), not Codex's.
-- **Exception — `quick-review` / `deep-review` / `review-fix-loop`:** invoking any of these skills is
-  standing consent to include Codex as a reviewer/verifier when its MCP is present, without a per-run offer.
-  Council never implies consent: it includes external Codex only with explicit `--codex`.
-  The offer-first rule above still governs all *ad-hoc* Codex use. When a run uses Codex,
-  report it visibly in the run summary.
+  my working tree. Applying fixes is your job (with my approval).
+- `quick-review` / `deep-review` / `review-fix-loop` include Codex as a reviewer/verifier when
+  its MCP is present. Council includes external Codex only with explicit `--codex`. When a run
+  uses Codex, report it visibly in the run summary.
 
 ## Local machine-specific context
 @~/.claude/CLAUDE.local.md
