@@ -29,7 +29,6 @@ local function apply_theme(theme)
       integrations = {
         treesitter = true,
         gitsigns = true,
-        native_lsp = { enabled = true },
         aerial = true,
       },
     })

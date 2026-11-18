@@ -56,27 +56,7 @@ autocmd({ 'BufNewFile', 'BufRead' }, {
 -- exclusively via the dedicated filetype). See lsp.lua.
 vim.treesitter.language.register('yaml', 'azure-pipelines')
 
--- Bicep filetype detection. Unconditional (unlike the bicep LSP, which stays
--- gated on the `bicep-ls` executable in lsp.lua) so the already-installed
--- Treesitter bicep parser highlights/indents these files even with no server configured.
-autocmd({ 'BufNewFile', 'BufRead' }, {
-  group = augroup,
-  pattern = '*.bicep',
-  callback = function()
-    vim.bo.filetype = 'bicep'
-  end,
-})
-
--- .bicepparam parameter files get their own filetype, matching the languageId
--- nvim-lspconfig's bicep config expects for them.
-autocmd({ 'BufNewFile', 'BufRead' }, {
-  group = augroup,
-  pattern = '*.bicepparam',
-  callback = function()
-    vim.bo.filetype = 'bicep-params'
-  end,
-})
-
+-- Neovim core detects *.bicep as `bicep` and *.bicepparam as `bicep-params`.
 -- bicep-params has no Treesitter grammar of its own; map it to the bicep parser.
 -- Unlike azure-pipelines->yaml (a lossless superset), this is partial: the grammar
 -- parses `using` clean but errors on `param x = value` assignments (the value node

@@ -7,17 +7,13 @@ opt.tabstop = 4
 opt.shiftwidth = 4
 opt.shiftround = true -- round indent to nearest multiple of shiftwidth
 opt.expandtab = true
-opt.autoindent = true
 opt.smartindent = true
-opt.joinspaces = false -- J always inserts one space, not two after punctuation
 
 opt.wrap = false
 opt.breakindent = true -- visually indent wrapped lines to match the start of the line
 
 opt.ignorecase = true
 opt.smartcase = true
-opt.hlsearch = true
-opt.incsearch = true
 
 opt.termguicolors = true
 opt.signcolumn = 'yes'
@@ -39,7 +35,6 @@ opt.splitright = true
 opt.splitbelow = true
 
 opt.completeopt = 'menu,menuone,noselect'
-opt.backspace = 'indent,eol,start'
 
 opt.synmaxcol = 240
 opt.nrformats = 'hex' -- <C-a>/<C-x> increments decimal and hex only, not octal

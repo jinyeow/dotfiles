@@ -155,7 +155,7 @@ if vim.fn.executable('lua-language-server') == 1 then
 end
 
 -- Bicep (only if bicep-ls is on PATH, same gate shape as marksman above).
--- Filetype detection itself is unconditional; see autocmds.lua.
+-- Neovim core detects the bicep and bicep-params filetypes.
 if vim.fn.executable('bicep-ls') == 1 then
   vim.lsp.config('bicep', {
     cmd = { 'bicep-ls' },

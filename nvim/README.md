@@ -255,10 +255,10 @@ them. The remaining servers are gated on a machine-specific prerequisite in `use
 
 ## Filetype detection
 
+Neovim core detects `*.bicep` as `bicep` and `*.bicepparam` as `bicep-params`. `autocmds.lua` adds:
+
 | Pattern | Filetype |
 |---|---|
-| `*.bicep` | `bicep` |
-| `*.bicepparam` | `bicep-params` |
 | `*.azure-pipelines.yml` / `*.yaml` | `azure-pipelines` |
 
 The `azure-pipelines` filetype has no Treesitter grammar of its own, so `autocmds.lua` registers it against the `yaml` parser (`vim.treesitter.language.register('yaml', 'azure-pipelines')`) — highlighting and indent fall back to YAML while `azure_pipelines_ls` still attaches exclusively via the dedicated filetype. The `bicep-params` filetype similarly has no grammar of its own and is registered against the `bicep` parser — a partial fallback rather than a lossless one: `using` parses clean, but `param x = value` assignments hit grammar errors and mis-highlight (indent still works).
