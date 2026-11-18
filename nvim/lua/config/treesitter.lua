@@ -42,8 +42,19 @@ local installed = require('nvim-treesitter.config').get_installed('parsers')
 local missing = vim.tbl_filter(function(lang)
   return not vim.tbl_contains(installed, lang)
 end, parsers)
+-- Cap concurrent builds per machine. nvim-treesitter defaults to 100 jobs, so a fresh
+-- machine starts one zig compile per missing parser at once, which can exhaust memory and
+-- stall (each killed build leaves a stale lock in %LOCALAPPDATA%\tree-sitter\lock).
+-- One zig build peaked at ~400 MB, so budget 512 MB per job against half the free memory,
+-- and never more jobs than CPUs.
+local function install_max_jobs()
+  local per_job = 512 * 1024 * 1024
+  local by_mem = math.floor(vim.uv.get_free_memory() / 2 / per_job)
+  return math.max(1, math.min(vim.uv.available_parallelism(), by_mem))
+end
+
 if #missing > 0 then
-  ts.install(missing)
+  ts.install(missing, { max_jobs = install_max_jobs() })
 end
 
 -- main no longer ships master's filetype->language table; register the non-identity

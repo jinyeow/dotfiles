@@ -188,7 +188,7 @@ module only) and asserts the text; it needs `nvim` on `PATH`.
 
 | Plugin | Purpose |
 |---|---|
-| nvim-treesitter | Syntax highlighting and text objects (pinned to `main` for Neovim 0.12+; builds parsers via the tree-sitter CLI + the `zigcc.cmd` zig shim) |
+| nvim-treesitter | Syntax highlighting and text objects (pinned to `main` for Neovim 0.12+; builds parsers via the tree-sitter CLI + the `zigcc.cmd` zig shim, with concurrent builds capped by CPU count and free memory) |
 | nvim-treesitter-textobjects | Function/class text objects (pinned to `main`) |
 | fzf-lua | Fuzzy finding (files, grep, buffers, LSP symbols); needs the fzf binary on PATH, not a vim plugin |
 | vim-fugitive | Git command wrapper |
