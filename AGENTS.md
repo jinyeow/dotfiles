@@ -21,6 +21,9 @@ Use non-interactive git commands. Do not add secrets or stage files unless deliv
 explicitly requires it. Before finishing, run `git diff --check`, focused tests, and the
 relevant full suite; use
 [`PSScriptAnalyzerSettings.psd1`](PSScriptAnalyzerSettings.psd1) for PowerShell analysis.
+Local Pester runs on Windows need Git bash ahead of WSL's `C:\Windows\System32\bash.exe` on
+PATH, because WSL bash cannot open the Windows paths that the bash-script tests pass. Fix:
+`$env:Path = "C:\Program Files\Git\bin;$env:Path"`.
 
 ## Authority index
 

@@ -24,7 +24,7 @@ read it, review it across models, and report. Posting anything back to the PR (t
 - `az` CLI with the azure-devops extension (`az extension add --name azure-devops`), logged in (`az login`).
 - A bare-worktree repo layout with a permanent detached **`review`** worktree beside `main`
   (`git worktree add --detach ../review`). This is the standing local-review workflow — see the
-  `local-pr-review` brain initiative / the `review-worktree-workflow` memory.
+  `local-pr-review` brain initiative.
   No bare-worktree layout? Skip the dedicated `review` worktree — `az repos pr checkout` directly
   in your clone works the same way, you just accept it moves your current branch instead of
   staying isolated.
@@ -67,14 +67,15 @@ read it, review it across models, and report. Posting anything back to the PR (t
    - Do a multi-dimension pass (correctness, security, IaC-config, conventions) — reach for the
      `quick-review` skill for anything non-trivial, or `deep-review` when the PR's risk earns the
      full seven-dimension fan-out.
-   - Offer a **Codex** second opinion (`codex-review` skill). On ADO the branch may be behind the PR
+   - Run a **Codex** second opinion (`codex-review` skill). On ADO the branch may be behind the PR
      head, so write the true PR diff to a file and hand Codex that file plus any context it needs.
    - **Verify every claim against the source file or vendor docs before asserting it.** An API/property
      "looks removed" is not a finding until the versioned schema doc confirms it.
+   - Review order: tests, then source, then pipelines, then everything else. For PowerShell modules, stage the module under test in a versioned `PSModulePath` layout and stub missing `Az.*` cmdlets so Pester mocks bind. Run PSScriptAnalyzer as CI does (`-Recurse`, the repo settings file).
 
 6. **Report.** Findings grouped **HIGH / MEDIUM / LOW**, each one line: `file:line — defect — why it
    matters`, with a concrete failure scenario for HIGH/MEDIUM. Call out what you verified as *not* a
-   defect. State plainly if a gate couldn't run.
+   defect. On a re-review, map each fix back to the original findings (resolved or still open). State plainly if a gate couldn't run.
 
 7. **Respond back to ADO — only on explicit approval.** These are outward actions; never auto-post.
    - Inline comment thread (no `az repos pr comment` verb exists):
