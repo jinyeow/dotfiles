@@ -38,7 +38,7 @@ local log_file = vim.fs.normalize(('%s/powershell_es.dap.log'):format(cache))
 local function make_cmd()
   local script = vim.fs.normalize(('%s/PowerShellEditorServices/Start-EditorServices.ps1'):format(bundle))
   return {
-    'pwsh',
+    _G.user_config.pwsh_exe(),
     '-NoLogo',
     '-NoProfile',
     '-NonInteractive',

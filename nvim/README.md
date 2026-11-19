@@ -246,19 +246,26 @@ rather than silently degrading schema validation. The Bicep server is provisione
 Windows by the `biceptools` module (`Azure.Bicep.LangServer` dotnet global tool, providing
 `bicep-ls`), and its Neovim gate mirrors `marksman`'s: `vim.fn.executable('bicep-ls') == 1`,
 so a machine without the tool degrades to Treesitter-only instead of erroring. `bicep-ls`
-0.46.1's `initialize` response omits `hoverProvider`, `definitionProvider`, and
+0.46.1 through 0.49.2: the `initialize` response omits `hoverProvider`, `definitionProvider`, and
 `documentFormattingProvider` even though it answers those methods correctly when queried
 directly, so the bicep config's `on_init` patches `client.server_capabilities` to restore
 `K`/`gd`/format dispatch (dotfiles#157); drop the patch once an upstream release advertises
 them. The remaining servers are gated on a machine-specific prerequisite in `user.lua` (or on
 `dotnet`) and are installed by other means.
 
+`powershell_es` and the PowerShell debug adapter start `pwsh` through
+`user_config.pwsh_exe()` in `user.lua`. winget installs PowerShell 7.7 as an MSIX package. That
+package puts only an app-execution-alias stub on PATH, and `vim.fn.executable()` and `jobstart()`
+reject the stub. When `pwsh` fails `executable()`, `pwsh_exe()` asks pwsh for its real path once
+(`[Environment]::ProcessPath`) and caches it. The lookup runs when a PowerShell server starts,
+not at Neovim startup.
+
 ## Filetype detection
+
+Neovim core detects `*.bicep` as `bicep` and `*.bicepparam` as `bicep-params`. `autocmds.lua` adds:
 
 | Pattern | Filetype |
 |---|---|
-| `*.bicep` | `bicep` |
-| `*.bicepparam` | `bicep-params` |
 | `*.azure-pipelines.yml` / `*.yaml` | `azure-pipelines` |
 
 The `azure-pipelines` filetype has no Treesitter grammar of its own, so `autocmds.lua` registers it against the `yaml` parser (`vim.treesitter.language.register('yaml', 'azure-pipelines')`) — highlighting and indent fall back to YAML while `azure_pipelines_ls` still attaches exclusively via the dedicated filetype. The `bicep-params` filetype similarly has no grammar of its own and is registered against the `bicep` parser — a partial fallback rather than a lossless one: `using` parses clean, but `param x = value` assignments hit grammar errors and mis-highlight (indent still works).

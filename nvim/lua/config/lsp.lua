@@ -155,12 +155,12 @@ if vim.fn.executable('lua-language-server') == 1 then
 end
 
 -- Bicep (only if bicep-ls is on PATH, same gate shape as marksman above).
--- Filetype detection itself is unconditional; see autocmds.lua.
+-- Neovim core detects the bicep and bicep-params filetypes.
 if vim.fn.executable('bicep-ls') == 1 then
   vim.lsp.config('bicep', {
     cmd = { 'bicep-ls' },
     filetypes = { 'bicep', 'bicep-params' },
-    -- bicep-ls 0.46.1's `initialize` response omits hoverProvider,
+    -- bicep-ls 0.46.1 through 0.49.2: the `initialize` response omits hoverProvider,
     -- definitionProvider, and documentFormattingProvider, so Neovim's standard
     -- entry points (K, gd, format) refuse to dispatch even though the server
     -- answers those exact LSP methods correctly when queried directly
@@ -189,7 +189,14 @@ if _G.user_config.pwsh_bundle_path ~= '' then
   )
 
   vim.lsp.config('powershell_es', {
-    cmd = { 'pwsh', '-NoLogo', '-NoProfile', '-Command', _pwsh_cmd },
+    -- A function, so the pwsh path is looked up when the server starts, not at startup.
+    -- vim.lsp would also reject a table cmd naming the MSIX pwsh stub; see user.lua.
+    cmd = function(dispatchers)
+      return vim.lsp.rpc.start(
+        { _G.user_config.pwsh_exe(), '-NoLogo', '-NoProfile', '-Command', _pwsh_cmd },
+        dispatchers
+      )
+    end,
     filetypes = { 'ps1' },
     root_dir = function(bufnr, cb)
       local fname = vim.api.nvim_buf_get_name(bufnr)
