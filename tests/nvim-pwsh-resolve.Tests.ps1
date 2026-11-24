@@ -2,7 +2,8 @@
 # Pester tests for user_config.pwsh_exe() in nvim/lua/config/user.lua. Each case starts
 # headless Neovim with --clean (no user config, no plugins), stubs vim.fn.executable and
 # vim.system inside Neovim, loads only the user module from this repo, and asserts what
-# pwsh_exe() returns or raises. No real pwsh process is started.
+# pwsh_exe() returns or raises. No real pwsh process is started. The pwsh_format_preset
+# cases use the same harness to check the PSES formatting preset chosen per LSP root.
 
 BeforeAll {
     $script:nvim = Get-Command nvim -CommandType Application -ErrorAction SilentlyContinue |
@@ -143,5 +144,28 @@ return { ok = ok, err = tostring(err) }
 '@
         $r.ok | Should -BeFalse
         $r.err | Should -Match 'C:/gone/pwsh.exe'
+    }
+}
+
+Describe 'user_config.pwsh_format_preset' {
+    # Each case sets vim.g.pwsh_otbs_roots in the prelude (or leaves it unset) and asks
+    # for the PSES formatting preset of one LSP root directory.
+    It 'returns <Expected> for root <Root> with roots <Roots>' -ForEach @(
+        @{ Roots = 'nil'; Root = 'E:/Personal/project'; Expected = 'Allman' }
+        @{ Roots = "{ 'E:/WorkOrg' }"; Root = 'E:/Personal/project'; Expected = 'Allman' }
+        @{ Roots = "{ 'E:/WorkOrg' }"; Root = 'E:/WorkOrg/repo'; Expected = 'OTBS' }
+        @{ Roots = "{ 'E:/WorkOrg' }"; Root = 'E:/WorkOrg'; Expected = 'OTBS' }
+        @{ Roots = "{ 'e:\\workorg\\' }"; Root = 'E:/WorkOrg/repo'; Expected = 'OTBS' }
+        @{ Roots = "{ 'E:/WorkOrg/' }"; Root = 'e:\workorg\repo'; Expected = 'OTBS' }
+        @{ Roots = "{ 'E:/WorkOrg' }"; Root = 'E:/WorkOrgOther/repo'; Expected = 'Allman' }
+        @{ Roots = "{ 'D:/Other', 'E:/WorkOrg' }"; Root = 'E:/WorkOrg/repo'; Expected = 'OTBS' }
+    ) {
+        $r = Invoke-PwshCase -Prelude @"
+executable_map = {}
+vim.g.pwsh_otbs_roots = $Roots
+"@ -Body @"
+return { preset = _G.user_config.pwsh_format_preset([==[$Root]==]) }
+"@
+        $r.preset | Should -BeExactly $Expected
     }
 }

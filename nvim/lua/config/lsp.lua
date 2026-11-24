@@ -219,6 +219,27 @@ if _G.user_config.pwsh_bundle_path ~= '' then
       end
       cb(boundary or dir)
     end,
+    -- Code formatting to match VS Code. The preset is set per client in before_init.
+    settings = {
+      powershell = {
+        codeFormatting = {
+          preset = 'Allman',
+          pipelineIndentationStyle = 'IncreaseIndentationForFirstPipeline',
+          useCorrectCasing = true,
+          useConstantStrings = true,
+          trimWhitespaceAroundPipe = true,
+          whitespaceBetweenParameters = true,
+          avoidSemicolonsAsLineTerminators = true,
+          autoCorrectAliases = true,
+        },
+      },
+    },
+    -- Allman, or OTBS under a root in vim.g.pwsh_otbs_roots. Edit config.settings in
+    -- place: the client keeps a reference to it from creation and sends it in
+    -- workspace/didChangeConfiguration after initialize, so a new table would be ignored.
+    before_init = function(_, config)
+      config.settings.powershell.codeFormatting.preset = _G.user_config.pwsh_format_preset(config.root_dir)
+    end,
   })
   vim.lsp.enable('powershell_es')
 end

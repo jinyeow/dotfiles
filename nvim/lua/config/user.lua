@@ -62,12 +62,31 @@ local function pwsh_exe()
   return pwsh_exe_cache
 end
 
+-- The PSES code formatting preset for an LSP root directory: 'OTBS' when the root is
+-- one of the path prefixes in vim.g.pwsh_otbs_roots (set in the untracked lua/user.lua),
+-- else 'Allman'. Matching ignores case and treats '\' and '/' the same.
+local function normalize_root(path)
+  return (path:gsub('\\', '/'):gsub('/+$', ''):lower())
+end
+
+local function pwsh_format_preset(root_dir)
+  local root = normalize_root(root_dir)
+  for _, prefix in ipairs(vim.g.pwsh_otbs_roots or {}) do
+    local p = normalize_root(prefix)
+    if root == p or root:sub(1, #p + 1) == p .. '/' then
+      return 'OTBS'
+    end
+  end
+  return 'Allman'
+end
+
 _G.user_config = {
   profile = profile,
 
   -- LSP tool path (full profile only; silently skipped when empty)
   pwsh_bundle_path = find_pwsh_bundle(),
   pwsh_exe = pwsh_exe,
+  pwsh_format_preset = pwsh_format_preset,
 
   -- Sunrise/sunset hours used as fallback when OS dark-mode detection fails.
   -- Dark mode applies from sunset_hour until sunrise_hour the next morning.

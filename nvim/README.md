@@ -130,6 +130,26 @@ _G.user_config = {
 
 LSP servers with empty paths are silently skipped.
 
+### Untracked settings (`lua/user.lua`)
+
+`init.lua` loads `lua/user.lua` after `config.user` when the file exists. Git ignores
+it, so put paths that must stay out of the repository there.
+
+`vim.g.pwsh_otbs_roots` lists path prefixes. When the `powershell_es` root directory
+is under one of them, PSES formats with the `OTBS` preset. Everywhere else it uses
+`Allman`. Matching ignores case and treats `\` and `/` the same. Without the list,
+every root uses `Allman`.
+
+```lua
+-- nvim/lua/user.lua
+vim.g.pwsh_otbs_roots = { 'E:/WorkOrg' }
+```
+
+The other PSES formatting settings in `lsp.lua` match the VS Code settings
+(`pipelineIndentationStyle`, `useCorrectCasing`, `useConstantStrings`,
+`trimWhitespaceAroundPipe`, `whitespaceBetweenParameters`,
+`avoidSemicolonsAsLineTerminators`, `autoCorrectAliases`).
+
 ## Colorscheme
 
 Theme is chosen automatically from the OS dark/light mode setting:
