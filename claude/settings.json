@@ -160,6 +160,7 @@
   "agentPushNotifEnabled": true,
   "skipWorkflowUsageWarning": true,
   "autoMemoryEnabled": false,
+  "cleanupPeriodDays": 365,
   "permissions": {
     "defaultMode": "auto",
     "allow": [
