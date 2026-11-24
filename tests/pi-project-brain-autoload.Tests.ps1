@@ -394,5 +394,61 @@ stale status content
 
             $result | Should -Match ([regex]::Escape('[project-brain] 1 initiatives past stale_after: stale-init (2020-01-01)'))
         }
+
+        Context 'Home Repo workspace: initiative folder and work-item worktrees' {
+            # Registry globs as the project-brain "new initiative" flow registers them: the
+            # initiative folder (and anything under it) plus one glob per work item.
+            BeforeAll {
+                function Invoke-HomeRepoPiSession
+                {
+                    param([string] $CwdRelative)
+
+                    $scope = Join-Path $TestDrive ('ws-' + [guid]::NewGuid())
+                    $fixtureHome = Join-Path $TestDrive ('home-' + [guid]::NewGuid())
+                    $brainPath = Join-Path $scope 'gateroom/brain'
+                    $dotBrain = Join-Path $fixtureHome '.claude/project-brain'
+                    New-Item -ItemType Directory -Path $dotBrain -Force | Out-Null
+                    New-Item -ItemType Directory -Path (Join-Path $brainPath 'initiatives/PBI-42-demo') -Force | Out-Null
+
+                    $scopeNorm = ($scope -replace '\\', '/')
+                    $brainNorm = ($brainPath -replace '\\', '/')
+                    @{ brains = @(@{ scope = $scopeNorm; path = $brainNorm }) } |
+                        ConvertTo-Json -Depth 5 | Set-Content -Path (Join-Path $dotBrain 'brains.json') -Encoding utf8
+                    @{
+                        initiatives = @{
+                            'PBI-42-demo' = @{
+                                title = 'Demo initiative'
+                                dirs = @(
+                                    "$scopeNorm/gateroom/brain/initiatives/PBI-42-demo"
+                                    "$scopeNorm/gateroom/brain/initiatives/PBI-42-demo/*"
+                                    "$scopeNorm/*/feat-42-*"
+                                )
+                            }
+                        }
+                    } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $brainPath 'registry.json') -Encoding utf8
+                    '# demo core' | Set-Content -Path (Join-Path $brainPath 'initiatives/PBI-42-demo/core.md') -Encoding utf8
+                    'demo status' | Set-Content -Path (Join-Path $brainPath 'initiatives/PBI-42-demo/STATUS.md') -Encoding utf8
+
+                    $cwd = Join-Path $scope $CwdRelative
+                    New-Item -ItemType Directory -Path $cwd -Force | Out-Null
+                    return Invoke-ResolveBrainContextWithHome -Cwd ($cwd -replace '\\', '/') -ScriptPath $script:RealSessionStartScript -HomeDir $fixtureHome
+                }
+            }
+
+            It 'injects the initiative when cwd is the initiative folder' {
+                $result = Invoke-HomeRepoPiSession -CwdRelative 'gateroom/brain/initiatives/PBI-42-demo'
+                $result | Should -Match ([regex]::Escape('[project-brain] Active initiative: PBI-42-demo - Demo initiative.'))
+                $result | Should -Match '# demo core'
+            }
+
+            It 'injects the initiative when cwd is a work-item worktree' {
+                $result = Invoke-HomeRepoPiSession -CwdRelative 'some-repo/feat-42-add-thing'
+                $result | Should -Match ([regex]::Escape('[project-brain] Active initiative: PBI-42-demo - Demo initiative.'))
+            }
+
+            It 'injects nothing when cwd is the Home Repo root' {
+                Invoke-HomeRepoPiSession -CwdRelative 'gateroom' | Should -BeNullOrEmpty
+            }
+        }
     }
 }

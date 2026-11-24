@@ -287,6 +287,74 @@ Describe 'ai-agents/skills/project-brain/scripts/session-start.ps1' {
         }
     }
 
+    Context 'Home Repo workspace: initiative folder and work-item worktrees' {
+        # Registry globs as the project-brain "new initiative" flow registers them: the
+        # initiative folder (and anything under it) plus one glob per work item.
+        BeforeAll {
+            function Invoke-HomeRepoSession
+            {
+                param([string] $CwdRelative)
+                $scope = Join-Path ([IO.Path]::GetTempPath()) ('pb-ws-' + [guid]::NewGuid())
+                New-Item -ItemType Directory -Path $scope -Force | Out-Null
+                $scopeNorm = ConvertTo-CwdNorm $scope
+                $registry = @{
+                    initiatives = @{
+                        'PBI-42-demo' = @{
+                            title = 'Demo initiative'
+                            dirs = @(
+                                "$scopeNorm/gateroom/brain/initiatives/PBI-42-demo"
+                                "$scopeNorm/gateroom/brain/initiatives/PBI-42-demo/*"
+                                "$scopeNorm/*/feat-42-*"
+                            )
+                        }
+                    }
+                } | ConvertTo-Json -Depth 6
+                $fx = New-RegisteredHome -Cwd $scope -LoadedId 'PBI-42-demo' -RegistryJson $registry
+                $cwd = Join-Path $scope $CwdRelative
+                New-Item -ItemType Directory -Path $cwd -Force | Out-Null
+                try
+                {
+                    $out = Invoke-SessionStart -Cwd $cwd -HomeDir $fx.Home
+                    if (-not $out)
+                    {
+                        return $null
+                    }
+                    return ($out | ConvertFrom-Json).hookSpecificOutput.additionalContext
+                }
+                finally
+                {
+                    Remove-Item -LiteralPath $scope -Recurse -Force -ErrorAction SilentlyContinue
+                    Remove-Item -LiteralPath $fx.Home -Recurse -Force -ErrorAction SilentlyContinue
+                    Remove-Item -LiteralPath $fx.Brain -Recurse -Force -ErrorAction SilentlyContinue
+                }
+            }
+        }
+
+        It 'loads the initiative when cwd is the initiative folder' {
+            $ctx = Invoke-HomeRepoSession -CwdRelative 'gateroom/brain/initiatives/PBI-42-demo'
+            $ctx | Should -Match ([regex]::Escape('[project-brain] Active initiative: PBI-42-demo - Demo initiative.'))
+            $ctx | Should -Match ([regex]::Escape('# loaded core'))
+        }
+
+        It 'loads the initiative when cwd is a work-item worktree' {
+            $ctx = Invoke-HomeRepoSession -CwdRelative 'some-repo/feat-42-add-thing'
+            $ctx | Should -Match ([regex]::Escape('[project-brain] Active initiative: PBI-42-demo - Demo initiative.'))
+        }
+
+        It 'loads the initiative when cwd is inside a work-item worktree' {
+            $ctx = Invoke-HomeRepoSession -CwdRelative 'some-repo/feat-42-add-thing/src/lib'
+            $ctx | Should -Match ([regex]::Escape('[project-brain] Active initiative: PBI-42-demo - Demo initiative.'))
+        }
+
+        It 'loads nothing when cwd is the Home Repo root' {
+            Invoke-HomeRepoSession -CwdRelative 'gateroom' | Should -BeNullOrEmpty
+        }
+
+        It 'loads nothing when cwd is a worktree of a different work item' {
+            Invoke-HomeRepoSession -CwdRelative 'some-repo/feat-43-other' | Should -BeNullOrEmpty
+        }
+    }
+
     Context 'path 1: P2 shadow notice when a registered initiative also matches' {
         It 'appends exactly one notice naming the shadowed id and still loads the in-repo brain' {
             $ws = New-Workspace -StatusLines @('now')

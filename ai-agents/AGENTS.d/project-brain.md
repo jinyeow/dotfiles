@@ -7,4 +7,6 @@ Durable cross-repo initiative knowledge (per-initiative `core.md` plus volatile 
 
 In a workspace (a `brains.json` scope plus its Home Repo, `gateroom`), every work item is an initiative, including a single-repo item. In-repo `.claude/brain/` is only for a repo outside a workspace. Never keep durable state in gitignored worktree scratch.
 
+Start the first session of an initiative at the Home Repo root. Start later sessions in the initiative's folder (`<scope>/gateroom/brain/initiatives/<id>`), or in a worktree of one of its work items. Both match a registry glob, so the initiative loads. A session at the Home Repo root loads none. Each work item has its own branch (`<type>/<item>-<slug>`) and worktree per repo, and the worktree folder name replaces `/` with `-`.
+
 The full contract (record decisions as ADRs, file research/reports, refresh STATUS, append the session narrative to the initiative's `log.md`, then append to the brain's root log on session close) is in `~/.claude/skills/project-brain/SKILL.md`.

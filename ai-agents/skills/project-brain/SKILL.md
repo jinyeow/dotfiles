@@ -192,13 +192,27 @@ A repo outside any workspace keeps single-directory work in-repo under `.claude/
 1. Gather the directories it spans; compute their longest common ancestor.
 2. Find the `brains.json` entry whose `scope` is an ancestor of that. **Confirm the target brain/scope
    with the user before scaffolding** (always, even when a scope matches). If none matches, run "new workspace".
-3. Key it `<PBI-id>-<slug>` (bare slug if no PBI). Create `initiatives/<id>/` from `templates/` (`core.md`,
-   `STATUS.md`, `log.md`, `adr/`, `research/index.md`, `reports/index.md`).
-4. Add a `registry.json` entry: `"<id>": { "title", "status": "active", "dirs": ["<glob>", ...] }`, where
-   each glob matches (`-like`, forward slashes) the cwd of a spanned directory. If a later follow-up PBI
-   continues this same initiative under a different ID, append `— aka PBI <id>, <short reason>` to
-   `title` (both here and in `index.md`'s row) rather than leaving the original title as the only
-   findable string — the loading fallback above greps `title`, not just the registry key.
+3. Key it `<item>-<slug>`, where `<item>` is the parent work item's id, or the standalone item's
+   id (bare `<slug>` if there is no tracker item). Create `initiatives/<id>/` from `templates/`
+   (`core.md`, `STATUS.md`, `log.md`, `adr/`, `research/index.md`, `reports/index.md`). Record
+   the tracker in `core.md`, under Work tracking. Record any ordering constraint there too.
+4. Add a `registry.json` entry: `"<id>": { "title", "status": "active", "dirs": ["<glob>", ...] }`.
+   Globs use `-like` and forward slashes. In a workspace, register these:
+   - the initiative folder: `<scope>/gateroom/brain/initiatives/<id>` and
+     `<scope>/gateroom/brain/initiatives/<id>/*`;
+   - one glob per work item: `<scope>/*/<type>-<item>-*`.
+
+   A session started at the Home Repo root matches none of them and loads no initiative. Later
+   sessions start in the initiative folder, or in a worktree of one of its work items.
+   Each work item gets one branch and one worktree per repo it touches. The branch is
+   `<type>/<item>-<slug>`. The worktree folder name replaces `/` with `-`, so it matches the
+   work-item glob. Personal work with no tracker item uses `<type>/<initiative-slug>`, and its
+   glob is `<scope>/*/<type>-<initiative-slug>*`. Add each new item's glob when you create its
+   first worktree.
+   If a later follow-up PBI continues this same initiative under a different ID, append
+   `— aka PBI <id>, <short reason>` to `title` (both here and in `index.md`'s row) rather than
+   leaving the original title as the only findable string. The loading fallback above greps
+   `title`, not just the registry key.
 5. Add a row to the brain's `index.md`; append to `log.md`; commit.
 
 **New workspace** (a whole new Home Repo and brain, e.g. personal projects): propose the common
