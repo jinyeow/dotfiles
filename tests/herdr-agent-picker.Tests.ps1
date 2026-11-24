@@ -5,6 +5,7 @@
 # by AST, same approach as tests/fzf-pickers.Tests.ps1.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $scriptPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'herdr' 'agent-picker.ps1'
     $ast = [System.Management.Automation.Language.Parser]::ParseFile($scriptPath, [ref]$null, [ref]$null)
     $wanted = 'ConvertTo-HerdrAgentPickerLines', 'Get-HerdrPaneIdFromSelection'

@@ -4,6 +4,7 @@
 # then archives the file. Drives the real hook with hook JSON on stdin.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:Hook = Join-Path $script:RepoRoot 'claude/inject-handoff.ps1'
 

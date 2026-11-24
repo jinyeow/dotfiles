@@ -4,6 +4,7 @@
 # dotfiles repo via $env:DOTFILES. Drives the real hook with tool-call JSON on stdin.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:Hook = Join-Path $script:RepoRoot 'claude/warn-legacy-files.ps1'
 

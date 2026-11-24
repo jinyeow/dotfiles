@@ -11,6 +11,7 @@
 #   - malformed/empty stdin fails open
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:Hook = Join-Path $script:RepoRoot 'claude/block-pwsh-in-bash.ps1'
 

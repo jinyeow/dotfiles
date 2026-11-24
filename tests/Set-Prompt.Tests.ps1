@@ -5,6 +5,7 @@
 # and assert it reuses one long-lived runspace instead of creating a new one per tick.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $global:ProfileModules = @{ 'Az.Accounts' = $true }
     $global:PromptCache = $null   # force the guarded init to build a clean cache
     . (Join-Path (Split-Path $PSScriptRoot -Parent) 'powershell' 'Profile' 'Set-Prompt.ps1')

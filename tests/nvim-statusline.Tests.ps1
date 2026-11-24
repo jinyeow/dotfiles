@@ -5,6 +5,7 @@
 # Fixtures live under a fake HOME in TestDrive so `~` shortening is deterministic.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:nvim = Get-Command nvim -CommandType Application -ErrorAction SilentlyContinue |
         Select-Object -First 1
     if (-not $script:nvim)

@@ -6,6 +6,7 @@
 # hook script — no live Codex CLI dependency, so this covers the script's own logic.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     . (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
 
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent

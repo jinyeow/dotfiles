@@ -17,6 +17,7 @@
 # JSON contract the real script honors, not this machine's brain state.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:ExtensionFile = Join-Path $script:RepoRoot 'pi/extensions/project-brain-autoload.ts'
 

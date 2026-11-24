@@ -5,6 +5,7 @@
 # silently missing skill or hook on the machine that installs the plugin, so pin each one.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:MarketplaceFile = Join-Path $script:RepoRoot '.claude-plugin/marketplace.json'
     $script:SkillDir = Join-Path $script:RepoRoot 'ai-agents/skills/project-brain'

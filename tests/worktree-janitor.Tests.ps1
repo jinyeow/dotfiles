@@ -1,3 +1,7 @@
+BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
+}
+
 Describe 'worktree-janitor skill' {
     BeforeAll {
         $repo = Split-Path $PSScriptRoot -Parent

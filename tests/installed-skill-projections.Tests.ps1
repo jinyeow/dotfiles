@@ -36,6 +36,7 @@ $script:HasCodexCli = [bool](Get-Command codex -ErrorAction Ignore)
 $script:HasPiCli = [bool](Get-Command pi -ErrorAction Ignore)
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:ClaudeSkillsDst = Join-Path $HOME '.claude/skills'
     $script:CodexSkillsDst = Join-Path $HOME '.codex/skills'
     $script:PiSkillsDst = Join-Path $HOME '.pi/agent/skills'

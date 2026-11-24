@@ -4,6 +4,7 @@
 # or written. Assertions are on the files in the archive.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:ScriptPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'powershell' 'Scripts' 'Save-AgentTranscript.ps1'
 
     function New-TestFile([string]$Path, [string]$Content = 'line')

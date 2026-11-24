@@ -1,3 +1,7 @@
+BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
+}
+
 Describe 'agent skill source layout' {
     BeforeAll {
         $repo = Split-Path $PSScriptRoot -Parent

@@ -6,6 +6,7 @@
 # not unit-testable and is live-verified.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $profilePath = Join-Path (Split-Path $PSScriptRoot -Parent) 'powershell' 'Microsoft.PowerShell_profile.ps1'
     $ast = [System.Management.Automation.Language.Parser]::ParseFile($profilePath, [ref]$null, [ref]$null)
     $wanted = 'Format-FzfPickInsertion', 'Get-FzfDedupedHistory'

@@ -1,6 +1,7 @@
 # Pester tests for the portable project instruction hierarchy.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:AgentsPath = Join-Path $script:RepoRoot 'AGENTS.md'
     $script:ClaudePath = Join-Path $script:RepoRoot 'CLAUDE.md'

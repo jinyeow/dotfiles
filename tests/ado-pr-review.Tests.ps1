@@ -8,6 +8,7 @@
 # a real ADO remote and a logged-in az.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     # GitHub Actions' pwsh shell runs with $ErrorActionPreference = 'Stop', which turns the
     # function's Write-Error guards terminating before the assertions can capture them via
     # 2>&1. Pin the default so local runs and CI behave identically.
