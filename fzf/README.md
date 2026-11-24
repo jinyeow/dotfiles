@@ -57,16 +57,15 @@ below additionally need the PSFzf module.
 | `Alt+b` | Fuzzy git branch switcher (`switch_git_branch`) |
 | `Alt+g` | Fuzzy git worktree navigator (`cd_git_worktree`) |
 
-PSFzf aliases:
+Aliases (`frg` needs only fzf; the rest come from PSFzf):
 
 | Alias | Action |
 |---|---|
 | `frg` | Interactive ripgrep search — refine the query live, results in fzf |
 | `fe` | Fuzzy-pick a file and open it in `$env:EDITOR` |
 | `fgs` | Fuzzy browser over `git status` output |
-| `fh` | Fuzzy command history — paste selected command onto the line |
+| `fh` | Fuzzy command history — runs the selected command immediately |
 | `fkill` | Fuzzy process picker — kill selected process |
-| `fcd` | Fuzzy directory picker — cd into selection (same as `Alt+c`) |
 
 ### Bash / WSL
 

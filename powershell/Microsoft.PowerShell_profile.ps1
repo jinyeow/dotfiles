@@ -285,9 +285,8 @@ function Show-Hotkeys {
         '[alias]  rfv / frg       live rg search — rg-filtered, bat preview, multi-select quickfix'
         '[alias]  fe              fuzzy-pick a file and open in $EDITOR'
         '[alias]  fgs             fuzzy git status browser'
-        '[alias]  fh              fuzzy command history — paste onto line'
+        '[alias]  fh              fuzzy command history — run selection'
         '[alias]  fkill           fuzzy process picker — kill selection'
-        '[alias]  fcd             fuzzy directory picker — cd into selection'
         '[alias]  zi              zoxide interactive directory jump'
         '[eza]    ll              long list with git status + icons'
         '[eza]    la              long list including hidden entries'
@@ -426,8 +425,10 @@ function Initialize-DeferredProfile {
     if ($global:ProfileDeferredDone) { return }
     $global:ProfileDeferredDone = $true
 
-    # PSFzf (~1.1s): only fuzzy Tab completion and the fe/fgs/fh/fkill/fd aliases.
+    # PSFzf (~1.1s): only fuzzy Tab completion and the fe/fgs/fh/fkill aliases.
     # Its own Ctrl+t / Ctrl+r / Alt+c handlers are suppressed or overridden below.
+    # No -EnableAliasFuzzySetLocation: its alias is `fd`, which shadows the fd binary at the
+    # prompt (PSFzf.Base.ps1:247 creates it unconditionally); Alt+c covers the same job.
     if ($global:ProfileModules['PSFzf']) {
         Import-Module PSFzf
 
@@ -441,8 +442,7 @@ function Initialize-DeferredProfile {
             -EnableAliasFuzzyEdit `
             -EnableAliasFuzzyGitStatus `
             -EnableAliasFuzzyHistory `
-            -EnableAliasFuzzyKillProcess `
-            -EnableAliasFuzzySetLocation
+            -EnableAliasFuzzyKillProcess
 
         Set-PSReadLineKeyHandler -Key Tab -ScriptBlock { Invoke-FzfTabCompletion }
     }
