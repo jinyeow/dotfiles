@@ -41,9 +41,10 @@ jobs:
       - name: PSScriptAnalyzer (whole tree, repo settings)
         run: |
           $results = Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
-          # Vendored third-party plugins are out of scope per AGENTS.md (psmux/plugins/ is
-          # upstream code pinned by SHA, not ours to lint) - do not gate on them.
-          $legacy = '[\\/]psmux[\\/]plugins[\\/]'
+          # Vendored third-party code is out of scope per AGENTS.md (psmux/plugins/ is
+          # upstream code pinned by SHA, and the azure-prepare skill is Microsoft's MIT
+          # payload), not ours to lint - do not gate on it.
+          $legacy = '[\\/](psmux[\\/]plugins|ai-agents[\\/]skills[\\/]azure-prepare)[\\/]'
           $gated = $results | Where-Object { $_.ScriptPath -notmatch $legacy }
           if ($gated) {
             $gated | Format-Table RuleName, Severity, ScriptName, Line, Message -AutoSize | Out-String -Width 200 | Write-Host
