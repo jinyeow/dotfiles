@@ -169,3 +169,44 @@ return { preset = _G.user_config.pwsh_format_preset([==[$Root]==]) }
         $r.preset | Should -BeExactly $Expected
     }
 }
+
+Describe 'powershell_es before_init' {
+    # Loads the real nvim/lua/config/lsp.lua with vim.lsp.config captured and every other
+    # language server reported as not installed, then gives each of two roots its own
+    # copy of the powershell_es config (as vim.lsp does for each client) and runs
+    # before_init on it. Each copy must carry its own root's preset in its own table, in
+    # the same settings table the client already holds.
+    It 'sets the preset per client from its root without sharing settings' {
+        $r = Invoke-PwshCase -Prelude @'
+executable_map = { dotnet = 0, marksman = 0, ['lua-language-server'] = 0, ['bicep-ls'] = 0 }
+vim.g.pwsh_otbs_roots = { 'E:/WorkOrg' }
+'@ -Body @'
+_G.user_config.pwsh_bundle_path = 'C:/fake/PowerShellEditorServices'
+local captured = {}
+vim.lsp.config = function(name, cfg) captured[name] = cfg end
+vim.lsp.enable = function() end
+require('config.lsp')
+local base = assert(captured.powershell_es, 'powershell_es was not registered')
+local personal = vim.deepcopy(base)
+personal.root_dir = 'E:/Personal/project'
+local work = vim.deepcopy(base)
+work.root_dir = 'E:/WorkOrg/repo'
+-- The client keeps these table references from creation and sends them to PSES, so
+-- before_init must change them in place rather than replace config.settings.
+local personal_sent = personal.settings
+local work_sent = work.settings
+base.before_init({}, personal)
+base.before_init({}, work)
+return {
+  personal = personal_sent.powershell.codeFormatting.preset,
+  work = work_sent.powershell.codeFormatting.preset,
+  base = base.settings.powershell.codeFormatting.preset,
+  shared = personal_sent == work_sent,
+}
+'@
+        $r.personal | Should -BeExactly 'Allman'
+        $r.work | Should -BeExactly 'OTBS'
+        $r.base | Should -BeExactly 'Allman'
+        $r.shared | Should -BeFalse
+    }
+}
