@@ -12,7 +12,8 @@ BeforeAll {
     }
 }
 
-Describe 'Save-AgentTranscript' {
+# The script uses robocopy and compact.exe, which exist only on Windows.
+Describe 'Save-AgentTranscript' -Skip:(-not $IsWindows) {
     BeforeEach {
         $script:SourceHome = Join-Path $TestDrive ([guid]::NewGuid().ToString())
         $script:Archive = Join-Path $TestDrive ([guid]::NewGuid().ToString())
