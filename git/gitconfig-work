@@ -20,8 +20,9 @@
 # warn at install time). It is work-scoped purely by living in this file —
 # the [includeIf] conditions in ~/.gitconfig.local are what limit it.
 #
-# ADDITIVE, not a replacement: configured hooks run FIRST, then core.hooksPath's
-# own pre-commit (gitleaks) still runs LAST. Inspect with:  git hook list pre-commit
+# ADDITIVE: the global [hook "dotfiles-pre-commit"] (gitleaks) in gitconfig runs first,
+# then this hook, then the repo's own .git/hooks/pre-commit if it has one.
+# Inspect with:  git hook list pre-commit
 # Opt out without deleting:  enabled = false
 #
 # The `test -f` guard is load-bearing: git does NOT fail open on a missing command —

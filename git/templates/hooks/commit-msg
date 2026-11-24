@@ -1,8 +1,8 @@
 #!/bin/sh
 # Hard-blocks AI/Claude/Codex/Copilot/co-authorship references in commit messages.
 # Layer 2 of #219 — a hard-block backstop for the prompt-level "don't reference AI
-# tools in commits" rule, which already failed once. Global hook via
-# core.hooksPath = ~/.git_templates/hooks; git invokes commit-msg as
+# tools in commits" rule, which already failed once. Global hook via the
+# [hook "dotfiles-commit-msg"] stanza in git/gitconfig; git invokes commit-msg as
 # `commit-msg <path-to-commit-msg-file>`, which already gives the final message
 # text regardless of -m/-F/editor/--amend/merge — no need to parse argv.
 #
