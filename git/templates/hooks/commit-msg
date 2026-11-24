@@ -6,12 +6,14 @@
 # `commit-msg <path-to-commit-msg-file>`, which already gives the final message
 # text regardless of -m/-F/editor/--amend/merge — no need to parse argv.
 #
-# Scoped to Hollard/Azure DevOps repos only, via the same signal git/gitconfig's
-# [includeIf] uses for work identity: origin URL contains both dev.azure.com and
-# HollardInsuranceRetail, case-insensitive (covers both the HTTPS and SSH remote
-# forms). GitHub repos (dotfiles, wiki, brain) legitimately say "Claude"/"Codex" in
-# their own subject matter and must stay unscanned. If `git remote get-url origin`
-# fails (no remote, not a repo) or the URL doesn't match, ALLOW.
+# Scoped to work Azure DevOps repos only, via the same signal the work identity uses:
+# origin is a dev.azure.com URL whose organisation segment is the work organisation, case-insensitive
+# (covers both the HTTPS and SSH remote forms). The organisation is the last path
+# segment of `git config work.adoOrgUrl`, set in the untracked ~/.gitconfig.local (see
+# git/README.md). GitHub repos (dotfiles, wiki, brain) legitimately say
+# "Claude"/"Codex" in their own subject matter and must stay unscanned. If `git remote
+# get-url origin` fails (no remote, not a repo), the key is unset or empty, or the URL
+# doesn't match, ALLOW.
 #
 # Fails OPEN on everything except one case: scoped-in AND the wordlist itself is
 # missing/unreadable, which fails CLOSED. That mirrors gitconfig-work's
@@ -32,8 +34,16 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 WORDLIST="$DIR/../../../ai-agents/_shared/banned-ai-terms.txt"
 
 origin_url=$(git remote get-url origin 2>/dev/null) || exit 0
-printf '%s' "$origin_url" | grep -qi 'dev\.azure\.com' || exit 0
-printf '%s' "$origin_url" | grep -qi 'HollardInsuranceRetail' || exit 0
+work_org_url=$(git config --get work.adoOrgUrl 2>/dev/null) || exit 0
+work_org=${work_org_url%/}
+work_org=${work_org##*/}
+[ -n "$work_org" ] || exit 0
+# Compare the organisation segment of an Azure DevOps origin (HTTPS, with an optional
+# user name, or SSH v3), so a repo or org name that only contains the work org is out.
+origin_org=$(printf '%s' "$origin_url" | tr '[:upper:]' '[:lower:]' |
+    sed -nE 's#^(https://([^@/]+@)?dev\.azure\.com/|git@ssh\.dev\.azure\.com:v3/)([^/]+)(/.*)?$#\3#p')
+work_org=$(printf '%s' "$work_org" | tr '[:upper:]' '[:lower:]')
+[ -n "$origin_org" ] && [ "$origin_org" = "$work_org" ] || exit 0
 
 [ "$SKIP_AI_REFERENCE_SCAN" = "1" ] && exit 0
 

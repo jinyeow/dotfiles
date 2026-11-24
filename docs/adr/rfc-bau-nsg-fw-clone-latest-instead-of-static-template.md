@@ -38,7 +38,7 @@ stop now only fires when no matching prior RFC exists at all, of any scope.
 
 No confidential literal is ever written into the committed skill file, so no local
 values file, template/example file, or runtime-reference mechanism is needed. There is
-also no explicit machine gate: the skill only works with Hollard Azure DevOps access,
+also no explicit machine gate: the skill only works with the work organisation's Azure DevOps access,
 and running it without that access fails cleanly at the `az` auth step rather than
 leaking anything.
 
@@ -55,5 +55,5 @@ skill file) that cloning avoids by construction.
 ### Cloning as a fallback only, static template as primary
 
 Rejected as unnecessary complexity: BAU firewall/NSG RFCs are a well-established
-recurring process at Hollard, so "no prior matching RFC exists" is not a realistic
+recurring process in the work organisation, so "no prior matching RFC exists" is not a realistic
 first-run scenario worth designing a fallback path for.

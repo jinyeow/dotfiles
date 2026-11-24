@@ -31,13 +31,13 @@ on every file) versus also adopting the optional provenance/lifecycle/versioning
 
 Adopt OKF beyond minimal conformance, with type-specific choices below. Two registered
 brain repos are migrated in the same pass: `E:\Personal Projects\brain\` and
-`E:\HollardInsuranceRetail\brain\`. `session-start.ps1` needs no change — confirmed it
+`<work-root>\brain\`. `session-start.ps1` needs no change — confirmed it
 reads `core.md`/`STATUS.md` as raw whole-file text, never parses frontmatter fields, so
 this migration is additive-only.
 
 - **`type:` values**: `core`, `status`, `adr`, `research`, `report` — one non-reserved
   concept type per existing directory role. `index.md`/`log.md` stay reserved (no `type:`).
-  Extended during ticket breakdown once the Hollard brain's real shape was inventoried:
+  Extended during ticket breakdown once the work brain's real shape was inventoried:
   `ticket` (its per-initiative `tickets/` directories, a role not previously documented
   in `SKILL.md`), `spike` (`spikes/`, a role `SKILL.md` already named but never assigned
   a `type:`), `learner` (area-level `learner.md`, the `/walkthrough` skill's learner
@@ -98,15 +98,15 @@ this migration is additive-only.
 
 Discovered only once the tickets were being dispatched, not during the grilling session:
 
-- **`jinyeow/dotfiles` is a public repo.** The Hollard migration tickets (#198-204)
+- **`jinyeow/dotfiles` is a public repo.** The work migration tickets (#198-204)
   originally named real PBI numbers and person-identifying initiative folders
   in their public titles and bodies. Redacted to generic labels (Initiative A, B, C, ...) with the real
   local-path mapping kept out of the public tracker.
-- **The Hollard brain repo has a single working tree, no worktree fleet** — its 7
+- **The work brain repo has a single working tree, no worktree fleet** — its 7
   migration batches (#198-204) cannot run as parallel subagents each committing
   independently (git `index.lock` collision, interleaved staged changes). They run
   sequentially, one commit per batch. Only #197 (a separate repo, the personal brain) is
-  genuinely parallel with the Hollard batches.
+  genuinely parallel with the work batches.
 - **`review-fix-loop` has no target in the brain repos** — `project-brain`'s own update
   contract commits straight to `main`, no branch/PR flow. Cross-model review
   (`--reviewers fable,sol --codex`) is scoped to #196's dotfiles-repo PR

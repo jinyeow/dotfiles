@@ -231,7 +231,7 @@ it costs nothing and never spawns `az`.
 
 There is a single shared profile — no per-machine variants. Machine-specific
 behaviour (work git identity, Azure subscription) is handled at other layers:
-- Git identity via `[includeIf]` in `git/gitconfig`
+- Git identity via `[includeIf]` in the untracked `~/.gitconfig.local` (see `git/README.md`)
 - Az context loaded async in `Profile/Set-Prompt.ps1`
 
 ## Install
