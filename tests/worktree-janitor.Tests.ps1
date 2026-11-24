@@ -166,7 +166,55 @@ Describe 'worktree-janitor skill' {
         $content | Should -Match '(?i)3\.\s+\*\*No remote[^\n]*\bstale\b'
     }
 
+    It 'removes the work-item registry glob after the last worktree of that item is removed, never the initiative folder globs' {
+        $content = Get-Content $skillPath -Raw
+        $content | Should -Match '(?i)registry glob'
+        $content | Should -Match ([regex]::Escape('<scope>/*/<type>-<item>-*'))
+        $content | Should -Match '(?i)last\s+(remaining\s+)?worktree\s+of\s+(that|the)\s+(work\s+)?item'
+        $content | Should -Match '(?i)never\s+remove\s+the\s+initiative\s+folder\s+globs'
+    }
+
+    It 'marks the Repos table row merged in the same registry sync step and commits the brain change' {
+        $content = Get-Content $skillPath -Raw
+        $content | Should -Match '(?s)Sync the initiative registry in the same step.*Repos table.*row.*`merged`'
+        $content | Should -Match '(?s)Sync the initiative registry in the same step.*Bump\s+`updated:`'
+        $content | Should -Match '(?s)Sync the initiative registry in the same step.*git -C .* commit'
+    }
+
     It 'is registered in the root README skills table' {
         Get-Content (Join-Path $repo 'README.md') -Raw | Should -Match '`worktree-janitor`'
+    }
+}
+
+Describe 'project-brain initiative close' {
+    BeforeAll {
+        $repo = Split-Path $PSScriptRoot -Parent
+        $skill = Get-Content (Join-Path $repo 'ai-agents/skills/project-brain/SKILL.md') -Raw
+        $close = [regex]::Match($skill, '(?s)\*\*Initiative close:\*\*.*?(?=\n## )').Value
+    }
+
+    It 'has an initiative close section' {
+        $close | Should -Not -BeNullOrEmpty
+    }
+
+    It 'starts with step 0: wiki synthesis from the initiative log and ADRs, before the archive move' {
+        $close | Should -Match '(?s)0\.\s+\*\*Synthesize[^\n]*wiki.*1\.\s+Move'
+        $close | Should -Match '(?s)0\.\s.*\blog\.md\b.*\badr/'
+        $close | Should -Match '(?s)0\.\s.*hand-written rules'
+    }
+
+    It 'states the archive trigger: parent closed, children done, final comment posted, no worktrees remain' {
+        $trigger = [regex]::Match($close, '(?s)Archive trigger.*?(?=\n0\.)').Value
+        $trigger | Should -Not -BeNullOrEmpty
+        $trigger | Should -Match '(?i)parent\s+item\s+is\s+closed'
+        $trigger | Should -Match '(?i)all\s+children\s+are\s+done'
+        $trigger | Should -Match '(?i)final\s+parent\s+comment\s+is\s+posted'
+        $trigger | Should -Match '(?i)no\s+worktrees\s+remain'
+    }
+
+    It 'archives a standalone item when its PR is merged and the item is closed, and never closes the item itself' {
+        $trigger = [regex]::Match($close, '(?s)Archive trigger.*?(?=\n0\.)').Value
+        $trigger | Should -Match '(?is)archive\s+a\s+standalone\s+item\s+when\s+its\s+PR\s+is\s+merged\s+and\s+the\s+item\s+is\s+closed'
+        $trigger | Should -Match '(?i)never\s+close\s+an\s+item'
     }
 }

@@ -245,6 +245,24 @@ does not exist yet, create it as `{ "version": 1, "brains": [] }` before appendi
 initiative close has somewhere to move a row into.
 
 **Initiative close:**
+
+Archive trigger. Run the close steps only when all of these hold:
+- the parent item is closed;
+- all children are done;
+- the final parent comment is posted;
+- no worktrees remain. `worktree-janitor` marks each removed worktree `merged` in the Repos
+  table and drops its registry glob, so a Repos table with no active row and no work-item glob
+  in the registry means none remain.
+
+A standalone item has no children. Archive a standalone item when its PR is merged and the
+item is closed. The user closes items. Never close an item yourself. When the trigger holds,
+offer the close and wait for the user's go-ahead.
+
+0. **Synthesize durable knowledge into the wiki first.** Read the initiative's `log.md` and
+   `adr/`. Pick the facts that stay true after the work ends: conventions, lessons, standards,
+   decisions that other work will reuse. Ingest them into the Home Repo's `wiki/` and log the
+   ingest. Leave the wiki's hand-written rules section as it is. Leave volatile status out.
+   Do the later steps only after the ingest is committed.
 1. Move `initiatives/<id>/` to `initiatives/_archive/<id>/`.
 2. Remove its `registry.json` entry. If a parent initiative's entry lists this id under
    `children`, remove it there too.

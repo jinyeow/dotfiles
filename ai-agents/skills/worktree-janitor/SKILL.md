@@ -135,6 +135,26 @@ approves it.
      `git -C '<dir>' rev-parse --absolute-git-dir` (`.bare/worktrees/<name>/modules`) and run
      `git worktree remove '<dir>'` again. If any submodule has changes, stashes or a moved
      HEAD, stop and report it.
+   - **Sync the initiative registry in the same step.** Run this right after each successful
+     `git worktree remove`, before the next worktree. It also applies to the step 6 removals.
+     Resolve the initiative for the removed directory with the `project-brain` resolve-and-read
+     procedure. The glob match works on the path text, so the directory need not exist. If no
+     initiative matches, do nothing here. Otherwise make two edits in the brain:
+     1. In the initiative's `STATUS.md`, find the Repos table row for the removed worktree and
+        set its State to `merged`. Keep the row, so the table shows the whole spread. Bump
+        `updated:` and recompute `stale_after`.
+     2. In `registry.json`, remove the registry glob that matched the removed directory from the
+        initiative's `dirs`. That glob is the work-item glob (`<scope>/*/<type>-<item>-*`). One
+        glob covers the worktrees of one work item in every repo. Remove it only after the last
+        remaining worktree of that item is gone. Check with `git worktree list --porcelain` in
+        each repo that the Repos table names for that item. Never remove the initiative folder
+        globs (`<scope>/gateroom/brain/initiatives/<id>` and `<id>/*`). Initiative close removes
+        them.
+
+     Then commit both files with `git -C '<brain>' add 'registry.json' 'initiatives/<id>/STATUS.md'`
+     and `git -C '<brain>' commit -m 'chore(<id>): mark <dir> merged and drop its glob'`. If the
+     brain repo has other staged or unrelated changes, stage only these two files. Add the row
+     and the glob you removed to the final report.
    - `git branch -d '<branch>'` (non-force). This succeeds for a normal/fast-forward merge and
      is itself fully automated — no confirmation needed once step 2–4 already established
      safety and the ancestor check above passed.
