@@ -41,7 +41,10 @@ back to its built-in walker. Live `Alt+f` search (`Invoke-FzfRipgrep`) still use
 | `Ctrl+a` | Select all matches |
 | `Ctrl+/` | Toggle preview pane |
 
-### PowerShell shell (PSFzf)
+### PowerShell shell
+
+All pickers run bare `fzf` and need only the fzf binary. `Tab` and the aliases
+below additionally need the PSFzf module.
 
 | Key | Action |
 |---|---|
@@ -54,16 +57,15 @@ back to its built-in walker. Live `Alt+f` search (`Invoke-FzfRipgrep`) still use
 | `Alt+b` | Fuzzy git branch switcher (`switch_git_branch`) |
 | `Alt+g` | Fuzzy git worktree navigator (`cd_git_worktree`) |
 
-PSFzf aliases:
+Aliases (`frg` needs only fzf; the rest come from PSFzf):
 
 | Alias | Action |
 |---|---|
 | `frg` | Interactive ripgrep search — refine the query live, results in fzf |
 | `fe` | Fuzzy-pick a file and open it in `$env:EDITOR` |
 | `fgs` | Fuzzy browser over `git status` output |
-| `fh` | Fuzzy command history — paste selected command onto the line |
+| `fh` | Fuzzy command history — runs the selected command immediately |
 | `fkill` | Fuzzy process picker — kill selected process |
-| `fcd` | Fuzzy directory picker — cd into selection (same as `Alt+c`) |
 
 ### Bash / WSL
 

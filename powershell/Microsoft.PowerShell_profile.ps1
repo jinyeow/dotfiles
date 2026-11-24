@@ -178,47 +178,47 @@ function y {
 # cost on every default invocation (removed from ripgreprc — see ripgrep/ripgreprc).
 function rgs { rg --sort=path @args }
 
-if ($global:ProfileModules['PSFzf']) {
-    function switch_git_branch {
-        $branches = git branch -vv | Select-String ': gone]' -NotMatch | ForEach-Object {
-            ($_.ToString().Substring(2) -split '\s+')[0]
-        }
-        # Bare fzf (native pipeline), NOT PSFzf's Invoke-Fzf: its redirected-stdout
-        # System.Diagnostics.Process launcher desyncs under psmux's ConPTY. Fullscreen
-        # (no -Height 10 box) is the deliberate, reversible trade for correct rendering.
-        $branch = $branches | Sort-Object | fzf --prompt 'branch> '
-        if (-not [String]::IsNullOrEmpty($branch)) {
-            Set-Location "$(git rev-parse --show-toplevel)"
-            git switch $branch
-        }
-        [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt()
+# Bare-fzf git pickers (Alt+b / Alt+g, bound in Phase 2a). Not gated on PSFzf: they
+# only need the fzf binary, which Phase 2a checks for before binding them.
+function switch_git_branch {
+    $branches = git branch -vv | Select-String ': gone]' -NotMatch | ForEach-Object {
+        ($_.ToString().Substring(2) -split '\s+')[0]
     }
+    # Bare fzf (native pipeline), NOT PSFzf's Invoke-Fzf: its redirected-stdout
+    # System.Diagnostics.Process launcher desyncs under psmux's ConPTY. Fullscreen
+    # (no -Height 10 box) is the deliberate, reversible trade for correct rendering.
+    $branch = $branches | Sort-Object | fzf --prompt 'branch> '
+    if (-not [String]::IsNullOrEmpty($branch)) {
+        Set-Location "$(git rev-parse --show-toplevel)"
+        git switch $branch
+    }
+    [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt()
+}
 
-    function cd_git_worktree {
-        $worktrees = @{}
-        git worktree list --porcelain | ForEach-Object -Begin {
-            $curr = @{}
-        } -Process {
-            switch -Regex ($_) {
-                '^worktree (.+)$' { $curr['Path']   = $matches[1] }
-                '^branch (.+)$'   { $curr['Branch'] = $matches[1] -replace '^refs/heads/', '' }
-                '^$' {
-                    if ($curr['Path'] -and $curr['Branch']) {
-                        $worktrees[$curr['Branch']] = $curr['Path']
-                        $curr = @{}
-                    }
+function cd_git_worktree {
+    $worktrees = @{}
+    git worktree list --porcelain | ForEach-Object -Begin {
+        $curr = @{}
+    } -Process {
+        switch -Regex ($_) {
+            '^worktree (.+)$' { $curr['Path']   = $matches[1] }
+            '^branch (.+)$'   { $curr['Branch'] = $matches[1] -replace '^refs/heads/', '' }
+            '^$' {
+                if ($curr['Path'] -and $curr['Branch']) {
+                    $worktrees[$curr['Branch']] = $curr['Path']
+                    $curr = @{}
                 }
             }
         }
-        # Bare fzf (native pipeline), NOT PSFzf's Invoke-Fzf: its redirected-stdout
-        # System.Diagnostics.Process launcher desyncs under psmux's ConPTY. Fullscreen
-        # (no -Height 10 box) is the deliberate, reversible trade for correct rendering.
-        $selected = $worktrees.Keys | Sort-Object | fzf --prompt 'worktree> '
-        if (-not [String]::IsNullOrEmpty($selected)) {
-            Set-Location $worktrees[$selected]
-        }
-        [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt()
     }
+    # Bare fzf (native pipeline), NOT PSFzf's Invoke-Fzf: its redirected-stdout
+    # System.Diagnostics.Process launcher desyncs under psmux's ConPTY. Fullscreen
+    # (no -Height 10 box) is the deliberate, reversible trade for correct rendering.
+    $selected = $worktrees.Keys | Sort-Object | fzf --prompt 'worktree> '
+    if (-not [String]::IsNullOrEmpty($selected)) {
+        Set-Location $worktrees[$selected]
+    }
+    [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt()
 }
 
 function Invoke-FzfRipgrep {
@@ -289,9 +289,8 @@ function Show-Hotkeys {
         '[alias]  rfv / frg       live rg search — rg-filtered, bat preview, multi-select quickfix'
         '[alias]  fe              fuzzy-pick a file and open in $EDITOR'
         '[alias]  fgs             fuzzy git status browser'
-        '[alias]  fh              fuzzy command history — paste onto line'
+        '[alias]  fh              fuzzy command history — run selection'
         '[alias]  fkill           fuzzy process picker — kill selection'
-        '[alias]  fcd             fuzzy directory picker — cd into selection'
         '[alias]  zi              zoxide interactive directory jump'
         '[eza]    ll              long list with git status + icons'
         '[eza]    la              long list including hidden entries'
@@ -430,10 +429,31 @@ function Initialize-DeferredProfile {
     if ($global:ProfileDeferredDone) { return }
     $global:ProfileDeferredDone = $true
 
-    # PSFzf (~1.1s)
+    # PSFzf (~1.1s): only fuzzy Tab completion and the fe/fgs/fh/fkill aliases.
+    # Its own Ctrl+t / Ctrl+r / Alt+c handlers are suppressed or overridden below.
+    # No -EnableAliasFuzzySetLocation: its alias is `fd`, which shadows the fd binary at the
+    # prompt (PSFzf.Base.ps1:247 creates it unconditionally); Alt+c covers the same job.
     if ($global:ProfileModules['PSFzf']) {
         Import-Module PSFzf
 
+        # Empty chords tell Set-PsFzfOption not to (re)bind PSFzf's own Ctrl+t / Ctrl+r /
+        # Alt+c handlers (SetPsReadlineShortcut skips an empty chord — PSFzf.Base.ps1:881).
+        Set-PsFzfOption `
+            -PSReadlineChordProvider '' `
+            -PSReadlineChordReverseHistory '' `
+            -PSReadlineChordSetLocation '' `
+            -AltCCommand ([ScriptBlock] { param($Location) Set-Location $Location; [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt() }) `
+            -EnableAliasFuzzyEdit `
+            -EnableAliasFuzzyGitStatus `
+            -EnableAliasFuzzyHistory `
+            -EnableAliasFuzzyKillProcess
+
+        Set-PSReadLineKeyHandler -Key Tab -ScriptBlock { Invoke-FzfTabCompletion }
+    }
+
+    # Bare-fzf pickers: need only the fzf binary, not PSFzf. Must run AFTER the PSFzf
+    # block so these bindings win over the handlers PSFzf binds at Import-Module.
+    if (Get-Command -Name fzf -CommandType Application -ErrorAction Ignore) {
         # Ctrl+t / Ctrl+r run BARE `fzf` via pwsh's native pipeline, NOT PSFzf's Invoke-Fzf.
         # PSFzf launches fzf through a redirected-stdout System.Diagnostics.Process from inside
         # a PSReadLine handler; under psmux's ConPTY that desyncs fzf's screen/cursor state
@@ -528,25 +548,11 @@ function Initialize-DeferredProfile {
         Set-Alias -Name rfv -Value Invoke-FzfRipgrep -Scope Global
         Set-Alias -Name frg -Value Invoke-FzfRipgrep -Scope Global
 
-        Set-PSReadLineKeyHandler -Key Tab -ScriptBlock { Invoke-FzfTabCompletion }
         Set-PSReadLineKeyHandler -Chord 'alt+f' -ScriptBlock { Invoke-FzfRipgrep }
         Set-PSReadLineKeyHandler -Chord 'alt+b' -ScriptBlock { switch_git_branch }
         Set-PSReadLineKeyHandler -Chord 'alt+g' -ScriptBlock { cd_git_worktree }
 
-        # Empty chords tell Set-PsFzfOption not to (re)bind PSFzf's own Ctrl+t / Ctrl+r /
-        # Alt+c handlers (SetPsReadlineShortcut skips an empty chord — PSFzf.Base.ps1:881).
-        Set-PsFzfOption `
-            -PSReadlineChordProvider '' `
-            -PSReadlineChordReverseHistory '' `
-            -PSReadlineChordSetLocation '' `
-            -AltCCommand ([ScriptBlock] { param($Location) Set-Location $Location; [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt() }) `
-            -EnableAliasFuzzyEdit `
-            -EnableAliasFuzzyGitStatus `
-            -EnableAliasFuzzyHistory `
-            -EnableAliasFuzzyKillProcess `
-            -EnableAliasFuzzySetLocation
-
-        # Bind our bare-fzf handlers AFTER Set-PsFzfOption so they win last-write: PSFzf
+        # Bound AFTER the PSFzf block above so they win last-write: PSFzf
         # binds Ctrl+t / Ctrl+r / Alt+c to its redirected-stdout handlers at Import-Module
         # (defaults, PSFzf.Base.ps1:2-4), which desync under psmux's ConPTY. Ctrl+r is bound in
         # BOTH Vi key-tables: EditMode is Vi, so a plain (no -ViMode) bind lands only in the Insert
@@ -565,7 +571,7 @@ function Initialize-DeferredProfile {
         Set-PSReadLineKeyHandler -Chord 'Alt+c' -ScriptBlock { Invoke-FzfSetLocationPicker }
     }
 
-    # fd-backed fzf pickers (moved off Phase 1). PSFzf and bare fzf read these at
+    # fd-backed fzf pickers (moved off Phase 1). Bare fzf and PSFzf read these at
     # invocation, so setting them on first idle is in time for the first picker.
     if (Get-Command -Name fd -CommandType Application -ErrorAction Ignore) {
         # --exclude AppData/node_modules: from ~ the walk is dominated by AppData (100k+ dirs on
