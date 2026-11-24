@@ -49,6 +49,31 @@ so the output HTML renders the real fonts in any browser. They need Python with
 `fonttools` + `brotli` (`pip install fonttools brotli`) for subsetting and Edge for the PNG.
 Generated `.font-*.html`/`.png` land at the repo root and are git-ignored.
 
+### Monthly transcript archive
+
+`Save-AgentTranscript.ps1` runs from a Windows scheduled task at 09:00 on the first day of
+each month. Register it from a normal PowerShell 7 session. Replace `<WorkPrefix>` with the
+start of your work project folder names under `~\.claude\projects`; the pattern stays in the
+task and out of this repository.
+
+```powershell
+$pwsh = "$env:LOCALAPPDATA\Microsoft\WindowsApps\pwsh.exe"
+$script = Join-Path $env:DOTFILES 'powershell\Scripts\Save-AgentTranscript.ps1'
+schtasks.exe /Create /TN 'Agent transcript archive' /SC MONTHLY /D 1 /ST 09:00 /TR "`"$pwsh`" -NoProfile -NonInteractive -File `"$script`" -WorkProjectPattern ^E--<WorkPrefix>" /F
+$s = (Get-ScheduledTask -TaskName 'Agent transcript archive').Settings; $s.StartWhenAvailable = $true
+Set-ScheduledTask -TaskName 'Agent transcript archive' -Settings $s | Out-Null
+```
+
+- `$pwsh` is the path of the Store PowerShell 7 alias. A task that runs only `pwsh.exe` fails
+  with `0x80070002` (file not found). For an MSI install, use `(Get-Command pwsh).Source`.
+- Do not put quotes around the pattern. `pwsh -File` passes arguments literally, so quotes
+  become part of the pattern and no project matches.
+- `New-ScheduledTaskTrigger` cannot make a monthly trigger, so the task uses `schtasks.exe`.
+  The `/TR` value must be 261 characters or fewer.
+- `StartWhenAvailable` runs a missed month when the PC is next on.
+- Check the last run with `Get-ScheduledTaskInfo -TaskName 'Agent transcript archive'`.
+  `LastTaskResult` 0 means success.
+
 ## Profile architecture
 
 The profile is structured in three phases to keep startup fast:
