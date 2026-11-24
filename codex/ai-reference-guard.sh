@@ -85,19 +85,21 @@ fi
 # segment boundary — see those checks' own comments.
 COMMAND_FLAT=$(printf '%s' "$COMMAND" | tr '\n' ' ')
 
-# ── Repo scoping: Hollard/Azure-DevOps remotes only ─────────────────────────────────
-# Mirrors git/templates/hooks/pre-commit's own scoping (see its lines ~59-61): read the
-# origin remote from the git command's own target, not just the hook's inherited cwd —
-# `git -C <path> ...` retargets git at a different repo than cwd, and the hook must
-# scope against THAT repo's origin, or a `-C`-qualified command against an in-scope repo
-# run from an unrelated cwd would silently bypass every check below. When no `-C <path>`
-# global flag is present, fall back to cwd's origin (the common case). If the origin
-# lookup fails (not a repo, no origin) or the URL isn't both dev.azure.com AND
-# HollardInsuranceRetail (case-insensitive), this is a GitHub repo (dotfiles, wiki,
-# brain, ...) that legitimately says "Claude"/"Codex" in its own subject matter — ALLOW
-# everything, before any check, including the fail-closed missing-wordlist check below.
-# Deliberately does not track `cd <path> && ...` shell state — out of scope; only an
-# explicit `-C <path>` global flag on the git invocation itself is honored.
+# ── Repo scoping: work repos only (work.aiReferenceScan) ─────────────────────────
+# Mirrors git/templates/hooks/pre-commit's own scoping: the hook runs only when
+# `git config --type=bool --get work.aiReferenceScan` prints `true`. git/gitconfig-work sets
+# that key, and the [includeIf] blocks in the untracked ~/.gitconfig.local load that file for
+# the work repos, with or without a remote. The key is read from the git command's own
+# target, not just the hook's inherited cwd — `git -C <path> ...` retargets git at a
+# different repo than cwd, and the hook must scope against THAT repo, or a `-C`-qualified
+# command against an in-scope repo run from an unrelated cwd would silently bypass every
+# check below. When no `-C <path>` global flag is present, fall back to cwd (the common
+# case). If the key is unset, false or not a boolean, or the target is not a repo (GitHub
+# repos such as dotfiles, wiki and brain legitimately say "Claude"/"Codex" in their own
+# subject matter), ALLOW everything, before any check, including the fail-closed
+# missing-wordlist check below. Deliberately does not track `cd <path> && ...` shell
+# state — out of scope; only an explicit `-C <path>` global flag on the git invocation
+# itself is honored.
 CGIT_TOKEN='(?:"[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)'
 CGIT_RAW=$(printf '%s' "$COMMAND_FLAT" | grep -oP -- 'git[[:space:]]+-C[[:space:]]+\K'"$CGIT_TOKEN" | head -1 || echo "")
 CGIT_PATH="$CGIT_RAW"
@@ -106,14 +108,11 @@ if [[ "$CGIT_PATH" == \"*\" && "$CGIT_PATH" == *\" ]] || [[ "$CGIT_PATH" == \'*\
 fi
 
 if [[ -n "$CGIT_PATH" ]]; then
-  origin_url=$(git -C "$CGIT_PATH" remote get-url origin 2>/dev/null) || exit 0
+  AI_REFERENCE_SCAN=$(git -C "$CGIT_PATH" config --type=bool --get work.aiReferenceScan 2>/dev/null) || exit 0
 else
-  origin_url=$(git remote get-url origin 2>/dev/null) || exit 0
+  AI_REFERENCE_SCAN=$(git config --type=bool --get work.aiReferenceScan 2>/dev/null) || exit 0
 fi
-if ! { printf '%s' "$origin_url" | grep -qi 'dev\.azure\.com' && \
-       printf '%s' "$origin_url" | grep -qi 'HollardInsuranceRetail'; }; then
-  exit 0
-fi
+[[ "$AI_REFERENCE_SCAN" == "true" ]] || exit 0
 
 # Fail CLOSED only for a missing/unreadable wordlist — without it we cannot tell a
 # banned reference from a clean command, so refuse to run rather than silently allow.

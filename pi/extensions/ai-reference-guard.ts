@@ -94,14 +94,16 @@ function extractDashCPath(command: string): string | undefined {
 }
 
 // Repo scoping, mirroring git/templates/hooks/pre-commit's own scoping (see that file's
-// AI-reference section): this whole extension only applies inside a Hollard/Azure DevOps
-// remote repo. `git remote get-url origin` runs against the command's own `-C <path>`
-// target when the command carries one (e.g. `git -C E:/work/HollardRepo commit ...`
-// run from an unscoped cwd) — otherwise against cwd (the extension's own inherited
-// working directory, same as the bash ports use their inherited cwd). If it throws (not
-// a repo, no origin) or the URL isn't both dev.azure.com AND HollardInsuranceRetail
-// (case-insensitive), the repo is out of scope — a GitHub repo like dotfiles/wiki/brain
-// legitimately says "Claude"/"Codex" in its own subject matter and must stay unscanned.
+// AI-reference section): this whole extension only applies when
+// `git config --type=bool --get work.aiReferenceScan` prints `true`. git/gitconfig-work sets
+// that key, and the [includeIf] blocks in the untracked ~/.gitconfig.local load that file for
+// the work repos, with or without a remote. The key is read from the command's own
+// `-C <path>` target when the command carries one (e.g. `git -C <work-root>/<repo> commit ...`
+// run from an unscoped cwd) — otherwise from cwd (the extension's own inherited working
+// directory, same as the bash ports use their inherited cwd). If git throws (not a repo, key
+// unset, value not a boolean) or prints anything else, the repo is out of scope — a GitHub
+// repo like dotfiles/wiki/brain legitimately says "Claude"/"Codex" in its own subject matter
+// and must stay unscanned.
 //
 // SECURITY: dashCPath comes straight out of the model-controlled command string this
 // whole extension exists to gate, so it must never be interpolated into a shell-
@@ -114,15 +116,16 @@ function extractDashCPath(command: string): string | undefined {
 // same way.
 function isRepoScopedIn(cwd: string, command: string): boolean {
 	const dashCPath = extractDashCPath(command);
-	let originUrl: string;
+	const configArgs = ["config", "--type=bool", "--get", "work.aiReferenceScan"];
+	let aiReferenceScan: string;
 	try {
-		originUrl = dashCPath
-			? execFileSync("git", ["-C", dashCPath, "remote", "get-url", "origin"], { cwd, encoding: "utf8" })
-			: execFileSync("git", ["remote", "get-url", "origin"], { cwd, encoding: "utf8" });
+		aiReferenceScan = dashCPath
+			? execFileSync("git", ["-C", dashCPath, ...configArgs], { cwd, encoding: "utf8" })
+			: execFileSync("git", configArgs, { cwd, encoding: "utf8" });
 	} catch {
 		return false;
 	}
-	return /dev\.azure\.com/i.test(originUrl) && /HollardInsuranceRetail/i.test(originUrl);
+	return aiReferenceScan.trim() === "true";
 }
 
 // Parses banned-ai-terms.txt's documented format (one case-insensitive ERE per line,

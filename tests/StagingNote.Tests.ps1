@@ -5,6 +5,7 @@
 # real vault. Assertions are on the daily-note file content.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:ModulesRoot = Join-Path (Split-Path $PSScriptRoot -Parent) 'powershell' 'Modules'
     Import-Module (Join-Path $script:ModulesRoot 'StagingNote') -Force
 }

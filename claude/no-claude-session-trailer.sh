@@ -27,20 +27,22 @@
 # The `git ... commit` matcher allows each leading global flag to carry an argument (git -C
 # <path> commit, git -c k=v commit): a unit is `-flag` optionally followed by one argument
 # token — a bare non-flag token, or a quoted (possibly multi-word) token such as
-# `-C "C:/Hollard Repo"` — so a flag WITH an argument can't slip between `git` and `commit`
+# `-C "C:/Work Repo"` — so a flag WITH an argument can't slip between `git` and `commit`
 # and evade the check.
 #
-# Scoped to Hollard/Azure DevOps repos only, mirroring git/templates/hooks/pre-commit's own
-# scoping: `git remote get-url origin`, run against the command's actual git target, must
-# succeed AND contain both dev.azure.com and HollardInsuranceRetail (case-insensitive). If the
-# repo has no origin, isn't a repo at all, or the origin is a GitHub URL (dotfiles, wiki, brain
-# — repos that legitimately say "Claude"/"Codex" in their own subject matter), every check below
-# is skipped: the wordlist scan, the --no-verify/-n denies, and the SKIP_*-env-var denies alike.
+# Scoped to work repos only, mirroring git/templates/hooks/pre-commit's own scoping:
+# `git config --type=bool --get work.aiReferenceScan`, run against the command's actual git
+# target, must print `true`. git/gitconfig-work sets that key, and the [includeIf] blocks in
+# the untracked ~/.gitconfig.local load that file for the work repos, with or without a remote.
+# If the key is unset, false or not a boolean, or the target isn't a repo at all (GitHub repos
+# such as dotfiles, wiki and brain legitimately say "Claude"/"Codex" in their own subject
+# matter), every check below is skipped: the wordlist scan, the --no-verify/-n denies, and the
+# SKIP_*-env-var denies alike.
 #
 # The command's actual git target is not always this hook's inherited cwd: `git -C <path> ...`
-# retargets git at a different repo, so the origin check must follow it there rather than
-# checking cwd's origin. If the command carries a `-C <path>` in git's leading global-flag run,
-# that path's origin is checked instead of cwd's; otherwise cwd's origin is used as before.
+# retargets git at a different repo, so the key lookup must follow it there rather than
+# reading cwd's config. If the command carries a `-C <path>` in git's leading global-flag run,
+# that path's config is read instead of cwd's; otherwise cwd's config is used.
 # `cd <path> && git ...` shell-state tracking is a known, separate, accepted limitation — not
 # attempted here.
 cmd=$(jq -r '.tool_input.command // ""')
@@ -52,7 +54,7 @@ c_path=$(printf '%s' "$cmd" | grep -oP -- "$c_path_re" | head -1)
 
 # `git -C <path>` accepts a shell-quoted path (e.g. `-C "."`), but the token captured above still
 # carries its literal surrounding quotes — strip exactly one matching layer of double or single
-# quotes the way a shell would for a simple quoted token, so the origin lookup below targets the
+# quotes the way a shell would for a simple quoted token, so the key lookup below targets the
 # real path instead of a literal `".\"`-shaped string that always fails and (via the `|| exit 0`
 # fallback) lets the whole guarded command through. Mirrors codex/ai-reference-guard.sh's
 # equivalent CGIT_PATH unquoting; no nested-quote/escape handling beyond one matching pair, same
@@ -62,14 +64,11 @@ if [[ "$c_path" == \"*\" && "$c_path" == *\" ]] || [[ "$c_path" == \'*\' && "$c_
 fi
 
 if [[ -n "$c_path" ]]; then
-  origin_url=$(git -C "$c_path" remote get-url origin 2>/dev/null) || exit 0
+  ai_reference_scan=$(git -C "$c_path" config --type=bool --get work.aiReferenceScan 2>/dev/null) || exit 0
 else
-  origin_url=$(git remote get-url origin 2>/dev/null) || exit 0
+  ai_reference_scan=$(git config --type=bool --get work.aiReferenceScan 2>/dev/null) || exit 0
 fi
-if ! { printf '%s' "$origin_url" | grep -qi 'dev\.azure\.com' &&
-       printf '%s' "$origin_url" | grep -qi 'HollardInsuranceRetail'; }; then
-  exit 0
-fi
+[[ "$ai_reference_scan" == "true" ]] || exit 0
 
 script_dir=$(cd -- "$(dirname -- "$0")" &>/dev/null && pwd)
 wordlist="$script_dir/banned-ai-terms.txt"
@@ -87,7 +86,7 @@ wordlist_pattern=$(grep -Ev '^[[:space:]]*(#|$)' "$wordlist" | paste -sd'|' -)
 
 # A leading global flag's optional argument token: a double- or single-quoted (possibly
 # multi-word) value, or a bare non-flag token — mirrors c_path_token_re/git_global_flag_group
-# above so `git -C "C:/Hollard Repo" commit ...` doesn't stop matching mid-quote (a quoted
+# above so `git -C "C:/Work Repo" commit ...` doesn't stop matching mid-quote (a quoted
 # multi-word -C value used to break commit_re/commit_dashn_re/skip_commit_re entirely, since
 # the old `[^-][^[:space:]]*` alternative only consumed one non-whitespace token).
 #

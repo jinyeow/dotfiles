@@ -8,6 +8,7 @@
 # contract.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:Script = Join-Path $script:RepoRoot 'ai-agents/skills/project-brain/scripts/session-start.ps1'
 

@@ -3,6 +3,7 @@
 # Complements tests/setup.Tests.ps1 (setup.ps1) and tests/setup-git.Tests.ps1 (git module).
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     . (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
 
     $script:Repo = Split-Path $PSScriptRoot -Parent
@@ -107,6 +108,28 @@ Describe 'setup.sh --clean-backups' {
 }
 
 Describe 'setup.sh --dry-run' {
+    It 'links ~/.gitattributes and the hook script directory in the git module' {
+        # core.attributesfile in git/gitconfig points at ~/.gitattributes, and the config-based
+        # hooks run scripts under ~/.git_templates/hooks.
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-git-dryrun-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $origHome = $env:HOME
+        try
+        {
+            $env:HOME = $tmpHome
+            $out = & $script:Bash $script:SetupSh -m git --dry-run 2>&1 | Out-String
+            $LASTEXITCODE | Should -Be 0
+            $out | Should -Match '\.gitattributes -> .*git/gitattributes'
+            $out | Should -Match '\.git_templates -> .*git/templates'
+            $out | Should -Not -Match '\.git_work_hooks'
+        }
+        finally
+        {
+            $env:HOME = $origHome
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     It 'previews shared council skills for Pi without mutating the home' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-pi-dryrun-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null

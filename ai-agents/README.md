@@ -83,7 +83,7 @@ own `SKILL.md` frontmatter, trimmed to one line. Claude-native skills live in `.
 - **`review-ado-pr`** — Review an Azure DevOps pull request locally, end-to-end.
 - **`review-fix-loop`** — Iterative review-fix cycle for a branch or PR.
 - **`review-me`** — Interrogate the user on the current diff as an adversarial reviewer and withhold the PR until they pass.
-- **`rfc`** — Draft and create an Azure DevOps "Request for Change RFC" work item in the "TSC Change Control" project.
+- **`rfc`** — Draft and create an Azure DevOps "Request for Change RFC" work item in the configured work project.
 - **`setup-agent-skills`** — Configure the agent-skill workflow for this repo: where specs/designs/tickets land, whether an issue tracker is used and its label vocabulary, the domain-doc layout, and how the tracker expresses wayfinding operations.
 - **`spec-review`** — Review a diff for conformance to its originating spec or ticket: missing requirements, scope creep, and requirements implemented wrong.
 - **`storm-research`** — Runs a 4-phase pipeline over a topic: five expert lenses (Practitioner, Academic, Skeptic, Economist, Historian), a contradiction map, a synthesized HTML report, and adversarial peer review plus primary-source verification.

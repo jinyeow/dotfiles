@@ -86,10 +86,6 @@
         {
             "user.email": "justin@puah.dev",
             "user.name": "Justin Puah"
-        },
-        {
-            "user.email": "justin.puah@hollard.com.au",
-            "user.name": "Justin Puah"
         }
     ],
     "editor.stickyScroll.enabled": true,

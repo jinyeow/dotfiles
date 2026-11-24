@@ -11,6 +11,7 @@
 $script:HasPSSA = [bool](Get-Module -ListAvailable -Name PSScriptAnalyzer)
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:Hook = Join-Path $script:RepoRoot 'claude/lint-powershell.ps1'
 

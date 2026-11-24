@@ -1,23 +1,23 @@
 #!/bin/sh
 # Hard-blocks AI/Claude/Codex/Copilot/co-authorship references in commit messages.
 # Layer 2 of #219 — a hard-block backstop for the prompt-level "don't reference AI
-# tools in commits" rule, which already failed once. Global hook via
-# core.hooksPath = ~/.git_templates/hooks; git invokes commit-msg as
+# tools in commits" rule, which already failed once. Global hook via the
+# [hook "dotfiles-commit-msg"] stanza in git/gitconfig; git invokes commit-msg as
 # `commit-msg <path-to-commit-msg-file>`, which already gives the final message
 # text regardless of -m/-F/editor/--amend/merge — no need to parse argv.
 #
-# Scoped to Hollard/Azure DevOps repos only, via the same signal git/gitconfig's
-# [includeIf] uses for work identity: origin URL contains both dev.azure.com and
-# HollardInsuranceRetail, case-insensitive (covers both the HTTPS and SSH remote
-# forms). GitHub repos (dotfiles, wiki, brain) legitimately say "Claude"/"Codex" in
-# their own subject matter and must stay unscanned. If `git remote get-url origin`
-# fails (no remote, not a repo) or the URL doesn't match, ALLOW.
+# Scoped to work repos only: the scan runs when
+# `git config --type=bool --get work.aiReferenceScan` prints `true`. git/gitconfig-work
+# sets that key, and the [includeIf] blocks in the untracked ~/.gitconfig.local load
+# that file for the same repos that get the work identity, with or without a remote.
+# GitHub repos (dotfiles, wiki, brain) legitimately say "Claude"/"Codex" in their own
+# subject matter and must stay unscanned. If the key is unset, false or not a boolean,
+# or this is not a repo, ALLOW.
 #
 # Fails OPEN on everything except one case: scoped-in AND the wordlist itself is
-# missing/unreadable, which fails CLOSED. That mirrors gitconfig-work's
-# [hook "work-policy"] reasoning (see git/README.md and git/gitconfig-work) —
-# fail-open covers "not installed yet", never "installed but broken"; a missing
-# wordlist in a scoped-in repo is the latter.
+# missing/unreadable, which fails CLOSED. That mirrors the config-hook guard in
+# git/gitconfig: fail-open covers "not installed yet", never "installed but broken";
+# a missing wordlist in a scoped-in repo is the latter.
 #
 # Bypass one commit:  SKIP_AI_REFERENCE_SCAN=1 git commit ...
 
@@ -31,9 +31,7 @@ MSG_FILE="$1"
 DIR="$(cd "$(dirname "$0")" && pwd)"
 WORDLIST="$DIR/../../../ai-agents/_shared/banned-ai-terms.txt"
 
-origin_url=$(git remote get-url origin 2>/dev/null) || exit 0
-printf '%s' "$origin_url" | grep -qi 'dev\.azure\.com' || exit 0
-printf '%s' "$origin_url" | grep -qi 'HollardInsuranceRetail' || exit 0
+[ "$(git config --type=bool --get work.aiReferenceScan 2>/dev/null)" = "true" ] || exit 0
 
 [ "$SKIP_AI_REFERENCE_SCAN" = "1" ] && exit 0
 

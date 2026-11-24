@@ -45,10 +45,11 @@ wordlist, and denies `git commit --no-verify`/`-n` (including `-n` clustered any
 short-flag token, e.g. `-nm`) and `git push --no-verify` unconditionally, plus an exported
 `SKIP_AI_REFERENCE_SCAN`/`SKIP_GITLEAKS=1` bypassing the git-hook layer the same way.
 
-Scoped to Hollard/Azure DevOps repos only, mirroring the git hooks' own scoping: `git remote
-get-url origin` (run via `execFileSync` with an argv array, never a shell-interpolated
-string, so a crafted path can't be abused to run anything beyond a safely-failing `git`
-lookup) must contain both `dev.azure.com` and `HollardInsuranceRetail`. The check runs
+Scoped to work repos only, mirroring the git hooks' own scoping:
+`git config --type=bool --get work.aiReferenceScan` (run via `execFileSync` with an argv array,
+never a shell-interpolated string, so a crafted path can't be abused to run anything beyond a
+safely-failing `git` lookup) must print `true`. `git/gitconfig-work` sets that key for the repos
+that get the work identity. If the key is unset or false, the extension allows everything. The check runs
 against `git -C <path>`'s actual target repo when the command carries one, not just the
 extension's inherited cwd; `cd <path> && git ...` shell-state tracking remains a known,
 accepted limitation.

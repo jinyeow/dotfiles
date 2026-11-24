@@ -35,11 +35,14 @@ PowerShell `az` blocks below.
 Read the policy file explicitly — **do not assume it is already in context**:
 
 ```
-E:/HollardInsuranceRetail/brain/initiatives/board-triage/core.md
+<work-root>/brain/initiatives/board-triage/core.md
 ```
 
+`<work-root>` is the work estate root, read from `git config --get work.root` (set in the untracked
+`~/.gitconfig.local`; this public repo never names it). If the key is unset, stop and ask for the path.
+
 The project-brain SessionStart hook injects it only when the session cwd is the estate root
-`E:/HollardInsuranceRetail`. From any repo subdirectory a *different* initiative loads and this file is
+`<work-root>`. From any repo subdirectory a *different* initiative loads and this file is
 absent, so a run that relies on the hook silently has no rubric.
 
 Take the **prioritisation rubric** and the **load policy** from that file verbatim. Do not invent, extend
@@ -76,7 +79,7 @@ $items = az boards query --wiql $wiql --project $cfg.project --organization $org
 
 ## Step 3: Join each item to its initiative
 
-Read `E:/HollardInsuranceRetail/brain/registry.json`. Resolve each work-item ID to an initiative in **two
+Read `<work-root>/brain/registry.json`. Resolve each work-item ID to an initiative in **two
 passes** — one pass alone leaves most of the board unmatched:
 
 1. **Direct** — the initiative key whose leading digit run equals the work-item ID (`700201` →

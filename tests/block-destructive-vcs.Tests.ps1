@@ -14,6 +14,7 @@
 #     the user to copy and run themselves via Claude Code's `!` shell passthrough
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:Hook = Join-Path $script:RepoRoot 'claude/block-destructive-vcs.ps1'
 

@@ -4,6 +4,7 @@
 # machine bootstrapped with the other.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:Repo = Split-Path $PSScriptRoot -Parent
     $script:ScriptPath = Join-Path $script:Repo 'winget/packages.ps1'
     $script:JsonPath = Join-Path $script:Repo 'winget/packages.json'

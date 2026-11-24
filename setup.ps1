@@ -443,29 +443,27 @@ function Install-Git
     }
     Copy-Dotfile @params
 
-    # ~/.git_templates — hooks directory (init.templatedir + core.hooksPath).
+    # ~/.gitattributes — global attributes (core.attributesfile in gitconfig).
+    $params = @{
+        Dest = Join-Path $env:USERPROFILE '.gitattributes'
+        Source = Join-Path $Dotfiles 'git\gitattributes'
+    }
+    Copy-Dotfile @params
+
+    # ~/.git_templates — the global hook scripts. Each [hook "dotfiles-<event>"] stanza in
+    # gitconfig runs ~/.git_templates/hooks/<event> (config-based hooks, Git >= 2.54).
     $params = @{
         Link = Join-Path $env:USERPROFILE '.git_templates'
         Target = Join-Path $Dotfiles 'git\templates'
     }
     New-Junction @params
 
-    # ~/.git_work_hooks — work-only policy hooks, referenced by [hook "work-policy"]
-    # in gitconfig-work. Deliberately NOT nested under ~/.git_templates: templatedir
-    # copies that directory's contents into every new repo's .git/, which would put
-    # the work hooks inside personal repos too.
-    $params = @{
-        Link = Join-Path $env:USERPROFILE '.git_work_hooks'
-        Target = Join-Path $Dotfiles 'git\work-hooks'
-    }
-    New-Junction @params
-
     Test-GitHookSupport
 }
 
-# Config-based hooks ([hook "work-policy"] in gitconfig-work) need Git >= 2.54.
-# Older git ignores the stanza SILENTLY — no error, the hook simply never runs — so
-# warn at install time rather than let a policy hook quietly enforce nothing.
+# Config-based hooks (the [hook "dotfiles-<event>"] stanzas in gitconfig) need
+# Git >= 2.54. Older git ignores them
+# SILENTLY — no error, the hooks simply never run — so warn at install time.
 function Test-GitHookSupport
 {
     if (-not (Get-Command git -ErrorAction SilentlyContinue))
@@ -484,8 +482,8 @@ function Test-GitHookSupport
     [version] $found = [version]::new([int]$Matches[1], [int]$Matches[2])
     if ($found -lt [version]'2.54')
     {
-        Write-Warn "git $raw is older than 2.54 — the work-policy hook in gitconfig-work is IGNORED SILENTLY."
-        Write-Warn '  Upgrade git, or move the check into git/templates/hooks/pre-commit to enforce it on this machine.'
+        Write-Warn "git $raw is older than 2.54 — the global hooks (gitleaks, AI-reference scan) do not run."
+        Write-Warn '  Upgrade git: below 2.54 git ignores the config-based hooks without an error.'
     }
     else
     {

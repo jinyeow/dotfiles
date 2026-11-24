@@ -2,7 +2,7 @@
 
 ## Problem Statement
 
-The `staging-io` skill describes a single folder, `E:\HollardInsuranceRetail\agent-staging\`,
+The `staging-io` skill describes a single folder, `<work-root>\agent-staging\`,
 framed entirely as work-PC (WPC) hand-carry traffic tied to ADO tickets. In practice the
 `agent-staging` idea is broader: the developer wants a plain place where they and their agents
 (Claude, Codex, Pi) can drop files for each other and copy from easily, across sessions, not tied
@@ -16,7 +16,7 @@ literal folder name `agent-staging`.
 
 Redefine `agent-staging` as a per-pseudo-root drop and exchange zone, and rename the skill from
 `staging-io` to `agent-staging` to match. A pseudo-root is a workspace directory that holds repos
-(for example `E:\Personal Projects\` or `E:\HollardInsuranceRetail\`); each pseudo-root has its own
+(for example `E:\Personal Projects\` or `<work-root>\`); each pseudo-root has its own
 `agent-staging\` folder, and the active one is the folder beside the current repo. The folder has
 two lanes: `agent-inputs\` for files the developer drops for an agent, and `agent-outputs\` for
 files an agent produces for the developer. Files use a short slug name and are cleaned up on an age
@@ -71,7 +71,7 @@ pseudo-root.
   current repo's top-level directory (for example, working in `E:\Personal Projects\dotfiles\main`
   resolves the repo root `E:\Personal Projects\dotfiles\` and the pseudo-root
   `E:\Personal Projects\`, so `E:\Personal Projects\agent-staging\` is used). The skill names the two
-  current roots (`E:\Personal Projects\`, `E:\HollardInsuranceRetail\`) as concrete examples. The
+  current roots (`E:\Personal Projects\`, `<work-root>\`) as concrete examples. The
   folder is created on first use and is always outside any git repo.
 - **Lanes.** `agent-inputs\` is developer-to-agent, `agent-outputs\` is agent-to-developer. Both
   pseudo-root folders use the same lane structure.
@@ -114,7 +114,7 @@ pseudo-root.
   `staging-io` junction remains in any of the three.
 - Manual verification of the folder-resolution rule against both pseudo-roots: from a repo under
   `E:\Personal Projects\` the rule resolves `E:\Personal Projects\agent-staging\`, and from a repo
-  under `E:\HollardInsuranceRetail\` it resolves the work folder.
+  under `<work-root>\` it resolves the work folder.
 - Prior art: this repo's existing skills carry no behavioral tests, so there is no test module to
   mirror; the bar is CI-green plus the manual checks above.
 

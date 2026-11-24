@@ -31,13 +31,14 @@
 #     is still caught — scrubbing must not scrub away a real banned term in the message
 #     content itself
 #   - `isRepoScopedIn` (repo scoping, mirroring git/templates/hooks/pre-commit's own
-#     scoping) allows everything when there is no origin remote or the origin isn't both
-#     dev.azure.com AND HollardInsuranceRetail, and only then does matchCommand's own
+#     scoping) allows everything unless `git config --type=bool --get work.aiReferenceScan`
+#     prints `true` (scoped out when the key is unset, false or not a boolean, whatever the
+#     remote), and only then does matchCommand's own
 #     wordlist/no-verify/SKIP-var logic apply — exercised against real throwaway repos
 #     (mirroring tests/git-templates-ai-reference-hook.Tests.ps1's New-TestRepo pattern),
 #     not mocked, since matchCommand itself has no filesystem/process dependency to mock.
 #     This also covers a command carrying its own `git -C <path>` target: scoping follows
-#     that path's origin, not process.cwd()'s
+#     that path's config, not process.cwd()'s
 #   - `--discussion`, `--text`, and `--query-parameters` are recognized message-flag shapes
 #     alongside the existing -m/--title/--body/--fields/--route-parameters set
 #   - SKIP_AI_REFERENCE_SCAN=1 / SKIP_GITLEAKS=1 still deny even when the value is quoted
@@ -46,6 +47,7 @@
 #     multi-line command string (`"true\nSKIP_AI_REFERENCE_SCAN=1 git commit -m \"clean\""`)
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:ExtensionFile = Join-Path $script:RepoRoot 'pi/extensions/ai-reference-guard.ts'
     $script:WordlistFile = Join-Path $script:RepoRoot 'ai-agents/_shared/banned-ai-terms.txt'
@@ -246,10 +248,10 @@ process.stdout.write(JSON.stringify(isRepoScopedIn(cwd, command ?? "", execFileS
     }
 
     # Mirrors tests/git-templates-ai-reference-hook.Tests.ps1's New-TestRepo: a throwaway
-    # repo with an origin remote set (or not) to exercise real `git remote get-url origin`.
+    # repo that sets work.aiReferenceScan (or not) to exercise a real `git config` lookup.
     function New-TestRepo
     {
-        param([string] $OriginUrl)
+        param([string] $OriginUrl, [string] $AiReferenceScan)
         $root = Join-Path $TestDrive ('ai-ref-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $root -Force | Out-Null
         & git -C $root init -q . 2>&1 | Out-Null
@@ -257,11 +259,16 @@ process.stdout.write(JSON.stringify(isRepoScopedIn(cwd, command ?? "", execFileS
         {
             & git -C $root remote add origin $OriginUrl 2>&1 | Out-Null
         }
+        if ($AiReferenceScan)
+        {
+            & git -C $root config work.aiReferenceScan $AiReferenceScan 2>&1 | Out-Null
+        }
         return $root
     }
 
-    $script:HollardHttps = 'https://dev.azure.com/HollardInsuranceRetail/Proj/_git/Repo'
-    $script:HollardSsh = 'git@ssh.dev.azure.com:v3/HollardInsuranceRetail/Proj/Repo'
+    # isRepoScopedIn scans only when `git config --type=bool work.aiReferenceScan` is true, so
+    # the scoped-in repos set it in their local config. The remote does not matter.
+    $script:WorkHttps = 'https://dev.azure.com/ExampleOrg/Proj/_git/Repo'
     $script:GitHubUrl = 'https://github.com/jinyeow/dotfiles.git'
 
     # Third node harness: exercises the real DEFAULT_WORDLIST_PATH-resolution fallback and
@@ -554,24 +561,44 @@ Describe 'pi/extensions/ai-reference-guard.ts' {
     }
 
     Context 'isRepoScopedIn repo scoping (real throwaway repos, mirroring pre-commit)' {
-        It 'is scoped in for a Hollard HTTPS origin' {
-            $repo = New-TestRepo -OriginUrl $script:HollardHttps
+        It 'is scoped in when the key is true, whatever the remote: <Name>' -TestCases @(
+            @{ Name = 'work HTTPS remote'; OriginUrl = 'https://dev.azure.com/ExampleOrg/Proj/_git/Repo' }
+            @{ Name = 'GitHub remote'; OriginUrl = 'https://github.com/jinyeow/dotfiles.git' }
+            @{ Name = 'no remote'; OriginUrl = $null }
+        ) {
+            param($Name, $OriginUrl)
+            $repo = New-TestRepo -OriginUrl $OriginUrl -AiReferenceScan 'true'
             Invoke-IsRepoScopedIn -Cwd $repo | Should -BeTrue
         }
 
-        It 'is scoped in for a Hollard SSH origin' {
-            $repo = New-TestRepo -OriginUrl $script:HollardSsh
-            Invoke-IsRepoScopedIn -Cwd $repo | Should -BeTrue
-        }
-
-        It 'is scoped out for a GitHub origin' {
-            $repo = New-TestRepo -OriginUrl $script:GitHubUrl
+        It 'is scoped out for a work origin when the key is <Value>' -TestCases @(
+            @{ Value = 'false' }
+            @{ Value = 'not-a-bool' }
+        ) {
+            param($Value)
+            $repo = New-TestRepo -OriginUrl $script:WorkHttps -AiReferenceScan $Value
             Invoke-IsRepoScopedIn -Cwd $repo | Should -BeFalse
         }
 
-        It 'is scoped out when there is no origin remote at all' {
-            $repo = New-TestRepo -OriginUrl $null
-            Invoke-IsRepoScopedIn -Cwd $repo | Should -BeFalse
+        It 'is scoped out for a work origin when the key is unset (fails open)' {
+            # Isolate from the developer's global and system config, which may set the key.
+            $repo = New-TestRepo -OriginUrl $script:WorkHttps
+            $emptyGlobal = Join-Path $TestDrive 'empty-gitconfig'
+            Set-Content -Path $emptyGlobal -Value '' -NoNewline
+            $savedGlobal = $env:GIT_CONFIG_GLOBAL
+            $savedNoSystem = $env:GIT_CONFIG_NOSYSTEM
+            try
+            {
+                $env:GIT_CONFIG_GLOBAL = $emptyGlobal
+                $env:GIT_CONFIG_NOSYSTEM = '1'
+                $scopedIn = Invoke-IsRepoScopedIn -Cwd $repo
+            }
+            finally
+            {
+                $env:GIT_CONFIG_GLOBAL = $savedGlobal
+                $env:GIT_CONFIG_NOSYSTEM = $savedNoSystem
+            }
+            $scopedIn | Should -BeFalse
         }
 
         It 'is scoped out when cwd is not a git repo' {
@@ -647,28 +674,28 @@ Describe 'pi/extensions/ai-reference-guard.ts' {
 
     Context 'isRepoScopedIn follows a command''s own -C target over process.cwd()' {
         It 'is scoped in via -C when cwd itself is unscoped' {
-            $hollardRepo = New-TestRepo -OriginUrl $script:HollardHttps
-            $unscopedCwd = New-TestRepo -OriginUrl $script:GitHubUrl
-            $command = "git -C ""$hollardRepo"" commit -m ""Generated with Claude"""
+            $workRepo = New-TestRepo -OriginUrl $script:WorkHttps -AiReferenceScan 'true'
+            $unscopedCwd = New-TestRepo -OriginUrl $script:GitHubUrl -AiReferenceScan 'false'
+            $command = "git -C ""$workRepo"" commit -m ""Generated with Claude"""
             Invoke-IsRepoScopedIn -Cwd $unscopedCwd -Command $command | Should -BeTrue
         }
 
-        It 'is scoped out via -C when the -C target is not Hollard, even if cwd is' {
-            $githubRepo = New-TestRepo -OriginUrl $script:GitHubUrl
-            $hollardCwd = New-TestRepo -OriginUrl $script:HollardHttps
+        It 'is scoped out via -C when the -C target has the key false, even if cwd is scoped in' {
+            $githubRepo = New-TestRepo -OriginUrl $script:GitHubUrl -AiReferenceScan 'false'
+            $workCwd = New-TestRepo -OriginUrl $script:WorkHttps -AiReferenceScan 'true'
             $command = "git -C ""$githubRepo"" commit -m ""fix"""
-            Invoke-IsRepoScopedIn -Cwd $hollardCwd -Command $command | Should -BeFalse
+            Invoke-IsRepoScopedIn -Cwd $workCwd -Command $command | Should -BeFalse
         }
 
         It 'falls back to cwd when the command carries no -C flag' {
-            $hollardCwd = New-TestRepo -OriginUrl $script:HollardHttps
-            Invoke-IsRepoScopedIn -Cwd $hollardCwd -Command 'git commit -m "fix"' | Should -BeTrue
+            $workCwd = New-TestRepo -OriginUrl $script:WorkHttps -AiReferenceScan 'true'
+            Invoke-IsRepoScopedIn -Cwd $workCwd -Command 'git commit -m "fix"' | Should -BeTrue
         }
     }
 
     Context 'isRepoScopedIn does not execute shell metacharacters in a malicious -C path (command injection)' {
         It 'treats a crafted -C value as a literal non-existent path, executing no injected command' {
-            $repo = New-TestRepo -OriginUrl $script:HollardHttps
+            $repo = New-TestRepo -OriginUrl $script:WorkHttps -AiReferenceScan 'true'
             $marker = Join-Path $TestDrive ('pwned-' + [guid]::NewGuid() + '.txt')
             # Breaks out of the `git -C "${dashCPath}" ...` double-quoted shell interpolation
             # the vulnerable code used to build: closes the quote, chains an `echo` that

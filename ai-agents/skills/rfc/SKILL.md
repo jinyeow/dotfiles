@@ -1,6 +1,6 @@
 ---
 name: rfc
-description: "Draft and create an Azure DevOps \"Request for Change RFC\" work item in the \"TSC Change Control\" project. Args-routed: `/rfc bau firewall/nsg` (also `bau firewall` / `bau nsg`) creates a BAU (pre-approved, low-risk) firewall/NSG-rule-change RFC — single-scope, both-scope, and multi-PR are all handled, by cloning the field values of the most recent matching RFC assigned to you and overriding only what must be fresh. Use when the user says 'raise the RFC', 'create the BAU RFC', 'rfc for this firewall change', 'rfc for this NSG change', or similar. `/rfc <description>` (non-BAU) and `/rfc bau <other-type>` (other BAU RFC types) are not yet implemented. NOT for any Azure DevOps organisation other than the one named below. User-invoked only."
+description: "Draft and create an Azure DevOps \"Request for Change RFC\" work item in the configured work project. Args-routed: `/rfc bau firewall/nsg` (also `bau firewall` / `bau nsg`) creates a BAU (pre-approved, low-risk) firewall/NSG-rule-change RFC — single-scope, both-scope, and multi-PR are all handled, by cloning the field values of the most recent matching RFC assigned to you and overriding only what must be fresh. Use when the user says 'raise the RFC', 'create the BAU RFC', 'rfc for this firewall change', 'rfc for this NSG change', or similar. `/rfc <description>` (non-BAU) and `/rfc bau <other-type>` (other BAU RFC types) are not yet implemented. NOT for any Azure DevOps organisation other than the one in `work.adoOrgUrl`. User-invoked only."
 disable-model-invocation: true
 metadata:
   author: justin
@@ -16,9 +16,24 @@ manual Recycle-Bin cleanup.
 Every repeated field value comes from an existing RFC at runtime, never from this file.
 See `docs/adr/rfc-bau-nsg-fw-clone-latest-instead-of-static-template.md` for why.
 
-> **Shell**: PowerShell 7-native. Organisation is
-> `https://dev.azure.com/HollardInsuranceRetail`, project is `TSC Change Control`, work
-> item type is `Request for Change RFC`.
+> **Shell**: PowerShell 7-native. Work item type is `Request for Change RFC`. The
+> organisation and project come from the untracked git config, resolved first (below).
+
+## Resolve the organisation and project first
+
+Before step 1, read both values from git config (the untracked `~/.gitconfig.local`):
+
+```powershell
+$adoOrgUrl = git config --get work.adoOrgUrl
+$adoProject = git config --get work.adoProject
+if (-not $adoOrgUrl) { throw "git config work.adoOrgUrl is not set (for example https://dev.azure.com/ExampleOrg)" }
+if (-not $adoProject) { throw "git config work.adoProject is not set (the RFC project name)" }
+$adoProjectEnc = [uri]::EscapeDataString($adoProject)
+```
+
+If either key is unset, stop and tell the user which key is missing. Every command below
+uses `$adoOrgUrl`, `$adoProject`, and `$adoProjectEnc` (the URL-encoded project name).
+Re-define them in any new shell session.
 
 ## Routing
 
@@ -46,10 +61,10 @@ not add a values file, a template file, or an example payload with real values.
 The prohibition covers the innocuous statics (change model, risk level, picklist
 selections) as well as the confidential ones: reintroducing any of them rebuilds the
 static-field-block design this skill exists to replace, and that is the path back to a
-leak. Only these literals belong here — the organisation URL, project name, work item
+leak. Only these literals belong here — the work item
 type name, the reference names of the forced-fresh fields, and the title patterns.
 
-There is no machine or tenant gate. Without Hollard Azure DevOps access the skill fails
+There is no machine or tenant gate. Without access to the configured Azure DevOps organisation the skill fails
 at the `az` authentication step with an ordinary CLI error; that is the intended gate.
 
 ## What this skill covers
@@ -78,7 +93,7 @@ Context-derived, not asked for by default:
   `AB#<id>` reference, or query the PR's linked work items:
   ```powershell
   az repos pr work-item list --id <prId> -o table `
-    --org https://dev.azure.com/HollardInsuranceRetail
+    --org $adoOrgUrl
   ```
 - If neither is available, ask for the parent work item ID before continuing — do not
   guess, and do not create the RFC without the parent relation.
@@ -86,7 +101,7 @@ Context-derived, not asked for by default:
 ### 2. Detect scope from the linked PR diff(s)
 
 Find the parent's linked PRs (`ArtifactLink` → `PullRequest` relations on the parent, via
-`az boards work-item show --id <parentId> --org https://dev.azure.com/HollardInsuranceRetail`,
+`az boards work-item show --id <parentId> --org $adoOrgUrl`,
 or the PR already in context). **Keep the full list of linked PR IDs** — step 8 attaches
 every one of them to the RFC as its own `ArtifactLink` relation, not just the first.
 
@@ -96,7 +111,7 @@ multi-PR change routinely means one PR per repo, and reusing the first PR's repo
 second PR's diff would silently pull the wrong data:
 
 ```powershell
-az repos pr show --id <prId> -o json --org https://dev.azure.com/HollardInsuranceRetail |
+az repos pr show --id <prId> -o json --org $adoOrgUrl |
   ConvertFrom-Json | Select-Object -ExpandProperty repository
 ```
 
@@ -107,7 +122,7 @@ fixes adding a firewall or NSG file) has more than one iteration, and
 ```powershell
 az devops invoke --area git --resource pullrequestiterations `
   --route-parameters project=<proj> repositoryId=<repoId> pullRequestId=<prId> `
-  --api-version 7.1 --org https://dev.azure.com/HollardInsuranceRetail
+  --api-version 7.1 --org $adoOrgUrl
 ```
 
 Take the highest `id` from the returned iterations list, then list the changed paths for
@@ -117,7 +132,7 @@ cumulative diff:
 ```powershell
 az devops invoke --area git --resource pullrequestiterationchanges `
   --route-parameters project=<proj> repositoryId=<repoId> pullRequestId=<prId> iterationId=<latestIterationId> `
-  --api-version 7.1 --org https://dev.azure.com/HollardInsuranceRetail
+  --api-version 7.1 --org $adoOrgUrl
 ```
 
 Classify each changed path, across **all** linked PRs combined:
@@ -152,8 +167,8 @@ WHERE [System.WorkItemType] = 'Request for Change RFC'
   AND [System.Title] CONTAINS '<full title prefix for the detected scope>'
 ORDER BY [System.CreatedDate] DESC
 "@
-az boards query --wiql $wiql --org https://dev.azure.com/HollardInsuranceRetail `
-  --project "TSC Change Control" -o json
+az boards query --wiql $wiql --org $adoOrgUrl `
+  --project $adoProject -o json
 ```
 
 The title prefix is the **only** reliable scope discriminator, and it must be the full
@@ -195,7 +210,7 @@ Read the matched RFC's full field set:
 
 ```powershell
 az boards work-item show --id <matchedId> -o json `
-  --org https://dev.azure.com/HollardInsuranceRetail
+  --org $adoOrgUrl
 ```
 
 ### 4. Split the cloned fields into copy-verbatim and forced-fresh
@@ -315,7 +330,7 @@ function P($field, $value) { @{ op = "add"; path = "/fields/$field"; value = $va
 # they are added below as their own /relations/- patch entries.
 
 # One ArtifactLink relation per linked PR (step 2's list) - get each PR's artifactId first:
-#   az repos pr show --id <prId> --query artifactId -o tsv --org https://dev.azure.com/HollardInsuranceRetail
+#   az repos pr show --id <prId> --query artifactId -o tsv --org $adoOrgUrl
 $prRelations = foreach ($prArtifactId in $prArtifactIds) {
     @{ op = "add"; path = "/relations/-"; value = @{
         rel        = "ArtifactLink"
@@ -330,7 +345,7 @@ $patch = @(
   $freshFields.GetEnumerator() | ForEach-Object { P $_.Key $_.Value }
   @{ op = "add"; path = "/relations/-"; value = @{
       rel = "System.LinkTypes.Hierarchy-Reverse"
-      url = "https://dev.azure.com/HollardInsuranceRetail/_apis/wit/workItems/$parentId"
+      url = "$adoOrgUrl/_apis/wit/workItems/$parentId"
     }
   }
   $prRelations
@@ -347,11 +362,11 @@ Set-Content -Path $patchFile -Value $patch -Encoding utf8
 
 try {
   az devops invoke --area wit --resource workitems `
-    --route-parameters project="TSC Change Control" type="Request for Change RFC" `
+    --route-parameters project=$adoProject type="Request for Change RFC" `
     --http-method POST `
     --in-file $patchFile `
     --media-type application/json-patch+json `
-    --api-version 7.1 --org https://dev.azure.com/HollardInsuranceRetail
+    --api-version 7.1 --org $adoOrgUrl
 } finally {
   Remove-Item -Path $patchFile -Force
 }
@@ -376,7 +391,7 @@ CLI version). Use `az rest` instead, which isn't affected:
 
 ```powershell
 az rest --method patch `
-  --url "https://dev.azure.com/HollardInsuranceRetail/TSC%20Change%20Control/_apis/wit/workitems/<id>?api-version=7.1" `
+  --url "$adoOrgUrl/$adoProjectEnc/_apis/wit/workitems/<id>?api-version=7.1" `
   --resource 499b84ac-1321-427f-aa17-267ca6975798 `
   --headers "Content-Type=application/json-patch+json" `
   --body "@<patch file path>"
@@ -399,7 +414,7 @@ field table from step 7 — including the parent relation and every PR `Artifact
 
 ```powershell
 az boards work-item show --id <newId> -o json `
-  --org https://dev.azure.com/HollardInsuranceRetail
+  --org $adoOrgUrl
 ```
 
 If any field silently did not take (wrong reference name, a picklist rejecting free text,
@@ -410,7 +425,7 @@ a relation missing), report exactly which ones rather than reporting success.
 Only after step 9 passes, report the created RFC's URL as part of the success message:
 
 ```
-https://dev.azure.com/HollardInsuranceRetail/TSC%20Change%20Control/_workitems/edit/<id>
+$adoOrgUrl/$adoProjectEnc/_workitems/edit/<id>
 ```
 
 ## Gotchas

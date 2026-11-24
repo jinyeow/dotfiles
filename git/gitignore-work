@@ -1,5 +1,5 @@
 # Work-specific global gitignore — ~/.gitignore-work
-# Replaces core.excludesFile for repos matched by [includeIf] in gitconfig.
+# Replaces core.excludesFile for repos matched by [includeIf] in the untracked ~/.gitconfig.local.
 # Must include all patterns from gitignore (global) since it fully overrides it.
 
 # ── Carried over from gitignore (global) ────────────────────────────────────

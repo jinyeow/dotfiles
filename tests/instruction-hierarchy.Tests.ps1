@@ -1,6 +1,7 @@
 # Pester tests for the portable project instruction hierarchy.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:AgentsPath = Join-Path $script:RepoRoot 'AGENTS.md'
     $script:ClaudePath = Join-Path $script:RepoRoot 'CLAUDE.md'
@@ -108,7 +109,7 @@ Describe 'repository instruction hierarchy' {
         $routes = @(
             @('PowerShell profile', 'powershell/README.md', 'powershell/Microsoft.PowerShell_profile.ps1'),
             @('Prompt', 'powershell/Profile/Set-Prompt.ps1', 'tests/Set-Prompt.Tests.ps1'),
-            @('Git', 'git/README.md', 'tests/git-work-hooks.Tests.ps1'),
+            @('Git', 'git/README.md', 'git/gitconfig-work', 'tests/git-config.Tests.ps1'),
             @('Neovim', 'nvim/README.md', 'nvim/nvim-pack-lock.json'),
             @('psmux', 'psmux/README.md', 'psmux/psmux.conf'),
             @('Zellij', 'zellij/README.md', 'zellij/config.kdl'),

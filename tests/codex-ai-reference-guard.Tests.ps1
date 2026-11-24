@@ -11,6 +11,7 @@
 # together in a temp dir rather than running the script from its repo location directly.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     . (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
 
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
@@ -22,16 +23,17 @@ BeforeAll {
         throw 'codex-ai-reference-guard.Tests.ps1: no usable bash found, WSL launchers excluded — install Git for Windows'
     }
 
-    # The script scopes its whole enforcement to Hollard/Azure-DevOps-remote repos
-    # (mirroring git/templates/hooks/pre-commit — see tests/git-templates-ai-reference-hook.Tests.ps1
-    # for the same pattern). Every test below runs inside a throwaway repo with a
-    # controlled origin remote so the scoping decision is exercised, not bypassed.
-    $script:HollardOriginUrl = 'https://dev.azure.com/HollardInsuranceRetail/Proj/_git/Repo'
+    # The script scopes its whole enforcement to repos where
+    # `git config --type=bool work.aiReferenceScan` is true (mirroring
+    # git/templates/hooks/pre-commit — see tests/git-templates-ai-reference-hook.Tests.ps1
+    # for the same pattern). Every test below runs inside a throwaway repo that sets the key
+    # in its local config, so the scoping decision is exercised, not bypassed.
+    $script:WorkOriginUrl = 'https://dev.azure.com/ExampleOrg/Proj/_git/Repo'
     $script:GitHubOriginUrl = 'https://github.com/jinyeow/dotfiles.git'
 
     function New-TestRepo
     {
-        param([string] $OriginUrl)
+        param([string] $OriginUrl, [string] $AiReferenceScan)
         $root = Join-Path ([System.IO.Path]::GetTempPath()) ('codex-ai-ref-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $root -Force | Out-Null
         & git -C $root init -q . 2>&1 | Out-Null
@@ -41,15 +43,19 @@ BeforeAll {
         {
             & git -C $root remote add origin $OriginUrl 2>&1 | Out-Null
         }
+        if ($AiReferenceScan)
+        {
+            & git -C $root config work.aiReferenceScan $AiReferenceScan 2>&1 | Out-Null
+        }
         return $root
     }
 
-    # Default cwd for every hook invocation below: a Hollard/Azure-DevOps-remote repo,
+    # Default cwd for every hook invocation below: a repo with the key set to true,
     # i.e. scoped IN, so the existing enforcement tests keep exercising the same
-    # behavior without each one needing to pass -Repo explicitly.
-    $script:ScopedRepo = New-TestRepo -OriginUrl $script:HollardOriginUrl
-    $script:UnscopedRepo = New-TestRepo -OriginUrl $script:GitHubOriginUrl
-    $script:NoOriginRepo = New-TestRepo -OriginUrl $null
+    # behavior without each one needing to pass -Repo explicitly. The unscoped repo sets
+    # the key to false, so its result does not depend on this machine's global config.
+    $script:ScopedRepo = New-TestRepo -OriginUrl $script:WorkOriginUrl -AiReferenceScan 'true'
+    $script:UnscopedRepo = New-TestRepo -OriginUrl $script:GitHubOriginUrl -AiReferenceScan 'false'
 
     # Staged dir mirrors the real runtime layout: script + wordlist as siblings.
     $script:StagedDir = Join-Path ([System.IO.Path]::GetTempPath()) "codex-ai-reference-guard-$PID"
@@ -150,7 +156,7 @@ BeforeAll {
 }
 
 AfterAll {
-    foreach ($dir in @($script:StagedDir, $script:NoWordlistDir, $script:NoPythonStubDir, $script:ScopedRepo, $script:UnscopedRepo, $script:NoOriginRepo))
+    foreach ($dir in @($script:StagedDir, $script:NoWordlistDir, $script:NoPythonStubDir, $script:ScopedRepo, $script:UnscopedRepo))
     {
         if ($dir -and (Test-Path -LiteralPath $dir))
         {
@@ -315,28 +321,71 @@ Describe 'codex/ai-reference-guard.sh' {
         }
     }
 
-    Context 'repo-scoping to Hollard/Azure-DevOps remotes' {
-        It 'allows a banned term in a GitHub-remote repo (out of scope)' {
-            $result = Invoke-GuardrailHook -Command 'git commit -m "thanks Claude for the help"' -Repo $script:UnscopedRepo
-            $result.ExitCode | Should -Be 0
+    Context 'repo-scoping by work.aiReferenceScan' {
+        It 'blocks a banned term when the key is true, whatever the remote: <Name>' -TestCases @(
+            @{ Name = 'work HTTPS remote'; OriginUrl = 'https://dev.azure.com/ExampleOrg/Proj/_git/Repo' }
+            @{ Name = 'GitHub remote'; OriginUrl = 'https://github.com/jinyeow/dotfiles.git' }
+            @{ Name = 'no remote'; OriginUrl = $null }
+        ) {
+            param($Name, $OriginUrl)
+            $repo = New-TestRepo -OriginUrl $OriginUrl -AiReferenceScan 'true'
+            try
+            {
+                $result = Invoke-GuardrailHook -Command 'git commit -m "thanks Claude for the help"' -Repo $repo
+                $result.ExitCode | Should -Be 2
+            }
+            finally
+            {
+                Remove-Item -LiteralPath $repo -Recurse -Force
+            }
         }
 
-        It 'allows a banned term when there is no origin remote at all' {
-            $result = Invoke-GuardrailHook -Command 'git commit -m "thanks Claude for the help"' -Repo $script:NoOriginRepo
-            $result.ExitCode | Should -Be 0
+        It 'allows a banned term in a work-remote repo when the key is false' {
+            $repo = New-TestRepo -OriginUrl $script:WorkOriginUrl -AiReferenceScan 'false'
+            try
+            {
+                $result = Invoke-GuardrailHook -Command 'git commit -m "thanks Claude for the help"' -Repo $repo
+                $result.ExitCode | Should -Be 0
+            }
+            finally
+            {
+                Remove-Item -LiteralPath $repo -Recurse -Force
+            }
         }
 
-        It 'allows --no-verify in a GitHub-remote repo (out of scope)' {
+        It 'allows --no-verify in a repo whose key is false (out of scope)' {
             $result = Invoke-GuardrailHook -Command 'git commit -m "fix bug" --no-verify' -Repo $script:UnscopedRepo
             $result.ExitCode | Should -Be 0
         }
 
-        It 'allows SKIP_GITLEAKS=1 in a GitHub-remote repo (out of scope)' {
+        It 'allows SKIP_GITLEAKS=1 in a repo whose key is false (out of scope)' {
             $result = Invoke-GuardrailHook -Command 'SKIP_GITLEAKS=1 git commit -m "fix bug"' -Repo $script:UnscopedRepo
             $result.ExitCode | Should -Be 0
         }
 
-        It 'still blocks a banned term in a Hollard-remote repo (scoped in, sanity check)' {
+        It 'allows a banned term in a work-remote repo when the key is unset (fails open)' {
+            # Isolate from the developer's global and system config, which may set the key.
+            $repo = New-TestRepo -OriginUrl $script:WorkOriginUrl
+            $emptyGlobal = Join-Path $TestDrive 'empty-gitconfig'
+            Set-Content -Path $emptyGlobal -Value '' -NoNewline
+            $savedGlobal = $env:GIT_CONFIG_GLOBAL
+            $savedNoSystem = $env:GIT_CONFIG_NOSYSTEM
+            try
+            {
+                $env:GIT_CONFIG_GLOBAL = $emptyGlobal
+                $env:GIT_CONFIG_NOSYSTEM = '1'
+                $result = Invoke-GuardrailHook -Command 'git commit -m "thanks Claude for the help"' -Repo $repo
+            }
+            finally
+            {
+                $env:GIT_CONFIG_GLOBAL = $savedGlobal
+                $env:GIT_CONFIG_NOSYSTEM = $savedNoSystem
+                Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            $result.ExitCode | Should -Be 0
+        }
+
+        It 'still blocks a banned term in a scoped-in repo (sanity check)' {
             $result = Invoke-GuardrailHook -Command 'git commit -m "thanks Claude for the help"' -Repo $script:ScopedRepo
             $result.ExitCode | Should -Be 2
         }
@@ -507,7 +556,7 @@ Describe 'codex/ai-reference-guard.sh' {
     }
 
     Context '-C repo-scoping to the git command target, not the hook cwd (cycle-3 finding 2)' {
-        It 'blocks git -C <path> commit --no-verify run from an unscoped (GitHub-remote) cwd' {
+        It 'blocks git -C <path> commit --no-verify run from an unscoped (key false) cwd' {
             $result = Invoke-GuardrailHook -Command "git -C $($script:ScopedRepo) commit --no-verify -m ""Generated with Claude""" -Repo $script:UnscopedRepo
             $result.ExitCode | Should -Be 2
         }

@@ -6,6 +6,7 @@
 # cases use the same harness to check the PSES formatting preset chosen per LSP root.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:nvim = Get-Command nvim -CommandType Application -ErrorAction SilentlyContinue |
         Select-Object -First 1
     if (-not $script:nvim)

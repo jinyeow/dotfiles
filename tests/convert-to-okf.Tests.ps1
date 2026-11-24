@@ -6,6 +6,7 @@
 # (tests/inject-handoff.Tests.ps1, tests/ctags-hook.Tests.ps1).
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:Script = Join-Path $script:RepoRoot 'ai-agents/skills/project-brain/scripts/convert-to-okf.ps1'
 

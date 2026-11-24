@@ -21,6 +21,7 @@
 #   - extra whitespace between "stash" and "push" doesn't defeat the stash-push exclusion
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:ExtensionFile = Join-Path $script:RepoRoot 'pi/extensions/git-guardrails.ts'
 
