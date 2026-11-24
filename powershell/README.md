@@ -42,6 +42,7 @@ comment-based help; run `Get-Help .\Scripts\<Name>.ps1 -Full`.
 | `Login-Azure.ps1` | Sign in to Azure with a service principal. Reads `SP_CLIENT_ID`, `SP_CLIENT_SECRET`, and `AZURE_TENANT_ID` from the environment (load a `.env` with PS-Dotenv) |
 | `Get-UnusedStorageAccounts.ps1` | List storage accounts with no transactions, ingress, or egress metrics in the last `-TimeAgo` months (default 3). Needs `Az` and runs `Connect-AzAccount` |
 | `New-FontLigatureTest.ps1` | Ligatures-on vs -off comparison so you can see what each font actually fuses |
+| `Save-AgentTranscript.ps1` | Copy Claude Code, Codex and Pi session transcripts into a local NTFS-compressed archive (default `E:\AgentArchive`). Copies new and changed files only and never deletes, so transcripts outlive agent cleanup. `-WorkProjectPattern` routes matching Claude projects to `work\`. Run monthly from a scheduled task |
 
 The `New-Font*` tools subset each font to the sample glyphs and embed them as base64 woff2,
 so the output HTML renders the real fonts in any browser. They need Python with
