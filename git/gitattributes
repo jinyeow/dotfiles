@@ -1,0 +1,25 @@
+# Global git attributes, installed as ~/.gitattributes (core.attributesfile in
+# git/gitconfig). A repo's own .gitattributes still overrides these per path.
+#
+# core.whitespace includes tab-in-indent, which suits the spaces-indented files in this
+# repo but makes `git diff --check` flag every line of formats whose convention (or
+# grammar) is tab indentation. For those, swap it for indent-with-non-tab; the
+# trailing-whitespace and space-before-tab checks stay on. A whitespace= value
+# replaces core.whitespace for the path, so each list is complete on its own.
+
+# Go: gofmt indents with tabs.
+*.go whitespace=trailing-space,space-before-tab,indent-with-non-tab
+go.mod whitespace=trailing-space,space-before-tab,indent-with-non-tab
+go.work whitespace=trailing-space,space-before-tab,indent-with-non-tab
+
+# Make: recipe lines must start with a tab.
+Makefile whitespace=trailing-space,space-before-tab,indent-with-non-tab
+makefile whitespace=trailing-space,space-before-tab,indent-with-non-tab
+GNUmakefile whitespace=trailing-space,space-before-tab,indent-with-non-tab
+*.mk whitespace=trailing-space,space-before-tab,indent-with-non-tab
+
+# git itself writes .gitmodules with tab indentation.
+.gitmodules whitespace=trailing-space,space-before-tab,indent-with-non-tab
+
+# Tab-separated values: tabs are data, not indentation.
+*.tsv whitespace=trailing-space

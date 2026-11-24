@@ -1,6 +1,7 @@
 #!/bin/sh
 # Secret scan on staged changes. Blocks a commit whose staged diff looks like a
-# secret (gitleaks). Global hook via core.hooksPath = ~/.git_templates/hooks.
+# secret (gitleaks). Global hook via the [hook "dotfiles-pre-commit"] stanza in
+# git/gitconfig.
 #
 # Single POSIX-sh file on purpose: unlike prepare-commit-msg (which has real
 # pwsh-native logic + an sh fallback), this only shells out to the one
@@ -32,8 +33,8 @@ fi
 # ----------------------------------------------------------------------------
 # AI-reference scan on staged code comments — layer 2 of #219, alongside
 # commit-msg's scan of the message text. A single logically-distinct check
-# added inline rather than split into its own file: git only recognizes one
-# literal `pre-commit` per hooks dir, and (like gitleaks above) this only
+# added inline rather than split into its own file: it shares this file's single
+# config-hook registration, and (like gitleaks above) this only
 # shells out to POSIX git/grep, so a .ps1/.sh split would duplicate identical
 # logic for no reason (see git/README.md's "Why this splits when pre-commit
 # doesn't").

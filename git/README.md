@@ -1,11 +1,12 @@
 # git
 
-Git configuration, global ignore rules, commit template, and hook templates.
+Git configuration, global ignore rules and attributes, commit template, and global hook scripts.
 
 ## Prerequisites
 
 | Tool | Purpose | Install |
 |---|---|---|
+| git 2.54+ | Config-based hooks (`[hook]` stanzas). Older git ignores them, so no global hook runs | `winget install Git.Git` |
 | [delta](https://github.com/dandavison/delta) | Pager, diff viewer | `winget install dandavison.delta` / `cargo install git-delta` |
 | [nvim](https://neovim.io) | Commit editor | see `nvim/` |
 | pwsh 7+ | PowerShell hook variant | `winget install Microsoft.PowerShell` |
@@ -19,8 +20,9 @@ Git configuration, global ignore rules, commit template, and hook templates.
 | `gitignore` | `~/.gitignore` | Global ignore rules |
 | `gitignore-work` | `~/.gitignore-work` | Global ignore rules for work repos. Replaces `gitignore` there via `core.excludesFile` in `gitconfig-work`. Adds .NET, Terraform, and Azure Functions build output, plus AI tooling files |
 | `gitmessage` | `~/.gitmessage` | Commit message template |
-| `templates/` | `~/.git_templates/` | Hook templates copied into every new repo |
-| `work-hooks/` | `~/.git_work_hooks/` | Work-only hooks, wired via `[hook]` in `gitconfig-work`. **Not** under `~/.git_templates/` — see below |
+| `gitattributes` | `~/.gitattributes` | Global attributes (`core.attributesfile`). Per-type whitespace rules for formats indented with tabs (Go, Makefiles, `.gitmodules`, TSV) |
+| `templates/` | `~/.git_templates/` | Global hook scripts in `templates/hooks/`, run by the `[hook "dotfiles-<event>"]` stanzas in `gitconfig` |
+| `work-hooks/` | `~/.git_work_hooks/` | Work-only hooks, wired via `[hook]` in `gitconfig-work` |
 
 ## Key settings
 
@@ -43,7 +45,7 @@ Git configuration, global ignore rules, commit template, and hook templates.
 - **`column.ui = auto`** — columnize `git branch`, `git tag`, and similar list output
 - **`maintenance.strategy = incremental`** — background repo maintenance; activate per-repo with `git maintenance register`
 - **`submodule.fetchJobs = 0`** (work only, `gitconfig-work`) — parallelizes submodule fetches, alongside `submodule.recurse = true`
-- **GitHub SSH rewrite** — both `https://github.com/` and `gh:` resolve to SSH
+- **GitHub fetch over HTTPS, push over SSH**: `gh:owner/repo` fetches from `https://github.com/owner/repo`, and both `gh:` and `https://github.com/` push to `git@github.com:`. Fetch works on a machine without an SSH key or where port 22 is blocked. Git applies `insteadOf` and `pushInsteadOf` to the original URL, so `gh:` takes the same split. Check a remote with `git remote get-url origin` and `git remote get-url --push origin`
 
 ## Machine-local config (`~/.gitconfig.local`, `~/.gitconfig-work.local`)
 
@@ -119,10 +121,98 @@ email by hand:
 git config user.email <work-email>
 ```
 
+`git config --global` writes to `~/.gitconfig`. On Windows that file is the stub that
+`setup.ps1` generates and overwrites. On Linux it is a symlink to the tracked
+`gitconfig`. So write machine-local values to the local file instead:
+
+```sh
+git config --file ~/.gitconfig.local <key> <value>
+```
+
+### Commit signing
+
+`gitconfig` sets `gpg.format = ssh`, so git signs with an SSH key. It does not turn
+signing on. To sign on this machine, add this block to `~/.gitconfig.local`:
+
+```ini
+[user]
+    signingkey = <path to your .pub key>
+[gpg "ssh"]
+    allowedSignersFile = ~/.ssh/allowed_signers
+[commit]
+    gpgsign = true
+[tag]
+    gpgsign = true
+```
+
+`~/.ssh/allowed_signers` lets git verify signatures locally, for example in
+`git log --show-signature` and in tig. Add one line per identity, including the work
+email:
+
+```text
+<email> <key-type> <key>
+```
+
+For example, `<email> ssh-ed25519 AAAA...`. Copy the key type and key from your `.pub`
+file.
+
+The forge must also know the key:
+
+- GitHub: add the public key as a Signing Key. An Authentication Key is not enough.
+- Codeberg and other Forgejo hosts: add the SSH key, then verify it.
+
+### Other machine-local settings
+
+These also belong in `~/.gitconfig.local`, because they differ per machine:
+
+- A corporate proxy: `http.proxy`, `http.sslCAInfo`, or `http.sslBackend`.
+- `core.sshCommand`, for a specific SSH client or key.
+- `safe.directory`, for a drive or folder that another user owns.
+- An override of `core.editor`, or extra `url.<base>.insteadOf` rules.
+
 ## Hooks (`templates/hooks/`)
 
-Hooks are copied into `~/.git_templates/` and inherited by every new repo via
-`init.templatedir`. Existing repos need `git init` re-run to pick them up.
+The hook scripts are installed in `~/.git_templates/hooks/` (the folder name is
+historical). They run as config-based hooks, which need Git 2.54 or later. `gitconfig`
+has one stanza per script:
+
+```ini
+[hook "dotfiles-pre-commit"]
+    event = pre-commit
+    command = "f=\"$HOME/.git_templates/hooks/pre-commit\"; test -f \"$f\" || exit 0; exec \"$f\""
+```
+
+The config does not set `core.hooksPath`. A global `core.hooksPath` hides every repo's
+own `.git/hooks`, and the pre-commit framework refuses to install while it is set. With
+config-based hooks, the global hooks run first, then the repo's own hook for the same
+event. Every repo gets the global hooks at once, with no `git init` needed.
+
+Git runs the command through `sh` and adds the hook's arguments after it, so the script
+gets its usual arguments and stdin. These parts of the value are load-bearing, and
+`tests/git-config.Tests.ps1` pins them:
+
+- The double quotes are required. `;` starts a comment in git config, so without them
+  the value ends at the first `;` and the script never runs.
+- `"$HOME/..."` is quoted, so a home folder with a space in its path works.
+- `test -f "$f" || exit 0` makes the hook fail open while `~/.git_templates` is not
+  installed. Git does not fail open on a missing command: it blocks the commit. The
+  guard uses `-f` (exists) and not `-x` (executable), so a script that is present but
+  broken still fails loudly.
+
+To see which hooks run for an event, use `git hook list --show-scope pre-commit`.
+
+#### Existing repos: remove old template copies
+
+`init.templatedir` used to copy the hook scripts into each new repo's `.git/hooks`.
+`core.hooksPath` hid those copies. Now they run after the global hooks, so a repo
+created before this change runs gitleaks and ctags twice. In a work repo the old
+`pre-commit` and `commit-msg` copies can block every commit: they look for the AI-term
+wordlist relative to `.git/hooks`, which is the wrong place. The pre-commit framework
+also keeps such a copy as `pre-commit.legacy` and runs it.
+
+In each existing repo, delete the files in `.git/hooks` that match the names in
+`templates/hooks/` (`ctags`, `commit-msg`, `post-*`, `pre-commit`,
+`prepare-commit-msg*`). Keep any hook that the repo installed for itself.
 
 ### `prepare-commit-msg`
 
@@ -165,8 +255,8 @@ Two independent checks, gitleaks first:
   `### commit-msg` below for the scoping rule and fail-open/closed behaviour,
   which this check shares. Bypass one commit: `SKIP_AI_REFERENCE_SCAN=1 git commit ...`
 
-Both checks run in the same file: git only recognizes one literal `pre-commit`
-per hooks dir, and neither check has pwsh-native logic worth a `.ps1`/`.sh` split
+Both checks run in the same file, under the one `dotfiles-pre-commit` stanza.
+Neither check has pwsh-native logic worth a `.ps1`/`.sh` split
 (see "Why this splits when `pre-commit` doesn't" below, which explains why
 `prepare-commit-msg` splits and this doesn't).
 
@@ -202,9 +292,9 @@ tag configuration. Create a `.notags` file in any repo to disable.
 
 ## Work-only hooks (`work-hooks/`)
 
-`core.hooksPath` is global — it cannot scope a hook to work repos. Git 2.54's
-**config-based hooks** can, because a `[hook]` stanza obeys the same `[includeIf]`
-conditions as everything else in `gitconfig-work`:
+The global hooks in `gitconfig` run in every repo. A `[hook]` stanza in
+`gitconfig-work` runs only in work repos, because it obeys the same `[includeIf]`
+conditions as everything else in that file:
 
 ```ini
 [hook "work-policy"]
@@ -258,16 +348,17 @@ guaranteed to be a `.exe`.
 ### Ordering is additive — existing hooks still run
 
 Configured hooks run **first** (system → global → local, in file order), then the
-`core.hooksPath` script runs **last**. The gitleaks `pre-commit` and the
-`prepare-commit-msg` ticket trailer are untouched. Verify:
+repo's own `.git/hooks` script runs **last**. `gitconfig` includes `~/.gitconfig.local`
+at its end, so `work-policy` comes after the `dotfiles-*` stanzas. Verify:
 
 ```console
 $ git hook list pre-commit          # in a work repo
+dotfiles-pre-commit                 # <- gitleaks and the AI-reference scan
 work-policy
-hook from hookdir                   # <- the gitleaks pre-commit, still last
+hook from hookdir                   # <- only if the repo has its own pre-commit
 
 $ git hook list pre-commit          # in a personal repo
-hook from hookdir                   # work-policy absent: [includeIf] did not match
+dotfiles-pre-commit                 # work-policy absent: [includeIf] did not match
 ```
 
 `git hook list --show-scope pre-commit` adds where each came from (`global`,
@@ -277,11 +368,7 @@ hook from hookdir                   # work-policy absent: [includeIf] did not ma
 git config hook.work-policy.enabled false   # -> "disabled  work-policy"
 ```
 
-### Why not `~/.git_templates/work-hooks`?
-
-`init.templatedir` copies the template directory's **contents** into every new
-repo's `.git/`, so nesting the work hooks there would put a `.git/work-hooks/` in
-every personal repo. `~/.git_work_hooks` is a sibling path, outside templatedir.
+### The `work-policy` path is unquoted
 
 The `command` path is deliberately **unquoted**: git runs it through `sh`, which
 expands the leading `~`. Quoting would defeat that, so the path must stay free of
@@ -293,11 +380,11 @@ spaces (`sh` word-splits an unquoted path).
 git --version
 ```
 
-Below 2.54 the `[hook]` stanza is **ignored silently** — no error, the hook simply
-never runs, and `git hook list` does not exist. For a *policy* hook that is a trap,
-so `setup.ps1`/`setup.sh -Module git` check the version and warn at install time.
-Verified on 2.55.0.windows.2; Debian bookworm ships 2.39.2, so WSL needs a newer
-git before the stanza does anything there.
+Below 2.54 git **ignores every `[hook]` stanza silently**. There is no error, and
+`git hook list` does not exist. No global hook runs: not gitleaks, not the
+AI-reference scan, and not `work-policy`. `setup.ps1`/`setup.sh -Module git` check the
+version and warn at install time. Verified on 2.56.1.windows.1. Debian bookworm ships
+2.39.2, so WSL needs a newer git before any hook runs there.
 
 **No config key enables parallel hooks.** `hook.<name>.parallel = true` is silently
 ignored (unknown hook keys always are) — measured identical serial timing with and
@@ -331,5 +418,6 @@ Caveats:
 
 Installs `~/.gitconfig` and `~/.gitconfig-work` as `[include]` stubs pointing
 to the repo files (changes are live immediately, works cross-volume).
-Junctions/symlinks `~/.git_templates` → `git/templates/` and `~/.git_work_hooks`
-→ `git/work-hooks/`, then warns if git is older than 2.54.
+Installs `~/.gitattributes` from `gitattributes`. Junctions/symlinks `~/.git_templates`
+→ `git/templates/` and `~/.git_work_hooks` → `git/work-hooks/`, then warns if git is
+older than 2.54.

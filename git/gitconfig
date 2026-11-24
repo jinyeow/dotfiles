@@ -47,12 +47,12 @@
     verbose = true
 
 [core]
+    # Installed from git/gitattributes: per-type whitespace rules (tabs in Go and Makefiles).
     attributesfile = ~/.gitattributes
     autocrlf = false
     editor = nvim
     excludesfile = ~/.gitignore
     fsmonitor = true
-    hooksPath = ~/.git_templates/hooks
     longpaths = true
     pager = delta
     # https://git-scm.com/docs/git-update-index#_untracked_cache
@@ -114,7 +114,6 @@
     autocorrect = prompt
 
 [init]
-    templatedir = ~/.git_templates
     defaultBranch = main
 
 [interactive]
@@ -176,13 +175,60 @@
 [tig]
     diff-options = --show-signature
 
-[url "git@github.com:"]
-    insteadOf = "https://github.com/"
+# Fetch GitHub over HTTPS (works on keyless machines and where port 22 is blocked), push
+# over SSH. The gh: shorthand takes the same split: git applies insteadOf and
+# pushInsteadOf to the original URL, not to each other's output.
+[url "https://github.com/"]
     insteadOf = "gh:"
+
+[url "git@github.com:"]
+    pushInsteadOf = "https://github.com/"
+    pushInsteadOf = "gh:"
 
 [user]
     name = Justin Puah
     email = justin@puah.dev
+
+# Global hooks, as config-based hooks (Git >= 2.54) instead of core.hooksPath. A global
+# hooksPath masks every repo's own .git/hooks and stops the pre-commit framework from
+# installing. Configured hooks run first, then the repo's own hook for the same event.
+#
+# Git runs each command as `sh -c '<command> "$@"'` with the hook's usual arguments, so
+# `exec "$f"` gets them (and stdin, for post-rewrite) unchanged. Every command:
+#   - is double-quoted: `;` starts a comment in git config, so unquoted the value would
+#     end at the guard and the script would never run;
+#   - quotes "$HOME/..." so a profile path with spaces survives sh word-splitting;
+#   - fails open with `test -f ... || exit 0` while ~/.git_templates is not installed
+#     yet (git blocks the commit on a missing command), but uses -f and not -x so a
+#     present but broken script still fails loudly.
+# Pinned by tests/git-config.Tests.ps1. Inspect: git hook list pre-commit
+[hook "dotfiles-pre-commit"]
+    event = pre-commit
+    command = "f=\"$HOME/.git_templates/hooks/pre-commit\"; test -f \"$f\" || exit 0; exec \"$f\""
+
+[hook "dotfiles-prepare-commit-msg"]
+    event = prepare-commit-msg
+    command = "f=\"$HOME/.git_templates/hooks/prepare-commit-msg\"; test -f \"$f\" || exit 0; exec \"$f\""
+
+[hook "dotfiles-commit-msg"]
+    event = commit-msg
+    command = "f=\"$HOME/.git_templates/hooks/commit-msg\"; test -f \"$f\" || exit 0; exec \"$f\""
+
+[hook "dotfiles-post-commit"]
+    event = post-commit
+    command = "f=\"$HOME/.git_templates/hooks/post-commit\"; test -f \"$f\" || exit 0; exec \"$f\""
+
+[hook "dotfiles-post-checkout"]
+    event = post-checkout
+    command = "f=\"$HOME/.git_templates/hooks/post-checkout\"; test -f \"$f\" || exit 0; exec \"$f\""
+
+[hook "dotfiles-post-merge"]
+    event = post-merge
+    command = "f=\"$HOME/.git_templates/hooks/post-merge\"; test -f \"$f\" || exit 0; exec \"$f\""
+
+[hook "dotfiles-post-rewrite"]
+    event = post-rewrite
+    command = "f=\"$HOME/.git_templates/hooks/post-rewrite\"; test -f \"$f\" || exit 0; exec \"$f\""
 
 # Machine-local settings, loaded last so they win. ~/.gitconfig.local is untracked: it holds
 # the [work] keys and the [includeIf] blocks that load ~/.gitconfig-work. See git/README.md.
