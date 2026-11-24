@@ -117,7 +117,9 @@ quick edits where full startup cost isn't worth it.
 
 ## User config
 
-Edit `lua/config/user.lua` before first launch to set machine-specific paths:
+`lua/config/user.lua` is tracked and holds the defaults and helpers that every machine
+shares. It finds the PowerShellEditorServices bundle by itself. Do not put
+machine-specific values in it:
 
 ```lua
 _G.user_config = {
@@ -129,6 +131,28 @@ _G.user_config = {
 ```
 
 LSP servers with empty paths are silently skipped.
+
+### Machine-specific settings (`lua/user.lua`)
+
+Put settings for one machine in `lua/user.lua`. Git ignores this file. `init.lua` loads
+it after `config.user` when it exists, so it can change a default, for example
+`_G.user_config.pwsh_bundle_path = 'D:/tools/PowerShellEditorServices'`. Keep the
+helpers in `config.user` as they are.
+
+`vim.g.pwsh_otbs_roots` lists path prefixes. When the `powershell_es` root directory
+is under one of them, PSES formats with the `OTBS` preset. Everywhere else it uses
+`Allman`. Matching ignores case and treats `\` and `/` the same. Without the list,
+every root uses `Allman`.
+
+```lua
+-- nvim/lua/user.lua
+vim.g.pwsh_otbs_roots = { 'E:/WorkOrg' }
+```
+
+The other PSES formatting settings in `lsp.lua` match the VS Code settings
+(`pipelineIndentationStyle`, `useCorrectCasing`, `useConstantStrings`,
+`trimWhitespaceAroundPipe`, `whitespaceBetweenParameters`,
+`avoidSemicolonsAsLineTerminators`, `autoCorrectAliases`).
 
 ## Colorscheme
 

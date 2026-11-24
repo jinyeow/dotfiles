@@ -48,3 +48,6 @@ testResults.xml
 
 # Pi subagent runtime artifacts (worker/reviewer transcripts, progress logs)
 .pi-subagents/
+
+# Untracked per-machine Neovim settings (for example vim.g.pwsh_otbs_roots), loaded by nvim/init.lua
+nvim/lua/user.lua
