@@ -23,6 +23,7 @@ PowerShell 7 profile and prompt for Windows (and Linux where applicable).
 | `Microsoft.PowerShell_profile.ps1` | Shared profile — used on all machines |
 | `Profile/Set-Prompt.ps1` | Prompt definition (jj/git + Azure context) |
 | `Profile/AzCliAccount.ps1` | Azure CLI named-profile switch (`azs`) — defines functions only; the profile calls `Restore-AzActiveProfile` in Phase 1 |
+| `Profile/StagingNote.ps1` | `note` capture into the Staging Obsidian vault — defines functions only |
 
 The installer generates a stub at `~/Documents/PowerShell/Microsoft.PowerShell_profile.ps1`
 that dot-sources the repo file — changes are live immediately without re-running setup.
@@ -41,11 +42,37 @@ comment-based help; run `Get-Help .\Scripts\<Name>.ps1 -Full`.
 | `Login-Azure.ps1` | Sign in to Azure with a service principal. Reads `SP_CLIENT_ID`, `SP_CLIENT_SECRET`, and `AZURE_TENANT_ID` from the environment (load a `.env` with PS-Dotenv) |
 | `Get-UnusedStorageAccounts.ps1` | List storage accounts with no transactions, ingress, or egress metrics in the last `-TimeAgo` months (default 3). Needs `Az` and runs `Connect-AzAccount` |
 | `New-FontLigatureTest.ps1` | Ligatures-on vs -off comparison so you can see what each font actually fuses |
+| `Save-AgentTranscript.ps1` | Copy Claude Code, Codex and Pi session transcripts into a local NTFS-compressed archive (default `E:\AgentArchive`). Copies new and changed files only and never deletes, so transcripts outlive agent cleanup. `-WorkProjectPattern` routes matching Claude projects to `work\`. Run monthly from a scheduled task |
 
 The `New-Font*` tools subset each font to the sample glyphs and embed them as base64 woff2,
 so the output HTML renders the real fonts in any browser. They need Python with
 `fonttools` + `brotli` (`pip install fonttools brotli`) for subsetting and Edge for the PNG.
 Generated `.font-*.html`/`.png` land at the repo root and are git-ignored.
+
+### Monthly transcript archive
+
+`Save-AgentTranscript.ps1` runs from a Windows scheduled task at 09:00 on the first day of
+each month. Register it from a normal PowerShell 7 session. Replace `<WorkPrefix>` with the
+start of your work project folder names under `~\.claude\projects`; the pattern stays in the
+task and out of this repository.
+
+```powershell
+$pwsh = "$env:LOCALAPPDATA\Microsoft\WindowsApps\pwsh.exe"
+$script = Join-Path $env:DOTFILES 'powershell\Scripts\Save-AgentTranscript.ps1'
+schtasks.exe /Create /TN 'Agent transcript archive' /SC MONTHLY /D 1 /ST 09:00 /TR "`"$pwsh`" -NoProfile -NonInteractive -File `"$script`" -WorkProjectPattern ^E--<WorkPrefix>" /F
+$s = (Get-ScheduledTask -TaskName 'Agent transcript archive').Settings; $s.StartWhenAvailable = $true
+Set-ScheduledTask -TaskName 'Agent transcript archive' -Settings $s | Out-Null
+```
+
+- `$pwsh` is the path of the Store PowerShell 7 alias. A task that runs only `pwsh.exe` fails
+  with `0x80070002` (file not found). For an MSI install, use `(Get-Command pwsh).Source`.
+- Do not put quotes around the pattern. `pwsh -File` passes arguments literally, so quotes
+  become part of the pattern and no project matches.
+- `New-ScheduledTaskTrigger` cannot make a monthly trigger, so the task uses `schtasks.exe`.
+  The `/TR` value must be 261 characters or fewer.
+- `StartWhenAvailable` runs a missed month when the PC is next on.
+- Check the last run with `Get-ScheduledTaskInfo -TaskName 'Agent transcript archive'`.
+  `LastTaskResult` 0 means success.
 
 ## Profile architecture
 
