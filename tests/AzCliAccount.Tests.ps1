@@ -8,6 +8,7 @@
 # invocation. All identities in fixtures are fake: this is a public repo.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $scriptPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'powershell' 'Profile' 'AzCliAccount.ps1'
     . $scriptPath
 

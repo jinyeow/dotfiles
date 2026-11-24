@@ -10,6 +10,7 @@
 #   - an ESCAPED-quote phrase does not false-trigger (escape-aware double-quote scrub)
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:Hook = Join-Path $script:RepoRoot 'claude/warn-reasoning-extraction.ps1'
 

@@ -16,6 +16,7 @@ if ($gitRaw -match '^(\d+)\.(\d+)')
 }
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:WorkConfig = Join-Path $script:RepoRoot 'git/gitconfig-work'
 

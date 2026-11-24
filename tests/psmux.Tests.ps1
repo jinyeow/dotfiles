@@ -9,6 +9,7 @@
 # can't false-green this test.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:Repo = Split-Path $PSScriptRoot -Parent
     $script:Conf = Join-Path $script:Repo 'psmux/psmux.conf'
     $script:PluginsSrc = Join-Path $script:Repo 'psmux/plugins'

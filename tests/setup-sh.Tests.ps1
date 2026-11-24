@@ -3,6 +3,7 @@
 # Complements tests/setup.Tests.ps1 (setup.ps1) and tests/setup-git.Tests.ps1 (git module).
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     . (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
 
     $script:Repo = Split-Path $PSScriptRoot -Parent

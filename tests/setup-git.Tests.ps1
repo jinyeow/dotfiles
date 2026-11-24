@@ -3,6 +3,7 @@
 # -DryRun so it never mutates the machine.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:SetupScript = Join-Path (Split-Path $PSScriptRoot -Parent) 'setup.ps1'
 }
 

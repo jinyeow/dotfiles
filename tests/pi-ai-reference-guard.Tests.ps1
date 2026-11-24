@@ -46,6 +46,7 @@
 #     multi-line command string (`"true\nSKIP_AI_REFERENCE_SCAN=1 git commit -m \"clean\""`)
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:ExtensionFile = Join-Path $script:RepoRoot 'pi/extensions/ai-reference-guard.ts'
     $script:WordlistFile = Join-Path $script:RepoRoot 'ai-agents/_shared/banned-ai-terms.txt'

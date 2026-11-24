@@ -10,6 +10,7 @@
 # skip logic are all reachable without network and are what's pinned here.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:SetupScript = Join-Path (Split-Path $PSScriptRoot -Parent) 'setup.ps1'
 
     # Writes a fake `bat` onto PATH (an extensionless shebang script off Windows, a .cmd on

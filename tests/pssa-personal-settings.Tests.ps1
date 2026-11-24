@@ -9,6 +9,7 @@
 $script:HasPSSA = [bool](Get-Module -ListAvailable -Name PSScriptAnalyzer)
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:Settings = Join-Path (Split-Path $PSScriptRoot -Parent) 'powershell/PSScriptAnalyzerSettings.Personal.psd1'
     $script:BraceRules = @('PSPlaceOpenBrace', 'PSPlaceCloseBrace')
 

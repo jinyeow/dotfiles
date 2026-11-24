@@ -10,6 +10,7 @@
 #   - the output reports rule NAMES only, never the matched secret value
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:Hook = Join-Path $script:RepoRoot 'claude/warn-hardcoded-secrets.ps1'
 

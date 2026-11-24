@@ -11,6 +11,7 @@
 # together in a temp dir rather than running the script from its repo location directly.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     . (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
 
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent

@@ -6,6 +6,7 @@
 # are mocked so no real filesystem or PATH state leaks into the assertions.
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     $scriptPath = Join-Path $PSScriptRoot 'Resolve-TestBash.ps1'
     . $scriptPath
 }

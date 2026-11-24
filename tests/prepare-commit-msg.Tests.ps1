@@ -22,6 +22,7 @@ $script:Variants = @(
 )
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     . (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
 
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent

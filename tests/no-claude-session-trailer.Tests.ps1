@@ -26,6 +26,7 @@ $script:HasBash = [bool](Resolve-TestBash) -and
 [bool](Get-Command jq -ErrorAction SilentlyContinue)
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'TestSafety.ps1')
     . (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
     $script:TestBash = Resolve-TestBash
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
