@@ -101,6 +101,15 @@ Describe 'git/gitconfig global hooks' {
         Get-GitConfigValue -Key "hook.dotfiles-$HookEvent.event" | Should -Be $HookEvent
     }
 
+    It 'stores every script in git/templates/hooks as executable' {
+        # The stanzas and the post-* scripts exec these files directly. On Linux and macOS a
+        # file without the executable bit fails with exit 126 on every checkout and commit.
+        $entries = @(& git -C $script:RepoRoot ls-files --stage -- 'git/templates/hooks')
+        $entries.Count | Should -BeGreaterThan 0
+        $notExecutable = @($entries | Where-Object { $_ -notmatch '^100755 ' } | ForEach-Object { ($_ -split "`t", 2)[1] })
+        $notExecutable | Should -BeNullOrEmpty
+    }
+
     It 'quotes the <HookEvent> command so the text after the first ; survives' -ForEach $script:HookScriptEvents {
         # `;` starts a comment in git config. Unquoted, the value would end at the first `;`
         # and the hook would never run the script. $HOME is quoted for paths with spaces.
@@ -166,6 +175,38 @@ Describe 'git/gitconfig global hooks at run time' -Skip:(-not $script:HasConfigH
 
         $LASTEXITCODE | Should -Be 0
         Get-Content -Path $outFile -Raw | Should -Be "rebase|aaa bbb`n"
+    }
+
+    It 'runs the global hook and then the repository hook once each on <Command>' -ForEach @(
+        @{ Command = 'commit'; HookEvent = 'pre-commit' }
+        @{ Command = 'checkout'; HookEvent = 'post-checkout' }
+    ) {
+        # A real git command, not `git hook run`, so the test covers how git dispatches the
+        # event: configured hooks first, then the repository's own .git/hooks script.
+        $repo = Join-Path $script:Root ('lifecycle-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $repo -Force | Out-Null
+        & git -C $repo init -q -b main .
+        & git -C $repo config user.email 'test@example.invalid'
+        & git -C $repo config user.name 'Test'
+        & git -C $repo commit -q --allow-empty -m 'base' 2>&1 | Out-Null
+
+        $log = (Join-Path $script:Root ('order-' + [guid]::NewGuid().ToString('N') + '.txt')) -replace '\\', '/'
+        New-FakeHook -HookEvent $HookEvent -Body "echo global >> '$log'" | Out-Null
+        $localHook = Join-Path $repo ".git/hooks/$HookEvent"
+        Set-Content -Path $localHook -Value "#!/bin/sh`necho local >> '$log'`n" -Encoding ASCII -NoNewline
+        if (Get-Command chmod -ErrorAction SilentlyContinue) { & chmod +x $localHook }
+
+        if ($Command -eq 'commit')
+        {
+            & git -C $repo commit -q --allow-empty -m 'lifecycle' 2>&1 | Out-Null
+        }
+        else
+        {
+            & git -C $repo checkout -q -b lifecycle 2>&1 | Out-Null
+        }
+
+        $LASTEXITCODE | Should -Be 0
+        Get-Content -Path $log | Should -Be @('global', 'local')
     }
 
     It 'blocks when a present script fails' {
