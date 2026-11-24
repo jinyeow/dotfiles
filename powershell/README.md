@@ -90,7 +90,8 @@ Sets `_ZO_RESOLVE_SYMLINKS=1` so zoxide stores resolved paths; prevents
 duplicate database entries when navigating through junctions.
 
 **Phase 2a — first idle:**
-PSFzf, zoxide, upgrade to `PredictionSource HistoryAndPlugin`, the fd-backed
+PSFzf (fuzzy `Tab` + its aliases), the bare-fzf key pickers (gated on the `fzf`
+binary, not PSFzf), zoxide, upgrade to `PredictionSource HistoryAndPlugin`, the fd-backed
 `FZF_*_COMMAND` vars (kept separate from `ripgreprc` so pickers stay
 `.gitignore`-clean while rg search stays exhaustive), the eza `ll`/`la`/`lt`
 helpers, and the Azure context timer (`Initialize-AzTimer`, moved off the load
