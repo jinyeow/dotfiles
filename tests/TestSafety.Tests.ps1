@@ -41,8 +41,11 @@ Describe 'TestSafety Remove-Item guard' {
         { $script:RealHome | Remove-Item -Recurse -WhatIf } | Should -Throw '*TestSafety*'
     }
 
-    It 'refuses through the rm alias' {
-        $alias = 'rm'  # via a variable so PSScriptAnalyzer's alias rule does not flag the deliberate alias
+    It 'refuses through the ri alias' {
+        # ri is a Remove-Item alias on every platform; rm is a native binary on Linux and macOS.
+        # Via a variable so PSScriptAnalyzer's alias rule does not flag the deliberate alias.
+        $alias = 'ri'
+        (Get-Alias -Name $alias).Definition | Should -Be 'Remove-Item'
         { & $alias -LiteralPath $script:RealHome -Recurse -WhatIf } | Should -Throw '*TestSafety*'
     }
 
