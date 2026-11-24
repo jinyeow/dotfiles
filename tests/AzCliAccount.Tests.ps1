@@ -37,14 +37,20 @@ Describe 'AzCliAccount' {
 
     AfterEach {
         Set-Variable -Name HOME -Value $script:origHome -Force
-        if ($null -eq $script:origConfigDir) {
+        if ($null -eq $script:origConfigDir)
+        {
             Remove-Item Env:AZURE_CONFIG_DIR -ErrorAction Ignore
-        } else {
+        }
+        else
+        {
             $env:AZURE_CONFIG_DIR = $script:origConfigDir
         }
-        if ($null -eq $script:origExtensionDir) {
+        if ($null -eq $script:origExtensionDir)
+        {
             Remove-Item Env:AZURE_EXTENSION_DIR -ErrorAction Ignore
-        } else {
+        }
+        else
+        {
             $env:AZURE_EXTENSION_DIR = $script:origExtensionDir
         }
         $global:__AdoAccessToken = $script:origAdoToken

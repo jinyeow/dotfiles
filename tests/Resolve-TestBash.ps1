@@ -7,7 +7,8 @@
 # container filter skips it; it has zero consumers until #42-#45 land.
 # ============================================================================
 
-function Resolve-TestBash {
+function Resolve-TestBash
+{
     <#
     .SYNOPSIS
     Full path to a usable, real bash, or $null if none is found. Never throws —
@@ -16,11 +17,15 @@ function Resolve-TestBash {
     [OutputType([string])]
     param()
 
-    if (-not $IsWindows) {
-        try {
+    if (-not $IsWindows)
+    {
+        try
+        {
             $bashCmd = Get-Command -Name bash -CommandType Application -ErrorAction Ignore | Select-Object -First 1
             return $bashCmd.Source
-        } catch {
+        }
+        catch
+        {
             return $null
         }
     }
@@ -28,44 +33,61 @@ function Resolve-TestBash {
     # Each strategy is isolated in its own try/catch so a failure in one (e.g. an
     # unexpected Split-Path/Join-Path error) falls through to the next instead of
     # aborting the whole resolution chain.
-    try {
+    try
+    {
         $gitCmd = Get-Command -Name git -CommandType Application -ErrorAction Ignore
-        if ($gitCmd -and $gitCmd.Source) {
+        if ($gitCmd -and $gitCmd.Source)
+        {
             [string]$gitRoot = Split-Path -Path (Split-Path -Path $gitCmd.Source -Parent) -Parent
             [string]$candidate = Join-Path $gitRoot 'bin' 'bash.exe'
-            if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            if (Test-Path -LiteralPath $candidate -PathType Leaf)
+            {
                 return $candidate
             }
         }
-    } catch {
+    }
+    catch
+    {
         # fall through to the next strategy
     }
 
-    try {
-        if ($env:ProgramFiles) {
+    try
+    {
+        if ($env:ProgramFiles)
+        {
             [string]$fallback = Join-Path $env:ProgramFiles 'Git' 'bin' 'bash.exe'
-            if (Test-Path -LiteralPath $fallback -PathType Leaf) {
+            if (Test-Path -LiteralPath $fallback -PathType Leaf)
+            {
                 return $fallback
             }
         }
-    } catch {
+    }
+    catch
+    {
         # fall through to the next strategy
     }
 
-    try {
+    try
+    {
         [array]$pathCandidates = Get-Command -Name bash -CommandType Application -All -ErrorAction Ignore
-        foreach ($pathCandidate in $pathCandidates) {
-            if (-not $pathCandidate.Source) {
+        foreach ($pathCandidate in $pathCandidates)
+        {
+            if (-not $pathCandidate.Source)
+            {
                 continue
             }
-            if ($pathCandidate.Source -match '(?i)\\Windows\\System32\\|\\WindowsApps\\') {
+            if ($pathCandidate.Source -match '(?i)\\Windows\\System32\\|\\WindowsApps\\')
+            {
                 continue
             }
-            if (Test-Path -LiteralPath $pathCandidate.Source -PathType Leaf) {
+            if (Test-Path -LiteralPath $pathCandidate.Source -PathType Leaf)
+            {
                 return $pathCandidate.Source
             }
         }
-    } catch {
+    }
+    catch
+    {
         # every strategy has now been tried
     }
 

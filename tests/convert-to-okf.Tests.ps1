@@ -9,11 +9,13 @@ BeforeAll {
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:Script = Join-Path $script:RepoRoot 'ai-agents/skills/project-brain/scripts/convert-to-okf.ps1'
 
-    if (-not (Test-Path -LiteralPath $script:Script)) {
+    if (-not (Test-Path -LiteralPath $script:Script))
+    {
         throw "convert-to-okf.Tests.ps1: script not found: $script:Script"
     }
 
-    function New-TestRepo {
+    function New-TestRepo
+    {
         $root = Join-Path ([IO.Path]::GetTempPath()) ('okf-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $root -Force | Out-Null
         & git -C $root init -q . 2>&1 | Out-Null
@@ -22,13 +24,15 @@ BeforeAll {
         return $root
     }
 
-    function Add-Commit {
+    function Add-Commit
+    {
         param([string] $Repo, [string] $Message = 'commit')
         & git -C $Repo add -A 2>&1 | Out-Null
         & git -C $Repo commit -q -m $Message 2>&1 | Out-Null
     }
 
-    function Invoke-Convert {
+    function Invoke-Convert
+    {
         param([string] $Path)
         & pwsh -NoProfile -File $script:Script -Path $Path 2>&1 | Out-Null
         return $LASTEXITCODE
@@ -37,7 +41,8 @@ BeforeAll {
 
 Describe 'ai-agents/skills/project-brain/scripts/convert-to-okf.ps1' {
     AfterEach {
-        if ($script:Repo -and (Test-Path -LiteralPath $script:Repo)) {
+        if ($script:Repo -and (Test-Path -LiteralPath $script:Repo))
+        {
             Remove-Item -LiteralPath $script:Repo -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
@@ -535,9 +540,9 @@ Describe 'ai-agents/skills/project-brain/scripts/convert-to-okf.ps1' {
 
         Invoke-Convert -Path $script:Repo | Should -Be 0
         $firstPass = @{
-            core   = Get-Content -LiteralPath $core -Raw
+            core = Get-Content -LiteralPath $core -Raw
             status = Get-Content -LiteralPath $status -Raw
-            adr    = Get-Content -LiteralPath $adr -Raw
+            adr = Get-Content -LiteralPath $adr -Raw
         }
 
         Invoke-Convert -Path $script:Repo | Should -Be 0

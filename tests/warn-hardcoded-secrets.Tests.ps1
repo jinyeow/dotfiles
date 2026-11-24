@@ -13,12 +13,14 @@ BeforeAll {
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:Hook = Join-Path $script:RepoRoot 'claude/warn-hardcoded-secrets.ps1'
 
-    function Invoke-Hook {
+    function Invoke-Hook
+    {
         param([string] $Payload)
         return ($Payload | & pwsh -NoProfile -File $script:Hook 2>&1 | Out-String)
     }
     # Written content (Write tool shape) wrapped as tool-call JSON.
-    function Invoke-HookContent {
+    function Invoke-HookContent
+    {
         param([string] $Content, [string] $FilePath = 'config.txt')
         $json = @{ tool_input = @{ file_path = $FilePath; content = $Content } } | ConvertTo-Json -Compress
         return (Invoke-Hook -Payload $json)

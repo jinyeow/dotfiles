@@ -31,18 +31,21 @@ if (-not $content) { exit 0 }
 
 # Consume the handoff by archiving it with a timestamp, so it is injected once and not replayed
 # into every future fresh session. Best-effort: if the rename fails the content is still emitted.
-try {
-  $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-  Rename-Item -LiteralPath $handoff -NewName "handoff-$stamp.consumed.md"
-} catch {
-  Write-Verbose "Could not archive handoff: $_"
+try
+{
+    $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+    Rename-Item -LiteralPath $handoff -NewName "handoff-$stamp.consumed.md"
+}
+catch
+{
+    Write-Verbose "Could not archive handoff: $_"
 }
 
 @{
-  hookSpecificOutput = @{
-    hookEventName   = 'SessionStart'
-    additionalContext = "A handoff document from a previous session follows (now archived " +
-      "under ``.claude/`` as ``handoff-<timestamp>.consumed.md``). Read it first to continue the work:`n`n$content"
-  }
+    hookSpecificOutput = @{
+        hookEventName = 'SessionStart'
+        additionalContext = "A handoff document from a previous session follows (now archived " +
+        "under ``.claude/`` as ``handoff-<timestamp>.consumed.md``). Read it first to continue the work:`n`n$content"
+    }
 } | ConvertTo-Json -Depth 5 -Compress
 exit 0

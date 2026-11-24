@@ -20,7 +20,8 @@ BeforeAll {
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:ExtensionFile = Join-Path $script:RepoRoot 'pi/extensions/project-brain-autoload.ts'
 
-    if (-not (Test-Path $script:ExtensionFile)) {
+    if (-not (Test-Path $script:ExtensionFile))
+    {
         throw "Extension file not found: $script:ExtensionFile"
     }
 
@@ -50,17 +51,22 @@ const result = (await beforeAgentStart({ type: "before_agent_start" }, { cwd }))
 process.stdout.write(JSON.stringify({ result: result?.message?.content ?? null }));
 '@ | Set-Content -Path $script:ContractHarness -NoNewline -Encoding utf8
 
-    function Invoke-ResolveBrainContext {
+    function Invoke-ResolveBrainContext
+    {
         param([string] $Cwd, [string] $ScriptPath)
 
         $env:PI_PROJECT_BRAIN_SESSION_START_SCRIPT = $ScriptPath
-        try {
+        try
+        {
             $output = & node --experimental-strip-types $script:ContractHarness $script:ExtensionFile $Cwd
-            if ($LASTEXITCODE -ne 0) {
+            if ($LASTEXITCODE -ne 0)
+            {
                 throw "node harness failed: $output"
             }
             return ($output | ConvertFrom-Json).result
-        } finally {
+        }
+        finally
+        {
             Clear-Item Env:\PI_PROJECT_BRAIN_SESSION_START_SCRIPT -ErrorAction SilentlyContinue
         }
     }
@@ -238,17 +244,22 @@ $payload = [Console]::In.ReadToEnd() | ConvertFrom-Json
 @{ hookSpecificOutput = @{ hookEventName = 'SessionStart'; additionalContext = "[project-brain] fixture for $($payload.cwd)" } } | ConvertTo-Json -Compress
 '@ | Set-Content -Path $script:FixtureBrainScript -NoNewline -Encoding utf8
 
-            function Invoke-Handler {
+            function Invoke-Handler
+            {
                 param([string] $Cwd, [string] $ScriptPath)
 
                 $env:PI_PROJECT_BRAIN_SESSION_START_SCRIPT = $ScriptPath
-                try {
+                try
+                {
                     $output = & node --experimental-strip-types $script:HandlerHarness $script:ExtensionFile $Cwd
-                    if ($LASTEXITCODE -ne 0) {
+                    if ($LASTEXITCODE -ne 0)
+                    {
                         throw "node harness failed (exit $LASTEXITCODE): $output"
                     }
                     return ($output | ConvertFrom-Json)
-                } finally {
+                }
+                finally
+                {
                     Clear-Item Env:\PI_PROJECT_BRAIN_SESSION_START_SCRIPT -ErrorAction SilentlyContinue
                 }
             }
@@ -286,7 +297,8 @@ $payload = [Console]::In.ReadToEnd() | ConvertFrom-Json
         # of its own to diverge from Claude Code's/Codex's hooks (E4 parity).
         BeforeAll {
             $script:RealSessionStartScript = Join-Path $script:RepoRoot 'ai-agents/skills/project-brain/scripts/session-start.ps1'
-            if (-not (Test-Path $script:RealSessionStartScript)) {
+            if (-not (Test-Path $script:RealSessionStartScript))
+            {
                 throw "Real session-start.ps1 not found: $script:RealSessionStartScript"
             }
 
@@ -307,10 +319,12 @@ $payload = [Console]::In.ReadToEnd() | ConvertFrom-Json
             # cause by reproducing plain `node --version` failing the same way against a
             # USERPROFILE override with no AppData/Local subfolder, and succeeding once one
             # was created). Linux node is not a Volta shim and needs no AppData/Local.
-            function Invoke-ResolveBrainContextWithHome {
+            function Invoke-ResolveBrainContextWithHome
+            {
                 param([string] $Cwd, [string] $ScriptPath, [string] $HomeDir)
 
-                if ($IsWindows) {
+                if ($IsWindows)
+                {
                     New-Item -ItemType Directory -Path (Join-Path $HomeDir 'AppData/Local') -Force | Out-Null
                 }
 
@@ -318,9 +332,12 @@ $payload = [Console]::In.ReadToEnd() | ConvertFrom-Json
                 $originalHome = $env:HOME
                 $env:USERPROFILE = $HomeDir
                 $env:HOME = $HomeDir
-                try {
+                try
+                {
                     return Invoke-ResolveBrainContext -Cwd $Cwd -ScriptPath $ScriptPath
-                } finally {
+                }
+                finally
+                {
                     $env:USERPROFILE = $originalUserProfile
                     $env:HOME = $originalHome
                 }

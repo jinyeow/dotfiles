@@ -17,8 +17,10 @@ $script:StatusLineCap = 60
 # breaks the emitted JSON.
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-function Read-IfPresent([string]$path) {
-    if ($path -and (Test-Path -LiteralPath $path -PathType Leaf)) {
+function Read-IfPresent([string]$path)
+{
+    if ($path -and (Test-Path -LiteralPath $path -PathType Leaf))
+    {
         try { return (Get-Content -LiteralPath $path -Raw) } catch { return $null }
     }
     return $null
@@ -27,29 +29,36 @@ function Read-IfPresent([string]$path) {
 # Line count of a content string, ignoring a single trailing newline so a file's final
 # newline is the terminator, not an extra line. Shared by Format-BrainContext's STATUS.md
 # over-cap warning and Get-StaleInitiative's oversize detection so the two never disagree.
-function Measure-ContentLine([string]$content) {
+function Measure-ContentLine([string]$content)
+{
     return (($content -replace "`r?`n\z", '') -split "`r`n|`n").Count
 }
 
-function Format-BrainContext([string]$id, [string]$title, [string]$homePath, [string]$core, [string]$status) {
+function Format-BrainContext([string]$id, [string]$title, [string]$homePath, [string]$core, [string]$status)
+{
     $lines = [System.Collections.Generic.List[string]]::new()
     $header = "[project-brain] Active initiative: $id"
     if ($title) { $header += " - $title" }
     $lines.Add($header + ".")
     $lines.Add("Home: $homePath  (read research/, adr/, reports/ on demand per core.md's map; maintain per the project-brain skill's update contract).")
     if ($core) { $lines.Add("`n===== core.md =====`n$core") }
-    if ($status) {
+    if ($status)
+    {
         $lines.Add("`n===== STATUS.md =====`n$status")
         $statusLineCount = Measure-ContentLine $status
-        if ($statusLineCount -gt $script:StatusLineCap) {
+        if ($statusLineCount -gt $script:StatusLineCap)
+        {
             $lines.Add("[project-brain] STATUS.md is $statusLineCount lines; the contract caps it at about $($script:StatusLineCap). Move history to log.md in this initiative at the next status update.")
         }
-    } else { $lines.Add("`n(No STATUS.md yet - this initiative may be newly scaffolded.)") }
+    }
+    else { $lines.Add("`n(No STATUS.md yet - this initiative may be newly scaffolded.)") }
     return ($lines -join "`n")
 }
 
-function Send-BrainContext([string]$ctx) {
-    if ($ctx) {
+function Send-BrainContext([string]$ctx)
+{
+    if ($ctx)
+    {
         @{ hookSpecificOutput = @{ hookEventName = 'SessionStart'; additionalContext = $ctx } } |
             ConvertTo-Json -Depth 6 -Compress
     }
@@ -61,7 +70,8 @@ function Send-BrainContext([string]$ctx) {
 # Returns a typed row (brain path, initiative id, title, initiative dir) or $null when no
 # brains.json, no scope match, no registry, or no dir glob matches. Never calls exit: an
 # exit here would escape a caller's inner try/catch and could drop the in-repo context.
-function Resolve-RegisteredInitiative([string]$cwdNorm) {
+function Resolve-RegisteredInitiative([string]$cwdNorm)
+{
     $brainsFile = Join-Path $HOME '.claude/project-brain/brains.json'
     if (-not (Test-Path -LiteralPath $brainsFile -PathType Leaf)) { return $null }
     $brains = (Get-Content -LiteralPath $brainsFile -Raw | ConvertFrom-Json).brains
@@ -79,14 +89,17 @@ function Resolve-RegisteredInitiative([string]$cwdNorm) {
     $registry = Get-Content -LiteralPath $regFile -Raw | ConvertFrom-Json
     if (-not $registry.initiatives) { return $null }
 
-    foreach ($entry in $registry.initiatives.PSObject.Properties) {
-        foreach ($glob in $entry.Value.dirs) {
+    foreach ($entry in $registry.initiatives.PSObject.Properties)
+    {
+        foreach ($glob in $entry.Value.dirs)
+        {
             $pattern = ($glob -replace '\\', '/')
-            if ($cwdNorm -like $pattern) {
+            if ($cwdNorm -like $pattern)
+            {
                 return [pscustomobject]@{
-                    BrainPath     = $match.path
-                    InitiativeId  = $entry.Name
-                    Title         = $entry.Value.title
+                    BrainPath = $match.path
+                    InitiativeId = $entry.Name
+                    Title = $entry.Value.title
                     InitiativeDir = (Join-Path $match.path "initiatives/$($entry.Name)")
                 }
             }
@@ -101,39 +114,46 @@ function Resolve-RegisteredInitiative([string]$cwdNorm) {
 # STATUS.md line count. Returns all active rows, not only stale ones, so a caller can also
 # report initiatives over the size cap even when nothing is stale. Cost: one directory
 # listing plus one small -Raw read per STATUS.md, no recursion below initiatives/<id>/.
-function Get-StaleInitiative([string]$brainPath, [datetime]$today) {
+function Get-StaleInitiative([string]$brainPath, [datetime]$today)
+{
     $rows = [System.Collections.Generic.List[pscustomobject]]::new()
     $initRoot = Join-Path $brainPath 'initiatives'
     if (-not (Test-Path -LiteralPath $initRoot -PathType Container)) { return $rows }
 
     $dirs = Get-ChildItem -LiteralPath $initRoot -Directory -ErrorAction SilentlyContinue |
         Where-Object { $_.Name -ne '_archive' }
-    foreach ($d in $dirs) {
+    foreach ($d in $dirs)
+    {
         $statusPath = Join-Path $d.FullName 'STATUS.md'
         $content = Read-IfPresent $statusPath
         if (-not $content) { continue }
 
         $staleAfter = $null
         $lines = $content -split "`r`n|`n"
-        if ($lines.Count -gt 0 -and $lines[0].Trim() -eq '---') {
-            for ($i = 1; $i -lt $lines.Count; $i++) {
+        if ($lines.Count -gt 0 -and $lines[0].Trim() -eq '---')
+        {
+            for ($i = 1; $i -lt $lines.Count; $i++)
+            {
                 if ($lines[$i].Trim() -eq '---') { break }
-                if ($lines[$i] -match '^\s*stale_after:\s*(\S+)') {
+                if ($lines[$i] -match '^\s*stale_after:\s*(\S+)')
+                {
                     $raw = $matches[1].Trim("'", '"')
-                    try {
+                    try
+                    {
                         $staleAfter = [datetime]::ParseExact($raw, 'yyyy-MM-dd', [cultureinfo]::InvariantCulture)
-                    } catch { $staleAfter = $null }
+                    }
+                    catch { $staleAfter = $null }
                     break
                 }
             }
         }
 
         $rows.Add([pscustomobject]@{
-            Id         = $d.Name
-            StaleAfter = $staleAfter
-            IsStale    = ($null -ne $staleAfter -and $staleAfter.Date -lt $today.Date)
-            LineCount  = (Measure-ContentLine $content)
-        })
+                Id = $d.Name
+                StaleAfter = $staleAfter
+                IsStale = ($null -ne $staleAfter -and $staleAfter.Date -lt $today.Date)
+                LineCount = (Measure-ContentLine $content)
+            })
     }
     return $rows
 }
@@ -144,17 +164,20 @@ function Get-StaleInitiative([string]$brainPath, [datetime]$today) {
 #   stale only        -> "[project-brain] <N> initiatives past stale_after: <id> (<date>)[, ...][ +<K> more]."
 #   stale + oversize   -> as above plus " Over the size cap: <id> (<n> lines)[, ...]."
 #   oversize only      -> "[project-brain] STATUS.md over the size cap: <id> (<n> lines)[, ...]."
-function Format-StaleNotice([System.Collections.Generic.List[pscustomobject]]$rows, [int]$cap) {
+function Format-StaleNotice([System.Collections.Generic.List[pscustomobject]]$rows, [int]$cap)
+{
     $stale = @($rows | Where-Object { $_.IsStale } | Sort-Object { $_.StaleAfter })
     $oversized = @($rows | Where-Object { $_.LineCount -gt $cap } | Sort-Object LineCount -Descending)
     if ($stale.Count -eq 0 -and $oversized.Count -eq 0) { return '' }
 
     $overNames = ''
-    if ($oversized.Count -gt 0) {
+    if ($oversized.Count -gt 0)
+    {
         $overNames = ($oversized | ForEach-Object { "$($_.Id) ($($_.LineCount) lines)" }) -join ', '
     }
 
-    if ($stale.Count -gt 0) {
+    if ($stale.Count -gt 0)
+    {
         $staleNames = ($stale | Select-Object -First 8 | ForEach-Object { "$($_.Id) ($($_.StaleAfter.ToString('yyyy-MM-dd')))" }) -join ', '
         $line = "[project-brain] $($stale.Count) initiatives past stale_after: $staleNames"
         if ($stale.Count -gt 8) { $line += " +$($stale.Count - 8) more" }
@@ -165,7 +188,8 @@ function Format-StaleNotice([System.Collections.Generic.List[pscustomobject]]$ro
     return "[project-brain] STATUS.md over the size cap: $overNames."
 }
 
-try {
+try
+{
     $payload = [Console]::In.ReadToEnd()
     if (-not $payload) { exit 0 }
     $call = $payload | ConvertFrom-Json
@@ -175,9 +199,11 @@ try {
 
     # 1) In-repo self-contained brain: walk up for .claude/brain/core.md
     $dir = $cwd
-    while ($dir) {
+    while ($dir)
+    {
         $cb = Join-Path $dir '.claude/brain'
-        if (Test-Path -LiteralPath (Join-Path $cb 'core.md') -PathType Leaf) {
+        if (Test-Path -LiteralPath (Join-Path $cb 'core.md') -PathType Leaf)
+        {
             $core = Read-IfPresent (Join-Path $cb 'core.md')
             $status = Read-IfPresent (Join-Path $cb 'STATUS.md')
             $name = [System.IO.Path]::GetFileName($dir)
@@ -186,12 +212,15 @@ try {
             # session can read it on demand. The in-repo brain still wins and stays loaded.
             # Isolated try/catch: a resolver failure here must never drop the in-repo context
             # (the outer catch would), so it can only add or omit the notice, never throw out.
-            try {
+            try
+            {
                 $shadow = Resolve-RegisteredInitiative $cwdNorm
-                if ($shadow) {
+                if ($shadow)
+                {
                     $ctx += "`n[project-brain] A registered initiative also matches this directory and was NOT loaded: $($shadow.InitiativeId) at $($shadow.InitiativeDir). Read its core.md and STATUS.md if the task concerns it."
                 }
-            } catch { }
+            }
+            catch { }
             Send-BrainContext $ctx
         }
         $parent = [System.IO.Path]::GetDirectoryName($dir)
@@ -208,13 +237,17 @@ try {
     # Advisory only: name initiatives whose STATUS.md is past stale_after or over the size
     # cap. Isolated try/catch so a scan failure can only omit the line, never drop the
     # loaded context (the outer catch would emit nothing at all).
-    try {
+    try
+    {
         $today = Get-Date
         $rows = Get-StaleInitiative -brainPath $resolved.BrainPath -today $today
         $notice = Format-StaleNotice -rows $rows -cap $script:StatusLineCap
         if ($notice) { $ctx += "`n$notice" }
-    } catch { }
+    }
+    catch { }
     Send-BrainContext $ctx
-} catch {
+}
+catch
+{
     exit 0
 }

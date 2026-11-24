@@ -1,6 +1,6 @@
 @{
     # Gate on Error + Warning; Information is noise for dotfiles.
-    Severity     = @('Error', 'Warning')
+    Severity = @('Error', 'Warning')
 
     # Rules excluded repo-wide, each justified by a documented convention or a
     # known false-positive class for this codebase. Two security-relevant rules are

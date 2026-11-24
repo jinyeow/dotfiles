@@ -61,14 +61,16 @@ $ErrorActionPreference = 'Stop'
 # --- Paths -------------------------------------------------------------------
 
 $repoLockfile = Join-Path $PSScriptRoot 'nvim-pack-lock.json'
-if (-not (Test-Path $repoLockfile)) {
+if (-not (Test-Path $repoLockfile))
+{
     throw "vim.pack lockfile not found at '$repoLockfile'. Run this script from the dotfiles 'nvim/' directory."
 }
 
 # Resolve Neovim's data dir. `-u NONE` is mandatory: with the normal config, init.lua runs
 # vim.pack.add and would try to clone from the (blocked) github.com before provisioning.
 $dataDir = (nvim --headless -u NONE -c 'lua io.write(vim.fn.stdpath("data"))' -c 'qa!' 2>&1 | Out-String).Trim()
-if ($LASTEXITCODE -ne 0 -or -not $dataDir -or -not (Test-Path $dataDir)) {
+if ($LASTEXITCODE -ne 0 -or -not $dataDir -or -not (Test-Path $dataDir))
+{
     throw "Could not resolve Neovim data dir (nvim exit $LASTEXITCODE, got '$dataDir'). Is 'nvim' on PATH?"
 }
 $optDir = Join-Path $dataDir 'site/pack/core/opt'
@@ -76,12 +78,14 @@ New-Item -ItemType Directory -Force -Path $optDir | Out-Null
 
 # --- Helpers -----------------------------------------------------------------
 
-function Get-OwnerRepo {
+function Get-OwnerRepo
+{
     # Parse 'owner' and 'repo' out of a https://github.com/owner/repo[.git] source URL.
     # codeload only mirrors github.com, so reject anything else rather than build a bad URL.
     param([Parameter(Mandatory)][string]$Src)
     $uri = [Uri]$Src
-    if ($uri.Host -ne 'github.com') {
+    if ($uri.Host -ne 'github.com')
+    {
         throw "Source '$Src' is not a github.com URL; codeload cannot mirror it."
     }
     $segments = $uri.AbsolutePath.Trim('/') -split '/'
@@ -89,26 +93,31 @@ function Get-OwnerRepo {
     return [pscustomobject]@{ Owner = $segments[0]; Repo = ($segments[1] -replace '\.git$', '') }
 }
 
-function Get-ShortRev {
+function Get-ShortRev
+{
     param([Parameter(Mandatory)][string]$Rev)
     return $Rev.Substring(0, [Math]::Min(7, $Rev.Length))
 }
 
-function Get-OrgLockVersion {
+function Get-OrgLockVersion
+{
     # orgmode records the grammar version it installed in its own lock file, inside its
     # plugin dir. Returns $null when absent or unreadable so a corrupt lock is treated as
     # "needs provisioning" rather than failing the whole run.
     param([Parameter(Mandatory)][string]$Path)
     if (-not (Test-Path $Path)) { return $null }
-    try {
+    try
+    {
         return (Get-Content $Path -Raw | ConvertFrom-Json).version
     }
-    catch {
+    catch
+    {
         return $null
     }
 }
 
-function Install-CodeloadArchive {
+function Install-CodeloadArchive
+{
     # Download owner/repo at $Rev as a ZIP from codeload and place its contents at $Dest.
     param(
         [Parameter(Mandatory)][string]$Owner,
@@ -119,7 +128,8 @@ function Install-CodeloadArchive {
     $url = "https://codeload.github.com/$Owner/$Repo/zip/$Rev"
     $scratch = Join-Path ([IO.Path]::GetTempPath()) ("nvimoff_" + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Force -Path $scratch | Out-Null
-    try {
+    try
+    {
         $zip = Join-Path $scratch 'archive.zip'
         Invoke-WebRequest -Uri $url -OutFile $zip
         $extracted = Join-Path $scratch 'x'
@@ -131,7 +141,8 @@ function Install-CodeloadArchive {
         New-Item -ItemType Directory -Force -Path (Split-Path $Dest -Parent) | Out-Null
         Move-Item $top.FullName $Dest
     }
-    finally {
+    finally
+    {
         Remove-Item $scratch -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
@@ -144,28 +155,33 @@ $pluginErrors = @()
 $installed = 0
 $skipped = 0
 
-foreach ($name in ($plugins.PSObject.Properties.Name | Sort-Object)) {
+foreach ($name in ($plugins.PSObject.Properties.Name | Sort-Object))
+{
     $entry = $plugins.$name
-    if (-not $entry.src -or -not $entry.rev) {
+    if (-not $entry.src -or -not $entry.rev)
+    {
         $pluginErrors += "${name}: lockfile entry missing src/rev"
         continue
     }
     $dest = Join-Path $optDir $name
     $marker = Join-Path $dest '.codeload-rev'
     # Rev-aware skip: present AND recorded rev matches the lockfile.
-    if ((Test-Path $dest) -and (Test-Path $marker) -and ((Get-Content $marker -Raw).Trim() -eq $entry.rev)) {
+    if ((Test-Path $dest) -and (Test-Path $marker) -and ((Get-Content $marker -Raw).Trim() -eq $entry.rev))
+    {
         Write-Verbose "skip plugin $name (up to date)"
         $skipped++
         continue
     }
-    try {
+    try
+    {
         $or = Get-OwnerRepo -Src $entry.src
         Write-Host "    + $name ($($or.Owner)/$($or.Repo)@$(Get-ShortRev $entry.rev))"
         Install-CodeloadArchive -Owner $or.Owner -Repo $or.Repo -Rev $entry.rev -Dest $dest
         Set-Content -Path $marker -Value $entry.rev -NoNewline
         $installed++
     }
-    catch {
+    catch
+    {
         $pluginErrors += "${name}: $($_.Exception.Message)"
     }
 }
@@ -184,28 +200,34 @@ $compiler = @('zig', 'cc', 'gcc', 'clang', 'cl') |
     ForEach-Object { Get-Command $_ -ErrorAction SilentlyContinue } |
     Select-Object -First 1
 
-if (-not (Test-Path $tsLock)) {
+if (-not (Test-Path $tsLock))
+{
     Write-Warning "nvim-treesitter not present ($tsLock missing) - skipping parser step."
 }
-else {
+else
+{
     # Parser provisioning needs a C compiler and the `git` executable: nvim-treesitter's
     # install command refuses to run without `git` present, even though no network is used
     # here (sources are local). Missing prerequisites are recorded and the step is skipped,
     # so the final summary still reports any plugin failures collected above.
     $hasGit = [bool](Get-Command git -ErrorAction SilentlyContinue)
-    if (-not $compiler) {
+    if (-not $compiler)
+    {
         $parserErrors += "Treesitter parsers skipped: no C compiler on PATH (install e.g. 'winget install zig.zig')."
     }
-    elseif (-not $hasGit) {
+    elseif (-not $hasGit)
+    {
         $parserErrors += "Treesitter parsers skipped: 'git' executable not on PATH (nvim-treesitter requires it; no network is used)."
     }
-    else {
+    else
+    {
         Write-Host "==> Provisioning Treesitter parsers (compiler: $($compiler.Name))" -ForegroundColor Cyan
 
         # Languages come from the single source of truth: treesitter.lua's ensure_installed.
         $tsText = Get-Content $tsConfig -Raw
         $block = [regex]::Match($tsText, 'ensure_installed\s*=\s*\{(.+?)\}', 'Singleline')
-        if (-not $block.Success) {
+        if (-not $block.Success)
+        {
             throw "Could not find 'ensure_installed = { ... }' in $tsConfig - parser list is unknown."
         }
         $langs = [regex]::Matches($block.Groups[1].Value, "'([^']+)'") | ForEach-Object { $_.Groups[1].Value }
@@ -215,7 +237,8 @@ else {
         # Rev-aware parser tracking (parsers carry no rev of their own once compiled).
         $revFile = Join-Path $tsDir '.codeload-parser-revs.json'
         $haveRevs = @{}
-        if (Test-Path $revFile) {
+        if (Test-Path $revFile)
+        {
             (Get-Content $revFile -Raw | ConvertFrom-Json).PSObject.Properties |
                 ForEach-Object { $haveRevs[$_.Name] = $_.Value }
         }
@@ -226,13 +249,16 @@ else {
             (-not (Test-Path (Join-Path $parserOut "$_.so"))) -or ($haveRevs[$_] -ne $want)
         }
 
-        if (-not $needed) {
+        if (-not $needed)
+        {
             Write-Host "    parsers: all $($langs.Count) up to date"
         }
-        else {
+        else
+        {
             $staging = Join-Path ([IO.Path]::GetTempPath()) ("nvimts_" + [guid]::NewGuid().ToString('N'))
             New-Item -ItemType Directory -Force -Path $staging | Out-Null
-            try {
+            try
+            {
                 # Ask nvim (minimal config) for each grammar's source repo URL, keyed by language.
                 # Data crosses the PS<->Lua boundary via files referenced by env vars - no string
                 # interpolation into Lua, so paths/quotes/spaces can't break anything.
@@ -253,36 +279,43 @@ for _, l in ipairs(langs) do if cfg[l] then out[l] = cfg[l].install_info.url end
 vim.fn.writefile({ vim.json.encode(out) }, vim.env.NVIMOFF_URLOUT)
 '@
                 $queryOut = nvim --headless -u $queryInit -c 'qa!' 2>&1 | Out-String
-                if ($LASTEXITCODE -ne 0 -or -not (Test-Path $urlOutFile)) {
+                if ($LASTEXITCODE -ne 0 -or -not (Test-Path $urlOutFile))
+                {
                     $parserErrors += "nvim parser-URL query failed (exit $LASTEXITCODE): $queryOut"
                     $urls = $null
                 }
-                else {
+                else
+                {
                     $urls = Get-Content $urlOutFile -Raw | ConvertFrom-Json
                 }
 
                 # Fetch each grammar's source from codeload at its pinned revision.
                 $staged = @{}
-                foreach ($lang in ($urls ? $needed : @())) {
+                foreach ($lang in ($urls ? $needed : @()))
+                {
                     $src = $urls.$lang
                     $rev = $revs.$lang.revision
-                    if (-not $src -or -not $rev) {
+                    if (-not $src -or -not $rev)
+                    {
                         $parserErrors += "${lang}: missing parser url or revision"
                         continue
                     }
-                    try {
+                    try
+                    {
                         $or = Get-OwnerRepo -Src $src
                         $dest = Join-Path $staging $lang
                         Write-Host "    + $lang ($($or.Owner)/$($or.Repo)@$(Get-ShortRev $rev))"
                         Install-CodeloadArchive -Owner $or.Owner -Repo $or.Repo -Rev $rev -Dest $dest
                         $staged[$lang] = $dest
                     }
-                    catch {
+                    catch
+                    {
                         $parserErrors += "${lang}: fetch failed - $($_.Exception.Message)"
                     }
                 }
 
-                if ($staged.Count -gt 0) {
+                if ($staged.Count -gt 0)
+                {
                     # Compile from the local staged sources. nvim-treesitter treats a local-path
                     # install_info.url as a copy source and skips git. Minimal config (packadd only)
                     # so the user config's vim.pack.add never runs.
@@ -314,19 +347,23 @@ vim.cmd('TSInstallSync! ' .. table.concat(langs, ' '))
                     $installOut = nvim --headless -u $installInit -c 'qa!' 2>&1 | Out-String
                     $installExit = $LASTEXITCODE
                     Write-Verbose $installOut
-                    if ($installExit -ne 0) {
+                    if ($installExit -ne 0)
+                    {
                         $parserErrors += "treesitter install: nvim exited $installExit. Output: $installOut"
                     }
 
                     # Record the rev only for parsers freshly built this run (exists AND rebuilt
                     # at/after $buildStart). A lang that didn't rebuild keeps its prior .so and rev,
                     # so it stays in $needed and is retried next run.
-                    foreach ($lang in $staged.Keys) {
+                    foreach ($lang in $staged.Keys)
+                    {
                         $so = Get-Item (Join-Path $parserOut "$lang.so") -ErrorAction SilentlyContinue
-                        if ($so -and $so.LastWriteTime -ge $buildStart) {
+                        if ($so -and $so.LastWriteTime -ge $buildStart)
+                        {
                             $haveRevs[$lang] = $revs.$lang.revision
                         }
-                        else {
+                        else
+                        {
                             # Drop any prior rev so metadata never claims a parser that isn't freshly
                             # built (keeps $haveRevs consistent and $okCount honest; still retried).
                             $haveRevs.Remove($lang)
@@ -336,7 +373,8 @@ vim.cmd('TSInstallSync! ' .. table.concat(langs, ' '))
                     $haveRevs | ConvertTo-Json | Set-Content -Path $revFile -Encoding utf8
                 }
             }
-            finally {
+            finally
+            {
                 Remove-Item $staging -Recurse -Force -ErrorAction SilentlyContinue
                 Remove-Item Env:NVIMOFF_LANGS, Env:NVIMOFF_URLOUT, Env:NVIMOFF_STAGE -ErrorAction SilentlyContinue
             }
@@ -364,34 +402,43 @@ $orgErrors = @()
 $orgDir = Join-Path $optDir 'orgmode'
 $orgInstallLua = Join-Path $orgDir 'lua/orgmode/utils/treesitter/install.lua'
 
-if (-not (Test-Path $orgDir)) {
+if (-not (Test-Path $orgDir))
+{
     Write-Verbose 'orgmode not installed - skipping org grammar step.'
 }
-elseif (-not (Test-Path $orgInstallLua)) {
+elseif (-not (Test-Path $orgInstallLua))
+{
     $orgErrors += "orgmode is present but '$orgInstallLua' is missing - cannot determine the required grammar version."
 }
-else {
+else
+{
     # orgmode pins the grammar version in its installer; read it rather than hardcode,
     # mirroring how step 2 reads ensure_installed from treesitter.lua.
     $versionMatch = [regex]::Match((Get-Content $orgInstallLua -Raw), "required_version\s*=\s*'([^']+)'")
-    if (-not $versionMatch.Success) {
+    if (-not $versionMatch.Success)
+    {
         $orgErrors += "Could not find 'required_version' in $orgInstallLua - the pinned org grammar version is unknown."
     }
-    else {
+    else
+    {
         $orgVersion = $versionMatch.Groups[1].Value
         $orgParser = Join-Path $orgDir 'parser/org.so'
         $orgLock = Join-Path $orgDir '.org-ts-lock.json'
 
-        if ((Test-Path $orgParser) -and (Get-OrgLockVersion -Path $orgLock) -eq $orgVersion) {
+        if ((Test-Path $orgParser) -and (Get-OrgLockVersion -Path $orgLock) -eq $orgVersion)
+        {
             Write-Host "==> org grammar: up to date ($orgVersion)" -ForegroundColor Cyan
         }
-        elseif (-not $compiler) {
+        elseif (-not $compiler)
+        {
             $orgErrors += "org grammar skipped: no C compiler on PATH (install e.g. 'winget install zig.zig')."
         }
-        else {
+        else
+        {
             Write-Host "==> Provisioning org grammar (compiler: $($compiler.Name))" -ForegroundColor Cyan
             $orgStaging = Join-Path ([IO.Path]::GetTempPath()) ("nvimorg_" + [guid]::NewGuid().ToString('N'))
-            try {
+            try
+            {
                 $orgSrc = Join-Path $orgStaging 'tree-sitter-org'
                 Write-Host "    + tree-sitter-org (nvim-orgmode/tree-sitter-org@$orgVersion)"
                 Install-CodeloadArchive -Owner 'nvim-orgmode' -Repo 'tree-sitter-org' -Rev $orgVersion -Dest $orgSrc
@@ -429,17 +476,21 @@ end
 
                 # Trust orgmode's own lock file over the exit code: the grammar counts as
                 # provisioned only if the parser exists AND the recorded version matches.
-                if ($orgExit -ne 0 -or -not (Test-Path $orgParser) -or (Get-OrgLockVersion -Path $orgLock) -ne $orgVersion) {
+                if ($orgExit -ne 0 -or -not (Test-Path $orgParser) -or (Get-OrgLockVersion -Path $orgLock) -ne $orgVersion)
+                {
                     $orgErrors += "org grammar: build failed (nvim exit $orgExit). Output: $orgOut"
                 }
-                else {
+                else
+                {
                     Write-Host "    org grammar: provisioned ($orgVersion)"
                 }
             }
-            catch {
+            catch
+            {
                 $orgErrors += "org grammar: $($_.Exception.Message)"
             }
-            finally {
+            finally
+            {
                 Remove-Item $orgStaging -Recurse -Force -ErrorAction SilentlyContinue
                 Remove-Item Env:NVIMOFF_ORGSRC -ErrorAction SilentlyContinue
             }
@@ -450,7 +501,8 @@ end
 # --- Summary -----------------------------------------------------------------
 
 $allErrors = @($pluginErrors) + @($parserErrors) + @($orgErrors) | Where-Object { $_ }
-if ($allErrors.Count -gt 0) {
+if ($allErrors.Count -gt 0)
+{
     Write-Host ""
     Write-Warning "Completed with $($allErrors.Count) failure(s):"
     $allErrors | ForEach-Object { Write-Host "    - $_" -ForegroundColor Yellow }

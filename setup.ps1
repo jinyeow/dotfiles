@@ -68,7 +68,8 @@ $Dotfiles = $PSScriptRoot
 if (-not $env:USERPROFILE) { $env:USERPROFILE = $HOME }
 
 # Expand 'all'
-if ($Module -contains 'all') {
+if ($Module -contains 'all')
+{
     # 'herdr' MUST come after 'claude' and 'codex': it runs `herdr integration install <agent>`,
     # which writes a hook registration into each agent's settings. claude's registration lands in
     # ~/.claude/settings.json — a file the claude module SYMLINKS to the repo. If herdr ran first,
@@ -99,10 +100,10 @@ $Module = @($Module | Select-Object -Unique)
 
 # ── Output helpers ────────────────────────────────────────────────────────────
 
-function Write-Info    ($Msg) { Write-Host "[INFO]  $Msg" -ForegroundColor Cyan    }
-function Write-Ok      ($Msg) { Write-Host "[OK]    $Msg" -ForegroundColor Green   }
-function Write-Warn    ($Msg) { Write-Host "[WARN]  $Msg" -ForegroundColor Yellow  }
-function Write-Fail    ($Msg) { Write-Host "[ERROR] $Msg" -ForegroundColor Red     }
+function Write-Info    ($Msg) { Write-Host "[INFO]  $Msg" -ForegroundColor Cyan }
+function Write-Ok      ($Msg) { Write-Host "[OK]    $Msg" -ForegroundColor Green }
+function Write-Warn    ($Msg) { Write-Host "[WARN]  $Msg" -ForegroundColor Yellow }
+function Write-Fail    ($Msg) { Write-Host "[ERROR] $Msg" -ForegroundColor Red }
 
 # ── Core helpers ──────────────────────────────────────────────────────────────
 
@@ -110,7 +111,8 @@ function Write-Fail    ($Msg) { Write-Host "[ERROR] $Msg" -ForegroundColor Red  
 # risky (e.g. New-FileSymlink's New-Item) can restore the original on failure. Returns $null
 # when there was nothing to back up, the link was a dangling reparse point (removed, no content
 # to restore), or -DryRun (nothing was actually moved).
-function Backup-Existing ([string]$Path) {
+function Backup-Existing ([string]$Path)
+{
     # Test-Path resolves reparse points, so a symlink/junction whose target no longer exists
     # (e.g. after the dotfiles repo is moved to another drive) reads as "not present" — yet the
     # link entry still occupies the name and makes a later New-Item throw "already exists". Probe
@@ -118,12 +120,14 @@ function Backup-Existing ([string]$Path) {
     # setup.ps1 clears a stale/dangling link and self-heals a moved repo.
     $item = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
     if (-not $item) { return $null }
-    $ts     = Get-Date -Format 'yyyyMMdd_HHmmss'
+    $ts = Get-Date -Format 'yyyyMMdd_HHmmss'
     $backup = "${Path}.bak.${ts}"
     # A dangling link has no content to preserve — remove it; otherwise rename to a timestamped .bak.
-    if (-not $DryRun) {
+    if (-not $DryRun)
+    {
         $isReparse = $item.Attributes -band [IO.FileAttributes]::ReparsePoint
-        if ($isReparse -and -not (Test-Path -LiteralPath $Path)) {
+        if ($isReparse -and -not (Test-Path -LiteralPath $Path))
+        {
             Remove-Item -LiteralPath $Path -Force
             Write-Warn "Removed dangling link:  $Path"
             return $null
@@ -139,24 +143,33 @@ function Backup-Existing ([string]$Path) {
 # Resolve a link's stored target for comparisons. Relative targets are relative to the
 # link's parent, not the setup process CWD. A malformed target fails closed so callers
 # preserve the existing entry rather than treating it as repository-managed.
-function Resolve-LinkTargetPath ([string]$Link, [string]$Target) {
+function Resolve-LinkTargetPath ([string]$Link, [string]$Target)
+{
     if ([string]::IsNullOrWhiteSpace($Target)) { return $null }
-    try {
-        $candidate = if ([IO.Path]::IsPathRooted($Target)) {
+    try
+    {
+        $candidate = if ([IO.Path]::IsPathRooted($Target))
+        {
             $Target
-        } else {
+        }
+        else
+        {
             Join-Path (Split-Path -Parent $Link) $Target
         }
         return [IO.Path]::GetFullPath($candidate)
-    } catch {
+    }
+    catch
+    {
         return $null
     }
 }
 
 # Directory junction — works cross-volume, no elevation required.
-function New-Junction ([string]$Link, [string]$Target) {
+function New-Junction ([string]$Link, [string]$Target)
+{
     if ($Backup) { Write-Info "Skipped (linked, no drift):  $Link"; return }
-    if (-not (Test-Path $Target -PathType Container)) {
+    if (-not (Test-Path $Target -PathType Container))
+    {
         Write-Fail "Source directory not found: $Target"; return
     }
 
@@ -166,13 +179,17 @@ function New-Junction ([string]$Link, [string]$Target) {
     # backup junctions (which -CleanBackups can't prune, since it only scans files).
     # Get-Item is deliberate: Test-Path follows links and misses dangling managed entries.
     $existing = Get-Item -LiteralPath $Link -Force -ErrorAction SilentlyContinue
-    if ($existing) {
-        if ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+    if ($existing)
+    {
+        if ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint)
+        {
             $curTarget = if ($existing.LinkTarget) { $existing.LinkTarget } else { @($existing.Target)[0] }
-            if ($curTarget) {
+            if ($curTarget)
+            {
                 $a = Resolve-LinkTargetPath -Link $Link -Target $curTarget
                 $b = Resolve-LinkTargetPath -Link $Link -Target $Target
-                if ($a -and $b -and [string]::Equals($a.TrimEnd('\'), $b.TrimEnd('\'), [StringComparison]::OrdinalIgnoreCase)) {
+                if ($a -and $b -and [string]::Equals($a.TrimEnd('\'), $b.TrimEnd('\'), [StringComparison]::OrdinalIgnoreCase))
+                {
                     Write-Ok "Junction:   $Link (already current)"
                     return
                 }
@@ -194,38 +211,49 @@ function New-Junction ([string]$Link, [string]$Target) {
 # Replace only an installer-managed whole-directory link. Real directories, files, external links,
 # and malformed links are user-owned/unknown and must remain untouched. Historical roots are
 # compared lexically so dangling links remain safely repairable after a source move.
-function New-ManagedDirectoryJunction ([string]$Link, [string]$Target, [string[]]$HistoricalTargets) {
+function New-ManagedDirectoryJunction ([string]$Link, [string]$Target, [string[]]$HistoricalTargets)
+{
     if ($Backup) { Write-Info "Skipped (linked, no drift):  $Link"; return }
-    if (-not (Test-Path $Target -PathType Container)) {
+    if (-not (Test-Path $Target -PathType Container))
+    {
         Write-Fail "Source directory not found: $Target"; return
     }
 
     $existing = Get-Item -LiteralPath $Link -Force -ErrorAction SilentlyContinue
-    if ($existing) {
-        if (-not ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+    if ($existing)
+    {
+        if (-not ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint))
+        {
             Write-Warn "Preserved unmanaged directory: $Link"
             return
         }
         $curTarget = if ($existing.LinkTarget) { $existing.LinkTarget } else { @($existing.Target)[0] }
         $resolvedCurrent = Resolve-LinkTargetPath -Link $Link -Target $curTarget
         $managed = $false
-        foreach ($candidate in @($Target) + @($HistoricalTargets)) {
+        foreach ($candidate in @($Target) + @($HistoricalTargets))
+        {
             $resolvedCandidate = Resolve-LinkTargetPath -Link $Link -Target $candidate
             if ($resolvedCurrent -and $resolvedCandidate -and
-                [string]::Equals($resolvedCurrent.TrimEnd('\', '/'), $resolvedCandidate.TrimEnd('\', '/'), [StringComparison]::OrdinalIgnoreCase)) {
+                [string]::Equals($resolvedCurrent.TrimEnd('\', '/'), $resolvedCandidate.TrimEnd('\', '/'), [StringComparison]::OrdinalIgnoreCase))
+            {
                 $managed = $true
                 if ([string]::Equals($resolvedCurrent.TrimEnd('\', '/'), $resolvedCandidate.TrimEnd('\', '/'), [StringComparison]::OrdinalIgnoreCase) -and
-                    [string]::Equals($resolvedCandidate.TrimEnd('\', '/'), (Resolve-LinkTargetPath -Link $Link -Target $Target).TrimEnd('\', '/'), [StringComparison]::OrdinalIgnoreCase)) {
+                    [string]::Equals($resolvedCandidate.TrimEnd('\', '/'), (Resolve-LinkTargetPath -Link $Link -Target $Target).TrimEnd('\', '/'), [StringComparison]::OrdinalIgnoreCase))
+                {
                     Write-Ok "Junction:   $Link (already current)"
                     return
                 }
                 break
             }
         }
-        if (-not $managed) {
-            if ($resolvedCurrent -and -not (Test-Path -LiteralPath $resolvedCurrent)) {
+        if (-not $managed)
+        {
+            if ($resolvedCurrent -and -not (Test-Path -LiteralPath $resolvedCurrent))
+            {
                 Write-Warn "Preserved unmanaged directory link (target missing): $Link"
-            } else {
+            }
+            else
+            {
                 Write-Warn "Preserved unmanaged directory link: $Link"
             }
             return
@@ -241,22 +269,28 @@ function New-ManagedDirectoryJunction ([string]$Link, [string]$Target, [string[]
     Write-Ok "         -> $Target"
 }
 
-function New-FileSymlink ([string]$Link, [string]$Target) {
+function New-FileSymlink ([string]$Link, [string]$Target)
+{
     if ($Backup) { Write-Info "Skipped (linked, no drift):  $Link"; return }
-    if (-not (Test-Path $Target -PathType Leaf)) {
+    if (-not (Test-Path $Target -PathType Leaf))
+    {
         Write-Fail "Source file not found: $Target"; return
     }
 
     # Idempotent: leave an existing symlink that already points at $Target.
     # Get-Item is deliberate: Test-Path follows links and misses dangling entries.
     $existing = Get-Item -LiteralPath $Link -Force -ErrorAction SilentlyContinue
-    if ($existing) {
-        if ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+    if ($existing)
+    {
+        if ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint)
+        {
             $curTarget = if ($existing.LinkTarget) { $existing.LinkTarget } else { @($existing.Target)[0] }
-            if ($curTarget) {
+            if ($curTarget)
+            {
                 $a = Resolve-LinkTargetPath -Link $Link -Target $curTarget
                 $b = Resolve-LinkTargetPath -Link $Link -Target $Target
-                if ($a -and $b -and [string]::Equals($a, $b, [StringComparison]::OrdinalIgnoreCase)) {
+                if ($a -and $b -and [string]::Equals($a, $b, [StringComparison]::OrdinalIgnoreCase))
+                {
                     Write-Ok "Symlink:    $Link (already current)"
                     return
                 }
@@ -269,14 +303,18 @@ function New-FileSymlink ([string]$Link, [string]$Target) {
     $dir = Split-Path $Link
     if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
     $backupPath = Backup-Existing $Link
-    try {
+    try
+    {
         New-Item -ItemType SymbolicLink -Path $Link -Target $Target -ErrorAction Stop | Out-Null
-    } catch {
+    }
+    catch
+    {
         Write-Fail "Symlink failed for $Link ($($_.Exception.Message)). Enable Developer Mode (Settings > For developers) or run elevated."
         # Backup-Existing already moved the live file out of the way before this attempt — if we
         # don't move it back, a failed symlink (no Developer Mode) leaves the user's real config
         # renamed to a .bak file with nothing in its place.
-        if ($backupPath -and (Test-Path -LiteralPath $backupPath)) {
+        if ($backupPath -and (Test-Path -LiteralPath $backupPath))
+        {
             Move-Item -LiteralPath $backupPath -Destination $Link -Force
             Write-Warn "Restored original:  $Link"
         }
@@ -289,12 +327,15 @@ function New-FileSymlink ([string]$Link, [string]$Target) {
 # File copy — simple, always works cross-volume.
 # Re-run the installer to pick up changes from the repo.
 # With -Backup, runs in reverse: pulls the live copy ($Dest) back into the repo ($Source).
-function Copy-Dotfile ([string]$Dest, [string]$Source) {
-    if ($Backup) {
+function Copy-Dotfile ([string]$Dest, [string]$Source)
+{
+    if ($Backup)
+    {
         # Reverse-sync: live copy ($Dest) -> repo ($Source). Only copied files drift
         # (junctions/stubs point at the repo), so this is where drift is captured. Git is
         # the review/safety net — no .bak is written into the repo. Review with `git diff`.
-        if (-not (Test-Path $Dest)) {
+        if (-not (Test-Path $Dest))
+        {
             Write-Warn "No live file to back up: $Dest"; return
         }
         if ($DryRun) { Write-Info "[DRY RUN] backup (live -> repo) $Dest -> $Source"; return }
@@ -303,14 +344,19 @@ function Copy-Dotfile ([string]$Dest, [string]$Source) {
         Write-Ok "         -> $Source"
         return
     }
-    if (-not (Test-Path $Source)) {
+    if (-not (Test-Path $Source))
+    {
         Write-Fail "Source file not found: $Source"; return
     }
     $dir = Split-Path $Dest
-    if (-not (Test-Path $dir)) {
-        if ($DryRun) {
+    if (-not (Test-Path $dir))
+    {
+        if ($DryRun)
+        {
             Write-Info "[DRY RUN] would create: $dir"
-        } else {
+        }
+        else
+        {
             New-Item -ItemType Directory -Path $dir -Force | Out-Null
             Write-Info "Created:    $dir"
         }
@@ -325,13 +371,16 @@ function Copy-Dotfile ([string]$Dest, [string]$Source) {
 
 # Git [include] stub — installs a gitconfig that includes the real file from the
 # repo via git's native include mechanism. Works cross-volume; changes are live.
-function New-GitIncludeStub ([string]$StubPath, [string]$RealSource) {
+function New-GitIncludeStub ([string]$StubPath, [string]$RealSource)
+{
     if ($Backup) { Write-Info "Skipped (stub, no drift):    $StubPath"; return }
-    if (-not (Test-Path $RealSource)) {
+    if (-not (Test-Path $RealSource))
+    {
         Write-Fail "Source file not found: $RealSource"; return
     }
     $dir = Split-Path $StubPath
-    if (-not (Test-Path $dir)) {
+    if (-not (Test-Path $dir))
+    {
         if (-not $DryRun) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
         Write-Info "Created:    $dir"
     }
@@ -353,7 +402,8 @@ function New-GitIncludeStub ([string]$StubPath, [string]$RealSource) {
 
 # ── Modules ───────────────────────────────────────────────────────────────────
 
-function Install-Git {
+function Install-Git
+{
     Write-Host ''
     Write-Info '=== Git ==='
 
@@ -416,28 +466,35 @@ function Install-Git {
 # Config-based hooks ([hook "work-policy"] in gitconfig-work) need Git >= 2.54.
 # Older git ignores the stanza SILENTLY — no error, the hook simply never runs — so
 # warn at install time rather than let a policy hook quietly enforce nothing.
-function Test-GitHookSupport {
-    if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+function Test-GitHookSupport
+{
+    if (-not (Get-Command git -ErrorAction SilentlyContinue))
+    {
         Write-Warn 'git not on PATH — cannot verify config-based hook support (needs >= 2.54).'
         return
     }
 
     [string] $raw = (& git --version) -replace '^git version\s*', ''
-    if ($raw -notmatch '^(\d+)\.(\d+)') {
+    if ($raw -notmatch '^(\d+)\.(\d+)')
+    {
         Write-Warn "Could not parse git version '$raw' — config-based hooks need >= 2.54."
         return
     }
 
     [version] $found = [version]::new([int]$Matches[1], [int]$Matches[2])
-    if ($found -lt [version]'2.54') {
+    if ($found -lt [version]'2.54')
+    {
         Write-Warn "git $raw is older than 2.54 — the work-policy hook in gitconfig-work is IGNORED SILENTLY."
         Write-Warn '  Upgrade git, or move the check into git/templates/hooks/pre-commit to enforce it on this machine.'
-    } else {
+    }
+    else
+    {
         Write-Ok "git $raw supports config-based hooks (>= 2.54)."
     }
 }
 
-function Install-Neovim {
+function Install-Neovim
+{
     Write-Host ''
     Write-Info '=== Neovim ==='
     # Honour XDG_CONFIG_HOME if set (the PowerShell profile exports it as ~/.config).
@@ -449,7 +506,8 @@ function Install-Neovim {
     New-Junction @params
 }
 
-function Install-Vim {
+function Install-Vim
+{
     Write-Host ''
     Write-Info '=== Vim ==='
     # vimrc lives inside vim/ so Vim finds it at ~/vimfiles/vimrc automatically.
@@ -460,7 +518,8 @@ function Install-Vim {
     New-Junction @params
 }
 
-function Install-PowerShell {
+function Install-PowerShell
+{
     Write-Host ''
     Write-Info '=== PowerShell ==='
 
@@ -473,9 +532,12 @@ function Install-PowerShell {
     # Persist the dotfiles root as a user-scoped env var so the stub below can
     # resolve it at load time rather than baking an absolute path into the file.
     # Re-running setup.ps1 is all that's needed if the repo moves.
-    if ($DryRun) {
+    if ($DryRun)
+    {
         Write-Info "[DRY RUN] would set DOTFILES=$Dotfiles (User env var)"
-    } else {
+    }
+    else
+    {
         [Environment]::SetEnvironmentVariable('DOTFILES', $Dotfiles, 'User')
         Write-Ok "Env var:    DOTFILES = $Dotfiles  (User scope)"
     }
@@ -496,9 +558,11 @@ function Install-PowerShell {
         (Join-Path $docs 'PowerShell\Microsoft.PowerShell_profile.ps1'), # PS7
         (Join-Path $docs 'PowerShell\Microsoft.VSCode_profile.ps1')      # VSCode (runs pwsh 7)
     )
-    foreach ($target in $profileTargets) {
+    foreach ($target in $profileTargets)
+    {
         $dir = Split-Path $target
-        if (-not (Test-Path $dir)) {
+        if (-not (Test-Path $dir))
+        {
             if (-not $DryRun) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
             Write-Info "Created:    $dir"
         }
@@ -513,14 +577,17 @@ function Install-PowerShell {
     # dot-sourcing the pwsh-7-only shared profile fails on load (#Requires -Version 7). We do NOT
     # auto-delete — the WindowsPowerShell\ dir holds real user content — only flag stubs this
     # installer generated (identified by the auto-generated header), with a manual removal command.
-    if (-not $DryRun) {
+    if (-not $DryRun)
+    {
         $ps5Stubs = @(
             (Join-Path $docs 'WindowsPowerShell\Microsoft.PowerShell_profile.ps1'),
             (Join-Path $docs 'WindowsPowerShell\Microsoft.VSCode_profile.ps1')
         )
-        foreach ($stub in $ps5Stubs) {
+        foreach ($stub in $ps5Stubs)
+        {
             if ((Test-Path $stub -PathType Leaf) -and
-                ((Get-Content $stub -Raw -ErrorAction SilentlyContinue) -match 'Auto-generated by setup\.ps1')) {
+                ((Get-Content $stub -Raw -ErrorAction SilentlyContinue) -match 'Auto-generated by setup\.ps1'))
+            {
                 Write-Warn "Orphaned PS5 stub (shared profile needs pwsh 7): $stub"
                 Write-Warn "        remove with:  Remove-Item '$stub'"
             }
@@ -528,20 +595,23 @@ function Install-PowerShell {
     }
 
     # Junction the Profile\ subdirectory (contains Set-Prompt.ps1)
-    $profileDirSrc  = Join-Path $Dotfiles 'powershell\Profile'
+    $profileDirSrc = Join-Path $Dotfiles 'powershell\Profile'
     $profileDirDest = Join-Path $docs 'PowerShell\Profile'
-    if (Test-Path $profileDirSrc -PathType Container) {
+    if (Test-Path $profileDirSrc -PathType Container)
+    {
         New-Junction -Link $profileDirDest -Target $profileDirSrc
     }
 }
 
-function Install-Bash {
+function Install-Bash
+{
     Write-Host ''
     Write-Info '=== Bash ==='
     Write-Warn 'Bash module is Linux/WSL only — skipping on Windows.'
 }
 
-function Install-Tig {
+function Install-Tig
+{
     Write-Host ''
     Write-Info '=== Tig ==='
     $params = @{
@@ -556,13 +626,15 @@ function Install-Tig {
     Copy-Dotfile @params
 }
 
-function Install-Tmux {
+function Install-Tmux
+{
     Write-Host ''
     Write-Info '=== Tmux ==='
     Write-Warn 'Tmux module is Linux/WSL only — skipping on Windows.'
 }
 
-function Install-Zellij {
+function Install-Zellij
+{
     Write-Host ''
     Write-Info '=== Zellij ==='
     # Windows-native path: %APPDATA%\Zellij\config\ (https://zellij.dev/documentation/configuration.html)
@@ -572,10 +644,14 @@ function Install-Zellij {
     # -Backup is a reverse-sync (live -> repo) that never touches the live side, and
     # New-Junction itself skips under -Backup — but this mkdir ran unconditionally ahead of
     # that check, so a -Backup run could still mutate the filesystem. Guard it here too.
-    if (-not (Test-Path $zellijParent) -and -not $Backup) {
-        if ($DryRun) {
+    if (-not (Test-Path $zellijParent) -and -not $Backup)
+    {
+        if ($DryRun)
+        {
             Write-Info "[DRY RUN] would create: $zellijParent"
-        } else {
+        }
+        else
+        {
             New-Item -ItemType Directory -Path $zellijParent -Force | Out-Null
             Write-Info "Created:    $zellijParent"
         }
@@ -587,16 +663,20 @@ function Install-Zellij {
     New-Junction @params
 }
 
-function Install-Psmux {
+function Install-Psmux
+{
     Write-Host ''
     Write-Info '=== psmux (native-Windows tmux) ==='
     # psmux auto-loads ~/.psmux.conf (verified: it wins over ~/.tmux.conf). Symlink so edits
     # flow both ways with the repo; needs Developer Mode (see New-FileSymlink).
     New-FileSymlink -Link (Join-Path $env:USERPROFILE '.psmux.conf') -Target (Join-Path $Dotfiles 'psmux\psmux.conf')
 
-    if (-not (Get-Command -Name psmux -ErrorAction Ignore)) {
+    if (-not (Get-Command -Name psmux -ErrorAction Ignore))
+    {
         Write-Warn 'psmux not found. Install with: winget install marlocarlo.psmux'
-    } else {
+    }
+    else
+    {
         Write-Ok 'psmux is installed.'
     }
 
@@ -607,34 +687,44 @@ function Install-Psmux {
     # -Backup is a reverse-sync (live -> repo); these are forward (repo -> live) copies with
     # nothing to reverse-sync, so skip the whole loop rather than forward-copying during a
     # -Backup run.
-    if ($Backup) {
+    if ($Backup)
+    {
         Write-Info 'Skipped (vendored copy, no drift):  ~/.psmux/plugins'
         return
     }
     $pluginsSrc = Join-Path $Dotfiles 'psmux\plugins'
     $pluginsDst = Join-Path $env:USERPROFILE '.psmux\plugins'
-    if (-not (Test-Path $pluginsDst)) {
-        if ($DryRun) {
+    if (-not (Test-Path $pluginsDst))
+    {
+        if ($DryRun)
+        {
             Write-Info "[DRY RUN] would create: $pluginsDst"
-        } else {
+        }
+        else
+        {
             New-Item -ItemType Directory -Path $pluginsDst -Force | Out-Null
             Write-Info "Created:    $pluginsDst"
         }
     }
     $plugins = Get-ChildItem -Path $pluginsSrc -Directory -ErrorAction SilentlyContinue
-    if ($plugins) {
-        foreach ($plugin in $plugins) {
+    if ($plugins)
+    {
+        foreach ($plugin in $plugins)
+        {
             $dest = Join-Path $pluginsDst $plugin.Name
             if ($DryRun) { Write-Info "[DRY RUN] copy plugin $($plugin.Name) -> $dest"; continue }
             Copy-Item -Path $plugin.FullName -Destination $pluginsDst -Recurse -Force
             Write-Ok "Plugin:     $dest (vendored, pinned)"
         }
-    } else {
+    }
+    else
+    {
         Write-Info 'No vendored plugins found (psmux/plugins/ is empty).'
     }
 }
 
-function Install-Herdr {
+function Install-Herdr
+{
     Write-Host ''
     Write-Info '=== Herdr (terminal workspace manager for AI agents) ==='
     # Herdr reads ~/.config/herdr/config.toml on every platform including Windows
@@ -644,10 +734,14 @@ function Install-Herdr {
     $herdrConfig = Join-Path $env:USERPROFILE '.config\herdr'
     # -Backup is a reverse-sync (live -> repo) and must never mutate the live side;
     # New-FileSymlink skips under -Backup, so guard the mkdir the same way (mirrors Install-Zellij).
-    if (-not (Test-Path $herdrConfig) -and -not $Backup) {
-        if ($DryRun) {
+    if (-not (Test-Path $herdrConfig) -and -not $Backup)
+    {
+        if ($DryRun)
+        {
             Write-Info "[DRY RUN] would create: $herdrConfig"
-        } else {
+        }
+        else
+        {
             New-Item -ItemType Directory -Path $herdrConfig -Force | Out-Null
             Write-Info "Created:    $herdrConfig"
         }
@@ -658,9 +752,12 @@ function Install-Herdr {
     }
     New-FileSymlink @params
 
-    if (-not (Get-Command -Name herdr -ErrorAction Ignore)) {
+    if (-not (Get-Command -Name herdr -ErrorAction Ignore))
+    {
         Write-Warn 'herdr not found on PATH. Install from https://herdr.dev'
-    } else {
+    }
+    else
+    {
         Write-Ok 'herdr is installed.'
         Write-Info 'Validate with: herdr config check   Apply live with: herdr server reload-config'
 
@@ -671,24 +768,30 @@ function Install-Herdr {
         # is vendored here; setup regenerates it per machine with correct paths. Only agents
         # actually on PATH are wired. pi is omitted: `herdr integration install pi` reports "not
         # supported on Windows" (it is wired on Linux by setup.sh instead).
-        foreach ($agent in @('claude', 'codex')) {
+        foreach ($agent in @('claude', 'codex'))
+        {
             if (-not (Get-Command -Name $agent -ErrorAction Ignore)) { continue }
             if ($Backup) { continue }  # reverse-sync must never mutate the live side
-            if ($DryRun) {
+            if ($DryRun)
+            {
                 Write-Info "[DRY RUN] herdr integration install $agent"
                 continue
             }
             herdr integration install $agent *>$null
-            if ($LASTEXITCODE -eq 0) {
+            if ($LASTEXITCODE -eq 0)
+            {
                 Write-Ok "Integration: $agent wired to herdr"
-            } else {
+            }
+            else
+            {
                 Write-Warn "herdr integration install $agent failed (exit $LASTEXITCODE)"
             }
         }
     }
 }
 
-function Install-Yazi {
+function Install-Yazi
+{
     Write-Host ''
     Write-Info '=== Yazi ==='
     $yaziConfig = Join-Path $env:APPDATA 'yazi\config'
@@ -696,10 +799,14 @@ function Install-Yazi {
     # -Backup is a reverse-sync (live -> repo) that never touches the live side, and
     # New-Junction itself skips under -Backup — but this mkdir ran unconditionally ahead of
     # that check, so a -Backup run could still mutate the filesystem. Guard it here too.
-    if (-not (Test-Path $yaziParent) -and -not $Backup) {
-        if ($DryRun) {
+    if (-not (Test-Path $yaziParent) -and -not $Backup)
+    {
+        if ($DryRun)
+        {
             Write-Info "[DRY RUN] would create: $yaziParent"
-        } else {
+        }
+        else
+        {
             New-Item -ItemType Directory -Path $yaziParent -Force | Out-Null
             Write-Info "Created:    $yaziParent"
         }
@@ -709,9 +816,12 @@ function Install-Yazi {
         Target = Join-Path $Dotfiles 'yazi'
     }
     New-Junction @params
-    if (-not (Get-Command -Name yazi -ErrorAction Ignore)) {
+    if (-not (Get-Command -Name yazi -ErrorAction Ignore))
+    {
         Write-Warn 'yazi not found. Install with: winget install sxyazi.yazi'
-    } else {
+    }
+    else
+    {
         Write-Ok 'yazi is installed.'
     }
     Write-Info 'After setup, install flavors:'
@@ -719,7 +829,8 @@ function Install-Yazi {
     Write-Info '  ya pkg add yazi-rs/flavors:catppuccin-latte'
 }
 
-function Install-Curl {
+function Install-Curl
+{
     Write-Host ''
     Write-Info '=== Curl ==='
     $params = @{
@@ -729,11 +840,13 @@ function Install-Curl {
     Copy-Dotfile @params
 }
 
-function Install-WindowsTerminal {
+function Install-WindowsTerminal
+{
     Write-Host ''
     Write-Info '=== Windows Terminal ==='
     $wtState = Join-Path $env:LOCALAPPDATA 'Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState'
-    if (-not (Test-Path $wtState)) {
+    if (-not (Test-Path $wtState))
+    {
         Write-Warn 'Windows Terminal not found — skipping.'
         return
     }
@@ -744,20 +857,25 @@ function Install-WindowsTerminal {
     Copy-Dotfile @params
 }
 
-function Install-Lazygit {
+function Install-Lazygit
+{
     Write-Host ''
     Write-Info '=== Lazygit ==='
     Write-Info 'Config is loaded via $env:LG_CONFIG_FILE set in the PowerShell profile — no files to copy.'
     Write-Info "Base:  $(Join-Path $Dotfiles 'lazygit\config.yml')"
     Write-Info "Theme: lazygit\theme-mocha.yml or theme-latte.yml (selected at profile load from OS theme)"
-    if (-not (Get-Command -Name lazygit -ErrorAction Ignore)) {
+    if (-not (Get-Command -Name lazygit -ErrorAction Ignore))
+    {
         Write-Warn 'lazygit not found. Install with: winget install JesseDuffield.lazygit'
-    } else {
+    }
+    else
+    {
         Write-Ok 'lazygit is installed.'
     }
 }
 
-function Install-Winget {
+function Install-Winget
+{
     Write-Host ''
     Write-Info '=== winget packages ==='
     Write-Info 'Run the bootstrap script to install curated packages on a new machine:'
@@ -766,7 +884,8 @@ function Install-Winget {
     Write-Info "  winget import -i $(Join-Path $Dotfiles 'winget\packages.json') --ignore-unavailable"
 }
 
-function Install-VSCode {
+function Install-VSCode
+{
     Write-Host ''
     Write-Info '=== VSCode ==='
     Write-Info 'Settings are managed by VSCode Settings Sync — no files to copy.'
@@ -778,20 +897,25 @@ function Install-VSCode {
     Write-Info '  dev.containers.dockerPath'
     Write-Info '  mssql.connections / mssql.connectionGroups'
     Write-Info '  github-actions.use-enterprise'
-    if (-not (Get-Command -Name code -ErrorAction Ignore)) {
+    if (-not (Get-Command -Name code -ErrorAction Ignore))
+    {
         Write-Warn 'VSCode not found in PATH. Install from https://code.visualstudio.com/'
-    } else {
+    }
+    else
+    {
         Write-Ok 'VSCode is installed.'
     }
 }
 
-function Install-Bat {
+function Install-Bat
+{
     Write-Host ''
     Write-Info '=== bat ==='
     Write-Info 'Config is loaded via $env:BAT_CONFIG_PATH set in the PowerShell profile — no files to copy.'
     Write-Info "Config: $(Join-Path $Dotfiles 'bat\config')"
     $batCmd = Get-Command -Name bat -ErrorAction Ignore
-    if (-not $batCmd) {
+    if (-not $batCmd)
+    {
         Write-Warn 'bat not found. Install with: winget install sharkdp.bat'
         return
     }
@@ -799,7 +923,8 @@ function Install-Bat {
 
     # -Backup is a reverse live -> repo sync (see Copy-Dotfile); there is nothing here to
     # pull back into the repo (themes are fetched content, not tracked), so skip entirely.
-    if ($Backup) {
+    if ($Backup)
+    {
         Write-Info 'Backup mode — skipping theme provisioning.'
         return
     }
@@ -817,10 +942,12 @@ function Install-Bat {
 # Split out from Install-Bat (and takes $BatCmd as a param rather than re-resolving it) so a
 # test can call the theme-dir-resolution/skip logic directly against a shimmed `bat` on PATH
 # without needing a real bat install or network access.
-function Install-BatCatppuccinTheme ([System.Management.Automation.CommandInfo]$BatCmd) {
+function Install-BatCatppuccinTheme ([System.Management.Automation.CommandInfo]$BatCmd)
+{
     # bat's own convention: `bat --config-dir`/themes is where it looks for user themes.
     $configDir = (& $BatCmd --config-dir | Select-Object -First 1)
-    if (-not $configDir) {
+    if (-not $configDir)
+    {
         Write-Warn 'Could not determine `bat --config-dir` — skipping Catppuccin theme provisioning.'
         return
     }
@@ -834,44 +961,54 @@ function Install-BatCatppuccinTheme ([System.Management.Automation.CommandInfo]$
 
     $added = $false
     $missing = $false
-    foreach ($theme in $themes) {
+    foreach ($theme in $themes)
+    {
         $dest = Join-Path $themesDir "$($theme.Name).tmTheme"
-        if (Test-Path -LiteralPath $dest) {
+        if (Test-Path -LiteralPath $dest)
+        {
             Write-Ok "Theme:      $dest (already present)"
             continue
         }
         $missing = $true
-        if ($DryRun) {
+        if ($DryRun)
+        {
             Write-Info "[DRY RUN] would download $($theme.Url) -> $dest"
             continue
         }
-        if (-not (Test-Path $themesDir)) {
+        if (-not (Test-Path $themesDir))
+        {
             New-Item -ItemType Directory -Path $themesDir -Force | Out-Null
             Write-Info "Created:    $themesDir"
         }
         # Fails open, like Install-Codex's installer download: a blocked/offline network must
         # not abort the rest of -Module all, just leave bat on its (warn-and-fall-back) default.
-        try {
+        try
+        {
             Invoke-WebRequest -Uri $theme.Url -OutFile $dest -ErrorAction Stop
             Write-Ok "Downloaded: $dest"
             $added = $true
-        } catch {
+        }
+        catch
+        {
             Write-Warn "Could not download '$($theme.Name)' theme ($($_.Exception.Message))."
             Write-Warn "  bat will warn and fall back to its default theme until this succeeds — re-run this module, or download manually (see bat/README.md)."
         }
     }
 
-    if ($DryRun) {
+    if ($DryRun)
+    {
         if ($missing) { Write-Info '[DRY RUN] would run: bat cache --build' }
         return
     }
-    if ($added) {
+    if ($added)
+    {
         & $BatCmd cache --build
         Write-Ok 'Rebuilt bat theme cache (bat cache --build).'
     }
 }
 
-function Get-ClaudeCli {
+function Get-ClaudeCli
+{
     $command = Get-Command -Name claude -ErrorAction Ignore
     if ($command) { return $command }
 
@@ -880,7 +1017,8 @@ function Get-ClaudeCli {
     # configuration so a successful bootstrap is usable immediately.
     $nativeBin = Join-Path $HOME '.local\bin'
     $nativeExe = Join-Path $nativeBin 'claude.exe'
-    if (Test-Path -LiteralPath $nativeExe -PathType Leaf) {
+    if (Test-Path -LiteralPath $nativeExe -PathType Leaf)
+    {
         $pathParts = @($env:PATH -split [IO.Path]::PathSeparator)
         if ($nativeBin -notin $pathParts) { $env:PATH = "$nativeBin$([IO.Path]::PathSeparator)$env:PATH" }
         return Get-Command -Name claude -ErrorAction SilentlyContinue
@@ -888,27 +1026,34 @@ function Get-ClaudeCli {
     return $null
 }
 
-function Confirm-ClaudeCli {
-    if (Get-ClaudeCli) {
+function Confirm-ClaudeCli
+{
+    if (Get-ClaudeCli)
+    {
         Write-Ok 'Claude Code CLI is already installed.'
         return $true
     }
-    if ($DryRun) {
+    if ($DryRun)
+    {
         Write-Info '[DRY RUN] would install Claude Code CLI via https://claude.ai/install.ps1'
         return $true
     }
 
     Write-Info 'Claude Code CLI not found — installing via the native installer...'
-    try {
+    try
+    {
         # Supported Windows install path; deliberately do not use npm/Volta.
         $installer = Invoke-RestMethod -Uri 'https://claude.ai/install.ps1' -ErrorAction Stop
         if (-not $installer) { throw 'The native installer returned an empty response.' }
         Invoke-Expression $installer
-    } catch {
+    }
+    catch
+    {
         Write-Fail "Claude Code CLI bootstrap failed: $($_.Exception.Message)"
     }
 
-    if (-not (Get-ClaudeCli)) {
+    if (-not (Get-ClaudeCli))
+    {
         Write-Fail 'Claude setup stopped before configuration or projection because the CLI is unavailable.'
         Write-Info 'Install it manually with: irm https://claude.ai/install.ps1 | iex'
         Write-Info 'Then verify `claude` is on PATH and re-run: .\setup.ps1 -Module claude'
@@ -918,10 +1063,12 @@ function Confirm-ClaudeCli {
     return $true
 }
 
-function Install-Claude {
+function Install-Claude
+{
     Write-Host ''
     Write-Info '=== Claude Code ==='
-    if ($Backup) {
+    if ($Backup)
+    {
         Write-Info 'Backup mode — skipping Claude installation and projection.'
         return
     }
@@ -976,27 +1123,36 @@ function Install-Claude {
         (Join-Path $Dotfiles 'ai-agents\shared\skills'),
         (Join-Path $Dotfiles 'ai-agents\claude\skills')
     )
-    if (-not (Test-Path $skillsDst)) {
+    if (-not (Test-Path $skillsDst))
+    {
         if (-not $DryRun) { New-Item -ItemType Directory -Path $skillsDst -Force | Out-Null }
         Write-Info "Created:    $skillsDst"
     }
     Remove-ObsoleteManagedSkillLinks -SkillsDst $skillsDst -DesiredNames @($skills | ForEach-Object Name) -ManagedRoots $managedSkillRoots -Runtime 'Claude'
-    if ($skills) {
-        foreach ($skill in $skills) {
+    if ($skills)
+    {
+        foreach ($skill in $skills)
+        {
             $link = Join-Path $skillsDst $skill.Name
             $existing = Get-Item -LiteralPath $link -Force -ErrorAction SilentlyContinue
-            if ($existing) {
-                if (-not ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+            if ($existing)
+            {
+                if (-not ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint))
+                {
                     Write-Warn "Preserved unmanaged Claude skill: $link"
                     continue
                 }
                 $existingTarget = if ($existing.LinkTarget) { $existing.LinkTarget } else { @($existing.Target)[0] }
                 $fullExistingTarget = Resolve-LinkTargetPath -Link $link -Target $existingTarget
                 $isManaged = Test-ManagedSkillLink -Link $link -FullTarget $fullExistingTarget -ManagedRoots $managedSkillRoots
-                if (-not $isManaged) {
-                    if ($fullExistingTarget -and -not (Test-Path -LiteralPath $fullExistingTarget)) {
+                if (-not $isManaged)
+                {
+                    if ($fullExistingTarget -and -not (Test-Path -LiteralPath $fullExistingTarget))
+                    {
                         Write-Warn "Preserved unmanaged Claude skill link (target missing): $link"
-                    } else {
+                    }
+                    else
+                    {
                         Write-Warn "Preserved unmanaged Claude skill link: $link"
                     }
                     continue
@@ -1004,7 +1160,9 @@ function Install-Claude {
             }
             New-Junction -Link $link -Target $skill.FullName
         }
-    } else {
+    }
+    else
+    {
         Write-Info 'No skills to install (ai-agents/skills and claude/skills are empty).'
     }
 
@@ -1019,45 +1177,60 @@ function Install-Claude {
     # root indefinitely so a machine whose ~/.claude/agents link predates that migration stays
     # repairable instead of being permanently misclassified as an unrecognized/dangling link.
     $originalAgentsSrc = Join-Path $Dotfiles 'claude\agents'
-    if (Test-Path $agentsSrc) {
+    if (Test-Path $agentsSrc)
+    {
         New-ManagedDirectoryJunction -Link (Join-Path $claudeDir 'agents') -Target $agentsSrc -HistoricalTargets @($historicalAgentsSrc, $originalAgentsSrc)
-    } else {
+    }
+    else
+    {
         Write-Info 'No agents to install (ai-agents/agents/ is missing).'
     }
 
     # Output styles — whole-dir junction like agents: flat .md files in a dir nothing else
     # writes to. The active style is pinned by "outputStyle" in settings.json.
     $stylesSrc = Join-Path $Dotfiles 'claude\output-styles'
-    if (Test-Path $stylesSrc) {
+    if (Test-Path $stylesSrc)
+    {
         New-Junction -Link (Join-Path $claudeDir 'output-styles') -Target $stylesSrc
-    } else {
+    }
+    else
+    {
         Write-Info 'No output styles to install (claude/output-styles/ is missing).'
     }
 }
 
-function Install-Pi {
+function Install-Pi
+{
     Write-Host ''
     Write-Info '=== Pi ==='
 
-    if ($Backup) {
+    if ($Backup)
+    {
         Write-Info 'Backup mode — skipping Pi installation and projection.'
         return
     }
 
     # Do not touch Pi state until the executable is available. This makes a failed bootstrap
     # safe to retry and prevents a partial configuration from looking like a valid install.
-    if (Get-Command -Name pi -ErrorAction Ignore) {
+    if (Get-Command -Name pi -ErrorAction Ignore)
+    {
         Write-Ok 'pi is already installed.'
-    } elseif ($DryRun) {
+    }
+    elseif ($DryRun)
+    {
         Write-Info '[DRY RUN] would install Pi via npm (@earendil-works/pi-coding-agent)'
-    } else {
-        if (-not (Get-Command -Name npm -ErrorAction Ignore)) {
+    }
+    else
+    {
+        if (-not (Get-Command -Name npm -ErrorAction Ignore))
+        {
             Write-Fail 'npm not found — Pi setup stopped before changing Pi configuration.'
             return
         }
         Write-Info 'Installing Pi via npm...'
         & npm install --global '@earendil-works/pi-coding-agent'
-        if ($LASTEXITCODE -ne 0 -or -not (Get-Command -Name pi -ErrorAction Ignore)) {
+        if ($LASTEXITCODE -ne 0 -or -not (Get-Command -Name pi -ErrorAction Ignore))
+        {
             Write-Fail 'Pi installation failed — no Pi configuration or resources were changed.'
             return
         }
@@ -1068,13 +1241,16 @@ function Install-Pi {
     $piSettings = Get-Content (Join-Path $Dotfiles 'pi\settings.json') -Raw | ConvertFrom-Json
     # Install packages before projecting tracked configuration/resources. If a pinned package
     # fails, the return below leaves the existing Pi configuration and resources untouched.
-    foreach ($package in @($piSettings.packages)) {
-        if ($DryRun) {
+    foreach ($package in @($piSettings.packages))
+    {
+        if ($DryRun)
+        {
             Write-Info "[DRY RUN] pi install $package"
             continue
         }
         & pi install $package
-        if ($LASTEXITCODE -ne 0) {
+        if ($LASTEXITCODE -ne 0)
+        {
             Write-Fail "Pi package install failed for $package — repository resources were not projected."
             return
         }
@@ -1085,30 +1261,37 @@ function Install-Pi {
     $skillsDst = Join-Path $piDir 'skills'
     $oldSkillsTarget = Join-Path $Dotfiles 'pi\skills'
     $skillsItem = Get-Item -LiteralPath $skillsDst -Force -ErrorAction SilentlyContinue
-    if ($skillsItem -and ($skillsItem.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+    if ($skillsItem -and ($skillsItem.Attributes -band [IO.FileAttributes]::ReparsePoint))
+    {
         $target = if ($skillsItem.LinkTarget) { $skillsItem.LinkTarget } else { @($skillsItem.Target)[0] }
         $resolvedTarget = Resolve-LinkTargetPath -Link $skillsDst -Target $target
         $resolvedOldTarget = Resolve-LinkTargetPath -Link $skillsDst -Target $oldSkillsTarget
-        if ($resolvedTarget -and $resolvedOldTarget -and [string]::Equals($resolvedTarget.TrimEnd('\'), $resolvedOldTarget.TrimEnd('\'), [StringComparison]::OrdinalIgnoreCase)) {
+        if ($resolvedTarget -and $resolvedOldTarget -and [string]::Equals($resolvedTarget.TrimEnd('\'), $resolvedOldTarget.TrimEnd('\'), [StringComparison]::OrdinalIgnoreCase))
+        {
             if ($DryRun) { Write-Info "[DRY RUN] remove managed Pi skills junction: $skillsDst" }
             else { Remove-Item -LiteralPath $skillsDst -Force; Write-Warn "Removed managed Pi skills junction: $skillsDst" }
             $skillsItem = $null
-        } else {
+        }
+        else
+        {
             Write-Fail "Pi skills junction is unmanaged; preserving it: $skillsDst"
             return
         }
     }
-    if ($skillsItem -and -not (Test-Path $skillsDst -PathType Container)) {
+    if ($skillsItem -and -not (Test-Path $skillsDst -PathType Container))
+    {
         Write-Fail "Pi skills destination is unmanaged and is not a directory: $skillsDst"
         return
     }
-    if (-not $skillsItem -and -not (Test-Path $skillsDst)) {
+    if (-not $skillsItem -and -not (Test-Path $skillsDst))
+    {
         if (-not $DryRun) { New-Item -ItemType Directory -Path $skillsDst -Force | Out-Null }
         Write-Info "Created:    $skillsDst"
     }
 
     Copy-Dotfile -Dest (Join-Path $piDir 'settings.json') -Source (Join-Path $Dotfiles 'pi\settings.json')
-    foreach ($resource in @('extensions', 'prompts', 'themes')) {
+    foreach ($resource in @('extensions', 'prompts', 'themes'))
+    {
         New-Junction -Link (Join-Path $piDir $resource) -Target (Join-Path $Dotfiles "pi\$resource")
     }
     # Shared wordlist ai-reference-guard.ts reads as a sibling of the junctioned extensions/
@@ -1123,7 +1306,7 @@ function Install-Pi {
     $nativeSkills = @(Get-ChildItem -Path $oldSkillsTarget -Directory -ErrorAction SilentlyContinue)
     $nativeNames = @($nativeSkills.ForEach('Name'))
     $portableSkills = @(Get-ChildItem -Path (Join-Path $Dotfiles 'ai-agents\skills') -Directory -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -notin $nativeNames })
+            Where-Object { $_.Name -notin $nativeNames })
     $skills = @($portableSkills) + @($nativeSkills)
     # Scoped to roots the Pi installer itself (current or historical) has ever written into —
     # Pi never wrote into any Claude- or Codex-only historical root (see issue #71).
@@ -1134,21 +1317,28 @@ function Install-Pi {
     )
     $desiredSkillNames = @($skills | ForEach-Object Name)
     Remove-ObsoleteManagedSkillLinks -SkillsDst $skillsDst -DesiredNames $desiredSkillNames -ManagedRoots $managedSkillRoots -Runtime 'Pi'
-    foreach ($skill in $skills) {
+    foreach ($skill in $skills)
+    {
         $link = Join-Path $skillsDst $skill.Name
         $existing = Get-Item -LiteralPath $link -Force -ErrorAction SilentlyContinue
-        if ($existing) {
-            if (-not ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+        if ($existing)
+        {
+            if (-not ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint))
+            {
                 Write-Warn "Preserved unmanaged Pi skill: $link"
                 continue
             }
             $existingTarget = if ($existing.LinkTarget) { $existing.LinkTarget } else { @($existing.Target)[0] }
             $fullExistingTarget = Resolve-LinkTargetPath -Link $link -Target $existingTarget
             $isManaged = Test-ManagedSkillLink -Link $link -FullTarget $fullExistingTarget -ManagedRoots $managedSkillRoots
-            if (-not $isManaged) {
-                if ($fullExistingTarget -and -not (Test-Path -LiteralPath $fullExistingTarget)) {
+            if (-not $isManaged)
+            {
+                if ($fullExistingTarget -and -not (Test-Path -LiteralPath $fullExistingTarget))
+                {
                     Write-Warn "Preserved unmanaged Pi skill link (target missing): $link"
-                } else {
+                }
+                else
+                {
                     Write-Warn "Preserved unmanaged Pi skill link: $link"
                 }
                 continue
@@ -1161,12 +1351,15 @@ function Install-Pi {
 # A link is repository-managed only when its resolved target is beneath one of the caller's
 # current or historical skill roots. Each root is resolved relative to $Link (not $Dotfiles)
 # so relative link targets stored on disk still match.
-function Test-ManagedSkillLink ([string]$Link, [string]$FullTarget, [string[]]$ManagedRoots) {
+function Test-ManagedSkillLink ([string]$Link, [string]$FullTarget, [string[]]$ManagedRoots)
+{
     if (-not $FullTarget) { return $false }
-    foreach ($root in $ManagedRoots) {
+    foreach ($root in $ManagedRoots)
+    {
         $fullRoot = Resolve-LinkTargetPath -Link $Link -Target $root
         if ($fullRoot -and
-            $FullTarget.StartsWith($fullRoot.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+            $FullTarget.StartsWith($fullRoot.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase))
+        {
             return $true
         }
     }
@@ -1175,19 +1368,25 @@ function Test-ManagedSkillLink ([string]$Link, [string]$FullTarget, [string[]]$M
 
 # Remove obsolete links only when their resolved target is beneath a known current or
 # historical repository skill root. Unmanaged links, malformed links, and real entries stay.
-function Remove-ObsoleteManagedSkillLinks ([string]$SkillsDst, [string[]]$DesiredNames, [string[]]$ManagedRoots, [string]$Runtime) {
+function Remove-ObsoleteManagedSkillLinks ([string]$SkillsDst, [string[]]$DesiredNames, [string[]]$ManagedRoots, [string]$Runtime)
+{
     if ($Backup -or -not (Test-Path $SkillsDst -PathType Container)) { return }
 
-    foreach ($item in @(Get-ChildItem -LiteralPath $SkillsDst -Force -ErrorAction SilentlyContinue)) {
+    foreach ($item in @(Get-ChildItem -LiteralPath $SkillsDst -Force -ErrorAction SilentlyContinue))
+    {
         if (-not ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { continue }
         $target = if ($item.LinkTarget) { $item.LinkTarget } else { @($item.Target)[0] }
         if (-not $target) { continue }
         $fullTarget = Resolve-LinkTargetPath -Link $item.FullName -Target $target
         $isManaged = Test-ManagedSkillLink -Link $item.FullName -FullTarget $fullTarget -ManagedRoots $ManagedRoots
-        if ($isManaged -and $item.Name -notin $DesiredNames) {
-            if ($DryRun) {
+        if ($isManaged -and $item.Name -notin $DesiredNames)
+        {
+            if ($DryRun)
+            {
                 Write-Info "[DRY RUN] remove obsolete $Runtime skill junction: $($item.FullName)"
-            } else {
+            }
+            else
+            {
                 Remove-Item -LiteralPath $item.FullName -Force
                 Write-Warn "Removed obsolete $Runtime skill junction: $($item.FullName)"
             }
@@ -1195,28 +1394,37 @@ function Remove-ObsoleteManagedSkillLinks ([string]$SkillsDst, [string[]]$Desire
     }
 }
 
-function Confirm-CodexCli {
-    if (Get-Command -Name codex -ErrorAction Ignore) {
+function Confirm-CodexCli
+{
+    if (Get-Command -Name codex -ErrorAction Ignore)
+    {
         Write-Ok 'codex is already installed.'
         return $true
     }
-    if ($DryRun) {
+    if ($DryRun)
+    {
         Write-Info '[DRY RUN] would install Codex CLI via native installer (https://chatgpt.com/codex/install.ps1)'
         return $true
     }
 
     Write-Info 'Installing Codex CLI (native installer)...'
     $installer = Join-Path $env:TEMP 'codex-install.ps1'
-    try {
+    try
+    {
         Invoke-RestMethod -Uri 'https://chatgpt.com/codex/install.ps1' -OutFile $installer
         & $installer
-    } catch {
+    }
+    catch
+    {
         Write-Fail "Codex CLI install failed: $($_.Exception.Message)"
-    } finally {
+    }
+    finally
+    {
         Remove-Item -Path $installer -Force -ErrorAction Ignore
     }
 
-    if (-not (Get-Command -Name codex -ErrorAction Ignore)) {
+    if (-not (Get-Command -Name codex -ErrorAction Ignore))
+    {
         Write-Fail 'Codex setup stopped before configuration or projection because the executable is unavailable.'
         Write-Info 'Install it manually with: irm https://chatgpt.com/codex/install.ps1 | iex'
         Write-Info 'Then verify `codex` is on PATH and re-run: .\setup.ps1 -Module codex'
@@ -1226,7 +1434,8 @@ function Confirm-CodexCli {
     return $true
 }
 
-function Resolve-CodexGuardrailBash {
+function Resolve-CodexGuardrailBash
+{
     # Codex CLI executes command hooks with no shell field, so on Windows a bare `bash` in the
     # tracked hooks.json fragment resolves through normal PATH search — on a machine with WSL
     # installed (the common case) that is C:\Windows\System32\bash.exe, the WSL launcher, where
@@ -1234,22 +1443,28 @@ function Resolve-CodexGuardrailBash {
     $candidates = [System.Collections.Generic.List[string]]::new()
 
     $gitCmd = Get-Command -Name git -ErrorAction Ignore
-    if ($gitCmd) {
+    if ($gitCmd)
+    {
         $gitBinDir = Split-Path $gitCmd.Source
         # cmd\git.exe layout -> ..\..\bin\bash.exe; bin\git.exe layout -> ..\bin\bash.exe.
         $candidates.Add((Join-Path $gitBinDir '..\..\bin\bash.exe'))
         $candidates.Add((Join-Path $gitBinDir '..\bin\bash.exe'))
     }
     $candidates.Add((Join-Path $env:ProgramFiles 'Git\bin\bash.exe'))
-    if (${env:ProgramFiles(x86)}) {
+    if (${env:ProgramFiles(x86)})
+    {
         $candidates.Add((Join-Path ${env:ProgramFiles(x86)} 'Git\bin\bash.exe'))
     }
     $candidates.Add((Join-Path $env:LocalAppData 'Programs\Git\bin\bash.exe'))
 
-    foreach ($candidate in $candidates) {
-        try {
+    foreach ($candidate in $candidates)
+    {
+        try
+        {
             $resolved = (Resolve-Path -LiteralPath $candidate -ErrorAction Stop).Path
-        } catch {
+        }
+        catch
+        {
             continue
         }
         if ($resolved -match '(?i)\\(System32|WindowsApps)\\') { continue }
@@ -1258,16 +1473,20 @@ function Resolve-CodexGuardrailBash {
     return $null
 }
 
-function Install-Codex {
+function Install-Codex
+{
     Write-Host ''
     Write-Info '=== Codex CLI ==='
 
     # 1. Install the Codex CLI via OpenAI's native installer (self-updating), mirroring the
     #    claude module's native-install decision. A failed install stops before any Codex
     #    configuration or resource projection (see Confirm-CodexCli / Confirm-ClaudeCli).
-    if ($Backup) {
+    if ($Backup)
+    {
         Write-Info 'Backup mode — skipping Codex CLI install.'
-    } elseif (-not (Confirm-CodexCli)) {
+    }
+    elseif (-not (Confirm-CodexCli))
+    {
         return
     }
 
@@ -1290,8 +1509,10 @@ function Install-Codex {
     # directory-junction path for this dir (config.toml/AGENTS.md are copied, not symlinked),
     # so copy each file individually — same as the claude module's AGENTS.d junction covers.
     $agentsDSrc = Join-Path $Dotfiles 'ai-agents\AGENTS.d'
-    if (Test-Path $agentsDSrc) {
-        foreach ($file in Get-ChildItem -Path $agentsDSrc -File) {
+    if (Test-Path $agentsDSrc)
+    {
+        foreach ($file in Get-ChildItem -Path $agentsDSrc -File)
+        {
             Copy-Dotfile -Dest (Join-Path $codexDir "AGENTS.d\$($file.Name)") -Source $file.FullName
         }
     }
@@ -1332,11 +1553,16 @@ function Install-Codex {
 
     $hooksJsonDest = Join-Path $codexDir 'hooks.json'
     $hooksJsonSource = Join-Path $Dotfiles 'codex\hooks.json'
-    if ($Backup) {
+    if ($Backup)
+    {
         Write-Info 'Backup mode — skipping hooks.json merge (tracked copy is a PreToolUse/SessionStart fragment, not a full backup target).'
-    } elseif ($DryRun) {
+    }
+    elseif ($DryRun)
+    {
         Write-Info "[DRY RUN] would merge hooks.PreToolUse and hooks.SessionStart from $hooksJsonSource into $hooksJsonDest"
-    } else {
+    }
+    else
+    {
         $sourceHooks = Get-Content -LiteralPath $hooksJsonSource -Raw | ConvertFrom-Json -AsHashtable
         # Skip only the guardrail's own PreToolUse merge when no real bash can be resolved — see
         # below. This gate must not also block the unrelated project-brain SessionStart merge:
@@ -1350,7 +1576,8 @@ function Install-Codex {
         $skipAiReferenceGuardMerge = $false
         $aiReferenceGuardSource = Join-Path $Dotfiles 'codex\ai-reference-guard.sh'
         $bannedTermsSource = Join-Path $Dotfiles 'ai-agents\_shared\banned-ai-terms.txt'
-        if (-not (Test-Path -LiteralPath $aiReferenceGuardSource) -or -not (Test-Path -LiteralPath $bannedTermsSource)) {
+        if (-not (Test-Path -LiteralPath $aiReferenceGuardSource) -or -not (Test-Path -LiteralPath $bannedTermsSource))
+        {
             Write-Warn 'ai-reference-guard.sh or its wordlist not found — skipping the AI-reference PreToolUse merge (a merged-but-broken entry fails closed on every Codex Bash call). Re-run once both exist: .\setup.ps1 -Module codex'
             $skipAiReferenceGuardMerge = $true
         }
@@ -1365,17 +1592,24 @@ function Install-Codex {
         # block-dangerous-git.sh's resolved path, which would have silently rewired
         # ai-reference-guard.sh's own entry onto the wrong script the moment a second
         # `bash ~/...` PreToolUse hook was added (issue #219).
-        if ($IsWindows) {
+        if ($IsWindows)
+        {
             $bashPath = Resolve-CodexGuardrailBash
-            if (-not $bashPath) {
+            if (-not $bashPath)
+            {
                 Write-Warn 'No Git-for-Windows bash.exe found — skipping the guardrail PreToolUse merge (a merged-but-broken guardrail entry would make every Codex Bash call fail; leaving it absent is safer). Install Git for Windows, then re-run: .\setup.ps1 -Module codex'
                 $skipGuardrailMerge = $true
                 $skipAiReferenceGuardMerge = $true
-            } else {
+            }
+            else
+            {
                 $bashPathForward = $bashPath -replace '\\', '/'
-                foreach ($entry in $sourceHooks.hooks.PreToolUse) {
-                    foreach ($hook in $entry.hooks) {
-                        if ($hook.command -match '^bash\s+\S*[\\/](?<file>[^\\/]+)$') {
+                foreach ($entry in $sourceHooks.hooks.PreToolUse)
+                {
+                    foreach ($hook in $entry.hooks)
+                    {
+                        if ($hook.command -match '^bash\s+\S*[\\/](?<file>[^\\/]+)$')
+                        {
                             $scriptPath = (Join-Path $codexDir $Matches['file']) -replace '\\', '/'
                             $hook.command = "`"$bashPathForward`" `"$scriptPath`""
                         }
@@ -1391,23 +1625,32 @@ function Install-Codex {
         # target, mirroring the guardrail branch's fail-safe pattern above.
         $skipSessionStartMerge = $false
         $sessionStartSource = Join-Path $Dotfiles 'ai-agents\skills\project-brain\scripts\session-start.ps1'
-        if (-not (Test-Path -LiteralPath $sessionStartSource)) {
+        if (-not (Test-Path -LiteralPath $sessionStartSource))
+        {
             Write-Warn "project-brain session-start.ps1 not found at $sessionStartSource — skipping the SessionStart merge (a merged-but-broken entry would fail every session)."
             $skipSessionStartMerge = $true
-        } else {
+        }
+        else
+        {
             $sessionStartScript = Join-Path $codexDir 'skills\project-brain\scripts\session-start.ps1'
-            foreach ($entry in $sourceHooks.hooks.SessionStart) {
-                foreach ($hook in $entry.hooks) {
-                    if ($hook.command -match 'project-brain[\\/]scripts[\\/]session-start\.ps1') {
+            foreach ($entry in $sourceHooks.hooks.SessionStart)
+            {
+                foreach ($hook in $entry.hooks)
+                {
+                    if ($hook.command -match 'project-brain[\\/]scripts[\\/]session-start\.ps1')
+                    {
                         $hook.command = "pwsh -NoProfile -File `"$sessionStartScript`""
                     }
                 }
             }
         }
 
-        $merged = if (Test-Path -LiteralPath $hooksJsonDest) {
+        $merged = if (Test-Path -LiteralPath $hooksJsonDest)
+        {
             Get-Content -LiteralPath $hooksJsonDest -Raw | ConvertFrom-Json -AsHashtable
-        } else {
+        }
+        else
+        {
             @{ hooks = @{} }
         }
         if (-not $merged.hooks) { $merged.hooks = @{} }
@@ -1415,18 +1658,24 @@ function Install-Codex {
         # Two independent, sequential merge passes — one per guardrail script — so each can be
         # skipped on its own without disturbing the other's entry or any foreign entry. Each pass
         # re-reads $merged.hooks.PreToolUse (updated by the prior pass) so they compose safely.
-        if (-not $skipGuardrailMerge) {
-            $existingPreToolUse = if ($merged.hooks.ContainsKey('PreToolUse') -and $merged.hooks.PreToolUse) {
+        if (-not $skipGuardrailMerge)
+        {
+            $existingPreToolUse = if ($merged.hooks.ContainsKey('PreToolUse') -and $merged.hooks.PreToolUse)
+            {
                 @($merged.hooks.PreToolUse)
-            } else {
+            }
+            else
+            {
                 @()
             }
             # Filter at the individual-hook level, not the whole-entry level: an entry mixing a
             # foreign hook alongside a stale block-dangerous-git.sh hook must keep its foreign
             # hook, not lose the whole entry (mirrors the SessionStart merge below).
-            $foreignEntries = foreach ($entry in $existingPreToolUse) {
+            $foreignEntries = foreach ($entry in $existingPreToolUse)
+            {
                 $keptHooks = @($entry.hooks | Where-Object { $_.command -notmatch 'block-dangerous-git\.sh' })
-                if ($keptHooks) {
+                if ($keptHooks)
+                {
                     $entry.hooks = $keptHooks
                     $entry
                 }
@@ -1436,18 +1685,24 @@ function Install-Codex {
             }
             $merged.hooks.PreToolUse = @($foreignEntries) + @($dangerousGitEntries)
         }
-        if (-not $skipAiReferenceGuardMerge) {
-            $existingPreToolUse = if ($merged.hooks.ContainsKey('PreToolUse') -and $merged.hooks.PreToolUse) {
+        if (-not $skipAiReferenceGuardMerge)
+        {
+            $existingPreToolUse = if ($merged.hooks.ContainsKey('PreToolUse') -and $merged.hooks.PreToolUse)
+            {
                 @($merged.hooks.PreToolUse)
-            } else {
+            }
+            else
+            {
                 @()
             }
             # Filter at the individual-hook level, not the whole-entry level: an entry mixing a
             # foreign hook alongside a stale ai-reference-guard.sh hook must keep its foreign
             # hook, not lose the whole entry (mirrors the SessionStart merge below).
-            $foreignEntries = foreach ($entry in $existingPreToolUse) {
+            $foreignEntries = foreach ($entry in $existingPreToolUse)
+            {
                 $keptHooks = @($entry.hooks | Where-Object { $_.command -notmatch 'ai-reference-guard\.sh' })
-                if ($keptHooks) {
+                if ($keptHooks)
+                {
                     $entry.hooks = $keptHooks
                     $entry
                 }
@@ -1458,24 +1713,32 @@ function Install-Codex {
             $merged.hooks.PreToolUse = @($foreignEntries) + @($aiReferenceEntries)
         }
 
-        $existingSessionStart = if ($merged.hooks.ContainsKey('SessionStart') -and $merged.hooks.SessionStart) {
+        $existingSessionStart = if ($merged.hooks.ContainsKey('SessionStart') -and $merged.hooks.SessionStart)
+        {
             @($merged.hooks.SessionStart)
-        } else {
+        }
+        else
+        {
             @()
         }
         # Filter at the individual-hook level, not the whole-entry level: an entry mixing a
         # foreign hook alongside a project-brain hook must keep its foreign hook, not lose the
         # whole entry. (The PreToolUse merges above use the same per-hook filtering.)
-        $foreignSessionStart = foreach ($entry in $existingSessionStart) {
+        $foreignSessionStart = foreach ($entry in $existingSessionStart)
+        {
             $keptHooks = @($entry.hooks | Where-Object { $_.command -notmatch 'project-brain[\\/]scripts[\\/]session-start\.ps1' })
-            if ($keptHooks) {
+            if ($keptHooks)
+            {
                 $entry.hooks = $keptHooks
                 $entry
             }
         }
-        $merged.hooks.SessionStart = if ($skipSessionStartMerge) {
+        $merged.hooks.SessionStart = if ($skipSessionStartMerge)
+        {
             @($foreignSessionStart)
-        } else {
+        }
+        else
+        {
             @($foreignSessionStart) + @($sourceHooks.hooks.SessionStart)
         }
 
@@ -1484,9 +1747,12 @@ function Install-Codex {
         if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
         ($merged | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath $hooksJsonDest
         $mergedKeys = @(if ((-not $skipGuardrailMerge) -or (-not $skipAiReferenceGuardMerge)) { 'hooks.PreToolUse' }) + @(if (-not $skipSessionStartMerge) { 'hooks.SessionStart' })
-        if ($mergedKeys) {
+        if ($mergedKeys)
+        {
             Write-Ok "Merged:     $hooksJsonDest ($($mergedKeys -join ', '))"
-        } else {
+        }
+        else
+        {
             Write-Ok "Updated:    $hooksJsonDest (no keys merged — both guardrail and SessionStart merges skipped)"
         }
     }
@@ -1498,21 +1764,33 @@ function Install-Codex {
     #    Requires the Claude settings file too — its absence means the claude module has not run
     #    yet, so registering now would write ahead of any other Claude-module setup.
     $claudeSettingsPath = Join-Path $env:USERPROFILE '.claude\settings.json'
-    if ($Backup) {
+    if ($Backup)
+    {
         Write-Info 'Backup mode — skipping MCP registration.'
-    } elseif (-not (Get-Command -Name claude -ErrorAction Ignore)) {
+    }
+    elseif (-not (Get-Command -Name claude -ErrorAction Ignore))
+    {
         Write-Warn 'claude CLI not found — skipping MCP registration. Install the claude module first.'
-    } elseif (-not (Test-Path -LiteralPath $claudeSettingsPath)) {
+    }
+    elseif (-not (Test-Path -LiteralPath $claudeSettingsPath))
+    {
         Write-Warn 'Claude settings file not found — skipping MCP registration. Install the claude module first.'
-    } elseif ($DryRun) {
+    }
+    elseif ($DryRun)
+    {
         Write-Info '[DRY RUN] would register user-scope MCP: claude mcp add --scope user codex -- codex mcp-server -c sandbox_mode=read-only -c approval_policy=never -c model_reasoning_effort=medium'
-    } else {
+    }
+    else
+    {
         # Native command: a non-zero exit when no prior entry exists is benign and does not throw.
         & claude mcp remove --scope user codex 2>$null | Out-Null
         & claude mcp add --scope user --transport stdio codex -- codex mcp-server -c sandbox_mode=read-only -c approval_policy=never -c model_reasoning_effort=medium
-        if ($LASTEXITCODE -eq 0) {
+        if ($LASTEXITCODE -eq 0)
+        {
             Write-Ok 'Registered read-only Codex MCP reviewer (user scope).'
-        } else {
+        }
+        else
+        {
             Write-Fail "claude mcp add failed (exit $LASTEXITCODE)."
         }
     }
@@ -1520,7 +1798,8 @@ function Install-Codex {
     # 6. Skills — project portable and Codex-native variants into ~/.codex/skills/.
     #    Codex's own built-in skills under ~/.codex/skills/.system/ remain untouched.
     $codexSkillsDst = Join-Path $codexDir 'skills'
-    if (-not (Test-Path $codexSkillsDst)) {
+    if (-not (Test-Path $codexSkillsDst))
+    {
         if (-not $DryRun) { New-Item -ItemType Directory -Path $codexSkillsDst -Force | Out-Null }
         Write-Info "Created:    $codexSkillsDst"
     }
@@ -1544,22 +1823,30 @@ function Install-Codex {
         (Join-Path $Dotfiles 'claude\skills')
     )
     Remove-ObsoleteManagedSkillLinks -SkillsDst $codexSkillsDst -DesiredNames $desiredSkillNames -ManagedRoots $managedSkillRoots -Runtime 'Codex'
-    if ($portableSkills -or $codexSkills) {
-        foreach ($skill in $portableSkills + $codexSkills) {
+    if ($portableSkills -or $codexSkills)
+    {
+        foreach ($skill in $portableSkills + $codexSkills)
+        {
             $link = Join-Path $codexSkillsDst $skill.Name
             $existing = Get-Item -LiteralPath $link -Force -ErrorAction SilentlyContinue
-            if ($existing) {
-                if (-not ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+            if ($existing)
+            {
+                if (-not ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint))
+                {
                     Write-Warn "Preserved unmanaged Codex skill: $link"
                     continue
                 }
                 $existingTarget = if ($existing.LinkTarget) { $existing.LinkTarget } else { @($existing.Target)[0] }
                 $fullExistingTarget = Resolve-LinkTargetPath -Link $link -Target $existingTarget
                 $isManaged = Test-ManagedSkillLink -Link $link -FullTarget $fullExistingTarget -ManagedRoots $managedSkillRoots
-                if (-not $isManaged) {
-                    if ($fullExistingTarget -and -not (Test-Path -LiteralPath $fullExistingTarget)) {
+                if (-not $isManaged)
+                {
+                    if ($fullExistingTarget -and -not (Test-Path -LiteralPath $fullExistingTarget))
+                    {
                         Write-Warn "Preserved unmanaged Codex skill link (target missing): $link"
-                    } else {
+                    }
+                    else
+                    {
                         Write-Warn "Preserved unmanaged Codex skill link: $link"
                     }
                     continue
@@ -1567,14 +1854,17 @@ function Install-Codex {
             }
             New-Junction -Link $link -Target $skill.FullName
         }
-    } else {
+    }
+    else
+    {
         Write-Info 'No skills to install (ai-agents/skills and codex/skills are empty).'
     }
 
     Write-Info 'Next: run `codex login` (interactive ChatGPT-account OAuth) to authenticate.'
 }
 
-function Install-AiAgents {
+function Install-AiAgents
+{
     Write-Host ''
     Write-Info '=== AI Agents (composite: Claude, Codex, Pi) ==='
     # Orchestrates the existing claude/codex/pi modules without duplicating their projection
@@ -1585,14 +1875,18 @@ function Install-AiAgents {
     # Pi is the least stable of the three (npm-installed, third-party CLI) — an unanticipated
     # error here must not take down Claude/Codex projection that already ran, nor abort modules
     # listed after this one in the same invocation.
-    try {
+    try
+    {
         Install-Pi
-    } catch {
+    }
+    catch
+    {
         Write-Fail "Pi setup failed unexpectedly: $($_.Exception.Message)"
     }
 }
 
-function Install-Serena {
+function Install-Serena
+{
     Write-Host ''
     Write-Info '=== serena (semantic code-intelligence MCP for Claude Code) ==='
 
@@ -1601,21 +1895,34 @@ function Install-Serena {
     #    absent). `uv` itself comes from the winget module; under -Module all winget runs after this,
     #    so a fresh machine may need a serena re-run once uv is present. The uv check sits after
     #    $Backup/$DryRun so those no-op modes work regardless.
-    if ($Backup) {
+    if ($Backup)
+    {
         Write-Info 'Backup mode — skipping serena install.'
-    } elseif ($DryRun) {
+    }
+    elseif ($DryRun)
+    {
         Write-Info '[DRY RUN] would run: uv tool install -p 3.13 serena-agent; uv tool update-shell'
-    } elseif (-not (Get-Command -Name uv -ErrorAction Ignore)) {
+    }
+    elseif (-not (Get-Command -Name uv -ErrorAction Ignore))
+    {
         Write-Warn 'uv not found — install the winget module first (astral-sh.uv), then re-run.'
-    } else {
+    }
+    else
+    {
         & uv tool install -p 3.13 serena-agent
-        if ($LASTEXITCODE -ne 0) {
+        if ($LASTEXITCODE -ne 0)
+        {
             Write-Fail "uv tool install serena-agent failed (exit $LASTEXITCODE)."
-        } else {
+        }
+        else
+        {
             & uv tool update-shell
-            if ($LASTEXITCODE -eq 0) {
+            if ($LASTEXITCODE -eq 0)
+            {
                 Write-Ok 'Installed serena-agent (uv tool).'
-            } else {
+            }
+            else
+            {
                 Write-Warn "serena-agent installed, but 'uv tool update-shell' failed (exit $LASTEXITCODE) — ensure uv's tool-bin dir is on PATH or the serena MCP command won't resolve in new shells."
             }
         }
@@ -1627,25 +1934,36 @@ function Install-Serena {
     #    --open-web-dashboard False stops a dashboard window opening on every session start; to also
     #    tie a manually-opened dashboard's lifecycle to the session, set web_dashboard_interface: app
     #    in ~/.serena/serena_config.yml (no CLI flag exists for the interface, so it can't live here).
-    if ($Backup) {
+    if ($Backup)
+    {
         Write-Info 'Backup mode — skipping MCP registration.'
-    } elseif (-not (Get-Command -Name claude -ErrorAction Ignore)) {
+    }
+    elseif (-not (Get-Command -Name claude -ErrorAction Ignore))
+    {
         Write-Warn 'claude CLI not found — skipping MCP registration. Install the claude module first.'
-    } elseif ($DryRun) {
+    }
+    elseif ($DryRun)
+    {
         Write-Info '[DRY RUN] would register user-scope MCP: claude mcp add --scope user serena -- serena start-mcp-server --context claude-code --project-from-cwd --open-web-dashboard False'
-    } else {
+    }
+    else
+    {
         # Native command: a non-zero exit when no prior entry exists is benign and does not throw.
         & claude mcp remove --scope user serena 2>$null | Out-Null
         & claude mcp add --scope user --transport stdio serena -- serena start-mcp-server --context claude-code --project-from-cwd --open-web-dashboard False
-        if ($LASTEXITCODE -eq 0) {
+        if ($LASTEXITCODE -eq 0)
+        {
             Write-Ok 'Registered serena MCP (user scope).'
-        } else {
+        }
+        else
+        {
             Write-Fail "claude mcp add failed (exit $LASTEXITCODE)."
         }
     }
 }
 
-function Install-Context7 {
+function Install-Context7
+{
     Write-Host ''
     Write-Info '=== Context7 (up-to-date library-docs MCP for Claude Code) ==='
 
@@ -1654,22 +1972,26 @@ function Install-Context7 {
     # registrations. No API key is required for basic use; set $env:CONTEXT7_API_KEY (free key from
     # context7.com/dashboard) before running to raise rate limits — it is passed as a request header
     # and lives only in ~/.claude.json, never in the repo. Idempotent: remove any prior entry first.
-    if ($Backup) {
+    if ($Backup)
+    {
         Write-Info 'Backup mode — skipping MCP registration.'
         return
     }
-    if (-not (Get-Command -Name claude -ErrorAction Ignore)) {
+    if (-not (Get-Command -Name claude -ErrorAction Ignore))
+    {
         Write-Warn 'claude CLI not found — skipping MCP registration. Install the claude module first.'
         return
     }
 
     $endpoint = 'https://mcp.context7.com/mcp'
-    $addArgs  = @('mcp', 'add', '--scope', 'user', '--transport', 'http', 'context7', $endpoint)
-    if ($env:CONTEXT7_API_KEY) {
+    $addArgs = @('mcp', 'add', '--scope', 'user', '--transport', 'http', 'context7', $endpoint)
+    if ($env:CONTEXT7_API_KEY)
+    {
         $addArgs += @('--header', "CONTEXT7_API_KEY: $env:CONTEXT7_API_KEY")
     }
 
-    if ($DryRun) {
+    if ($DryRun)
+    {
         $keyNote = if ($env:CONTEXT7_API_KEY) { ' (with API-key header)' } else { ' (anonymous — no API key)' }
         Write-Info "[DRY RUN] would register user-scope MCP: claude mcp add --scope user --transport http context7 $endpoint$keyNote"
         return
@@ -1678,19 +2000,24 @@ function Install-Context7 {
     # Native command: a non-zero exit when no prior entry exists is benign and does not throw.
     & claude mcp remove --scope user context7 2>$null | Out-Null
     & claude @addArgs
-    if ($LASTEXITCODE -ne 0) {
+    if ($LASTEXITCODE -ne 0)
+    {
         Write-Fail "claude mcp add failed (exit $LASTEXITCODE)."
         return
     }
-    if ($env:CONTEXT7_API_KEY) {
+    if ($env:CONTEXT7_API_KEY)
+    {
         Write-Ok 'Registered Context7 MCP (user scope, with API-key header).'
-    } else {
+    }
+    else
+    {
         Write-Ok 'Registered Context7 MCP (user scope, anonymous).'
         Write-Info 'Optional: set $env:CONTEXT7_API_KEY (free key from https://context7.com/dashboard) and re-run for higher rate limits.'
     }
 }
 
-function Install-Fastmail {
+function Install-Fastmail
+{
     Write-Host ''
     Write-Info '=== Fastmail (official email/calendar/contacts MCP for Claude Code) ==='
 
@@ -1702,18 +2029,21 @@ function Install-Fastmail {
     # screen; it is not a pin-able OAuth scope, so the CLI cannot enforce it. Idempotent: remove-then-add
     # rewrites only the config entry — OAuth credentials are managed separately via login/logout, so
     # re-running never silently revokes auth.
-    if ($Backup) {
+    if ($Backup)
+    {
         Write-Info 'Backup mode — skipping MCP registration.'
         return
     }
-    if (-not (Get-Command -Name claude -ErrorAction Ignore)) {
+    if (-not (Get-Command -Name claude -ErrorAction Ignore))
+    {
         Write-Warn 'claude CLI not found — skipping MCP registration. Install the claude module first.'
         return
     }
 
     $endpoint = 'https://api.fastmail.com/mcp'
 
-    if ($DryRun) {
+    if ($DryRun)
+    {
         Write-Info "[DRY RUN] would register user-scope MCP: claude mcp add --scope user --transport http fastmail $endpoint"
         return
     }
@@ -1721,7 +2051,8 @@ function Install-Fastmail {
     # Native command: a non-zero exit when no prior entry exists is benign and does not throw.
     & claude mcp remove --scope user fastmail 2>$null | Out-Null
     & claude mcp add --scope user --transport http fastmail $endpoint
-    if ($LASTEXITCODE -ne 0) {
+    if ($LASTEXITCODE -ne 0)
+    {
         Write-Fail "claude mcp add failed (exit $LASTEXITCODE)."
         return
     }
@@ -1730,7 +2061,8 @@ function Install-Fastmail {
     Write-Info 'Then start a new session to load it. Verify with `claude mcp get fastmail`; reset auth with `claude mcp logout fastmail`.'
 }
 
-function Install-Langservers {
+function Install-Langservers
+{
     Write-Host ''
     Write-Info '=== Language servers (JSON / YAML / Azure Pipelines) ==='
 
@@ -1744,12 +2076,13 @@ function Install-Langservers {
     # module) rather than `npm install -g`: under Volta a bare global npm install does not produce
     # working shims. Verified — all three shim cleanly into Volta's bin dir.
     $servers = @(
-        @{ Package = 'vscode-langservers-extracted';    Binary = 'vscode-json-language-server'     }
-        @{ Package = 'yaml-language-server';            Binary = 'yaml-language-server'            }
+        @{ Package = 'vscode-langservers-extracted';    Binary = 'vscode-json-language-server' }
+        @{ Package = 'yaml-language-server';            Binary = 'yaml-language-server' }
         @{ Package = 'azure-pipelines-language-server'; Binary = 'azure-pipelines-language-server' }
     )
 
-    if ($Backup) {
+    if ($Backup)
+    {
         Write-Info 'Backup mode — skipping language-server install.'
         return
     }
@@ -1758,34 +2091,43 @@ function Install-Langservers {
     # so it stays deterministic once they are installed. Hence it sits ahead of both the volta
     # lookup and the per-package presence check below — unlike Install-Bat, whose dry-run output
     # is deliberately machine-dependent.
-    if ($DryRun) {
-        foreach ($server in $servers) {
+    if ($DryRun)
+    {
+        foreach ($server in $servers)
+        {
             Write-Info "[DRY RUN] would run: volta install $($server.Package)"
         }
         return
     }
 
     # Warn and skip, never fail: one missing toolchain must not abort an otherwise good -Module all.
-    if (-not (Get-Command -Name volta -ErrorAction Ignore)) {
+    if (-not (Get-Command -Name volta -ErrorAction Ignore))
+    {
         Write-Warn 'volta not found — install the winget module first (Volta.Volta), then re-run this module.'
         return
     }
 
-    foreach ($server in $servers) {
-        if (Get-Command -Name $server.Binary -ErrorAction Ignore) {
+    foreach ($server in $servers)
+    {
+        if (Get-Command -Name $server.Binary -ErrorAction Ignore)
+        {
             Write-Ok "Language server: $($server.Binary) (already installed)"
             continue
         }
         & volta install $server.Package
-        if ($LASTEXITCODE -eq 0) {
+        if ($LASTEXITCODE -eq 0)
+        {
             Write-Ok "Language server: installed $($server.Package)"
-        } else {
+        }
+        else
+        {
             Write-Fail "volta install $($server.Package) failed (exit $LASTEXITCODE)."
         }
     }
 }
 
-function Install-BicepTools {
+function Install-BicepTools
+{
     Write-Host ''
     Write-Info '=== Bicep tools (language server) ==='
 
@@ -1795,12 +2137,14 @@ function Install-BicepTools {
     # (Claude/Codex/Pi) is a separate, later slice; see .agents/specs/bicep-code-intelligence.md.
     $package = 'Azure.Bicep.LangServer'
 
-    if ($Backup) {
+    if ($Backup)
+    {
         Write-Info 'Backup mode — skipping Bicep tools install.'
         return
     }
 
-    if ($DryRun) {
+    if ($DryRun)
+    {
         Write-Info "[DRY RUN] would run: dotnet tool install --global $package"
         return
     }
@@ -1809,7 +2153,8 @@ function Install-BicepTools {
     # On a bare machine the winget module only PRINTS the .NET SDK bootstrap command — it installs
     # nothing — so `dotnet` is absent until winget/packages.ps1 has actually been run; a re-run of
     # this module afterwards picks it up, same as the langservers/Volta two-run caveat.
-    if (-not (Get-Command -Name dotnet -ErrorAction Ignore)) {
+    if (-not (Get-Command -Name dotnet -ErrorAction Ignore))
+    {
         Write-Warn 'dotnet not found — install the winget module first (the .NET SDK), then re-run this module.'
         return
     }
@@ -1818,24 +2163,30 @@ function Install-BicepTools {
     # conflates "installed" with "discoverable in this shell", so a rerun in a shell with a stale
     # PATH would attempt a reinstall of an already-installed tool.
     $installedTools = & dotnet tool list --global 2>$null | Out-String
-    if ($installedTools -match [regex]::Escape($package.ToLowerInvariant())) {
+    if ($installedTools -match [regex]::Escape($package.ToLowerInvariant()))
+    {
         Write-Ok "Bicep language server: $package (already installed)"
         return
     }
 
     & dotnet tool install --global $package
-    if ($LASTEXITCODE -eq 0) {
+    if ($LASTEXITCODE -eq 0)
+    {
         Write-Ok "Bicep language server: installed $package"
-    } else {
+    }
+    else
+    {
         Write-Fail "dotnet tool install --global $package failed (exit $LASTEXITCODE)."
     }
 }
 
-function Remove-OldBackups {
+function Remove-OldBackups
+{
     Write-Host ''
     Write-Info '=== Cleaning backups ==='
 
-    if ($KeepBackups -eq 0 -and $MaxBackupAgeDays -eq 0) {
+    if ($KeepBackups -eq 0 -and $MaxBackupAgeDays -eq 0)
+    {
         Write-Warn '-KeepBackups 0 and -MaxBackupAgeDays 0 — nothing to prune.'
         return
     }
@@ -1853,10 +2204,11 @@ function Remove-OldBackups {
         (Join-Path $env:LOCALAPPDATA 'Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState')
     ) | Where-Object { Test-Path $_ -PathType Container }
 
-    $allBackups = @(foreach ($dir in $searchDirs) {
-        Get-ChildItem -Path $dir -File -ErrorAction SilentlyContinue |
-            Where-Object { $_.Name -match '\.bak\.(\d{8}_\d{6})$' }
-    })
+    $allBackups = @(foreach ($dir in $searchDirs)
+        {
+            Get-ChildItem -Path $dir -File -ErrorAction SilentlyContinue |
+                Where-Object { $_.Name -match '\.bak\.(\d{8}_\d{6})$' }
+        })
 
     if ($allBackups.Count -eq 0) { Write-Info 'No backup files found.'; return }
 
@@ -1864,14 +2216,17 @@ function Remove-OldBackups {
     $removed = 0
     $groups = $allBackups | Group-Object { $_.FullName -replace '\.bak\.\d{8}_\d{6}$', '' }
 
-    foreach ($group in $groups) {
+    foreach ($group in $groups)
+    {
         $sorted = @($group.Group | Sort-Object Name -Descending)  # newest first
 
-        for ($i = 0; $i -lt $sorted.Count; $i++) {
+        for ($i = 0; $i -lt $sorted.Count; $i++)
+        {
             $file = $sorted[$i]
             $removeByCount = $KeepBackups -gt 0 -and $i -ge $KeepBackups
             $removeByAge = $false
-            if ($cutoff -and $file.Name -match '\.bak\.(\d{8}_\d{6})$') {
+            if ($cutoff -and $file.Name -match '\.bak\.(\d{8}_\d{6})$')
+            {
                 $ts = [datetime]::ParseExact($Matches[1], 'yyyyMMdd_HHmmss', $null)
                 $removeByAge = $ts -lt $cutoff
             }
@@ -1879,9 +2234,12 @@ function Remove-OldBackups {
             if (-not ($removeByCount -or $removeByAge)) { continue }
 
             $reason = if ($removeByAge) { 'age' } else { 'count' }
-            if ($DryRun) {
+            if ($DryRun)
+            {
                 Write-Info "[DRY RUN] would remove ($reason): $($file.FullName)"
-            } else {
+            }
+            else
+            {
                 Remove-Item -Path $file.FullName -Force
                 Write-Ok "Removed ($reason): $($file.FullName)"
             }
@@ -1894,7 +2252,8 @@ function Remove-OldBackups {
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 
-if ($Module.Count -eq 0 -and -not $CleanBackups) {
+if ($Module.Count -eq 0 -and -not $CleanBackups)
+{
     Write-Fail "Specify -Module <modules> and/or -CleanBackups. Run 'Get-Help .\setup.ps1' for usage."
     exit 1
 }
@@ -1902,35 +2261,37 @@ if ($Module.Count -eq 0 -and -not $CleanBackups) {
 if ($DryRun) { Write-Warn 'DRY RUN — no changes will be made.' }
 if ($Backup) { Write-Warn 'BACKUP MODE — pulling live copies back into the repo. Review with `git diff` before committing.' }
 
-foreach ($m in $Module) {
-    switch ($m) {
-        'neovim'     { Install-Neovim     }
-        'vim'        { Install-Vim        }
+foreach ($m in $Module)
+{
+    switch ($m)
+    {
+        'neovim' { Install-Neovim }
+        'vim' { Install-Vim }
         'powershell' { Install-PowerShell }
-        'git'        { Install-Git        }
-        'bash'       { Install-Bash       }
-        'tig'        { Install-Tig        }
-        'tmux'       { Install-Tmux       }
-        'zellij'     { Install-Zellij     }
-        'psmux'      { Install-Psmux      }
-        'herdr'      { Install-Herdr      }
-        'yazi'       { Install-Yazi       }
-        'curl'       { Install-Curl       }
-        'winget'     { Install-Winget     }
-        'vscode'     { Install-VSCode     }
-        'bat'        { Install-Bat        }
-        'claude'     { Install-Claude     }
-        'codex'      { Install-Codex      }
-        'pi'         { Install-Pi         }
-        'ai-agents'  { Install-AiAgents   }
-        'serena'     { Install-Serena     }
-        'context7'   { Install-Context7   }
-        'fastmail'   { Install-Fastmail   }
+        'git' { Install-Git }
+        'bash' { Install-Bash }
+        'tig' { Install-Tig }
+        'tmux' { Install-Tmux }
+        'zellij' { Install-Zellij }
+        'psmux' { Install-Psmux }
+        'herdr' { Install-Herdr }
+        'yazi' { Install-Yazi }
+        'curl' { Install-Curl }
+        'winget' { Install-Winget }
+        'vscode' { Install-VSCode }
+        'bat' { Install-Bat }
+        'claude' { Install-Claude }
+        'codex' { Install-Codex }
+        'pi' { Install-Pi }
+        'ai-agents' { Install-AiAgents }
+        'serena' { Install-Serena }
+        'context7' { Install-Context7 }
+        'fastmail' { Install-Fastmail }
         'langservers' { Install-Langservers }
-        'biceptools'  { Install-BicepTools  }
-        'lazygit'        { Install-Lazygit        }
+        'biceptools' { Install-BicepTools }
+        'lazygit' { Install-Lazygit }
         'windowsterminal' { Install-WindowsTerminal }
-        default          { Write-Warn "Unknown module '$m' — skipping." }
+        default { Write-Warn "Unknown module '$m' — skipping." }
     }
 }
 

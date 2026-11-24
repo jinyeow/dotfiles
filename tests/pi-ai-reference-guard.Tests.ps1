@@ -50,10 +50,12 @@ BeforeAll {
     $script:ExtensionFile = Join-Path $script:RepoRoot 'pi/extensions/ai-reference-guard.ts'
     $script:WordlistFile = Join-Path $script:RepoRoot 'ai-agents/_shared/banned-ai-terms.txt'
 
-    if (-not (Test-Path $script:ExtensionFile)) {
+    if (-not (Test-Path $script:ExtensionFile))
+    {
         throw "Extension file not found: $script:ExtensionFile"
     }
-    if (-not (Test-Path $script:WordlistFile)) {
+    if (-not (Test-Path $script:WordlistFile))
+    {
         throw "Wordlist file not found: $script:WordlistFile"
     }
 
@@ -143,7 +145,8 @@ process.stdout.write(JSON.stringify(results));
     # Runs the real matcher through node for a list of commands, against the real wordlist
     # file unless -WordlistPath overrides it. Returns a hashtable keyed by command with a
     # bool "blocked" value (true when matchCommand returned a reason).
-    function Invoke-AiReferenceGuard {
+    function Invoke-AiReferenceGuard
+    {
         param(
             [string[]] $Command,
             [string] $WordlistPath = $script:WordlistFile
@@ -153,12 +156,14 @@ process.stdout.write(JSON.stringify(results));
         $Command | ConvertTo-Json -Compress -AsArray | Set-Content -Path $commandsPath -NoNewline -Encoding utf8
 
         $output = & node $script:NodeHarness $script:ExtensionFile $WordlistPath $commandsPath
-        if ($LASTEXITCODE -ne 0) {
+        if ($LASTEXITCODE -ne 0)
+        {
             throw "node harness failed: $output"
         }
 
         $results = @{}
-        foreach ($entry in ($output | ConvertFrom-Json)) {
+        foreach ($entry in ($output | ConvertFrom-Json))
+        {
             $results[$entry.command] = $null -ne $entry.reason
         }
         return $results
@@ -168,19 +173,22 @@ process.stdout.write(JSON.stringify(results));
     # by command — used to verify wordlist-VALUE extraction directly (e.g. a clustered
     # -nm's message value), independent of whether NO_VERIFY_PATTERNS also denies the
     # same command outright.
-    function Invoke-CollectQuotedContent {
+    function Invoke-CollectQuotedContent
+    {
         param([string[]] $Command)
 
         $commandsPath = Join-Path $TestDrive ([System.IO.Path]::GetRandomFileName())
         $Command | ConvertTo-Json -Compress -AsArray | Set-Content -Path $commandsPath -NoNewline -Encoding utf8
 
         $output = & node $script:NodeHarness $script:ExtensionFile $script:WordlistFile $commandsPath
-        if ($LASTEXITCODE -ne 0) {
+        if ($LASTEXITCODE -ne 0)
+        {
             throw "node harness failed: $output"
         }
 
         $results = @{}
-        foreach ($entry in ($output | ConvertFrom-Json)) {
+        foreach ($entry in ($output | ConvertFrom-Json))
+        {
             $results[$entry.command] = $entry.collected
         }
         return $results
@@ -224,12 +232,14 @@ const isRepoScopedIn = new Function("cwd", "command", "execFileSync", "extractDa
 process.stdout.write(JSON.stringify(isRepoScopedIn(cwd, command ?? "", execFileSync, extractDashCPath)));
 '@ | Set-Content -Path $script:RepoScopeHarness -NoNewline -Encoding utf8
 
-    function Invoke-IsRepoScopedIn {
+    function Invoke-IsRepoScopedIn
+    {
         param([string] $Cwd, [string] $Command = 'git commit -m "fix"')
         $commandPath = Join-Path $TestDrive ([System.IO.Path]::GetRandomFileName())
         $Command | ConvertTo-Json -Compress | Set-Content -Path $commandPath -NoNewline -Encoding utf8
         $output = & node $script:RepoScopeHarness $script:ExtensionFile $Cwd $commandPath
-        if ($LASTEXITCODE -ne 0) {
+        if ($LASTEXITCODE -ne 0)
+        {
             throw "node harness failed: $output"
         }
         return [bool]($output | ConvertFrom-Json)
@@ -237,12 +247,14 @@ process.stdout.write(JSON.stringify(isRepoScopedIn(cwd, command ?? "", execFileS
 
     # Mirrors tests/git-templates-ai-reference-hook.Tests.ps1's New-TestRepo: a throwaway
     # repo with an origin remote set (or not) to exercise real `git remote get-url origin`.
-    function New-TestRepo {
+    function New-TestRepo
+    {
         param([string] $OriginUrl)
         $root = Join-Path $TestDrive ('ai-ref-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $root -Force | Out-Null
         & git -C $root init -q . 2>&1 | Out-Null
-        if ($OriginUrl) {
+        if ($OriginUrl)
+        {
             & git -C $root remote add origin $OriginUrl 2>&1 | Out-Null
         }
         return $root
@@ -389,10 +401,12 @@ const result = handler(
 process.stdout.write(JSON.stringify({ resolvedPath, result: result ?? null }));
 '@ | Set-Content -Path $script:WordlistResolutionHarness -NoNewline -Encoding utf8
 
-    function Invoke-WordlistResolutionHandler {
+    function Invoke-WordlistResolutionHandler
+    {
         param([string] $HomeOverride, [string] $Command = 'git commit -m "fix"')
         $output = & node $script:WordlistResolutionHarness $script:ExtensionFile $HomeOverride $Command
-        if ($LASTEXITCODE -ne 0) {
+        if ($LASTEXITCODE -ne 0)
+        {
             throw "node harness failed: $output"
         }
         return $output | ConvertFrom-Json

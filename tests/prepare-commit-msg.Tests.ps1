@@ -26,11 +26,12 @@ BeforeAll {
 
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:HooksDir = Join-Path $script:RepoRoot 'git/templates/hooks'
-    $script:HookPs1  = Join-Path $script:HooksDir 'prepare-commit-msg.ps1'
-    $script:HookSh   = Join-Path $script:HooksDir 'prepare-commit-msg.sh'
+    $script:HookPs1 = Join-Path $script:HooksDir 'prepare-commit-msg.ps1'
+    $script:HookSh = Join-Path $script:HooksDir 'prepare-commit-msg.sh'
     $script:TestBash = Resolve-TestBash
 
-    function New-TestRepo {
+    function New-TestRepo
+    {
         $root = Join-Path ([IO.Path]::GetTempPath()) ('pcm-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $root -Force | Out-Null
         & git -C $root init -q . 2>&1 | Out-Null
@@ -42,12 +43,14 @@ BeforeAll {
     # Points HEAD at an unborn branch of the given name, without needing a commit —
     # avoids depending on whatever default branch name the local git/global config
     # would otherwise pick.
-    function Set-TestBranch {
+    function Set-TestBranch
+    {
         param([string] $Repo, [string] $Branch)
         & git -C $Repo symbolic-ref HEAD "refs/heads/$Branch" 2>&1 | Out-Null
     }
 
-    function Invoke-Hook {
+    function Invoke-Hook
+    {
         param(
             [ValidateSet('ps1', 'sh')] [string] $Variant,
             [string] $Repo,
@@ -55,16 +58,23 @@ BeforeAll {
             [string] $Source = ''
         )
         Push-Location $Repo
-        try {
-            if ($Variant -eq 'ps1') {
+        try
+        {
+            if ($Variant -eq 'ps1')
+            {
                 & pwsh -NoProfile -File $script:HookPs1 $MsgFile $Source 2>&1 | Out-Null
-            } else {
-                if (-not $script:TestBash) {
+            }
+            else
+            {
+                if (-not $script:TestBash)
+                {
                     throw 'No usable bash found; Resolve-TestBash returned $null.'
                 }
                 & $script:TestBash $script:HookSh $MsgFile $Source 2>&1 | Out-Null
             }
-        } finally {
+        }
+        finally
+        {
             Pop-Location
         }
     }

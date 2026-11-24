@@ -8,7 +8,8 @@ BeforeAll {
     $script:Repo = Split-Path $PSScriptRoot -Parent
     $script:SetupSh = Join-Path $script:Repo 'setup.sh'
     $script:Bash = Resolve-TestBash
-    if (-not $script:Bash) {
+    if (-not $script:Bash)
+    {
         throw 'setup-sh.Tests.ps1: no usable bash found, WSL launchers excluded — install Git for Windows'
     }
 
@@ -19,7 +20,8 @@ BeforeAll {
     $script:ConvertToUnixPath = {
         param([Parameter(Mandatory)][string]$Path)
         $unix = $Path -replace '\\', '/'
-        if ($unix -match '^([A-Za-z]):(.*)$') {
+        if ($unix -match '^([A-Za-z]):(.*)$')
+        {
             $unix = "/$($Matches[1].ToLower())$($Matches[2])"
         }
         return $unix
@@ -49,9 +51,12 @@ Describe 'setup.sh --clean-backups' {
         # from here in a full `Invoke-Pester -Path tests` run).
         $origHome = $env:HOME
         $env:HOME = $script:TmpHome
-        try {
+        try
+        {
             $out = & $script:Bash $script:SetupSh --clean-backups --keep-backups 0 --max-backup-age-days 0 2>&1 | Out-String
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
         }
 
@@ -62,9 +67,12 @@ Describe 'setup.sh --clean-backups' {
 
         $origHome = $env:HOME
         $env:HOME = $script:TmpHome
-        try {
+        try
+        {
             $out = & $script:Bash $script:SetupSh --clean-backups --keep-backups 1 2>&1 | Out-String
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
         }
 
@@ -83,9 +91,12 @@ Describe 'setup.sh --clean-backups' {
 
         $origHome = $env:HOME
         $env:HOME = $script:TmpHome
-        try {
+        try
+        {
             $out = & $script:Bash $script:SetupSh --dry-run --clean-backups --keep-backups 1 2>&1 | Out-String
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
         }
 
@@ -100,15 +111,19 @@ Describe 'setup.sh --dry-run' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-pi-dryrun-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origHome = $env:HOME
-        try {
+        try
+        {
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m pi --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
-            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc', 'codex-review')) {
+            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc', 'codex-review'))
+            {
                 $out | Should -Match "\.pi/agent/skills/$name -> .*ai-agents/skills/$name"
             }
             (Test-Path (Join-Path $tmpHome '.pi')) | Should -BeFalse
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -118,7 +133,8 @@ Describe 'setup.sh --dry-run' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-claude-layout-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origHome = $env:HOME
-        try {
+        try
+        {
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
@@ -133,7 +149,9 @@ Describe 'setup.sh --dry-run' {
             $out | Should -Match '\.claude/skills/deep-review -> .*ai-agents/skills/deep-review'
             $out | Should -Match '\.claude/skills/review-fix-loop -> .*ai-agents/skills/review-fix-loop'
             $out | Should -Match '\.claude/skills/fix-findings -> .*ai-agents/skills/fix-findings'
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -145,13 +163,16 @@ Describe 'setup.sh --dry-run' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-dryrun-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origHome = $env:HOME
-        try {
+        try
+        {
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $out | Should -Match '(Claude Code CLI is already installed|\[DRY RUN\] would install Claude Code CLI via)'
             (Test-Path (Join-Path $tmpHome '.claude')) | Should -Be $false
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -176,13 +197,16 @@ Describe 'setup.sh --dry-run' {
         $resolved | Should -Be "$shimUnix/curl"
 
         $origHome = $env:HOME
-        try {
+        try
+        {
             $env:HOME = $tmpHome
             $out = & $script:Bash -c 'PATH="$1" bash "$2" -m claude' _ $shimPath $script:SetupSh 2>&1 | Out-String
             $out | Should -Match 'Claude Code CLI bootstrap failed'
             $out | Should -Match 'stopped before configuration or projection'
             (Test-Path (Join-Path $tmpHome '.claude')) | Should -Be $false
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -211,13 +235,16 @@ INSTALL
         $resolved | Should -Be "$shimUnix/curl"
 
         $origHome = $env:HOME
-        try {
+        try
+        {
             $env:HOME = $tmpHome
             $out = & $script:Bash -c 'PATH="$1" bash "$2" -m claude' _ $shimPath $script:SetupSh 2>&1 | Out-String
             $out | Should -Match 'Claude Code CLI installed'
             $out | Should -Match '\.claude/settings\.json'
             Test-Path (Join-Path $tmpHome '.claude/settings.json') | Should -BeTrue
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -229,13 +256,16 @@ Describe 'setup.sh Codex bootstrap boundary' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-codex-bootstrap-dryrun-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origHome = $env:HOME
-        try {
+        try
+        {
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m codex --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $out | Should -Match '(codex is already installed|\[DRY RUN\] would install Codex CLI via)'
             (Test-Path (Join-Path $tmpHome '.codex')) | Should -Be $false
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -262,13 +292,16 @@ Describe 'setup.sh Codex bootstrap boundary' {
         $resolved | Should -Be "$shimUnix/curl"
 
         $origHome = $env:HOME
-        try {
+        try
+        {
             $env:HOME = $tmpHome
             $out = & $script:Bash -c 'PATH="$1" bash "$2" -m codex' _ $shimPath $script:SetupSh 2>&1 | Out-String
             $out | Should -Match 'Codex CLI install failed'
             $out | Should -Match 'stopped before configuration or projection'
             (Test-Path (Join-Path $tmpHome '.codex')) | Should -Be $false
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -299,7 +332,8 @@ INSTALL
         $resolved | Should -Be "$shimUnix/curl"
 
         $origHome = $env:HOME
-        try {
+        try
+        {
             $env:HOME = $tmpHome
             $out = & $script:Bash -c 'PATH="$1" bash "$2" -m codex' _ $shimPath $script:SetupSh 2>&1 | Out-String
             $out | Should -Match 'Codex CLI installed'
@@ -307,7 +341,9 @@ INSTALL
             $out | Should -Match '\.codex/AGENTS\.md'
             Test-Path (Join-Path $tmpHome '.codex/config.toml') | Should -BeTrue
             Test-Path (Join-Path $tmpHome '.codex/AGENTS.md') | Should -BeTrue
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -332,12 +368,15 @@ Describe 'setup.sh Codex MCP registration gating' {
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $shimPath = "${script:CodexMcpShimUnix}:/usr/bin:/bin"
         $origHome = $env:HOME
-        try {
+        try
+        {
             $env:HOME = $tmpHome
             $out = & $script:Bash -c 'PATH="$1" bash "$2" -m codex --dry-run' _ $shimPath $script:SetupSh 2>&1 | Out-String
             $out | Should -Match 'Claude settings file not found — skipping MCP registration'
             $out | Should -Not -Match 'would register user-scope MCP: claude mcp add --scope user codex'
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -350,11 +389,14 @@ Describe 'setup.sh Codex MCP registration gating' {
         Set-Content -LiteralPath (Join-Path $claudeDir 'settings.json') -Value '{}'
         $shimPath = "${script:CodexMcpShimUnix}:/usr/bin:/bin"
         $origHome = $env:HOME
-        try {
+        try
+        {
             $env:HOME = $tmpHome
             $out = & $script:Bash -c 'PATH="$1" bash "$2" -m codex --dry-run' _ $shimPath $script:SetupSh 2>&1 | Out-String
             $out | Should -Match '\[DRY RUN\] would register user-scope MCP: claude mcp add --scope user codex'
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -364,11 +406,14 @@ Describe 'setup.sh Codex MCP registration gating' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-codex-mcp-noclaude-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origHome = $env:HOME
-        try {
+        try
+        {
             $env:HOME = $tmpHome
             $out = & $script:Bash -c 'PATH="/usr/bin:/bin" bash "$1" -m codex --dry-run' _ $script:SetupSh 2>&1 | Out-String
             $out | Should -Match 'claude CLI not found — skipping MCP registration'
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -380,11 +425,13 @@ Describe 'setup.sh Codex skill projection' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-codex-skills-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origHome = $env:HOME
-        try {
+        try
+        {
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m codex --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
-            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc', 'quick-review', 'deep-review', 'review-fix-loop', 'fix-findings', '_shared')) {
+            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc', 'quick-review', 'deep-review', 'review-fix-loop', 'fix-findings', '_shared'))
+            {
                 $out | Should -Match "\.codex/skills/$name -> .*ai-agents/skills/$name"
             }
             # codex-review is portable (ai-agents/skills/) but excluded from Codex on purpose:
@@ -392,7 +439,9 @@ Describe 'setup.sh Codex skill projection' {
             $out | Should -Not -Match '\.codex/skills/codex-review ->'
             $out | Should -Not -Match '\.codex/skills/handoff ->'
             $out | Should -Not -Match '\.codex/skills/git-guardrails-claude-code ->'
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -418,7 +467,8 @@ Describe 'setup.sh -m ai-agents (composite)' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-ai-agents-composite-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origHome = $env:HOME
-        try {
+        try
+        {
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m ai-agents --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
@@ -430,7 +480,9 @@ Describe 'setup.sh -m ai-agents (composite)' {
             # (issue #72), so Claude must project first — proves this isn't just an 'all' alias.
             $out.IndexOf('=== Claude Code ===') | Should -BeLessThan $out.IndexOf('=== Codex CLI ===')
             $out.IndexOf('=== Codex CLI ===') | Should -BeLessThan $out.IndexOf('=== Pi ===')
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -446,7 +498,8 @@ Describe 'setup.sh -m ai-agents (composite)' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-pi-fault-' + [guid]::NewGuid())
         $shim = Join-Path $tmpHome 'bin'
         New-Item -ItemType Directory -Path $shim -Force | Out-Null
-        foreach ($cli in @('claude', 'codex', 'pi')) {
+        foreach ($cli in @('claude', 'codex', 'pi'))
+        {
             Set-Content -LiteralPath (Join-Path $shim $cli) -Value "#!/usr/bin/env bash`nexit 0`n" -Encoding UTF8
             & $script:Bash -c 'chmod +x "$1"' _ ((Join-Path $shim $cli) -replace '\\', '/')
         }
@@ -460,7 +513,8 @@ Describe 'setup.sh -m ai-agents (composite)' {
         New-Item -ItemType File -Path (Join-Path $tmpHome '.pi/agent') -Force | Out-Null
 
         $origHome = $env:HOME
-        try {
+        try
+        {
             $env:HOME = $tmpHome
             $out = & $script:Bash -c 'PATH="$1" bash "$2" -m ai-agents,git' _ $shimPath $script:SetupSh 2>&1 | Out-String
             # (a) the composite does not abort: every module's output is present, and the whole
@@ -480,7 +534,9 @@ Describe 'setup.sh -m ai-agents (composite)' {
             # against the same unusable path).
             $out | Should -Not -Match 'ln: failed to access'
             $out | Should -Not -Match '\.pi/agent/settings\.json'
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -495,7 +551,8 @@ Describe 'setup.sh -m ai-agents (composite)' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-pi-success-' + [guid]::NewGuid())
         $shim = Join-Path $tmpHome 'bin'
         New-Item -ItemType Directory -Path $shim -Force | Out-Null
-        foreach ($cli in @('claude', 'codex', 'pi')) {
+        foreach ($cli in @('claude', 'codex', 'pi'))
+        {
             Set-Content -LiteralPath (Join-Path $shim $cli) -Value "#!/usr/bin/env bash`nexit 0`n" -Encoding UTF8
             & $script:Bash -c 'chmod +x "$1"' _ ((Join-Path $shim $cli) -replace '\\', '/')
         }
@@ -503,7 +560,8 @@ Describe 'setup.sh -m ai-agents (composite)' {
         $shimPath = "${shimUnix}:/usr/bin:/bin"
 
         $origHome = $env:HOME
-        try {
+        try
+        {
             $env:HOME = $tmpHome
             $out = & $script:Bash -c 'PATH="$1" bash "$2" -m ai-agents' _ $shimPath $script:SetupSh 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
@@ -511,7 +569,9 @@ Describe 'setup.sh -m ai-agents (composite)' {
             $out | Should -Match '=== Codex CLI ==='
             $out | Should -Match '=== Pi ==='
             $out | Should -Not -Match 'Pi setup failed unexpectedly'
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -521,14 +581,17 @@ Describe 'setup.sh -m ai-agents (composite)' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-all-composite-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origHome = $env:HOME
-        try {
+        try
+        {
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m all --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             @($out | Select-String -Pattern '=== Claude Code ===').Count | Should -Be 1
             @($out | Select-String -Pattern '=== Codex CLI ===').Count | Should -Be 1
             @($out | Select-String -Pattern '=== Pi ===').Count | Should -Be 1
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -554,13 +617,17 @@ Describe 'setup.sh relative-link migration safety' {
     . (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
     $discoveryBash = Resolve-TestBash
     $script:CanCreateSymlink = $false
-    if ($discoveryBash) {
+    if ($discoveryBash)
+    {
         $probeDir = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-link-probe-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $probeDir -Force | Out-Null
-        try {
+        try
+        {
             & $discoveryBash -c 'ln -s target "$1/link"' _ ($probeDir -replace '\\', '/') 2>$null
             $script:CanCreateSymlink = $LASTEXITCODE -eq 0
-        } finally {
+        }
+        finally
+        {
             Remove-Item -Path $probeDir -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
@@ -570,15 +637,18 @@ Describe 'setup.sh relative-link migration safety' {
         $skills = Join-Path $tmpHome '.pi/agent/skills'
         New-Item -ItemType Directory -Path (Split-Path $skills -Parent) -Force | Out-Null
         $origHome = $env:HOME
-        try {
+        try
+        {
             & $script:Bash -c 'ln -s "$(realpath --relative-to="$(dirname "$2")" "$1")" "$2"' _ `
-                ((Join-Path $script:Repo 'pi/skills') -replace '\\', '/') ($skills -replace '\\', '/')
+            ((Join-Path $script:Repo 'pi/skills') -replace '\\', '/') ($skills -replace '\\', '/')
             $LASTEXITCODE | Should -Be 0
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m pi --dry-run 2>&1 | Out-String
             $out | Should -Match 'remove managed Pi skills link'
             $out | Should -Not -Match 'Pi skills link is unmanaged'
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -590,16 +660,19 @@ Describe 'setup.sh relative-link migration safety' {
         $skills = Join-Path $tmpHome '.pi/agent/skills'
         New-Item -ItemType Directory -Path $foreign, (Split-Path $skills -Parent) -Force | Out-Null
         $origHome = $env:HOME
-        try {
+        try
+        {
             & $script:Bash -c 'ln -s "$(realpath --relative-to="$(dirname "$2")" "$1")" "$2"' _ `
-                ($foreign -replace '\\', '/') ($skills -replace '\\', '/')
+            ($foreign -replace '\\', '/') ($skills -replace '\\', '/')
             $LASTEXITCODE | Should -Be 0
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m pi --dry-run 2>&1 | Out-String
             $out | Should -Match 'Pi skills link is unmanaged; preserving it'
             $out | Should -Not -Match 'remove managed Pi skills link'
             $out | Should -Not -Match '\.pi/agent/(settings\.json|extensions|prompts|themes)'
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -618,16 +691,19 @@ Describe 'setup.sh relative-link migration safety' {
         New-Item -ItemType Directory -Path $piSkills, $claudeOnlySkill -Force | Out-Null
         $link = Join-Path $piSkills 'legacy-only'
         $origHome = $env:HOME
-        try {
+        try
+        {
             & $script:Bash -c 'ln -s "$1" "$2"' _ `
-                ($claudeOnlySkill -replace '\\', '/') ($link -replace '\\', '/')
+            ($claudeOnlySkill -replace '\\', '/') ($link -replace '\\', '/')
             $LASTEXITCODE | Should -Be 0
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m pi --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $out | Should -Not -Match 'remove obsolete Pi skill link.*legacy-only'
             Test-Path -LiteralPath $link | Should -BeTrue
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
             Remove-Item -Path $claudeOnlySkill -Recurse -Force -ErrorAction SilentlyContinue
@@ -648,16 +724,19 @@ Describe 'setup.sh relative-link migration safety' {
         New-Item -ItemType Directory -Path $codexSkills, $claudeOnlySkill -Force | Out-Null
         $link = Join-Path $codexSkills 'legacy-only'
         $origHome = $env:HOME
-        try {
+        try
+        {
             & $script:Bash -c 'ln -s "$1" "$2"' _ `
-                ($claudeOnlySkill -replace '\\', '/') ($link -replace '\\', '/')
+            ($claudeOnlySkill -replace '\\', '/') ($link -replace '\\', '/')
             $LASTEXITCODE | Should -Be 0
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m codex --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $out | Should -Not -Match 'remove obsolete Codex skill link.*legacy-only'
             Test-Path -LiteralPath $link | Should -BeTrue
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
             Remove-Item -Path $claudeOnlySkill -Recurse -Force -ErrorAction SilentlyContinue
@@ -670,12 +749,15 @@ Describe 'setup.sh relative-link migration safety' {
         $link = Join-Path $tmpHome '.claude/skills/council'
         New-Item -ItemType Directory -Path $link -Force | Out-Null
         $origHome = $env:HOME
-        try {
+        try
+        {
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
             $out | Should -Match 'Preserved unmanaged Claude skill: .*\.claude/skills/council'
             $out | Should -Not -Match '\[DRY RUN\] symlink .*\.claude/skills/council ->'
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -687,14 +769,17 @@ Describe 'setup.sh relative-link migration safety' {
         $link = Join-Path $tmpHome '.claude/skills/council'
         New-Item -ItemType Directory -Path $foreign, (Split-Path $link -Parent) -Force | Out-Null
         $origHome = $env:HOME
-        try {
+        try
+        {
             & $script:Bash -c 'ln -s "$1" "$2"' _ ($foreign -replace '\\', '/') ($link -replace '\\', '/')
             $LASTEXITCODE | Should -Be 0
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
             $out | Should -Match 'Preserved unmanaged Claude skill link: .*\.claude/skills/council'
             $out | Should -Not -Match '\[DRY RUN\] symlink .*\.claude/skills/council ->'
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -710,7 +795,8 @@ Describe 'setup.sh relative-link migration safety' {
         $link = Join-Path $tmpHome '.claude/skills/council'
         New-Item -ItemType Directory -Path $foreign, (Split-Path $link -Parent) -Force | Out-Null
         $origHome = $env:HOME
-        try {
+        try
+        {
             & $script:Bash -c 'ln -s "$1" "$2"' _ ($foreign -replace '\\', '/') ($link -replace '\\', '/')
             $LASTEXITCODE | Should -Be 0
             Remove-Item -LiteralPath $foreignParent -Recurse -Force
@@ -718,7 +804,9 @@ Describe 'setup.sh relative-link migration safety' {
             $out = & $script:Bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
             $out | Should -Match 'Preserved unmanaged Claude skill link \(target missing\): .*\.claude/skills/council'
             $out | Should -Not -Match '\[DRY RUN\] symlink .*\.claude/skills/council ->'
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -732,16 +820,19 @@ Describe 'setup.sh relative-link migration safety' {
         $link = Join-Path $tmpHome '.claude/skills/council'
         New-Item -ItemType Directory -Path (Split-Path $link -Parent) -Force | Out-Null
         $origHome = $env:HOME
-        try {
+        try
+        {
             & $script:Bash -c 'ln -s "$1" "$2"' _ `
-                ((Join-Path $script:Repo 'ai-agents/claude/skills/council') -replace '\\', '/') ($link -replace '\\', '/')
+            ((Join-Path $script:Repo 'ai-agents/claude/skills/council') -replace '\\', '/') ($link -replace '\\', '/')
             $LASTEXITCODE | Should -Be 0
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $out | Should -Not -Match 'Preserved unmanaged Claude skill link: .*\.claude/skills/council'
             $out | Should -Match '\[DRY RUN\] symlink .*\.claude/skills/council -> .*ai-agents/skills/council'
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -753,19 +844,22 @@ Describe 'setup.sh relative-link migration safety' {
         $foreign = Join-Path $tmpHome 'foreign-skill'
         New-Item -ItemType Directory -Path $skillsDir, $foreign -Force | Out-Null
         $origHome = $env:HOME
-        try {
+        try
+        {
             & $script:Bash -c 'ln -s "$1" "$2"' _ `
-                ((Join-Path $script:Repo 'ai-agents/claude/skills/legacy-only') -replace '\\', '/') ((Join-Path $skillsDir 'legacy-only') -replace '\\', '/')
+            ((Join-Path $script:Repo 'ai-agents/claude/skills/legacy-only') -replace '\\', '/') ((Join-Path $skillsDir 'legacy-only') -replace '\\', '/')
             $LASTEXITCODE | Should -Be 0
             & $script:Bash -c 'ln -s "$1" "$2"' _ `
-                ($foreign -replace '\\', '/') ((Join-Path $skillsDir 'unmanaged') -replace '\\', '/')
+            ($foreign -replace '\\', '/') ((Join-Path $skillsDir 'unmanaged') -replace '\\', '/')
             $LASTEXITCODE | Should -Be 0
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $out | Should -Match 'remove obsolete Claude skill link.*legacy-only'
             $out | Should -Not -Match 'remove obsolete Claude skill link.*unmanaged'
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -784,16 +878,19 @@ Describe 'setup.sh relative-link migration safety' {
         New-Item -ItemType Directory -Path $skillsDir, $codexOnlySkill -Force | Out-Null
         $link = Join-Path $skillsDir 'legacy-only'
         $origHome = $env:HOME
-        try {
+        try
+        {
             & $script:Bash -c 'ln -s "$1" "$2"' _ `
-                ($codexOnlySkill -replace '\\', '/') ($link -replace '\\', '/')
+            ($codexOnlySkill -replace '\\', '/') ($link -replace '\\', '/')
             $LASTEXITCODE | Should -Be 0
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $out | Should -Not -Match 'remove obsolete Claude skill link.*legacy-only'
             Test-Path -LiteralPath $link | Should -BeTrue
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
             Remove-Item -Path $codexOnlySkill -Recurse -Force -ErrorAction SilentlyContinue
@@ -814,16 +911,19 @@ Describe 'setup.sh relative-link migration safety' {
         New-Item -ItemType Directory -Path $skillsDir -Force | Out-Null
         $link = Join-Path $skillsDir 'handoff'
         $origHome = $env:HOME
-        try {
+        try
+        {
             & $script:Bash -c 'ln -s "$1" "$2"' _ `
-                ($claudeOnlySkill -replace '\\', '/') ($link -replace '\\', '/')
+            ($claudeOnlySkill -replace '\\', '/') ($link -replace '\\', '/')
             $LASTEXITCODE | Should -Be 0
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m codex --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $out | Should -Not -Match 'remove obsolete Codex skill link.*handoff'
             Test-Path -LiteralPath $link | Should -BeTrue
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -841,16 +941,19 @@ Describe 'setup.sh relative-link migration safety' {
         New-Item -ItemType Directory -Path $skillsDir, $siblingSkill -Force | Out-Null
         $link = Join-Path $skillsDir 'legacy-only'
         $origHome = $env:HOME
-        try {
+        try
+        {
             & $script:Bash -c 'ln -s "$1" "$2"' _ `
-                ($siblingSkill -replace '\\', '/') ($link -replace '\\', '/')
+            ($siblingSkill -replace '\\', '/') ($link -replace '\\', '/')
             $LASTEXITCODE | Should -Be 0
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $out | Should -Not -Match 'remove obsolete Claude skill link.*legacy-only'
             Test-Path -LiteralPath $link | Should -BeTrue
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
             Remove-Item -Path $siblingSkill -Recurse -Force -ErrorAction SilentlyContinue
@@ -863,15 +966,18 @@ Describe 'setup.sh relative-link migration safety' {
         $link = Join-Path $tmpHome '.claude/skills/council'
         New-Item -ItemType Directory -Path (Split-Path $link -Parent) -Force | Out-Null
         $origHome = $env:HOME
-        try {
+        try
+        {
             & $script:Bash -c 'ln -s "$(realpath --relative-to="$(dirname "$2")" "$1")" "$2"' _ `
-                ((Join-Path $script:Repo 'ai-agents/skills/council') -replace '\\', '/') ($link -replace '\\', '/')
+            ((Join-Path $script:Repo 'ai-agents/skills/council') -replace '\\', '/') ($link -replace '\\', '/')
             $LASTEXITCODE | Should -Be 0
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
             $out | Should -Match 'Up to date: .*\.claude/skills/council(?:\r?\n|$)'
             $out | Should -Not -Match '\[DRY RUN\] symlink .*\.claude/skills/council ->'
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -885,13 +991,16 @@ Describe 'setup.sh Claude agent directory migration' {
         New-Item -ItemType Directory -Path $agents -Force | Out-Null
         Set-Content -LiteralPath (Join-Path $agents 'custom.md') -Value 'user-owned'
         $origHome = $env:HOME
-        try {
+        try
+        {
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
             $out | Should -Match 'Preserved unmanaged directory: .*\.claude/agents'
             $out | Should -Not -Match '\[DRY RUN\] symlink .*\.claude/agents ->'
             Get-Content -LiteralPath (Join-Path $agents 'custom.md') | Should -Be 'user-owned'
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -903,14 +1012,17 @@ Describe 'setup.sh Claude agent directory migration' {
         $link = Join-Path $tmpHome '.claude/agents'
         New-Item -ItemType Directory -Path $foreign, (Split-Path $link -Parent) -Force | Out-Null
         $origHome = $env:HOME
-        try {
+        try
+        {
             & $script:Bash -c 'ln -s "$1" "$2"' _ ($foreign -replace '\\\\', '/') ($link -replace '\\\\', '/')
             $LASTEXITCODE | Should -Be 0
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
             $out | Should -Match 'Preserved unmanaged directory link: .*\.claude/agents'
             $out | Should -Not -Match '\[DRY RUN\] symlink .*\.claude/agents ->'
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -922,14 +1034,17 @@ Describe 'setup.sh Claude agent directory migration' {
         $historical = Join-Path $script:Repo 'ai-agents/shared/agents'
         New-Item -ItemType Directory -Path (Split-Path $link -Parent) -Force | Out-Null
         $origHome = $env:HOME
-        try {
+        try
+        {
             & $script:Bash -c 'ln -s "$1" "$2"' _ ($historical -replace '\\\\', '/') ($link -replace '\\\\', '/')
             $LASTEXITCODE | Should -Be 0
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
             $out | Should -Match '\[DRY RUN\] symlink .*\.claude/agents -> .*ai-agents/agents'
             $out | Should -Not -Match 'Preserved unmanaged directory link'
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -951,7 +1066,8 @@ Describe 'setup.sh Claude agent directory migration' {
         $link = Join-Path $tmpHome '.claude/agents'
         New-Item -ItemType Directory -Path $foreign, (Split-Path $link -Parent) -Force | Out-Null
         $origHome = $env:HOME
-        try {
+        try
+        {
             & $script:Bash -c 'ln -s "$1" "$2"' _ ($foreign -replace '\\', '/') ($link -replace '\\', '/')
             $LASTEXITCODE | Should -Be 0
             Remove-Item -LiteralPath $foreignParent -Recurse -Force
@@ -959,7 +1075,9 @@ Describe 'setup.sh Claude agent directory migration' {
             $out = & $script:Bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
             $out | Should -Match 'Preserved unmanaged directory link \(target missing\): .*\.claude/agents'
             $out | Should -Not -Match '\[DRY RUN\] symlink .*\.claude/agents ->'
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -983,13 +1101,16 @@ Describe 'setup.sh module list' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-modules-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origHome = $env:HOME
-        try {
+        try
+        {
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m lazygit,windowsterminal --dry-run 2>&1 | Out-String
             $out | Should -Not -Match "Unknown module 'lazygit'"
             $out | Should -Not -Match "Unknown module 'windowsterminal'"
             $out | Should -Match '=== Lazygit ==='
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -1012,13 +1133,17 @@ Describe 'setup.sh make_symlink backup behavior' {
     . (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
     $discoveryBash = Resolve-TestBash
     $script:CanCreateSymlink = $false
-    if ($discoveryBash) {
+    if ($discoveryBash)
+    {
         $probeDir = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-make-symlink-probe-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $probeDir -Force | Out-Null
-        try {
+        try
+        {
             & $discoveryBash -c 'ln -s target "$1/link"' _ ($probeDir -replace '\\', '/') 2>$null
             $script:CanCreateSymlink = $LASTEXITCODE -eq 0
-        } finally {
+        }
+        finally
+        {
             Remove-Item -Path $probeDir -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
@@ -1041,7 +1166,8 @@ Describe 'setup.sh make_symlink backup behavior' {
         $repoClaudeMd = Join-Path $script:Repo 'claude\CLAUDE.md'
 
         $origHome = $env:HOME
-        try {
+        try
+        {
             $env:HOME = $tmpHome
             $shimPath = "${shimUnix}:/usr/bin:/bin"
             $out = & $script:Bash -c 'PATH="$1" bash "$2" -m claude' _ $shimPath $script:SetupSh 2>&1 | Out-String
@@ -1058,7 +1184,9 @@ Describe 'setup.sh make_symlink backup behavior' {
             $resolvedTarget = & $script:Bash -c 'readlink -f "$1"' _ (& $script:ConvertToUnixPath $claudeMd) | Out-String
             $expectedTarget = & $script:Bash -c 'readlink -f "$1"' _ (& $script:ConvertToUnixPath $repoClaudeMd) | Out-String
             $resolvedTarget.Trim() | Should -Be $expectedTarget.Trim()
-        } finally {
+        }
+        finally
+        {
             $env:HOME = $origHome
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }

@@ -8,7 +8,8 @@
 # calls it).
 # ============================================================================
 
-function Test-AzProfileName {
+function Test-AzProfileName
+{
     <#
     .SYNOPSIS
     True when the string is a usable az profile name. Also the path-injection guard:
@@ -22,7 +23,8 @@ function Test-AzProfileName {
     return $Name -match '^[A-Za-z0-9][A-Za-z0-9_-]*$'
 }
 
-function Get-AzProfileIdentity {
+function Get-AzProfileIdentity
+{
     <#
     .SYNOPSIS
     The identity cached in a profile's azureProfile.json, for the picker's preview column.
@@ -35,17 +37,23 @@ function Get-AzProfileIdentity {
     param([Parameter(Mandatory)][string]$Name)
 
     [string]$notLoggedIn = 'not logged in — run: az login'
-    [string]$dir = if ($Name -eq 'default') {
+    [string]$dir = if ($Name -eq 'default')
+    {
         Join-Path $HOME '.azure'
-    } else {
+    }
+    else
+    {
         Join-Path $HOME '.azure-profiles' $Name
     }
     [string]$file = Join-Path $dir 'azureProfile.json'
     if (-not (Test-Path -LiteralPath $file)) { return $notLoggedIn }
 
-    try {
+    try
+    {
         $parsed = Get-Content -LiteralPath $file -Raw | ConvertFrom-Json
-    } catch {
+    }
+    catch
+    {
         return $notLoggedIn
     }
 
@@ -63,7 +71,8 @@ function Get-AzProfileIdentity {
     # never with -eq $null, and do not index [0] (that throws under StrictMode).
     $active = $subscriptions.Where({ $_.isDefault }, 'First')
     [string]$subscription = if ($active) { $active.name } else { $subscriptions[0].name }
-    if ($subscription) {
+    if ($subscription)
+    {
         $identity = if ($identity) { "$identity — $subscription" } else { $subscription }
     }
 
@@ -71,26 +80,34 @@ function Get-AzProfileIdentity {
     return $identity
 }
 
-function Show-AzAccountStatus {
+function Show-AzAccountStatus
+{
     <#
     .SYNOPSIS
     Best-effort: append the active az account (or a login hint) after a switch
     announce. Must never throw or block — az may be slow, absent, or logged out, and
     the deterministic announce has already printed. Never runs `az login` itself.
     #>
-    try {
+    try
+    {
         $account = az account show --query 'user.name' --output tsv 2>$null
-        if ($LASTEXITCODE -eq 0 -and $account) {
+        if ($LASTEXITCODE -eq 0 -and $account)
+        {
             Write-Host "  active: $account" -ForegroundColor DarkGray
-        } else {
+        }
+        else
+        {
             Write-Host '  not logged in — run: az login' -ForegroundColor DarkGray
         }
-    } catch {
+    }
+    catch
+    {
         Write-Host '  not logged in — run: az login' -ForegroundColor DarkGray
     }
 }
 
-function Select-AzProfileName {
+function Select-AzProfileName
+{
     <#
     .SYNOPSIS
     Pick a profile interactively with fzf, showing each candidate's cached identity.
@@ -103,13 +120,15 @@ function Select-AzProfileName {
     [OutputType([string])]
     param()
 
-    if (-not (Get-Command fzf -ErrorAction Ignore)) {
+    if (-not (Get-Command fzf -ErrorAction Ignore))
+    {
         throw 'fzf was not found on PATH, so the az profile picker cannot run. Install fzf, or name the profile explicitly: Switch-AzProfile -Name <profile>.'
     }
 
     [string]$container = Join-Path $HOME '.azure-profiles'
     [string[]]$names = @('default')
-    if (Test-Path -LiteralPath $container) {
+    if (Test-Path -LiteralPath $container)
+    {
         $names += @(Get-ChildItem -LiteralPath $container -Directory | Select-Object -ExpandProperty Name)
     }
 
@@ -123,7 +142,8 @@ function Select-AzProfileName {
     return ($picked -split "`t")[0]
 }
 
-function Switch-AzProfile {
+function Switch-AzProfile
+{
     <#
     .SYNOPSIS
     Switch the Azure CLI to a named profile by pointing AZURE_CONFIG_DIR at
@@ -138,25 +158,31 @@ function Switch-AzProfile {
 
     # Only an OMITTED -Name opens the picker: `azs ''` is a bug in the caller, so it must
     # fall through to validation and throw rather than turning interactive.
-    if (-not $PSBoundParameters.ContainsKey('Name')) {
+    if (-not $PSBoundParameters.ContainsKey('Name'))
+    {
         $Name = Select-AzProfileName
         # Cancelled pick — leave every bit of state alone.
         if (-not $Name) { return }
     }
 
-    if (-not (Test-AzProfileName -Name $Name)) {
+    if (-not (Test-AzProfileName -Name $Name))
+    {
         throw "Invalid az profile name '$Name'. Names must match '^[A-Za-z0-9][A-Za-z0-9_-]*$' — letters, digits, underscore and hyphen only, starting with a letter or digit."
     }
 
     [string]$announce = ''
-    if ($Name -eq 'default') {
+    if ($Name -eq 'default')
+    {
         # Reserved: `default` IS az's own ~/.azure, so unset rather than point at a
         # ~/.azure-profiles/default dir — and create nothing.
         Remove-Item Env:AZURE_CONFIG_DIR -ErrorAction Ignore
         $announce = '→ az profile → default (az''s own ~/.azure)'
-    } else {
+    }
+    else
+    {
         [string]$dir = Join-Path $HOME '.azure-profiles' $Name
-        if (-not (Test-Path -LiteralPath $dir)) {
+        if (-not (Test-Path -LiteralPath $dir))
+        {
             New-Item -ItemType Directory -Path $dir -Force | Out-Null
             Write-Host "  created $dir — run: az login" -ForegroundColor DarkGray
         }
@@ -172,7 +198,8 @@ function Switch-AzProfile {
     Show-AzAccountStatus
 }
 
-function Restore-AzActiveProfile {
+function Restore-AzActiveProfile
+{
     <#
     .SYNOPSIS
     Apply the last-used az profile by reading the ~/.azure-active-profile state file
@@ -188,15 +215,19 @@ function Restore-AzActiveProfile {
     # Phase 1 cost budget: exactly ONE state-file read, no enumeration, no JSON.
     [string]$stateFile = Join-Path $HOME '.azure-active-profile'
     [string]$state = ''
-    if (Test-Path -LiteralPath $stateFile) {
+    if (Test-Path -LiteralPath $stateFile)
+    {
         $state = [string](Get-Content -LiteralPath $stateFile -ErrorAction Ignore | Select-Object -First 1)
     }
     $state = $state.Trim()
-    if ($state -ne 'default' -and (Test-AzProfileName -Name $state)) {
+    if ($state -ne 'default' -and (Test-AzProfileName -Name $state))
+    {
         # No existence check — a missing dir just means az sees an empty config until
         # the user switches or logs in, and a second FS touch buys nothing.
         $env:AZURE_CONFIG_DIR = Join-Path $HOME '.azure-profiles' $state
-    } else {
+    }
+    else
+    {
         # default, missing, empty, or invalid — ACTIVELY unset, never merely skip, so an
         # inherited/parent AZURE_CONFIG_DIR can't survive.
         Remove-Item Env:AZURE_CONFIG_DIR -ErrorAction Ignore

@@ -30,15 +30,18 @@ if (-not $env:TERM) { $env:TERM = 'xterm-256color' }
 # corrupts non-ASCII history entries on reinsertion. UTF8Encoding::new($false) =
 # no BOM. Wrapped in try/catch: some hosts (e.g. non-console hosts) throw on
 # setting encodings, and the profile must never fail to load because of this.
-try {
+try
+{
     [Console]::InputEncoding = [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-} catch {}
+}
+catch {}
 
 # yazi shells out to file(1) to guess MIME types for files its rules don't match.
 # Git for Windows bundles file.exe but doesn't put usr\bin on PATH, so point yazi
 # at it directly via YAZI_FILE_ONE (yazi's documented Windows override) rather than
 # polluting PATH with all of Git's Unix tools.
-if (-not $env:YAZI_FILE_ONE) {
+if (-not $env:YAZI_FILE_ONE)
+{
     $fileExe = "$env:ProgramFiles\Git\usr\bin\file.exe"
     if (Test-Path -LiteralPath $fileExe) { $env:YAZI_FILE_ONE = $fileExe }
 }
@@ -46,10 +49,13 @@ if (-not $env:YAZI_FILE_ONE) {
 # --- Module availability cache (single scan of PSModulePath) ---------------
 $global:ProfileModules = @{}
 $modulePaths = $env:PSModulePath -split [IO.Path]::PathSeparator
-foreach ($name in @('PSFzf', 'git-completion', 'Az.Accounts', 'Az.Tools.Predictor', 'Microsoft.WinGet.CommandNotFound')) {
+foreach ($name in @('PSFzf', 'git-completion', 'Az.Accounts', 'Az.Tools.Predictor', 'Microsoft.WinGet.CommandNotFound'))
+{
     $global:ProfileModules[$name] = $false
-    foreach ($root in $modulePaths) {
-        if (Test-Path (Join-Path $root $name)) {
+    foreach ($root in $modulePaths)
+    {
+        if (Test-Path (Join-Path $root $name))
+        {
             $global:ProfileModules[$name] = $true
             break
         }
@@ -58,10 +64,14 @@ foreach ($name in @('PSFzf', 'git-completion', 'Az.Accounts', 'Az.Tools.Predicto
 
 # --- PSReadLine (ships with pwsh 7, always available) ----------------------
 # Phase 1: Use PredictionSource History (fast) — upgraded to HistoryAndPlugin in Phase 2
-function OnViModeChange {
-    if ($args[0] -eq 'Command') {
+function OnViModeChange
+{
+    if ($args[0] -eq 'Command')
+    {
         Write-Host -NoNewline "`e[1 q"  # blinking block
-    } else {
+    }
+    else
+    {
         Write-Host -NoNewline "`e[5 q"  # blinking line
     }
 }
@@ -73,9 +83,10 @@ function OnViModeChange {
 # insufficient — it stays true when stdout is captured — so also require a non-redirected stdout.
 # The flag is reused to gate the Phase 2a HistoryAndPlugin upgrade.
 $global:ProfileInteractiveConsole = [Environment]::UserInteractive -and
-    -not [Console]::IsOutputRedirected -and
-    ($Host.UI.SupportsVirtualTerminal -eq $true)
-if ($global:ProfileInteractiveConsole) {
+-not [Console]::IsOutputRedirected -and
+($Host.UI.SupportsVirtualTerminal -eq $true)
+if ($global:ProfileInteractiveConsole)
+{
     Set-PSReadLineOption -EditMode Vi `
         -PredictionSource History `
         -PredictionViewStyle ListView `
@@ -86,11 +97,11 @@ if ($global:ProfileInteractiveConsole) {
         -ViModeIndicator Script `
         -ViModeChangeHandler $Function:OnViModeChange `
         -Colors @{
-            Command          = 'Yellow'
-            Parameter        = 'Green'
-            String           = 'DarkCyan'
-            InlinePrediction = 'DarkGray'
-        }
+        Command = 'Yellow'
+        Parameter = 'Green'
+        String = 'DarkCyan'
+        InlinePrediction = 'DarkGray'
+    }
 
     Set-PSReadLineKeyHandler -Key Ctrl+r -Function ReverseSearchHistory
     Set-PSReadLineKeyHandler -Key Ctrl+Spacebar -Function MenuComplete
@@ -138,7 +149,8 @@ Set-Alias -Name g -Value git
 function gcif { Get-ChildItem -Force @args }
 
 # --- Functions --------------------------------------------------------------
-function Get-IsDarkMode {
+function Get-IsDarkMode
+{
     # AppsUseLightTheme: 0 = dark, 1 = light. [Microsoft.Win32.Registry]::GetValue
     # reads in-process; the old `reg query` spawned reg.exe (~37ms). Missing value
     # defaults to 1 (light), matching the old no-match behaviour.
@@ -148,7 +160,8 @@ function Get-IsDarkMode {
 }
 
 function gst { git status }
-function which ($command) {
+function which ($command)
+{
     Get-Command -Name $command -ErrorAction SilentlyContinue |
         Select-Object -ExpandProperty Path -ErrorAction SilentlyContinue
 }
@@ -158,13 +171,15 @@ Set-Alias -Name su -Value Start-AdminSession
 # eza helpers (ll/la/lt) are defined in Phase 2a (Initialize-DeferredProfile) —
 # the Get-Command -CommandType Application PATH scan is deferred off the load path.
 
-function y {
+function y
+{
     $tmp = (New-TemporaryFile).FullName
     yazi.exe @args --cwd-file="$tmp"
     # Coerce to a single string (first line): a multi-line cwd-file would make $cwd an
     # array, and Set-Location/Test-Path -LiteralPath on an array throws.
     $cwd = [string](Get-Content -Path $tmp -Encoding UTF8 -TotalCount 1)
-    if ($cwd -and $cwd -ne $PWD.Path -and (Test-Path -LiteralPath $cwd -PathType Container)) {
+    if ($cwd -and $cwd -ne $PWD.Path -and (Test-Path -LiteralPath $cwd -PathType Container))
+    {
         Set-Location -LiteralPath (Resolve-Path -LiteralPath $cwd).Path
     }
     Remove-Item -Path $tmp -ErrorAction Ignore
@@ -176,7 +191,8 @@ function rgs { rg --sort=path @args }
 
 # Bare-fzf git pickers (Alt+b / Alt+g, bound in Phase 2a). Not gated on PSFzf: they
 # only need the fzf binary, which Phase 2a checks for before binding them.
-function switch_git_branch {
+function switch_git_branch
+{
     $branches = git branch -vv | Select-String ': gone]' -NotMatch | ForEach-Object {
         ($_.ToString().Substring(2) -split '\s+')[0]
     }
@@ -184,23 +200,28 @@ function switch_git_branch {
     # System.Diagnostics.Process launcher desyncs under psmux's ConPTY. Fullscreen
     # (no -Height 10 box) is the deliberate, reversible trade for correct rendering.
     $branch = $branches | Sort-Object | fzf --prompt 'branch> '
-    if (-not [String]::IsNullOrEmpty($branch)) {
+    if (-not [String]::IsNullOrEmpty($branch))
+    {
         Set-Location "$(git rev-parse --show-toplevel)"
         git switch $branch
     }
     [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt()
 }
 
-function cd_git_worktree {
+function cd_git_worktree
+{
     $worktrees = @{}
     git worktree list --porcelain | ForEach-Object -Begin {
         $curr = @{}
     } -Process {
-        switch -Regex ($_) {
-            '^worktree (.+)$' { $curr['Path']   = $matches[1] }
-            '^branch (.+)$'   { $curr['Branch'] = $matches[1] -replace '^refs/heads/', '' }
-            '^$' {
-                if ($curr['Path'] -and $curr['Branch']) {
+        switch -Regex ($_)
+        {
+            '^worktree (.+)$' { $curr['Path'] = $matches[1] }
+            '^branch (.+)$' { $curr['Branch'] = $matches[1] -replace '^refs/heads/', '' }
+            '^$'
+            {
+                if ($curr['Path'] -and $curr['Branch'])
+                {
                     $worktrees[$curr['Branch']] = $curr['Path']
                     $curr = @{}
                 }
@@ -211,13 +232,15 @@ function cd_git_worktree {
     # System.Diagnostics.Process launcher desyncs under psmux's ConPTY. Fullscreen
     # (no -Height 10 box) is the deliberate, reversible trade for correct rendering.
     $selected = $worktrees.Keys | Sort-Object | fzf --prompt 'worktree> '
-    if (-not [String]::IsNullOrEmpty($selected)) {
+    if (-not [String]::IsNullOrEmpty($selected))
+    {
         Set-Location $worktrees[$selected]
     }
     [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt()
 }
 
-function Invoke-FzfRipgrep {
+function Invoke-FzfRipgrep
+{
     param([string]$Query = '')
     $reload = 'reload:rg --column --color=always --smart-case {q} 2>nul || exit 0'
     $selected = fzf --disabled --ansi --multi `
@@ -229,38 +252,47 @@ function Invoke-FzfRipgrep {
         --preview-window '~4,+{2}+4/3,<80(up)' `
         --prompt 'rg> ' `
         --query $Query
-    if (-not $selected) {
+    if (-not $selected)
+    {
         [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt()
         return
     }
     $editor = if ($env:EDITOR) { $env:EDITOR } elseif (Get-Command nvim -ErrorAction Ignore) { 'nvim' } else { 'vim' }
     $files = @($selected)
-    if ($files.Count -eq 1) {
+    if ($files.Count -eq 1)
+    {
         $parts = $files[0] -split ':', 3
         & $editor $parts[0] "+$($parts[1])"
-    } else {
+    }
+    else
+    {
         $tmpFile = [System.IO.Path]::GetTempFileName()
-        try {
+        try
+        {
             $files | Set-Content $tmpFile
             & $editor '+cw' '-q' $tmpFile
-        } finally {
+        }
+        finally
+        {
             Remove-Item $tmpFile -ErrorAction Ignore
         }
     }
     [Microsoft.PowerShell.PSConsoleReadLine]::InvokePrompt()
 }
 
-function Invoke-Tig {
+function Invoke-Tig
+{
     # Re-check OS theme on each launch so tig picks up mid-session theme changes
     $env:TIGRC_USER = Join-Path $env:DOTFILES $(if (Get-IsDarkMode) { 'tig\tigrc-mocha' } else { 'tig\tigrc-latte' })
-    $env:BAT_THEME  = if (Get-IsDarkMode) { 'Catppuccin Mocha' } else { 'Catppuccin Latte' }
+    $env:BAT_THEME = if (Get-IsDarkMode) { 'Catppuccin Mocha' } else { 'Catppuccin Latte' }
     # Selects the [delta "dark-mode"/"light-mode"] feature block in git/gitconfig.
     $env:DELTA_FEATURES = if (Get-IsDarkMode) { 'dark-mode' } else { 'light-mode' }
     & (Get-Command tig -CommandType Application -ErrorAction Stop) @args
 }
 Set-Alias -Name tig -Value Invoke-Tig -Force
 
-function Invoke-Bat {
+function Invoke-Bat
+{
     # Re-check OS theme on each call so bat picks up mid-session dark/light toggles
     # (BAT_THEME is otherwise resolved once at profile load — see the bat block below)
     $env:BAT_THEME = if (Get-IsDarkMode) { 'Catppuccin Mocha' } else { 'Catppuccin Latte' }
@@ -271,7 +303,8 @@ function Invoke-Bat {
 Set-Alias -Name bat -Value Invoke-Bat -Force
 
 # --- Hotkey cheatsheet ------------------------------------------------------
-function Show-Hotkeys {
+function Show-Hotkeys
+{
     $entries = @(
         '[fzf]    alt-a / alt-d   select-all / deselect-all (live rg picker)'
         '[fzf]    ctrl-/          toggle preview pane (live rg picker)'
@@ -324,11 +357,16 @@ function Show-Hotkeys {
     # handler (Ctrl+?), and Invoke-Fzf's redirected-stdout System.Diagnostics.Process
     # launcher desyncs under psmux's ConPTY (the doubled-UI path documented throughout
     # this file). Invoke-Fzf is only the fallback for when the bare binary is absent.
-    if (Get-Command fzf -ErrorAction Ignore) {
+    if (Get-Command fzf -ErrorAction Ignore)
+    {
         $entries | fzf --prompt 'keys> ' --height=15 --no-preview
-    } elseif (Get-Command Invoke-Fzf -ErrorAction Ignore) {
+    }
+    elseif (Get-Command Invoke-Fzf -ErrorAction Ignore)
+    {
         $entries | Invoke-Fzf -Prompt 'keys> ' -Height 15
-    } else {
+    }
+    else
+    {
         $entries | Out-Host
     }
 }
@@ -349,7 +387,7 @@ if (($env:PSModulePath -split [IO.Path]::PathSeparator) -notcontains $_dotfilesM
 {
     $env:PSModulePath = $_dotfilesModules + [IO.Path]::PathSeparator + $env:PSModulePath
 }
-$env:RIPGREP_CONFIG_PATH  = Join-Path $_dotfiles 'ripgrep\ripgreprc'
+$env:RIPGREP_CONFIG_PATH = Join-Path $_dotfiles 'ripgrep\ripgreprc'
 $env:FZF_DEFAULT_OPTS_FILE = Join-Path $_dotfiles 'fzf\fzfrc'
 
 # The fd-backed FZF_*_COMMAND vars are set in Phase 2a (Initialize-DeferredProfile),
@@ -363,12 +401,15 @@ $env:_ZO_RESOLVE_SYMLINKS = '1'
 # Reuse Get-IsDarkMode (defined above) rather than duplicating the registry read.
 $_isDark = Get-IsDarkMode
 
-$env:FZF_DEFAULT_OPTS = if ($_isDark) {
+$env:FZF_DEFAULT_OPTS = if ($_isDark)
+{
     '--color=bg+:#313244,bg:#1E1E2E,spinner:#F5E0DC,hl:#F38BA8 ' +
     '--color=fg:#CDD6F4,header:#F38BA8,info:#CBA6F7,pointer:#F5E0DC ' +
     '--color=marker:#B4BEFE,fg+:#CDD6F4,prompt:#CBA6F7,hl+:#F38BA8 ' +
     '--color=selected-bg:#45475A --color=border:#6C7086,label:#CDD6F4'
-} else {
+}
+else
+{
     '--color=bg+:#CCD0DA,bg:#EFF1F5,spinner:#DC8A78,hl:#D20F39 ' +
     '--color=fg:#4C4F69,header:#D20F39,info:#8839EF,pointer:#DC8A78 ' +
     '--color=marker:#7287FD,fg+:#4C4F69,prompt:#8839EF,hl+:#D20F39 ' +
@@ -392,11 +433,14 @@ $env:BAT_THEME = if ($_isDark) { 'Catppuccin Mocha' } else { 'Catppuccin Latte' 
 $env:DELTA_FEATURES = if ($_isDark) { 'dark-mode' } else { 'light-mode' }
 
 # lazygit config — base merged with theme via LG_CONFIG_FILE
-$env:LG_CONFIG_FILE = (Join-Path $_dotfiles 'lazygit\config.yml') + ',' + $(if ($_isDark) {
-    Join-Path $_dotfiles 'lazygit\theme-mocha.yml'
-} else {
-    Join-Path $_dotfiles 'lazygit\theme-latte.yml'
-})
+$env:LG_CONFIG_FILE = (Join-Path $_dotfiles 'lazygit\config.yml') + ',' + $(if ($_isDark)
+    {
+        Join-Path $_dotfiles 'lazygit\theme-mocha.yml'
+    }
+    else
+    {
+        Join-Path $_dotfiles 'lazygit\theme-latte.yml'
+    })
 
 # tig theme — TIGRC_USER overrides ~/.tigrc; theme files source ~/.tigrc for base settings
 $env:TIGRC_USER = Join-Path $_dotfiles $(if ($_isDark) { 'tig\tigrc-mocha' } else { 'tig\tigrc-latte' })
@@ -405,15 +449,24 @@ $env:TIGRC_USER = Join-Path $_dotfiles $(if ($_isDark) { 'tig\tigrc-mocha' } els
 # flavour lives in its own dir; point at the mocha or latte one to match the rest.
 $env:EZA_CONFIG_DIR = Join-Path $_dotfiles $(if ($_isDark) { 'eza\themes\mocha' } else { 'eza\themes\latte' })
 
-$env:EDITOR = if (Get-Command nvim -ErrorAction Ignore) {
+$env:EDITOR = if (Get-Command nvim -ErrorAction Ignore)
+{
     'nvim'
-} elseif (Get-Command vim -ErrorAction Ignore) {
+}
+elseif (Get-Command vim -ErrorAction Ignore)
+{
     'vim'
-} elseif (Get-Command code -ErrorAction Ignore) {
+}
+elseif (Get-Command code -ErrorAction Ignore)
+{
     'code'
-} elseif ($IsWindows) {
+}
+elseif ($IsWindows)
+{
     'notepad'
-} else {
+}
+else
+{
     'vi'
 }
 $env:VISUAL = $env:EDITOR
@@ -428,7 +481,8 @@ Remove-Variable _dotfiles, _isDark
 $global:ProfileDeferredDone = $false
 $global:ProfileDeferredSecondaryDone = $false
 
-function Initialize-DeferredProfile {
+function Initialize-DeferredProfile
+{
     if ($global:ProfileDeferredDone) { return }
     $global:ProfileDeferredDone = $true
 
@@ -436,7 +490,8 @@ function Initialize-DeferredProfile {
     # Its own Ctrl+t / Ctrl+r / Alt+c handlers are suppressed or overridden below.
     # No -EnableAliasFuzzySetLocation: its alias is `fd`, which shadows the fd binary at the
     # prompt (PSFzf.Base.ps1:247 creates it unconditionally); Alt+c covers the same job.
-    if ($global:ProfileModules['PSFzf']) {
+    if ($global:ProfileModules['PSFzf'])
+    {
         Import-Module PSFzf
 
         # Empty chords tell Set-PsFzfOption not to (re)bind PSFzf's own Ctrl+t / Ctrl+r /
@@ -456,12 +511,14 @@ function Initialize-DeferredProfile {
 
     # Bare-fzf pickers: need only the fzf binary, not PSFzf. Must run AFTER the PSFzf
     # block so these bindings win over the handlers PSFzf binds at Import-Module.
-    if (Get-Command -Name fzf -CommandType Application -ErrorAction Ignore) {
+    if (Get-Command -Name fzf -CommandType Application -ErrorAction Ignore)
+    {
         # Ctrl+t / Ctrl+r run BARE `fzf` via pwsh's native pipeline, NOT PSFzf's Invoke-Fzf.
         # PSFzf launches fzf through a redirected-stdout System.Diagnostics.Process from inside
         # a PSReadLine handler; under psmux's ConPTY that desyncs fzf's screen/cursor state
         # (doubled UI, corrupt Ctrl+t input, staircased Tab). Bare fullscreen fzf is unaffected.
-        function global:Format-FzfPickInsertion {
+        function global:Format-FzfPickInsertion
+        {
             [OutputType([string])]
             param([string[]]$Picks)
             # pwsh-quote any pick with whitespace (single-quote, doubling embedded '); join with spaces.
@@ -470,19 +527,22 @@ function Initialize-DeferredProfile {
             }) -join ' '
         }
 
-        function global:Get-FzfDedupedHistory {
+        function global:Get-FzfDedupedHistory
+        {
             [OutputType([string[]])]
             param([string[]]$Lines)
             # File order is oldest-first; walk backwards for newest-first, keep first sight of each.
             $seen = [System.Collections.Generic.HashSet[string]]::new()
             $result = [System.Collections.Generic.List[string]]::new()
-            for ($i = $Lines.Count - 1; $i -ge 0; $i--) {
+            for ($i = $Lines.Count - 1; $i -ge 0; $i--)
+            {
                 if ($seen.Add($Lines[$i])) { $result.Add($Lines[$i]) }
             }
             $result.ToArray()
         }
 
-        function global:Invoke-FzfFilePicker {
+        function global:Invoke-FzfFilePicker
+        {
             # Ctrl+t: bare fullscreen fzf; insert the pick(s) at the cursor. fzf SELF-POPULATES from
             # its own command — we do NOT pipe a producer in (`fd | fzf`): piping into fzf from a
             # PSReadLine handler renders a doubled UI under psmux, whereas letting fzf spawn the
@@ -493,7 +553,8 @@ function Initialize-DeferredProfile {
             [Microsoft.PowerShell.PSConsoleReadLine]::Insert((Format-FzfPickInsertion -Picks @($picks)))
         }
 
-        function global:Invoke-FzfHistoryPicker {
+        function global:Invoke-FzfHistoryPicker
+        {
             # Ctrl+r: bare fullscreen fzf over PSReadLine history; replace the whole line. fzf must
             # OWN the tty for both its list AND its interaction: piping history in (`$entries | fzf`)
             # from a PSReadLine handler leaves fzf with a piped stdin and no interactive terminal, so
@@ -507,15 +568,19 @@ function Initialize-DeferredProfile {
             $historyPath = (Get-PSReadLineOption).HistorySavePath
             # Each file line is treated as one entry; backtick-continued multi-line history
             # entries are a known limitation (handled as separate lines, not stitched).
-            $entries = if ($historyPath -and (Test-Path -LiteralPath $historyPath)) {
+            $entries = if ($historyPath -and (Test-Path -LiteralPath $historyPath))
+            {
                 Get-FzfDedupedHistory -Lines @(Get-Content -LiteralPath $historyPath)
-            } else {
+            }
+            else
+            {
                 @()
             }
             if (-not $entries) { return }   # no history to search
             $tmp = [System.IO.Path]::GetTempFileName()
             $prev = $env:FZF_DEFAULT_COMMAND
-            try {
+            try
+            {
                 Set-Content -LiteralPath $tmp -Value $entries   # newest-first, one entry per line
                 $env:FZF_DEFAULT_COMMAND = "type `"$tmp`""
                 # Literal args, NOT a splat. `$x = if (…) { @('--no-sort') }` returns a single-element
@@ -524,7 +589,9 @@ function Initialize-DeferredProfile {
                 # no UI). Only the empty-buffer branch broke — the 3-element --query branch stays an array.
                 # Omit --query on an empty buffer (the common Ctrl+r case): fzf treats it as no filter anyway.
                 $pick = if ($line) { fzf --no-sort --query $line } else { fzf --no-sort }
-            } finally {
+            }
+            finally
+            {
                 $env:FZF_DEFAULT_COMMAND = $prev
                 Remove-Item -LiteralPath $tmp -ErrorAction Ignore
             }
@@ -532,16 +599,20 @@ function Initialize-DeferredProfile {
             [Microsoft.PowerShell.PSConsoleReadLine]::Replace(0, $line.Length, $pick)
         }
 
-        function global:Invoke-FzfSetLocationPicker {
+        function global:Invoke-FzfSetLocationPicker
+        {
             # Alt+c: bare fullscreen fzf directory picker; cd to the pick. fzf SELF-POPULATES via a
             # temporary FZF_DEFAULT_COMMAND override (the fd dir-walker) — we do NOT pipe (`fd | fzf`),
             # which renders a doubled UI from a PSReadLine handler under psmux (see Invoke-FzfFilePicker).
             # Cancel just redraws (models PSFzf's AltCCommand: Set-Location then InvokePrompt).
             $prev = $env:FZF_DEFAULT_COMMAND
-            try {
+            try
+            {
                 if ($env:FZF_ALT_C_COMMAND) { $env:FZF_DEFAULT_COMMAND = $env:FZF_ALT_C_COMMAND }
                 $pick = fzf
-            } finally {
+            }
+            finally
+            {
                 $env:FZF_DEFAULT_COMMAND = $prev
             }
             if ($pick) { Set-Location $pick }
@@ -565,10 +636,13 @@ function Initialize-DeferredProfile {
         Set-PSReadLineKeyHandler -Chord 'Ctrl+t' -ScriptBlock { Invoke-FzfFilePicker }
         # -ViMode needs EditMode Vi, which Phase 1 sets only on an interactive console. Under any
         # other EditMode PSReadLine throws NullReferenceException, so bind the single table there.
-        if ((Get-PSReadLineOption).EditMode -eq 'Vi') {
+        if ((Get-PSReadLineOption).EditMode -eq 'Vi')
+        {
             Set-PSReadLineKeyHandler -Chord 'Ctrl+r' -ViMode Insert  -BriefDescription FzfHistory -ScriptBlock { Invoke-FzfHistoryPicker }
             Set-PSReadLineKeyHandler -Chord 'Ctrl+r' -ViMode Command -BriefDescription FzfHistory -ScriptBlock { Invoke-FzfHistoryPicker }
-        } else {
+        }
+        else
+        {
             Set-PSReadLineKeyHandler -Chord 'Ctrl+r' -BriefDescription FzfHistory -ScriptBlock { Invoke-FzfHistoryPicker }
         }
         Set-PSReadLineKeyHandler -Chord 'Alt+c' -ScriptBlock { Invoke-FzfSetLocationPicker }
@@ -576,18 +650,20 @@ function Initialize-DeferredProfile {
 
     # fd-backed fzf pickers (moved off Phase 1). Bare fzf and PSFzf read these at
     # invocation, so setting them on first idle is in time for the first picker.
-    if (Get-Command -Name fd -CommandType Application -ErrorAction Ignore) {
+    if (Get-Command -Name fd -CommandType Application -ErrorAction Ignore)
+    {
         # --exclude AppData/node_modules: from ~ the walk is dominated by AppData (100k+ dirs on
         # Windows) and node_modules; excluding them keeps Ctrl+t/Alt+c fast. fd already honours
         # .gitignore, so node_modules inside a repo is skipped anyway — this covers the non-repo case.
         $env:FZF_DEFAULT_COMMAND = 'fd --type f --hidden --exclude .git --exclude node_modules --exclude AppData'
-        $env:FZF_CTRL_T_COMMAND  = $env:FZF_DEFAULT_COMMAND
-        $env:FZF_ALT_C_COMMAND   = 'fd --type d --hidden --exclude .git --exclude node_modules --exclude AppData'
+        $env:FZF_CTRL_T_COMMAND = $env:FZF_DEFAULT_COMMAND
+        $env:FZF_ALT_C_COMMAND = 'fd --type d --hidden --exclude .git --exclude node_modules --exclude AppData'
     }
 
     # eza listing helpers (moved off Phase 1). Defined global: so they reach the
     # session scope — a bare `function ll` here would be local to this function.
-    if (Get-Command -Name eza -CommandType Application -ErrorAction Ignore) {
+    if (Get-Command -Name eza -CommandType Application -ErrorAction Ignore)
+    {
         function global:ll { eza --long --git --icons=auto --group-directories-first @args }
         function global:la { eza --long --git --icons=auto --group-directories-first --all @args }
         function global:lt { eza --tree --level=2 --icons=auto --git-ignore @args }
@@ -599,7 +675,8 @@ function Initialize-DeferredProfile {
 
     # Upgrade prediction source to include Az.Tools.Predictor plugin (~650ms).
     # Gated on the same interactive/VT-capable check as the Phase 1 PSReadLine setup.
-    if ($global:ProfileInteractiveConsole -and $global:ProfileModules['Az.Tools.Predictor']) {
+    if ($global:ProfileInteractiveConsole -and $global:ProfileModules['Az.Tools.Predictor'])
+    {
         Set-PSReadLineOption -PredictionSource HistoryAndPlugin
     }
 
@@ -608,17 +685,20 @@ function Initialize-DeferredProfile {
     # blocks re-wrapping, so the wrapper detaches after `. $PROFILE` and recording
     # silently stops. With --hook none the custom prompt records directories itself
     # (see Set-Prompt.ps1), which survives reloads and keeps $LASTEXITCODE intact.
-    if (Get-Command -Name zoxide -ErrorAction Ignore) {
+    if (Get-Command -Name zoxide -ErrorAction Ignore)
+    {
         Invoke-Expression (& { (zoxide init powershell --hook none | Out-String) })
     }
 }
 
-function Initialize-DeferredProfileSecondary {
+function Initialize-DeferredProfileSecondary
+{
     if ($global:ProfileDeferredSecondaryDone) { return }
     $global:ProfileDeferredSecondaryDone = $true
 
     # Native tab-completers (moved off Phase 1 — only needed once you tab-complete)
-    if (Get-Command -Name az -ErrorAction Ignore) {
+    if (Get-Command -Name az -ErrorAction Ignore)
+    {
         Register-ArgumentCompleter -Native -CommandName az -ScriptBlock {
             param($commandName, $wordToComplete, $cursorPosition)
             $completion_file = New-TemporaryFile
@@ -645,17 +725,20 @@ function Initialize-DeferredProfileSecondary {
         # global: — a bare `function` here would be local to Initialize-DeferredProfileSecondary.
 
         # Parse an Azure DevOps remote URL into org/project/repo; $null when not ADO.
-        function global:ConvertFrom-AdoRemoteUrl {
+        function global:ConvertFrom-AdoRemoteUrl
+        {
             param([string]$Url)
             $patterns =
-                '^https://(?:[^@/]+@)?dev\.azure\.com/([^/]+)/([^/]+)/_git/([^/]+?)/?$',
-                '^git@ssh\.dev\.azure\.com:v3/([^/]+)/([^/]+)/([^/]+?)/?$'
-            foreach ($p in $patterns) {
-                if ($Url -match $p) {
+            '^https://(?:[^@/]+@)?dev\.azure\.com/([^/]+)/([^/]+)/_git/([^/]+?)/?$',
+            '^git@ssh\.dev\.azure\.com:v3/([^/]+)/([^/]+)/([^/]+?)/?$'
+            foreach ($p in $patterns)
+            {
+                if ($Url -match $p)
+                {
                     return [pscustomobject]@{
                         Organization = [uri]::UnescapeDataString($Matches[1])
-                        Project      = [uri]::UnescapeDataString($Matches[2])
-                        Repository   = [uri]::UnescapeDataString($Matches[3])
+                        Project = [uri]::UnescapeDataString($Matches[2])
+                        Repository = [uri]::UnescapeDataString($Matches[3])
                     }
                 }
             }
@@ -663,57 +746,69 @@ function Initialize-DeferredProfileSecondary {
 
         # Bearer token for ADO REST, cached for the session — `az account get-access-token`
         # costs ~2s; the token lives ~1h. 499b84ac-… is the well-known ADO resource id.
-        function global:Get-AdoAccessToken {
-            if ($global:__AdoAccessToken -and $global:__AdoAccessToken.Expires -gt [DateTimeOffset]::UtcNow.AddMinutes(5)) {
+        function global:Get-AdoAccessToken
+        {
+            if ($global:__AdoAccessToken -and $global:__AdoAccessToken.Expires -gt [DateTimeOffset]::UtcNow.AddMinutes(5))
+            {
                 return $global:__AdoAccessToken.Token
             }
             $raw = az account get-access-token --resource 499b84ac-1321-427f-aa17-267ca6975798 --output json
-            if ($LASTEXITCODE -ne 0) {
+            if ($LASTEXITCODE -ne 0)
+            {
                 Write-Error "Get-AdoAccessToken: 'az account get-access-token' failed (exit $LASTEXITCODE) — is az logged in?"
                 return
             }
             $tok = $raw | ConvertFrom-Json
             # expires_on (unix epoch) on current az; expiresOn (local time) is the legacy field.
             $expires = if ($tok.expires_on) { [DateTimeOffset]::FromUnixTimeSeconds([long]$tok.expires_on) }
-                       else { [DateTimeOffset](Get-Date $tok.expiresOn) }
+            else { [DateTimeOffset](Get-Date $tok.expiresOn) }
             $global:__AdoAccessToken = @{ Token = $tok.accessToken; Expires = $expires }
             $global:__AdoAccessToken.Token
         }
 
-        function global:Invoke-AdoPrReview {
+        function global:Invoke-AdoPrReview
+        {
             param([int]$Id)
 
             $commonDir = git rev-parse --path-format=absolute --git-common-dir 2>$null
-            if (-not $commonDir) {
+            if (-not $commonDir)
+            {
                 Write-Error 'Invoke-AdoPrReview: not inside a git repository'
                 return
             }
             # The review worktree lives beside .bare (bare-worktree layout) — never review in main.
-            if ((Split-Path $commonDir -Leaf) -ne '.bare') {
+            if ((Split-Path $commonDir -Leaf) -ne '.bare')
+            {
                 Write-Error "Invoke-AdoPrReview: needs the bare-worktree layout (git common dir is '$commonDir', expected a '.bare')"
                 return
             }
 
-            if (-not $Id) {
+            if (-not $Id)
+            {
                 $remote = git remote get-url origin 2>$null
                 $repoInfo = ConvertFrom-AdoRemoteUrl -Url $remote
-                if (-not $repoInfo) {
+                if (-not $repoInfo)
+                {
                     Write-Error "Invoke-AdoPrReview: origin remote '$remote' is not an Azure DevOps remote"
                     return
                 }
                 $token = Get-AdoAccessToken
                 if (-not $token) { return }
                 $uri = 'https://dev.azure.com/{0}/{1}/_apis/git/repositories/{2}/pullrequests?searchCriteria.status=active&api-version=7.1' -f
-                    $repoInfo.Organization,
-                    [uri]::EscapeDataString($repoInfo.Project),
-                    [uri]::EscapeDataString($repoInfo.Repository)
-                try {
+                $repoInfo.Organization,
+                [uri]::EscapeDataString($repoInfo.Project),
+                [uri]::EscapeDataString($repoInfo.Repository)
+                try
+                {
                     $prs = (Invoke-RestMethod -Uri $uri -Headers @{ Authorization = "Bearer $token" } -ErrorAction Stop).value
-                } catch {
+                }
+                catch
+                {
                     Write-Error "Invoke-AdoPrReview: PR list request failed for '$uri': $($_.Exception.Message)"
                     return
                 }
-                if (-not $prs) {
+                if (-not $prs)
+                {
                     Write-Host "no active PRs in $($repoInfo.Repository)"
                     return
                 }
@@ -725,14 +820,17 @@ function Initialize-DeferredProfileSecondary {
             }
 
             $reviewDir = Join-Path (Split-Path $commonDir) 'review'
-            if (-not (Test-Path $reviewDir)) {
+            if (-not (Test-Path $reviewDir))
+            {
                 git worktree add --detach $reviewDir
-                if ($LASTEXITCODE -ne 0) {
+                if ($LASTEXITCODE -ne 0)
+                {
                     Write-Error "Invoke-AdoPrReview: 'git worktree add --detach $reviewDir' failed (exit $LASTEXITCODE)"
                     return
                 }
             }
-            if (git -C $reviewDir status --porcelain) {
+            if (git -C $reviewDir status --porcelain)
+            {
                 Write-Error "Invoke-AdoPrReview: review worktree '$reviewDir' is dirty — clean it before checking out a PR"
                 return
             }
@@ -741,12 +839,14 @@ function Initialize-DeferredProfileSecondary {
         }
         Set-Alias -Name prr -Value Invoke-AdoPrReview -Scope Global
     }
-    if (Get-Command -Name zellij -ErrorAction Ignore) {
+    if (Get-Command -Name zellij -ErrorAction Ignore)
+    {
         Register-ArgumentCompleter -Native -CommandName zellij -ScriptBlock {
             param($wordToComplete, $commandAst, $cursorPosition)
             $sessionCmds = 'attach', 'a', 'kill-session', 'k', 'delete-session', 'd'
             $elements = $commandAst.CommandElements
-            if ($elements.Count -ge 2 -and $elements[1].Value -in $sessionCmds) {
+            if ($elements.Count -ge 2 -and $elements[1].Value -in $sessionCmds)
+            {
                 zellij list-sessions --no-formatting 2>$null |
                     ForEach-Object { ($_ -split '\s+')[0] } |
                     Where-Object { $_ -like "$wordToComplete*" } |
@@ -759,19 +859,22 @@ function Initialize-DeferredProfileSecondary {
 
     # psmux (native-Windows tmux) — fzf session pickers + name completion. psmux aliases as
     # psmux/pmux/tmux; only wire this up when it is actually installed.
-    if (Get-Command -Name psmux -ErrorAction Ignore) {
+    if (Get-Command -Name psmux -ErrorAction Ignore)
+    {
         # global: — a bare `function` here would be local to Initialize-DeferredProfileSecondary.
         function global:Get-PsmuxSession { psmux list-sessions -F '#{session_name}' 2>$null }
 
         # Attach to an fzf-picked session — switch-client if already inside psmux (attach can't nest).
-        function global:Enter-PsmuxSession {
+        function global:Enter-PsmuxSession
+        {
             $target = Get-PsmuxSession | fzf --prompt 'psmux attach> ' --height 40% --reverse
             if (-not $target) { return }
             if ($env:PSMUX_TARGET_SESSION) { psmux switch-client -t $target } else { psmux attach -t $target }
         }
 
         # Kill one or more fzf-picked sessions (multi-select with Tab).
-        function global:Remove-PsmuxSession {
+        function global:Remove-PsmuxSession
+        {
             Get-PsmuxSession | fzf --prompt 'psmux kill> ' --height 40% --reverse --multi |
                 ForEach-Object { psmux kill-session -t $_ }
         }
@@ -781,7 +884,8 @@ function Initialize-DeferredProfileSecondary {
             $elements = $commandAst.CommandElements
             # Completing the subcommand itself (`psmux <TAB>` / `psmux a<TAB>`): offer command
             # names + aliases from list-commands (works without a running server).
-            if ($elements.Count -eq 1 -or ($elements.Count -eq 2 -and $wordToComplete)) {
+            if ($elements.Count -eq 1 -or ($elements.Count -eq 2 -and $wordToComplete))
+            {
                 psmux list-commands 2>$null |
                     ForEach-Object { if ($_ -match '^\s+(\S+)(?:\s+\(([^)]+)\))?') { $Matches[1]; if ($Matches[2]) { $Matches[2] } } } |
                     Where-Object { $_ -like "$wordToComplete*" } |
@@ -791,7 +895,8 @@ function Initialize-DeferredProfileSecondary {
             }
             # Completing an argument after a session-targeting subcommand: offer session names.
             $sessionCmds = 'attach', 'attach-session', 'a', 'kill-session', 'switch-client', 'switchc', 'has-session'
-            if ($elements[1].Value -in $sessionCmds) {
+            if ($elements[1].Value -in $sessionCmds)
+            {
                 psmux list-sessions -F '#{session_name}' 2>$null |
                     Where-Object { $_ -like "$wordToComplete*" } |
                     ForEach-Object {
@@ -802,13 +907,15 @@ function Initialize-DeferredProfileSecondary {
     }
 
     # git-completion
-    if ($global:ProfileModules['git-completion']) {
+    if ($global:ProfileModules['git-completion'])
+    {
         Import-Module git-completion
         Register-ArgumentCompleter -Native -CommandName g -ScriptBlock ${Function:Complete-Git}
     }
 
     # WinGet CommandNotFound (~1.4s — .NET assembly loading)
-    if ($global:ProfileModules['Microsoft.WinGet.CommandNotFound']) {
+    if ($global:ProfileModules['Microsoft.WinGet.CommandNotFound'])
+    {
         Import-Module -Name Microsoft.WinGet.CommandNotFound
     }
 }
@@ -822,11 +929,16 @@ Get-EventSubscriber -ErrorAction SilentlyContinue |
     Where-Object { $_.SourceIdentifier -eq 'PowerShell.OnIdle' -and $_.Action.Command -match 'DeferredProfile' } |
     Unregister-Event
 Register-EngineEvent -SourceIdentifier PowerShell.OnIdle -Action {
-    if (-not $global:ProfileDeferredDone) {
+    if (-not $global:ProfileDeferredDone)
+    {
         Initialize-DeferredProfile
-    } elseif (-not $global:ProfileDeferredSecondaryDone) {
+    }
+    elseif (-not $global:ProfileDeferredSecondaryDone)
+    {
         Initialize-DeferredProfileSecondary
-    } else {
+    }
+    else
+    {
         # Both phases done — OnIdle fires ~2x/sec forever otherwise, running this
         # no-op indefinitely. Self-unregister once there is nothing left to do.
         # $EventSubscriber is the automatic var for the currently-firing subscriber;

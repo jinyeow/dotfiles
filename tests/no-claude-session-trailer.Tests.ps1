@@ -23,7 +23,7 @@
 
 . (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
 $script:HasBash = [bool](Resolve-TestBash) -and
-    [bool](Get-Command jq -ErrorAction SilentlyContinue)
+[bool](Get-Command jq -ErrorAction SilentlyContinue)
 
 BeforeAll {
     . (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
@@ -50,7 +50,8 @@ BeforeAll {
 
     # Throwaway git repos to drive the `git remote get-url origin` scoping check, mirroring
     # tests/git-templates-ai-reference-hook.Tests.ps1's New-TestRepo helper.
-    function New-TestRepo {
+    function New-TestRepo
+    {
         param([string] $OriginUrl, [string] $NameHint = '')
         $suffix = if ($NameHint) { "$NameHint-$([guid]::NewGuid())" } else { [guid]::NewGuid() }
         $root = Join-Path ([System.IO.Path]::GetTempPath()) ('no-claude-trailer-' + $suffix)
@@ -58,7 +59,8 @@ BeforeAll {
         & git -C $root init -q . 2>&1 | Out-Null
         & git -C $root config user.email 'test@example.invalid' 2>&1 | Out-Null
         & git -C $root config user.name 'Test' 2>&1 | Out-Null
-        if ($OriginUrl) {
+        if ($OriginUrl)
+        {
             & git -C $root remote add origin $OriginUrl 2>&1 | Out-Null
         }
         return $root
@@ -74,7 +76,8 @@ BeforeAll {
     # Drive the bash hook with a command string wrapped as the tool-call JSON on stdin, from
     # inside the given repo (default: the Hollard-remote repo, so scoped-in behaviour is the
     # default for the existing deny-focused tests).
-    function Invoke-Hook {
+    function Invoke-Hook
+    {
         param(
             [string] $Command,
             [string] $HookPath = $script:Hook,
@@ -82,17 +85,22 @@ BeforeAll {
         )
         $json = @{ tool_input = @{ command = $Command } } | ConvertTo-Json -Compress
         Push-Location $RepoDir
-        try {
+        try
+        {
             return ($json | & $script:TestBash $HookPath 2>&1 | Out-String)
-        } finally {
+        }
+        finally
+        {
             Pop-Location
         }
     }
 }
 
 AfterAll {
-    foreach ($dir in @($script:InstalledDir, $script:NoWordlistDir, $script:HollardRepo, $script:GitHubRepo, $script:NoOriginRepo, $script:HollardRepoWithSpace)) {
-        if ($dir -and (Test-Path -LiteralPath $dir)) {
+    foreach ($dir in @($script:InstalledDir, $script:NoWordlistDir, $script:HollardRepo, $script:GitHubRepo, $script:NoOriginRepo, $script:HollardRepoWithSpace))
+    {
+        if ($dir -and (Test-Path -LiteralPath $dir))
+        {
             Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue
         }
     }

@@ -26,9 +26,9 @@ $png = Join-Path $root '.font-liga-test.png'
 $u = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'
 
 $specs = @(
-  @{ Alias = 'commit'; Label = 'Commit Mono';   Reg = 'CommitMonoNerdFontMono-Regular.otf' }
-  @{ Alias = 'jb';     Label = 'JetBrains Mono'; Reg = 'JetBrainsMonoNerdFontMono-Regular.ttf' }
-  @{ Alias = 'ox';     Label = '0xProto';        Reg = '0xProtoNerdFontMono-Regular.ttf' }
+    @{ Alias = 'commit'; Label = 'Commit Mono';   Reg = 'CommitMonoNerdFontMono-Regular.otf' }
+    @{ Alias = 'jb';     Label = 'JetBrains Mono'; Reg = 'JetBrainsMonoNerdFontMono-Regular.ttf' }
+    @{ Alias = 'ox';     Label = '0xProto';        Reg = '0xProtoNerdFontMono-Regular.ttf' }
 )
 
 $lines = @'
@@ -48,25 +48,27 @@ $charsFile = Join-Path $tmp 'chars.txt'
 Set-Content -Path $charsFile -Value $lines -Encoding utf8
 
 $face = ''
-foreach ($s in $specs) {
-  $regP = Join-Path $u $s.Reg
-  if (-not (Test-Path $regP)) { Write-Warning "missing: $regP"; continue }
-  $out = Join-Path $tmp "$($s.Alias).woff2"
-  & python -m fontTools.subset $regP "--text-file=$charsFile" "--output-file=$out" --flavor=woff2 2>&1 | Out-Null
-  $b64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($out))
-  $face += "@font-face{font-family:'$($s.Alias)';src:url('data:font/woff2;base64,$b64') format('woff2');}`n"
+foreach ($s in $specs)
+{
+    $regP = Join-Path $u $s.Reg
+    if (-not (Test-Path $regP)) { Write-Warning "missing: $regP"; continue }
+    $out = Join-Path $tmp "$($s.Alias).woff2"
+    & python -m fontTools.subset $regP "--text-file=$charsFile" "--output-file=$out" --flavor=woff2 2>&1 | Out-Null
+    $b64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($out))
+    $face += "@font-face{font-family:'$($s.Alias)';src:url('data:font/woff2;base64,$b64') format('woff2');}`n"
 }
 Remove-Item $tmp -Recurse -Force
 
 function Enc([string]$s) { $s -replace '&', '&amp;' -replace '<', '&lt;' -replace '>', '&gt;' }
 
 $cards = ''
-foreach ($s in $specs) {
-  $cards += "<section><h2>$($s.Label)</h2>`n"
-  $cards += "<pre class=lig style=`"font-family:'$($s.Alias)',monospace`">$(Enc $lines)</pre>`n"
-  $cards += "<div class=note>ligatures ON (calt+liga)</div>`n"
-  $cards += "<pre class=raw style=`"font-family:'$($s.Alias)',monospace`">$(Enc $lines)</pre>`n"
-  $cards += "<div class=note>ligatures OFF (raw glyphs)</div></section>`n"
+foreach ($s in $specs)
+{
+    $cards += "<section><h2>$($s.Label)</h2>`n"
+    $cards += "<pre class=lig style=`"font-family:'$($s.Alias)',monospace`">$(Enc $lines)</pre>`n"
+    $cards += "<div class=note>ligatures ON (calt+liga)</div>`n"
+    $cards += "<pre class=raw style=`"font-family:'$($s.Alias)',monospace`">$(Enc $lines)</pre>`n"
+    $cards += "<div class=note>ligatures OFF (raw glyphs)</div></section>`n"
 }
 
 $doc = @"
@@ -94,11 +96,12 @@ Set-Content -Path $html -Value $doc -Encoding utf8
 Write-Host "wrote $html"
 
 $edge = @('C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe', 'C:\Program Files\Microsoft\Edge\Application\msedge.exe') |
-  Where-Object { Test-Path $_ } | Select-Object -First 1
-if ($edge) {
-  $uri = ([Uri]$html).AbsoluteUri
-  if (Test-Path $png) { Remove-Item $png -Force }
-  & $edge '--headless=new' '--disable-gpu' '--hide-scrollbars' '--force-device-scale-factor=2' "--screenshot=$png" '--window-size=1500,900' $uri 2>$null
-  Write-Host "screenshot $png"
+    Where-Object { Test-Path $_ } | Select-Object -First 1
+if ($edge)
+{
+    $uri = ([Uri]$html).AbsoluteUri
+    if (Test-Path $png) { Remove-Item $png -Force }
+    & $edge '--headless=new' '--disable-gpu' '--hide-scrollbars' '--force-device-scale-factor=2' "--screenshot=$png" '--window-size=1500,900' $uri 2>$null
+    Write-Host "screenshot $png"
 }
 Write-Host 'DONE'

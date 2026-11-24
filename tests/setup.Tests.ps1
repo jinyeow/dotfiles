@@ -35,13 +35,16 @@ Describe 'setup.ps1 Claude bootstrap boundary' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-bootstrap-dryrun-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match '(Claude Code CLI is already installed|\[DRY RUN\] would install Claude Code CLI via)'
             Test-Path (Join-Path $tmpHome '.claude') | Should -BeFalse
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -66,13 +69,16 @@ Describe 'setup.ps1 Codex bootstrap boundary' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-bootstrap-dryrun-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module codex -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match '(codex is already installed|\[DRY RUN\] would install Codex CLI via)'
             Test-Path (Join-Path $tmpHome '.codex') | Should -BeFalse
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -95,14 +101,17 @@ Describe 'setup.ps1 Codex MCP registration gating' {
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
         $origPath = $env:PATH
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $env:PATH = "$script:ShimDir$([IO.Path]::PathSeparator)$origPath"
             $output = & pwsh -NoProfile -File $script:SetupScript -Module codex -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match 'Claude settings file not found — skipping MCP registration'
             $output | Should -Not -Match 'would register user-scope MCP: claude mcp add --scope user codex'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             $env:PATH = $origPath
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
@@ -116,13 +125,16 @@ Describe 'setup.ps1 Codex MCP registration gating' {
         Set-Content -Path (Join-Path $claudeDir 'settings.json') -Value '{}'
         $origUP = $env:USERPROFILE
         $origPath = $env:PATH
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $env:PATH = "$script:ShimDir$([IO.Path]::PathSeparator)$origPath"
             $output = & pwsh -NoProfile -File $script:SetupScript -Module codex -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match '\[DRY RUN\] would register user-scope MCP: claude mcp add --scope user codex'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             $env:PATH = $origPath
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
@@ -137,13 +149,16 @@ Describe 'setup.ps1 Codex MCP registration gating' {
         # Resolve pwsh before stripping PATH down to a minimal set without claude on it — the
         # child-process launch below still needs to find pwsh.exe by full path.
         $pwshPath = (Get-Command pwsh).Source
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $env:PATH = Join-Path $env:SystemRoot 'System32'
             $output = & $pwshPath -NoProfile -File $script:SetupScript -Module codex -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match 'claude CLI not found — skipping MCP registration'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             $env:PATH = $origPath
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
@@ -168,13 +183,16 @@ Describe 'Resolve-CodexGuardrailBash' -Skip:(-not $IsWindows) {
         $fakeBash = Join-Path $binDir 'bash.exe'
         Set-Content -Path $fakeGit -Value 'stub'
         Set-Content -Path $fakeBash -Value 'stub'
-        try {
+        try
+        {
             Mock Get-Command { [pscustomobject]@{ Source = $fakeGit } } -ParameterFilter { $Name -eq 'git' }
             $result = Resolve-CodexGuardrailBash
             $result | Should -Not -BeNullOrEmpty
             $result | Should -Match '(?i)bin[\\/]bash\.exe$'
             $result | Should -Not -Match '(?i)System32|WindowsApps'
-        } finally {
+        }
+        finally
+        {
             Remove-Item -Path $gitRoot -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
@@ -185,12 +203,15 @@ Describe 'Resolve-CodexGuardrailBash' -Skip:(-not $IsWindows) {
         $origPF = $env:ProgramFiles
         $origPFx86 = ${env:ProgramFiles(x86)}
         $origLAD = $env:LocalAppData
-        try {
+        try
+        {
             $env:ProgramFiles = $fakeProgramFiles
             ${env:ProgramFiles(x86)} = $fakeProgramFiles
             $env:LocalAppData = $fakeProgramFiles
             Resolve-CodexGuardrailBash | Should -BeNullOrEmpty
-        } finally {
+        }
+        finally
+        {
             $env:ProgramFiles = $origPF
             ${env:ProgramFiles(x86)} = $origPFx86
             $env:LocalAppData = $origLAD
@@ -221,7 +242,8 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-bash-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             Install-Codex *>$null
             $hooksPath = Join-Path $tmpHome '.codex\hooks.json'
@@ -231,7 +253,9 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
             $command | Should -Match '(?i)"[^"]*[\\/]bin[\\/]bash\.exe"'
             $command | Should -Not -Match '(?i)System32|WindowsApps'
             $command | Should -Match '(?i)"[^"]*block-dangerous-git\.sh"'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -244,7 +268,8 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-bash-airef-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             Install-Codex *>$null
             $hooksPath = Join-Path $tmpHome '.codex\hooks.json'
@@ -256,7 +281,9 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
             $airefCommand | Should -Not -Match '(?i)block-dangerous-git\.sh'
             $dangerousGitCommand = ($entries | Where-Object { $_.hooks[0].command -match 'block-dangerous-git\.sh' }).hooks[0].command
             $dangerousGitCommand | Should -Not -Match '(?i)ai-reference-guard\.sh'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -269,7 +296,8 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-nobash-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             Mock Resolve-CodexGuardrailBash { $null }
             $output = Install-Codex *>&1 | Out-String
@@ -279,7 +307,9 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
             # The "Merged:" summary line must not claim hooks.PreToolUse was merged when the
             # guardrail merge was actually skipped for lack of a resolvable bash.
             ($output -split "`n" | Where-Object { $_ -match 'Merged:.*hooks\.json' }) | Should -Not -Match 'hooks\.PreToolUse'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -303,7 +333,8 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
         }
         ($foreign | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath (Join-Path $codexDir 'hooks.json')
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             Install-Codex *>$null
             $hooks = Get-Content -LiteralPath (Join-Path $codexDir 'hooks.json') -Raw | ConvertFrom-Json
@@ -312,7 +343,9 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
             ($entries | Where-Object { $_.matcher -eq 'Edit' }).hooks[0].command | Should -Be 'some-other-tool --check'
             ($entries | Where-Object { $_.hooks[0].command -match 'block-dangerous-git\.sh' }) | Should -Not -BeNullOrEmpty
             ($entries | Where-Object { $_.hooks[0].command -match 'ai-reference-guard\.sh' }) | Should -Not -BeNullOrEmpty
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -345,7 +378,8 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
         }
         ($mixed | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath (Join-Path $codexDir 'hooks.json')
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             Install-Codex *>$null
             $hooks = Get-Content -LiteralPath (Join-Path $codexDir 'hooks.json') -Raw | ConvertFrom-Json
@@ -354,7 +388,9 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
             $allCommands | Should -Contain 'another-foreign-tool --scan'
             ($allCommands | Where-Object { $_ -match 'block-dangerous-git\.sh' }) | Should -Not -BeNullOrEmpty
             ($allCommands | Where-Object { $_ -match 'ai-reference-guard\.sh' }) | Should -Not -BeNullOrEmpty
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -378,7 +414,8 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
         }
         ($herdr | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath (Join-Path $codexDir 'hooks.json')
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             Install-Codex *>$null
             $hooks = Get-Content -LiteralPath (Join-Path $codexDir 'hooks.json') -Raw | ConvertFrom-Json
@@ -390,7 +427,9 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
             $ours.hooks[0].command | Should -Match '(?i)"[^"]*project-brain[\\/]scripts[\\/]session-start\.ps1"'
             $ours.hooks[0].command | Should -Not -Match '~'
             ($hooks.hooks.PreToolUse | Where-Object { $_.hooks[0].command -match 'block-dangerous-git\.sh' }) | Should -Not -BeNullOrEmpty
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -417,13 +456,16 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
         }
         ($mixed | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath (Join-Path $codexDir 'hooks.json')
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             Install-Codex *>$null
             $hooks = Get-Content -LiteralPath (Join-Path $codexDir 'hooks.json') -Raw | ConvertFrom-Json
             $allCommands = @($hooks.hooks.SessionStart | ForEach-Object { $_.hooks } | ForEach-Object { $_.command })
             $allCommands | Should -Contain 'herdr integration notify'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -433,7 +475,8 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-sessionstart-rerun-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             Install-Codex *>$null
             Install-Codex *>$null
@@ -442,7 +485,9 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
             $entries = @($hooks.hooks.SessionStart)
             $entries.Count | Should -Be 1
             $entries[0].hooks[0].command | Should -Match 'session-start\.ps1'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -454,7 +499,8 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-nobash-sessionstart-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             Mock Resolve-CodexGuardrailBash { $null }
             Install-Codex *>$null
@@ -463,7 +509,9 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
             $hooks = Get-Content -LiteralPath $hooksPath -Raw | ConvertFrom-Json
             $hooks.hooks.SessionStart[0].hooks[0].command | Should -Match 'session-start\.ps1'
             $hooks.hooks.PSObject.Properties.Name | Should -Not -Contain 'PreToolUse'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -478,7 +526,8 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
         $repoRoot = Split-Path $script:SetupScript -Parent
         $bannedTermsSource = Join-Path $repoRoot 'ai-agents\_shared\banned-ai-terms.txt'
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             Mock Test-Path -ParameterFilter { $LiteralPath -eq $bannedTermsSource } { $false }
             $output = Install-Codex *>&1 | Out-String
@@ -488,7 +537,9 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
             $entries = @($hooks.hooks.PreToolUse)
             ($entries | Where-Object { $_.hooks[0].command -match 'block-dangerous-git\.sh' }) | Should -Not -BeNullOrEmpty
             ($entries | Where-Object { $_.hooks[0].command -match 'ai-reference-guard\.sh' }) | Should -BeNullOrEmpty
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -519,7 +570,8 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
         }
         ($foreign | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath (Join-Path $codexDir 'hooks.json')
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             Mock Resolve-CodexGuardrailBash { $null }
             Install-Codex *>$null
@@ -530,7 +582,9 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
             $sessionStart = @($hooks.hooks.SessionStart)
             ($sessionStart | Where-Object { $_.hooks[0].command -eq 'herdr integration notify' }) | Should -Not -BeNullOrEmpty
             ($sessionStart | Where-Object { $_.hooks[0].command -match 'session-start\.ps1' }) | Should -Not -BeNullOrEmpty
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -556,7 +610,8 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
         $repoRoot = Split-Path $script:SetupScript -Parent
         $sessionStartSource = Join-Path $repoRoot 'ai-agents\skills\project-brain\scripts\session-start.ps1'
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             Mock Test-Path -ParameterFilter { $LiteralPath -eq $sessionStartSource } { $false }
             $output = Install-Codex *>&1 | Out-String
@@ -565,7 +620,9 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
             $entries = @($hooks.hooks.SessionStart)
             $entries.Count | Should -Be 1
             $entries[0].hooks[0].command | Should -Be 'herdr integration notify'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -575,7 +632,8 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-rerun-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             Install-Codex *>$null
             Install-Codex *>$null
@@ -585,7 +643,9 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
             $entries.Count | Should -Be 2
             ($entries | Where-Object { $_.hooks[0].command -match 'block-dangerous-git\.sh' }) | Should -Not -BeNullOrEmpty
             ($entries | Where-Object { $_.hooks[0].command -match 'ai-reference-guard\.sh' }) | Should -Not -BeNullOrEmpty
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -599,14 +659,17 @@ Describe 'setup.ps1 pi module' {
         New-Item -ItemType Directory -Path (Split-Path $skills -Parent) -Force | Out-Null
         Set-Content -LiteralPath $skills -Value 'user-owned'
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module pi -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match 'Pi skills destination is unmanaged and is not a directory'
             $output | Should -Not -Match '\.pi[\\/]agent[\\/](settings\.json|extensions|prompts|themes)'
             Get-Content -LiteralPath $skills | Should -Be 'user-owned'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -616,19 +679,23 @@ Describe 'setup.ps1 pi module' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-pi-dryrun-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module pi -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match '=== Pi ==='
             $output | Should -Match '(would install Pi via npm|pi is already installed)'
             $output | Should -Match 'pi[\\/]agent[\\/]settings\.json'
-            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc', 'codex-review')) {
+            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc', 'codex-review'))
+            {
                 $output | Should -Match "pi[\\/]agent[\\/]skills[\\/]$name -> .*ai-agents[\\/]skills[\\/]$name"
             }
             Test-Path (Join-Path $tmpHome '.pi') | Should -BeFalse
             $output | Should -Not -Match "Unknown module 'pi'"
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -648,14 +715,17 @@ Describe 'setup.ps1 pi module' {
         New-Item -ItemType Directory -Path $claudeOnlySkill, $piSkills -Force | Out-Null
         $link = Join-Path $piSkills 'legacy-only'
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             New-Item -ItemType Junction -Path $link -Target $claudeOnlySkill -ErrorAction Stop | Out-Null
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module pi -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Not -Match 'remove obsolete Pi skill junction.*legacy-only'
             Test-Path -LiteralPath $link | Should -BeTrue
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
             Remove-Item -Path $claudeOnlySkill -Recurse -Force -ErrorAction SilentlyContinue
@@ -670,12 +740,15 @@ Describe 'setup.ps1 Claude skill projection safety' {
         $link = Join-Path $tmpHome '.claude\skills\council'
         New-Item -ItemType Directory -Path $link -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
             $output | Should -Match 'Preserved unmanaged Claude skill: .*\.claude[\\/]skills[\\/]council'
             $output | Should -Not -Match '\[DRY RUN\] junction .*\.claude[\\/]skills[\\/]council ->'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -685,7 +758,8 @@ Describe 'setup.ps1 Claude skill projection safety' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-layout-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
@@ -700,7 +774,9 @@ Describe 'setup.ps1 Claude skill projection safety' {
             $output | Should -Match '\.claude\\skills\\deep-review -> .*ai-agents\\skills\\deep-review'
             $output | Should -Match '\.claude\\skills\\review-fix-loop -> .*ai-agents\\skills\\review-fix-loop'
             $output | Should -Match '\.claude\\skills\\fix-findings -> .*ai-agents\\skills\\fix-findings'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -713,12 +789,15 @@ Describe 'setup.ps1 Claude skill projection safety' {
         New-Item -ItemType Directory -Path $foreign, (Split-Path $link -Parent) -Force | Out-Null
         New-Item -ItemType Junction -Path $link -Target $foreign | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
             $output | Should -Match 'Preserved unmanaged Claude skill link: .*\.claude\\skills\\council'
             $output | Should -Not -Match '\[DRY RUN\] junction .*\.claude\\skills\\council ->'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -738,12 +817,15 @@ Describe 'setup.ps1 Claude skill projection safety' {
         New-Item -ItemType Junction -Path $link -Target $foreign | Out-Null
         Remove-Item -LiteralPath $foreignParent -Recurse -Force
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
             $output | Should -Match 'Preserved unmanaged Claude skill link \(target missing\): .*\.claude\\skills\\council'
             $output | Should -Not -Match '\[DRY RUN\] junction .*\.claude\\skills\\council ->'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -760,14 +842,17 @@ Describe 'setup.ps1 Claude skill projection safety' {
         $link = Join-Path $tmpHome '.claude\skills\council'
         New-Item -ItemType Directory -Path $oldSkill, (Split-Path $link -Parent) -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             New-Item -ItemType Junction -Path $link -Target $oldSkill -ErrorAction Stop | Out-Null
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Not -Match 'Preserved unmanaged Claude skill link: .*\.claude\\skills\\council'
             $output | Should -Match '\[DRY RUN\] junction .*\.claude\\skills\\council -> .*ai-agents\\skills\\council'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
             Remove-Item -Path $oldSource -Recurse -Force -ErrorAction SilentlyContinue
@@ -782,7 +867,8 @@ Describe 'setup.ps1 Claude skill projection safety' {
         $link = Join-Path $tmpHome '.claude\skills\council'
         New-Item -ItemType Directory -Path (Split-Path $link -Parent) -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             New-Item -ItemType Junction -Path $link -Target (Join-Path $repoRoot 'ai-agents\skills\council') -ErrorAction Stop | Out-Null
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
@@ -790,7 +876,9 @@ Describe 'setup.ps1 Claude skill projection safety' {
             $output | Should -Match 'Junction:\s+.*\.claude\\skills\\council \(already current\)'
             $output | Should -Not -Match '\[DRY RUN\] junction .*\.claude\\skills\\council ->'
             $output | Should -Not -Match 'Preserved unmanaged Claude skill'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -805,14 +893,17 @@ Describe 'setup.ps1 Claude skill projection safety' {
         New-Item -ItemType Directory -Path $oldSkill, $claudeSkills, (Join-Path $claudeSkills 'unmanaged') -Force | Out-Null
         $oldLink = Join-Path $claudeSkills 'legacy-only'
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             New-Item -ItemType Junction -Path $oldLink -Target $oldSkill -ErrorAction Stop | Out-Null
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match 'remove obsolete Claude skill junction.*legacy-only'
             $output | Should -Not -Match 'remove obsolete Claude skill junction.*unmanaged'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
             Remove-Item -Path $oldSource -Recurse -Force -ErrorAction SilentlyContinue
@@ -833,14 +924,17 @@ Describe 'setup.ps1 Claude skill projection safety' {
         New-Item -ItemType Directory -Path $codexOnlySkill, $claudeSkills -Force | Out-Null
         $link = Join-Path $claudeSkills 'legacy-only'
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             New-Item -ItemType Junction -Path $link -Target $codexOnlySkill -ErrorAction Stop | Out-Null
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Not -Match 'remove obsolete Claude skill junction.*legacy-only'
             Test-Path -LiteralPath $link | Should -BeTrue
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
             Remove-Item -Path $codexOnlySkill -Recurse -Force -ErrorAction SilentlyContinue
@@ -861,14 +955,17 @@ Describe 'setup.ps1 Claude skill projection safety' {
         New-Item -ItemType Directory -Path $siblingSkill, $claudeSkills -Force | Out-Null
         $link = Join-Path $claudeSkills 'legacy-only'
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             New-Item -ItemType Junction -Path $link -Target $siblingSkill -ErrorAction Stop | Out-Null
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Not -Match 'remove obsolete Claude skill junction.*legacy-only'
             Test-Path -LiteralPath $link | Should -BeTrue
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
             Remove-Item -Path $siblingSkill -Recurse -Force -ErrorAction SilentlyContinue
@@ -891,13 +988,16 @@ Describe 'setup.ps1 Claude agent directory migration' {
         New-Item -ItemType Directory -Path $agents -Force | Out-Null
         Set-Content -LiteralPath (Join-Path $agents 'custom.md') -Value 'user-owned'
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match 'Preserved unmanaged directory: .*[\\/]\.claude[\\/]agents'
             Get-Content -LiteralPath (Join-Path $agents 'custom.md') | Should -Be 'user-owned'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -910,12 +1010,15 @@ Describe 'setup.ps1 Claude agent directory migration' {
         New-Item -ItemType Directory -Path $foreign, (Split-Path $link -Parent) -Force | Out-Null
         New-Item -ItemType Junction -Path $link -Target $foreign | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
             $output | Should -Match 'Preserved unmanaged directory link: .*\\.claude[\\/]agents'
             $output | Should -Not -Match '\[DRY RUN\] junction .*\\.claude[\\/]agents ->'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -927,13 +1030,16 @@ Describe 'setup.ps1 Claude agent directory migration' {
         $historical = Join-Path (Split-Path $script:SetupScript -Parent) 'ai-agents\\shared\\agents'
         New-Item -ItemType Directory -Path (Split-Path $link -Parent) -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             New-Item -ItemType SymbolicLink -Path $link -Target $historical -ErrorAction Stop | Out-Null
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
             $output | Should -Match '\[DRY RUN\] junction .*\\.claude[\\/]agents -> .*ai-agents[\\/]agents'
             $output | Should -Not -Match 'Preserved unmanaged directory link'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -956,14 +1062,17 @@ Describe 'setup.ps1 Claude agent directory migration' {
         $original = Join-Path $originalParent 'agents'
         New-Item -ItemType Directory -Path $original, (Split-Path $link -Parent) -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             New-Item -ItemType Junction -Path $link -Target $original -ErrorAction Stop | Out-Null
             Remove-Item -LiteralPath $original -Recurse -Force
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
             $output | Should -Match '\[DRY RUN\] junction .*\\.claude[\\/]agents -> .*ai-agents[\\/]agents'
             $output | Should -Not -Match 'Preserved unmanaged directory link'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
             Remove-Item -Path $original -Recurse -Force -ErrorAction SilentlyContinue
@@ -983,12 +1092,15 @@ Describe 'setup.ps1 Claude agent directory migration' {
         New-Item -ItemType Junction -Path $link -Target $foreign | Out-Null
         Remove-Item -LiteralPath $foreignParent -Recurse -Force
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
             $output | Should -Match 'Preserved unmanaged directory link \(target missing\): .*\\.claude[\\/]agents'
             $output | Should -Not -Match '\[DRY RUN\] junction .*\\.claude[\\/]agents ->'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -1006,13 +1118,16 @@ Describe 'setup.ps1 psmux module' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-psmux-dryrun-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module psmux -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match '=== psmux'
             $output | Should -Not -Match "Unknown module 'psmux'"
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -1025,13 +1140,16 @@ Describe 'setup.ps1 psmux module' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-psmux-backup-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module psmux -Backup 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match 'Skipped \(vendored copy, no drift\)'
             (Test-Path (Join-Path $tmpHome '.psmux')) | Should -Be $false
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -1048,7 +1166,8 @@ Describe 'setup.ps1 zellij/yazi -Backup mode' {
         $zellijParent = Join-Path $appData 'Zellij'
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP, $origAD = $env:USERPROFILE, $env:APPDATA
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $env:APPDATA = $appData
             $output = & pwsh -NoProfile -File $script:SetupScript -Module zellij -Backup 2>&1 | Out-String
@@ -1058,7 +1177,9 @@ Describe 'setup.ps1 zellij/yazi -Backup mode' {
             # PowerShell on Windows, so $appData is not a clean signal. $appData\Zellij is exactly
             # the dir the guarded mkdir would create — the precise regression target.
             (Test-Path $zellijParent) | Should -Be $false
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP; $env:APPDATA = $origAD
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -1070,7 +1191,8 @@ Describe 'setup.ps1 zellij/yazi -Backup mode' {
         $yaziParent = Join-Path $appData 'yazi'
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP, $origAD = $env:USERPROFILE, $env:APPDATA
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $env:APPDATA = $appData
             $output = & pwsh -NoProfile -File $script:SetupScript -Module yazi -Backup 2>&1 | Out-String
@@ -1079,7 +1201,9 @@ Describe 'setup.ps1 zellij/yazi -Backup mode' {
             # module cache under $appData\Local on Windows once USERPROFILE is redirected, so only
             # $appData\yazi (the dir the guarded mkdir would create) is the precise regression target.
             (Test-Path $yaziParent) | Should -Be $false
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP; $env:APPDATA = $origAD
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -1095,12 +1219,15 @@ Describe 'setup.ps1 dry-run directory-creation cosmetics' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-dryrun-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module codex -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match '\[DRY RUN\] would create:\s+\S*\.codex\b'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -1112,14 +1239,16 @@ Describe 'setup.ps1 codex module shared skills' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-skills-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module codex -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             # Patterns anchor on the "link -> target" separator so `tdd` can't false-match a
             # future `tdd-something` skill (`\b` treats the hyphen as a word boundary).
             $output | Should -Match '\[DRY RUN\] junction .*\.codex\\skills\\tdd ->'
-            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc', 'quick-review', 'deep-review', 'review-fix-loop', 'fix-findings', '_shared')) {
+            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc', 'quick-review', 'deep-review', 'review-fix-loop', 'fix-findings', '_shared'))
+            {
                 $output | Should -Match "\\.codex\\skills\\$name -> .*ai-agents\\skills\\$name"
             }
             # codex-review is portable (ai-agents/skills/) but excluded from Codex on purpose:
@@ -1128,7 +1257,9 @@ Describe 'setup.ps1 codex module shared skills' {
             # Claude-only skills are not sourced into Codex.
             $output | Should -Not -Match '\.codex\\skills\\handoff ->'
             $output | Should -Not -Match '\.codex\\skills\\git-guardrails-claude-code ->'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -1145,13 +1276,16 @@ Describe 'setup.ps1 codex module shared skills' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-collision-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $fixture, $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module codex -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match '\.codex\\skills\\tdd -> .*codex\\skills\\tdd'
             $output | Should -Not -Match '\.codex\\skills\\tdd -> .*ai-agents\\skills\\tdd'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $fixture -Recurse -Force -ErrorAction SilentlyContinue
             if ($createdParent) { Remove-Item -Path $codexSkillsDir -Force -ErrorAction SilentlyContinue }
@@ -1188,7 +1322,8 @@ Describe 'codex/config.toml agents table' {
         $agentNames.Count | Should -Be $expectedAgents.Count -Because 'no duplicate or unexpected [agents.*] tables'
         ($agentNames | Select-Object -Unique).Count | Should -Be $agentNames.Count -Because 'no duplicate agent names'
 
-        foreach ($name in $expectedAgents) {
+        foreach ($name in $expectedAgents)
+        {
             # Case-sensitive: Should -Contain is case-insensitive, which would let a
             # case-only rename (e.g. review_tests -> REVIEW_TESTS) pass here despite
             # breaking Codex's case-sensitive agent_type resolution.
@@ -1245,14 +1380,17 @@ Describe 'setup.ps1 Codex skill migration' {
         New-Item -ItemType Directory -Path $oldSkill, $codexSkills, (Join-Path $codexSkills 'unmanaged') -Force | Out-Null
         $oldLink = Join-Path $codexSkills 'legacy-only'
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             New-Item -ItemType Junction -Path $oldLink -Target $oldSkill -ErrorAction Stop | Out-Null
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module codex -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match 'remove obsolete Codex skill junction.*legacy-only'
             $output | Should -Not -Match 'remove obsolete Codex skill junction.*unmanaged'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
             Remove-Item -Path $oldSource -Recurse -Force -ErrorAction SilentlyContinue
@@ -1273,14 +1411,17 @@ Describe 'setup.ps1 Codex skill migration' {
         New-Item -ItemType Directory -Path $claudeOnlySkill, $codexSkills -Force | Out-Null
         $link = Join-Path $codexSkills 'legacy-only'
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             New-Item -ItemType Junction -Path $link -Target $claudeOnlySkill -ErrorAction Stop | Out-Null
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module codex -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Not -Match 'remove obsolete Codex skill junction.*legacy-only'
             Test-Path -LiteralPath $link | Should -BeTrue
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
             Remove-Item -Path $claudeOnlySkill -Recurse -Force -ErrorAction SilentlyContinue
@@ -1294,12 +1435,15 @@ Describe 'setup.ps1 claude module output styles' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-styles-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match '\[DRY RUN\] junction .*\.claude\\output-styles'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -1311,12 +1455,15 @@ Describe 'setup.ps1 claude module AGENTS.d' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-claude-agentsd-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match '\[DRY RUN\] junction .*\.claude\\AGENTS\.d'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -1328,13 +1475,16 @@ Describe 'setup.ps1 codex module AGENTS.d' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-agentsd-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module codex -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match '\[DRY RUN\] copy .*ai-agents\\AGENTS\.d\\git-worktrees\.md .*\.codex\\AGENTS\.d\\git-worktrees\.md'
             $output | Should -Match '\[DRY RUN\] copy .*ai-agents\\AGENTS\.d\\project-brain\.md .*\.codex\\AGENTS\.d\\project-brain\.md'
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -1346,21 +1496,27 @@ Describe 'setup.ps1 herdr module' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-herdr-dryrun-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module herdr -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match '\[DRY RUN\] symlink .*herdr[\\/]config\.toml'
             # The agent-integration wiring only runs when herdr itself is on PATH; assert its
             # dry-run line only then, so CI (which has no herdr) still exercises the symlink path.
-            if (Get-Command -Name herdr -ErrorAction Ignore) {
-                foreach ($agent in @('claude', 'codex')) {
-                    if (Get-Command -Name $agent -ErrorAction Ignore) {
+            if (Get-Command -Name herdr -ErrorAction Ignore)
+            {
+                foreach ($agent in @('claude', 'codex'))
+                {
+                    if (Get-Command -Name $agent -ErrorAction Ignore)
+                    {
                         $output | Should -Match "\[DRY RUN\] herdr integration install $agent"
                     }
                 }
             }
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -1389,12 +1545,15 @@ Describe 'setup.ps1 langservers module' {
         $pwshName = if ($IsWindows) { 'pwsh.exe' } else { 'pwsh' }
         $pwshExe = Join-Path $PSHOME $pwshName
         $origPath = $env:PATH
-        try {
+        try
+        {
             $env:PATH = $emptyDir
             $output = & $pwshExe -NoProfile -File $script:SetupScript -Module langservers 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match 'volta not found'
-        } finally {
+        }
+        finally
+        {
             $env:PATH = $origPath
             Remove-Item -Path $emptyDir -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -1419,7 +1578,8 @@ Describe 'setup.ps1 langservers module' {
             # test can assert WHICH package each invocation got, not merely that something ran.
             # Must be declared `function script:` inside BeforeAll — a bare `function` in a Context
             # body is not in scope for its It blocks under Pester 5.
-            function script:New-VoltaShim ([int]$ExitCode) {
+            function script:New-VoltaShim ([int]$ExitCode)
+            {
                 $dir = Join-Path ([IO.Path]::GetTempPath()) ('setup-langservers-shim-' + [guid]::NewGuid())
                 New-Item -ItemType Directory -Path $dir -Force | Out-Null
                 Set-Content -Path (Join-Path $dir 'volta.cmd') -Encoding ASCII -Value @"
@@ -1434,16 +1594,20 @@ exit /b $ExitCode
         It 'installs each package by name and reports success when volta exits 0' {
             $shimDir = New-VoltaShim -ExitCode 0
             $origPath = $env:PATH
-            try {
+            try
+            {
                 $env:PATH = $shimDir
                 $output = & $script:PwshExe -NoProfile -File $script:SetupScript -Module langservers 2>&1 | Out-String
                 $LASTEXITCODE | Should -Be 0
-                foreach ($package in $script:Packages) {
+                foreach ($package in $script:Packages)
+                {
                     $output | Should -Match "SHIM-CALLED install $([regex]::Escape($package))"
                     $output | Should -Match "installed $([regex]::Escape($package))"
                 }
                 $output | Should -Not -Match 'failed \(exit'
-            } finally {
+            }
+            finally
+            {
                 $env:PATH = $origPath
                 Remove-Item -Path $shimDir -Recurse -Force -ErrorAction SilentlyContinue
             }
@@ -1454,14 +1618,18 @@ exit /b $ExitCode
             # else branch and name the package — not be swallowed, and not abort the remaining ones.
             $shimDir = New-VoltaShim -ExitCode 1
             $origPath = $env:PATH
-            try {
+            try
+            {
                 $env:PATH = $shimDir
                 $output = & $script:PwshExe -NoProfile -File $script:SetupScript -Module langservers 2>&1 | Out-String
-                foreach ($package in $script:Packages) {
+                foreach ($package in $script:Packages)
+                {
                     $output | Should -Match "volta install $([regex]::Escape($package)) failed \(exit 1\)"
                 }
                 $output | Should -Not -Match 'Language server: installed'
-            } finally {
+            }
+            finally
+            {
                 $env:PATH = $origPath
                 Remove-Item -Path $shimDir -Recurse -Force -ErrorAction SilentlyContinue
             }
@@ -1485,12 +1653,15 @@ Describe 'setup.ps1 biceptools module' {
         $pwshName = if ($IsWindows) { 'pwsh.exe' } else { 'pwsh' }
         $pwshExe = Join-Path $PSHOME $pwshName
         $origPath = $env:PATH
-        try {
+        try
+        {
             $env:PATH = $emptyDir
             $output = & $pwshExe -NoProfile -File $script:SetupScript -Module biceptools 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match 'dotnet not found'
-        } finally {
+        }
+        finally
+        {
             $env:PATH = $origPath
             Remove-Item -Path $emptyDir -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -1509,13 +1680,17 @@ Describe 'setup.ps1 biceptools module' {
             # `tool install --global` with $InstallExitCode. Must be declared `function script:`
             # inside BeforeAll — a bare `function` in a Context body is not in scope for its It
             # blocks under Pester 5.
-            function script:New-DotnetShim ([bool]$AlreadyInstalled, [int]$InstallExitCode) {
+            function script:New-DotnetShim ([bool]$AlreadyInstalled, [int]$InstallExitCode)
+            {
                 $dir = Join-Path ([IO.Path]::GetTempPath()) ('setup-biceptools-shim-' + [guid]::NewGuid())
                 New-Item -ItemType Directory -Path $dir -Force | Out-Null
-                $listOutput = if ($AlreadyInstalled) {
+                $listOutput = if ($AlreadyInstalled)
+                {
                     'echo Package Id                Version      Commands' + "`r`n" +
                     'echo azure.bicep.langserver     1.0.0        bicep-ls'
-                } else {
+                }
+                else
+                {
                     'echo Package Id                Version      Commands'
                 }
                 Set-Content -Path (Join-Path $dir 'dotnet.cmd') -Encoding ASCII -Value @"
@@ -1537,13 +1712,16 @@ exit /b 0
         It 'skips the install when the package already shows in `dotnet tool list --global`' {
             $shimDir = New-DotnetShim -AlreadyInstalled $true -InstallExitCode 0
             $origPath = $env:PATH
-            try {
+            try
+            {
                 $env:PATH = $shimDir
                 $output = & $script:PwshExe -NoProfile -File $script:SetupScript -Module biceptools 2>&1 | Out-String
                 $LASTEXITCODE | Should -Be 0
                 $output | Should -Match '\(already installed\)'
                 $output | Should -Not -Match 'SHIM-CALLED tool install'
-            } finally {
+            }
+            finally
+            {
                 $env:PATH = $origPath
                 Remove-Item -Path $shimDir -Recurse -Force -ErrorAction SilentlyContinue
             }
@@ -1552,13 +1730,16 @@ exit /b 0
         It 'reports a failure rather than success when the install exits non-zero' {
             $shimDir = New-DotnetShim -AlreadyInstalled $false -InstallExitCode 1
             $origPath = $env:PATH
-            try {
+            try
+            {
                 $env:PATH = $shimDir
                 $output = & $script:PwshExe -NoProfile -File $script:SetupScript -Module biceptools 2>&1 | Out-String
                 $output | Should -Match 'SHIM-CALLED tool install --global Azure\.Bicep\.LangServer'
                 $output | Should -Match 'dotnet tool install --global Azure\.Bicep\.LangServer failed \(exit 1\)'
                 $output | Should -Not -Match 'installed Azure\.Bicep\.LangServer'
-            } finally {
+            }
+            finally
+            {
                 $env:PATH = $origPath
                 Remove-Item -Path $shimDir -Recurse -Force -ErrorAction SilentlyContinue
             }
@@ -1571,7 +1752,8 @@ Describe 'setup.ps1 -Module ai-agents (composite)' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-ai-agents-composite-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
         $origUP = $env:USERPROFILE
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $output = & pwsh -NoProfile -File $script:SetupScript -Module ai-agents -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
@@ -1583,7 +1765,9 @@ Describe 'setup.ps1 -Module ai-agents (composite)' {
             # #72), so Claude must project first — proves the composite doesn't just alias 'all'.
             $output.IndexOf('=== Claude Code ===') | Should -BeLessThan $output.IndexOf('=== Codex CLI ===')
             $output.IndexOf('=== Codex CLI ===') | Should -BeLessThan $output.IndexOf('=== Pi ===')
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $origUP
             Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }
@@ -1600,9 +1784,12 @@ Describe 'setup.ps1 -Module ai-agents (composite)' {
         It 'does not abort Claude or Codex projection when Pi throws an unanticipated error' -Skip:(-not $IsWindows) {
             Mock Install-Pi { throw 'simulated unanticipated Pi failure' }
             $threw = $false
-            try {
+            try
+            {
                 $output = Install-AiAgents 6>&1 | Out-String
-            } catch {
+            }
+            catch
+            {
                 $threw = $true
             }
             $threw | Should -BeFalse
@@ -1640,9 +1827,9 @@ Describe 'setup.ps1 -Module all' {
         # stay LAST (it writes hook registrations through a settings.json the claude module
         # symlinks into the repo).
         $output = & pwsh -NoProfile -File $script:SetupScript -Module all -DryRun 2>&1 | Out-String
-        $winget      = $output.IndexOf('=== winget packages')
+        $winget = $output.IndexOf('=== winget packages')
         $langservers = $output.IndexOf('=== Language servers')
-        $herdr       = $output.IndexOf('=== Herdr')
+        $herdr = $output.IndexOf('=== Herdr')
         $winget      | Should -BeGreaterThan -1
         $langservers | Should -BeGreaterThan $winget
         $herdr       | Should -BeGreaterThan $langservers
@@ -1651,9 +1838,9 @@ Describe 'setup.ps1 -Module all' {
     It 'runs biceptools after winget (whose curated set carries the .NET SDK) and before herdr' -Skip:(-not $IsWindows) {
         # Same two ordering constraints as langservers, above, against the .NET SDK instead of Volta.
         $output = & pwsh -NoProfile -File $script:SetupScript -Module all -DryRun 2>&1 | Out-String
-        $winget     = $output.IndexOf('=== winget packages')
+        $winget = $output.IndexOf('=== winget packages')
         $biceptools = $output.IndexOf('=== Bicep tools')
-        $herdr      = $output.IndexOf('=== Herdr')
+        $herdr = $output.IndexOf('=== Herdr')
         $winget     | Should -BeGreaterThan -1
         $biceptools | Should -BeGreaterThan $winget
         $herdr      | Should -BeGreaterThan $biceptools
@@ -1688,15 +1875,21 @@ Describe 'New-FileSymlink failure recovery' {
     # New-FileSymlink itself swallows the privilege error and rolls back, so a failed backup
     # count on an unprivileged host would otherwise look like a regression rather than a skip.
     $script:CanCreateSymlink = $false
-    if ($IsWindows) {
+    if ($IsWindows)
+    {
         $probeDir = Join-Path ([IO.Path]::GetTempPath()) ('setup-symlink-probe-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $probeDir -Force | Out-Null
-        try {
+        try
+        {
             New-Item -ItemType SymbolicLink -Path (Join-Path $probeDir 'link') -Target $probeDir -ErrorAction Stop | Out-Null
             $script:CanCreateSymlink = $true
-        } catch {
+        }
+        catch
+        {
             $script:CanCreateSymlink = $false
-        } finally {
+        }
+        finally
+        {
             Remove-Item -Path $probeDir -Recurse -Force -ErrorAction SilentlyContinue
         }
     }

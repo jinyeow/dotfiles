@@ -16,8 +16,10 @@ param([switch] $DryRun)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-function Install-Package ([string]$Id, [string]$Source = 'winget') {
-    if ($DryRun) {
+function Install-Package ([string]$Id, [string]$Source = 'winget')
+{
+    if ($DryRun)
+    {
         Write-Host "[DRY RUN] winget install $Id" -ForegroundColor Cyan
         return
     }

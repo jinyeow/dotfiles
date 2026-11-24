@@ -17,7 +17,8 @@ BeforeAll {
     $script:SourceScript = Join-Path $script:RepoRoot 'codex/ai-reference-guard.sh'
     $script:SourceWordlist = Join-Path $script:RepoRoot 'ai-agents/_shared/banned-ai-terms.txt'
     $script:Bash = Resolve-TestBash
-    if (-not $script:Bash) {
+    if (-not $script:Bash)
+    {
         throw 'codex-ai-reference-guard.Tests.ps1: no usable bash found, WSL launchers excluded — install Git for Windows'
     }
 
@@ -28,14 +29,16 @@ BeforeAll {
     $script:HollardOriginUrl = 'https://dev.azure.com/HollardInsuranceRetail/Proj/_git/Repo'
     $script:GitHubOriginUrl = 'https://github.com/jinyeow/dotfiles.git'
 
-    function New-TestRepo {
+    function New-TestRepo
+    {
         param([string] $OriginUrl)
         $root = Join-Path ([System.IO.Path]::GetTempPath()) ('codex-ai-ref-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $root -Force | Out-Null
         & git -C $root init -q . 2>&1 | Out-Null
         & git -C $root config user.email 'test@example.invalid' 2>&1 | Out-Null
         & git -C $root config user.name 'Test' 2>&1 | Out-Null
-        if ($OriginUrl) {
+        if ($OriginUrl)
+        {
             & git -C $root remote add origin $OriginUrl 2>&1 | Out-Null
         }
         return $root
@@ -61,32 +64,40 @@ BeforeAll {
     Copy-Item -LiteralPath $script:SourceScript -Destination (Join-Path $script:NoWordlistDir 'ai-reference-guard.sh') -Force
     $script:NoWordlistHookScript = Join-Path $script:NoWordlistDir 'ai-reference-guard.sh'
 
-    function Invoke-GuardrailHook {
+    function Invoke-GuardrailHook
+    {
         param([string] $Command, [string] $Script = $script:HookScript, [string] $Repo = $script:ScopedRepo)
         $payload = @{ tool_input = @{ command = $Command } } | ConvertTo-Json -Compress
         Push-Location $Repo
-        try {
+        try
+        {
             $output = $payload | & $script:Bash $Script 2>&1
-        } finally {
+        }
+        finally
+        {
             Pop-Location
         }
         return [PSCustomObject]@{
             ExitCode = $LASTEXITCODE
-            Output   = ($output -join "`n")
+            Output = ($output -join "`n")
         }
     }
 
-    function Invoke-GuardrailHookRawPayload {
+    function Invoke-GuardrailHookRawPayload
+    {
         param([string] $Payload, [string] $Script = $script:HookScript, [string] $Repo = $script:ScopedRepo)
         Push-Location $Repo
-        try {
+        try
+        {
             $output = $Payload | & $script:Bash $Script 2>&1
-        } finally {
+        }
+        finally
+        {
             Pop-Location
         }
         return [PSCustomObject]@{
             ExitCode = $LASTEXITCODE
-            Output   = ($output -join "`n")
+            Output = ($output -join "`n")
         }
     }
 
@@ -94,7 +105,8 @@ BeforeAll {
     # forcing the hook into its grep/sed fallback tier regardless of the host's real Python.
     $script:NoPythonStubDir = Join-Path ([System.IO.Path]::GetTempPath()) "codex-ai-reference-guard-nopython-$PID"
     New-Item -ItemType Directory -Path $script:NoPythonStubDir -Force | Out-Null
-    foreach ($stubName in @('python3', 'python')) {
+    foreach ($stubName in @('python3', 'python'))
+    {
         $stubPath = Join-Path $script:NoPythonStubDir $stubName
         Set-Content -Path $stubPath -Value "#!/bin/bash`nexit 1`n" -NoNewline
         & $script:Bash -c 'chmod +x "$1"' _ ($stubPath -replace '\\', '/')
@@ -108,31 +120,40 @@ BeforeAll {
     # shadows `command -v python3`/`python` in this environment. On a real (non-Git-Bash)
     # bash, `$script:NoPythonStubDir` is already a native POSIX path and `cygpath` doesn't
     # exist there, so only convert on Windows.
-    $script:NoPythonStubDirPosix = if ($IsWindows) {
+    $script:NoPythonStubDirPosix = if ($IsWindows)
+    {
         (& $script:Bash -c 'cygpath -u "$1"' _ $script:NoPythonStubDir).Trim()
-    } else {
+    }
+    else
+    {
         $script:NoPythonStubDir
     }
 
-    function Invoke-GuardrailHookNoPython {
+    function Invoke-GuardrailHookNoPython
+    {
         param([string] $Command, [string] $Repo = $script:ScopedRepo)
         $payload = @{ tool_input = @{ command = $Command } } | ConvertTo-Json -Compress
         Push-Location $Repo
-        try {
+        try
+        {
             $output = $payload | & $script:Bash -c "PATH='$($script:NoPythonStubDirPosix)':`"`$PATH`" bash '$($script:HookScript)'" 2>&1
-        } finally {
+        }
+        finally
+        {
             Pop-Location
         }
         return [PSCustomObject]@{
             ExitCode = $LASTEXITCODE
-            Output   = ($output -join "`n")
+            Output = ($output -join "`n")
         }
     }
 }
 
 AfterAll {
-    foreach ($dir in @($script:StagedDir, $script:NoWordlistDir, $script:NoPythonStubDir, $script:ScopedRepo, $script:UnscopedRepo, $script:NoOriginRepo)) {
-        if ($dir -and (Test-Path -LiteralPath $dir)) {
+    foreach ($dir in @($script:StagedDir, $script:NoWordlistDir, $script:NoPythonStubDir, $script:ScopedRepo, $script:UnscopedRepo, $script:NoOriginRepo))
+    {
+        if ($dir -and (Test-Path -LiteralPath $dir))
+        {
             Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction Ignore
         }
     }
@@ -464,9 +485,12 @@ Describe 'codex/ai-reference-guard.sh' {
             $rawPayload = '{"tool_input":{"command":"git commit -m \"she said \\\"hi\\\" and thanks Claude\""}}'
             $probeCommand = "PATH='$($script:NoPythonStubDirPosix)':`"`$PATH`" bash '$($script:HookScript)'"
             Push-Location $script:ScopedRepo
-            try {
+            try
+            {
                 $output = $rawPayload | & $script:Bash -c $probeCommand 2>&1
-            } finally {
+            }
+            finally
+            {
                 Pop-Location
             }
             $LASTEXITCODE | Should -Be 2

@@ -65,7 +65,8 @@ Describe 'Resolve-TestBash' {
         It 'falls through to the $env:ProgramFiles default install root' -Skip:(-not $IsWindows) {
             Set-Variable -Name IsWindows -Value $true -Force -Scope Global
             $origProgramFiles = $env:ProgramFiles
-            try {
+            try
+            {
                 $env:ProgramFiles = 'C:\Program Files'
                 Mock Get-Command {
                     [pscustomobject]@{ Source = 'C:\Users\me\scoop\shims\git.exe' }
@@ -75,7 +76,9 @@ Describe 'Resolve-TestBash' {
                 }
 
                 Resolve-TestBash | Should -Be 'C:\Program Files\Git\bin\bash.exe'
-            } finally {
+            }
+            finally
+            {
                 $env:ProgramFiles = $origProgramFiles
             }
         }
@@ -85,7 +88,8 @@ Describe 'Resolve-TestBash' {
         It 'skips the WSL launcher entries and returns the first real bash on PATH' {
             Set-Variable -Name IsWindows -Value $true -Force -Scope Global
             $origProgramFiles = $env:ProgramFiles
-            try {
+            try
+            {
                 $env:ProgramFiles = 'C:\Program Files'
                 Mock Get-Command {
                     $null
@@ -102,7 +106,9 @@ Describe 'Resolve-TestBash' {
                 }
 
                 Resolve-TestBash | Should -Be 'D:\tools\PortableGit\bin\bash.exe'
-            } finally {
+            }
+            finally
+            {
                 $env:ProgramFiles = $origProgramFiles
             }
         }
@@ -110,7 +116,8 @@ Describe 'Resolve-TestBash' {
         It 'rejects a WindowsApps-rooted candidate even without the exact \Microsoft\WindowsApps\ segment' {
             Set-Variable -Name IsWindows -Value $true -Force -Scope Global
             $origProgramFiles = $env:ProgramFiles
-            try {
+            try
+            {
                 # Empty ProgramFiles so the default-install-root fallback never fires,
                 # keeping this test focused on the PATH-scan exclusion.
                 $env:ProgramFiles = ''
@@ -128,7 +135,9 @@ Describe 'Resolve-TestBash' {
                 Mock Test-Path { $true }
 
                 Resolve-TestBash | Should -Be 'D:\tools\PortableGit\bin\bash.exe'
-            } finally {
+            }
+            finally
+            {
                 $env:ProgramFiles = $origProgramFiles
             }
         }
@@ -138,7 +147,8 @@ Describe 'Resolve-TestBash' {
         It 'returns $null instead of guessing' {
             Set-Variable -Name IsWindows -Value $true -Force -Scope Global
             $origProgramFiles = $env:ProgramFiles
-            try {
+            try
+            {
                 $env:ProgramFiles = ''
                 Mock Get-Command {
                     $null
@@ -149,7 +159,9 @@ Describe 'Resolve-TestBash' {
                 Mock Test-Path { $false }
 
                 Resolve-TestBash | Should -BeNullOrEmpty
-            } finally {
+            }
+            finally
+            {
                 $env:ProgramFiles = $origProgramFiles
             }
         }
@@ -159,7 +171,8 @@ Describe 'Resolve-TestBash' {
         It 'falls through instead of returning a broken bash path' -Skip:(-not $IsWindows) {
             Set-Variable -Name IsWindows -Value $true -Force -Scope Global
             $origProgramFiles = $env:ProgramFiles
-            try {
+            try
+            {
                 $env:ProgramFiles = 'C:\Program Files'
                 Mock Get-Command {
                     [pscustomobject]@{ Source = '' }
@@ -169,7 +182,9 @@ Describe 'Resolve-TestBash' {
                 }
 
                 Resolve-TestBash | Should -Be 'C:\Program Files\Git\bin\bash.exe'
-            } finally {
+            }
+            finally
+            {
                 $env:ProgramFiles = $origProgramFiles
             }
         }
@@ -179,7 +194,8 @@ Describe 'Resolve-TestBash' {
         It 'never throws — returns $null instead of propagating the exception' {
             Set-Variable -Name IsWindows -Value $true -Force -Scope Global
             $origProgramFiles = $env:ProgramFiles
-            try {
+            try
+            {
                 # Isolate every remaining strategy too, so this test proves the
                 # no-throw contract rather than incidentally finding a real bash
                 # installed on the machine running the suite.
@@ -193,7 +209,9 @@ Describe 'Resolve-TestBash' {
 
                 { Resolve-TestBash } | Should -Not -Throw
                 Resolve-TestBash | Should -BeNullOrEmpty
-            } finally {
+            }
+            finally
+            {
                 $env:ProgramFiles = $origProgramFiles
             }
         }
@@ -201,7 +219,8 @@ Describe 'Resolve-TestBash' {
         It 'still tries the ProgramFiles fallback when git-derivation throws' -Skip:(-not $IsWindows) {
             Set-Variable -Name IsWindows -Value $true -Force -Scope Global
             $origProgramFiles = $env:ProgramFiles
-            try {
+            try
+            {
                 $env:ProgramFiles = 'C:\Program Files'
                 Mock Get-Command {
                     throw 'simulated git-derivation failure'
@@ -211,7 +230,9 @@ Describe 'Resolve-TestBash' {
                 }
 
                 Resolve-TestBash | Should -Be 'C:\Program Files\Git\bin\bash.exe'
-            } finally {
+            }
+            finally
+            {
                 $env:ProgramFiles = $origProgramFiles
             }
         }

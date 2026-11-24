@@ -42,23 +42,24 @@ $w = 'C:\Windows\Fonts'
 
 # alias (CSS family) -> label + regular face file + dir
 $specs = @(
-  @{ Alias = 'fira';   Label = 'Fira Code (current)';     Dir = $w; Reg = 'FiraCode-Regular.ttf' }
-  @{ Alias = 'maple';  Label = 'Maple Mono  (applied)';   Dir = $u; Reg = 'MapleMono-NF-Regular.ttf' }
-  @{ Alias = 'jb';     Label = 'JetBrains Mono';          Dir = $u; Reg = 'JetBrainsMonoNerdFontMono-Regular.ttf' }
-  @{ Alias = 'mona';   Label = 'Monaspace Neon';          Dir = $u; Reg = 'MonaspiceNeNerdFontMono-Regular.otf' }
-  @{ Alias = 'ox';     Label = '0xProto';                 Dir = $u; Reg = '0xProtoNerdFontMono-Regular.ttf' }
-  @{ Alias = 'iose';   Label = 'Iosevka';                 Dir = $u; Reg = 'IosevkaNerdFontMono-Regular.ttf' }
-  @{ Alias = 'victor'; Label = 'Victor Mono';             Dir = $u; Reg = 'VictorMonoNerdFontMono-Regular.ttf' }
-  @{ Alias = 'commit'; Label = 'Commit Mono';             Dir = $u; Reg = 'CommitMonoNerdFontMono-Regular.otf' }
-  @{ Alias = 'geist';  Label = 'Geist Mono (no italic)';  Dir = $u; Reg = 'GeistMonoNerdFontMono-Regular.otf' }
+    @{ Alias = 'fira';   Label = 'Fira Code (current)';     Dir = $w; Reg = 'FiraCode-Regular.ttf' }
+    @{ Alias = 'maple';  Label = 'Maple Mono  (applied)';   Dir = $u; Reg = 'MapleMono-NF-Regular.ttf' }
+    @{ Alias = 'jb';     Label = 'JetBrains Mono';          Dir = $u; Reg = 'JetBrainsMonoNerdFontMono-Regular.ttf' }
+    @{ Alias = 'mona';   Label = 'Monaspace Neon';          Dir = $u; Reg = 'MonaspiceNeNerdFontMono-Regular.otf' }
+    @{ Alias = 'ox';     Label = '0xProto';                 Dir = $u; Reg = '0xProtoNerdFontMono-Regular.ttf' }
+    @{ Alias = 'iose';   Label = 'Iosevka';                 Dir = $u; Reg = 'IosevkaNerdFontMono-Regular.ttf' }
+    @{ Alias = 'victor'; Label = 'Victor Mono';             Dir = $u; Reg = 'VictorMonoNerdFontMono-Regular.ttf' }
+    @{ Alias = 'commit'; Label = 'Commit Mono';             Dir = $u; Reg = 'CommitMonoNerdFontMono-Regular.otf' }
+    @{ Alias = 'geist';  Label = 'Geist Mono (no italic)';  Dir = $u; Reg = 'GeistMonoNerdFontMono-Regular.otf' }
 )
 
-if ($Fonts) {
-  $specs = $specs | Where-Object {
-    $s = $_; $Fonts | Where-Object { $s.Alias -like "*$_*" -or $s.Label -like "*$_*" }
-  }
-  if (-not $specs) { throw "no fonts matched: $($Fonts -join ', ')" }
-  Write-Host "comparing: $(($specs.Label -join ' | '))"
+if ($Fonts)
+{
+    $specs = $specs | Where-Object {
+        $s = $_; $Fonts | Where-Object { $s.Alias -like "*$_*" -or $s.Label -like "*$_*" }
+    }
+    if (-not $specs) { throw "no fonts matched: $($Fonts -join ', ')" }
+    Write-Host "comparing: $(($specs.Label -join ' | '))"
 }
 
 # Broad character set: alphabets, digits, ambiguous glyphs, symbols and ligatures.
@@ -115,65 +116,74 @@ New-Item -ItemType Directory -Force -Path $tmp | Out-Null
 $charsFile = Join-Path $tmp 'chars.txt'
 Set-Content -Path $charsFile -Value ($breadth, $ps, $cs, $bicep -join "`n") -Encoding utf8
 
-function EmbedFace([string]$path, [string]$tag) {
-  $out = Join-Path $tmp "$tag.woff2"
-  # default layout-feature closure keeps liga/calt/clig/rlig, so coding ligatures survive
-  & python -m fontTools.subset $path "--text-file=$charsFile" "--output-file=$out" --flavor=woff2 2>&1 | Out-Null
-  # Fail loud: a missing subset would emit an empty @font-face and silently render a
-  # fallback font, invalidating the comparison.
-  if (-not (Test-Path $out)) { throw "fontTools.subset failed for '$path' (exit $LASTEXITCODE) — is Python with fonttools + brotli installed?" }
-  $b64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($out))
-  return "data:font/woff2;base64,$b64"
+function EmbedFace([string]$path, [string]$tag)
+{
+    $out = Join-Path $tmp "$tag.woff2"
+    # default layout-feature closure keeps liga/calt/clig/rlig, so coding ligatures survive
+    & python -m fontTools.subset $path "--text-file=$charsFile" "--output-file=$out" --flavor=woff2 2>&1 | Out-Null
+    # Fail loud: a missing subset would emit an empty @font-face and silently render a
+    # fallback font, invalidating the comparison.
+    if (-not (Test-Path $out)) { throw "fontTools.subset failed for '$path' (exit $LASTEXITCODE) — is Python with fonttools + brotli installed?" }
+    $b64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($out))
+    return "data:font/woff2;base64,$b64"
 }
 
 # Build @font-face rules (regular/italic/bold) for whatever files exist
 $face = ''
-foreach ($s in $specs) {
-  $ext = [IO.Path]::GetExtension($s.Reg)
-  $base = $s.Reg -replace '-Regular\.(ttf|otf)$', ''
-  $regP = Join-Path $s.Dir $s.Reg
-  $itP = Join-Path $s.Dir "$base-Italic$ext"
-  $bdP = Join-Path $s.Dir "$base-Bold$ext"
-  if (-not (Test-Path $regP)) { Write-Warning "missing regular: $regP"; continue }
-  $reg = EmbedFace $regP "$($s.Alias)-reg"
-  $face += "@font-face{font-family:'$($s.Alias)';font-weight:400;font-style:normal;src:url('$reg') format('woff2');}`n"
-  if (Test-Path $itP) {
-    $it = EmbedFace $itP "$($s.Alias)-it"
-    $face += "@font-face{font-family:'$($s.Alias)';font-weight:400;font-style:italic;src:url('$it') format('woff2');}`n"
-  }
-  if (Test-Path $bdP) {
-    $bd = EmbedFace $bdP "$($s.Alias)-bd"
-    $face += "@font-face{font-family:'$($s.Alias)';font-weight:700;font-style:normal;src:url('$bd') format('woff2');}`n"
-  }
+foreach ($s in $specs)
+{
+    $ext = [IO.Path]::GetExtension($s.Reg)
+    $base = $s.Reg -replace '-Regular\.(ttf|otf)$', ''
+    $regP = Join-Path $s.Dir $s.Reg
+    $itP = Join-Path $s.Dir "$base-Italic$ext"
+    $bdP = Join-Path $s.Dir "$base-Bold$ext"
+    if (-not (Test-Path $regP)) { Write-Warning "missing regular: $regP"; continue }
+    $reg = EmbedFace $regP "$($s.Alias)-reg"
+    $face += "@font-face{font-family:'$($s.Alias)';font-weight:400;font-style:normal;src:url('$reg') format('woff2');}`n"
+    if (Test-Path $itP)
+    {
+        $it = EmbedFace $itP "$($s.Alias)-it"
+        $face += "@font-face{font-family:'$($s.Alias)';font-weight:400;font-style:italic;src:url('$it') format('woff2');}`n"
+    }
+    if (Test-Path $bdP)
+    {
+        $bd = EmbedFace $bdP "$($s.Alias)-bd"
+        $face += "@font-face{font-family:'$($s.Alias)';font-weight:700;font-style:normal;src:url('$bd') format('woff2');}`n"
+    }
 }
 Remove-Item $tmp -Recurse -Force
 
-function EncodePlain([string]$s) {
-  return ($s -replace '&', '&amp;' -replace '<', '&lt;' -replace '>', '&gt;')
+function EncodePlain([string]$s)
+{
+    return ($s -replace '&', '&amp;' -replace '<', '&lt;' -replace '>', '&gt;')
 }
-function Encode([string]$s) {
-  $s = EncodePlain $s
-  return [regex]::Replace($s, '(#[^\r\n]*|//[^\r\n]*)', '<span class="cmt">$1</span>')
+function Encode([string]$s)
+{
+    $s = EncodePlain $s
+    return [regex]::Replace($s, '(#[^\r\n]*|//[^\r\n]*)', '<span class="cmt">$1</span>')
 }
 
 # Top panel: every font rendering the same broad character set, side by side.
 $breadthCards = ''
-foreach ($s in $specs) {
-  $breadthCards += "<section style=`"font-family:'$($s.Alias)',monospace`">`n"
-  $breadthCards += "  <h2>$($s.Label)</h2>`n"
-  $breadthCards += "  <pre class=breadth>$(EncodePlain $breadth)</pre>`n"
-  $breadthCards += "</section>`n"
+foreach ($s in $specs)
+{
+    $breadthCards += "<section style=`"font-family:'$($s.Alias)',monospace`">`n"
+    $breadthCards += "  <h2>$($s.Label)</h2>`n"
+    $breadthCards += "  <pre class=breadth>$(EncodePlain $breadth)</pre>`n"
+    $breadthCards += "</section>`n"
 }
 
 # Language panel: each card carries all three samples; CSS shows only the active language.
 $codeCards = ''
-foreach ($s in $specs) {
-  $codeCards += "<section style=`"font-family:'$($s.Alias)',monospace`">`n"
-  $codeCards += "  <h2>$($s.Label)</h2>`n"
-  foreach ($pair in @(@('ps', $ps), @('cs', $cs), @('bicep', $bicep))) {
-    $codeCards += "  <pre data-lang=$($pair[0])>$(Encode $pair[1])</pre>`n"
-  }
-  $codeCards += "</section>`n"
+foreach ($s in $specs)
+{
+    $codeCards += "<section style=`"font-family:'$($s.Alias)',monospace`">`n"
+    $codeCards += "  <h2>$($s.Label)</h2>`n"
+    foreach ($pair in @(@('ps', $ps), @('cs', $cs), @('bicep', $bicep)))
+    {
+        $codeCards += "  <pre data-lang=$($pair[0])>$(Encode $pair[1])</pre>`n"
+    }
+    $codeCards += "</section>`n"
 }
 
 $doc = @"
@@ -240,42 +250,49 @@ Set-Content -Path $html -Value $doc -Encoding utf8
 Write-Host "wrote $html"
 
 $edge = @(
-  'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
-  'C:\Program Files\Microsoft\Edge\Application\msedge.exe'
+    'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
+    'C:\Program Files\Microsoft\Edge\Application\msedge.exe'
 ) | Where-Object { Test-Path $_ } | Select-Object -First 1
 if (-not $edge) { $edge = (Get-Command msedge -ErrorAction SilentlyContinue).Source }
 if (-not $edge) { $edge = (Get-Command chrome -ErrorAction SilentlyContinue).Source }
 
-if ($edge) {
-  $uri = ([Uri]$html).AbsoluteUri
-  if (Test-Path $png) { Remove-Item $png -Force }
-  $sargs = @(
-    '--headless=new'; '--disable-gpu'; '--no-sandbox'; '--hide-scrollbars'; '--allow-file-access-from-files'
-    '--force-device-scale-factor=2'; ('--screenshot="{0}"' -f $png)
-    '--window-size=1500,6000'; $uri
-  )
-  $p = Start-Process $edge -ArgumentList $sargs -NoNewWindow -Wait -PassThru
-  if (Test-Path $png) {
-    Add-Type -AssemblyName System.Drawing
-    $src = [System.Drawing.Bitmap]::FromFile($png)
-    $bg = [System.Drawing.Color]::FromArgb(30, 30, 46)
-    $isBg = { param($c) ([math]::Abs($c.R - $bg.R) -le 6 -and [math]::Abs($c.G - $bg.G) -le 6 -and [math]::Abs($c.B - $bg.B) -le 6) }
-    $bottom = $src.Height
-    for ($y = $src.Height - 1; $y -ge 0; $y--) {
-      $rowHasContent = $false
-      for ($x = 0; $x -lt $src.Width; $x += 80) {
-        if (-not (& $isBg $src.GetPixel($x, $y))) { $rowHasContent = $true; break }
-      }
-      if ($rowHasContent) { $bottom = [math]::Min($src.Height, $y + 56); break }
+if ($edge)
+{
+    $uri = ([Uri]$html).AbsoluteUri
+    if (Test-Path $png) { Remove-Item $png -Force }
+    $sargs = @(
+        '--headless=new'; '--disable-gpu'; '--no-sandbox'; '--hide-scrollbars'; '--allow-file-access-from-files'
+        '--force-device-scale-factor=2'; ('--screenshot="{0}"' -f $png)
+        '--window-size=1500,6000'; $uri
+    )
+    $p = Start-Process $edge -ArgumentList $sargs -NoNewWindow -Wait -PassThru
+    if (Test-Path $png)
+    {
+        Add-Type -AssemblyName System.Drawing
+        $src = [System.Drawing.Bitmap]::FromFile($png)
+        $bg = [System.Drawing.Color]::FromArgb(30, 30, 46)
+        $isBg = { param($c) ([math]::Abs($c.R - $bg.R) -le 6 -and [math]::Abs($c.G - $bg.G) -le 6 -and [math]::Abs($c.B - $bg.B) -le 6) }
+        $bottom = $src.Height
+        for ($y = $src.Height - 1; $y -ge 0; $y--)
+        {
+            $rowHasContent = $false
+            for ($x = 0; $x -lt $src.Width; $x += 80)
+            {
+                if (-not (& $isBg $src.GetPixel($x, $y))) { $rowHasContent = $true; break }
+            }
+            if ($rowHasContent) { $bottom = [math]::Min($src.Height, $y + 56); break }
+        }
+        $crop = New-Object System.Drawing.Bitmap($src.Width, $bottom)
+        $g = [System.Drawing.Graphics]::FromImage($crop)
+        $g.DrawImage($src, 0, 0, (New-Object System.Drawing.Rectangle(0, 0, $src.Width, $bottom)), [System.Drawing.GraphicsUnit]::Pixel)
+        $g.Dispose(); $src.Dispose()
+        $crop.Save($png, [System.Drawing.Imaging.ImageFormat]::Png); $crop.Dispose()
+        Write-Host "screenshot $png (cropped to ${bottom}px)"
     }
-    $crop = New-Object System.Drawing.Bitmap($src.Width, $bottom)
-    $g = [System.Drawing.Graphics]::FromImage($crop)
-    $g.DrawImage($src, 0, 0, (New-Object System.Drawing.Rectangle(0, 0, $src.Width, $bottom)), [System.Drawing.GraphicsUnit]::Pixel)
-    $g.Dispose(); $src.Dispose()
-    $crop.Save($png, [System.Drawing.Imaging.ImageFormat]::Png); $crop.Dispose()
-    Write-Host "screenshot $png (cropped to ${bottom}px)"
-  } else { Write-Warning "no screenshot (edge exit $($p.ExitCode))" }
-} else {
-  Write-Warning 'no Edge/Chrome found for screenshot; open the HTML manually'
+    else { Write-Warning "no screenshot (edge exit $($p.ExitCode))" }
+}
+else
+{
+    Write-Warning 'no Edge/Chrome found for screenshot; open the HTML manually'
 }
 Write-Host 'DONE'

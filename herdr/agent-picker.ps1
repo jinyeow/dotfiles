@@ -19,7 +19,8 @@
 [CmdletBinding()]
 param()
 
-function ConvertTo-HerdrAgentPickerLines {
+function ConvertTo-HerdrAgentPickerLines
+{
     <#
     .SYNOPSIS
     Build one fzf line per live agent: a human-readable display column, then a tab,
@@ -33,7 +34,8 @@ function ConvertTo-HerdrAgentPickerLines {
         [Parameter()][hashtable]$TabLabels = @{}
     )
 
-    if (-not $Agents) {
+    if (-not $Agents)
+    {
         return @()
     }
 
@@ -45,7 +47,8 @@ function ConvertTo-HerdrAgentPickerLines {
     }
 }
 
-function Get-HerdrPaneIdFromSelection {
+function Get-HerdrPaneIdFromSelection
+{
     <#
     .SYNOPSIS
     Extract the pane_id appended by ConvertTo-HerdrAgentPickerLines after the last
@@ -55,16 +58,19 @@ function Get-HerdrPaneIdFromSelection {
     [OutputType([string])]
     param([Parameter()][string]$Selection)
 
-    if ([string]::IsNullOrWhiteSpace($Selection)) {
+    if ([string]::IsNullOrWhiteSpace($Selection))
+    {
         return $null
     }
     $trimmed = $Selection.Trim("`r", "`n")
     $lastTab = $trimmed.LastIndexOf("`t")
-    if ($lastTab -lt 0) {
+    if ($lastTab -lt 0)
+    {
         return $null
     }
     $paneId = $trimmed.Substring($lastTab + 1).Trim()
-    if ([string]::IsNullOrWhiteSpace($paneId)) {
+    if ([string]::IsNullOrWhiteSpace($paneId))
+    {
         return $null
     }
     return $paneId
@@ -72,21 +78,24 @@ function Get-HerdrPaneIdFromSelection {
 
 # --- Entry point ---------------------------------------------------------------
 $listJson = herdr agent list
-if ($LASTEXITCODE -ne 0) {
+if ($LASTEXITCODE -ne 0)
+{
     Write-Host "herdr agent list failed: $listJson"
     Start-Sleep -Seconds 2
     return
 }
 
 $agents = ($listJson | ConvertFrom-Json).result.agents
-if (-not $agents -or $agents.Count -eq 0) {
+if (-not $agents -or $agents.Count -eq 0)
+{
     Write-Host 'No live agents.'
     Start-Sleep -Seconds 1
     return
 }
 
 $workspaceListJson = herdr workspace list
-if ($LASTEXITCODE -ne 0) {
+if ($LASTEXITCODE -ne 0)
+{
     Write-Host "herdr workspace list failed: $workspaceListJson"
     Start-Sleep -Seconds 2
     return
@@ -98,9 +107,11 @@ $workspaceLabels = @{}
 }
 
 $tabLabels = @{}
-foreach ($workspaceId in ($agents.workspace_id | Select-Object -Unique)) {
+foreach ($workspaceId in ($agents.workspace_id | Select-Object -Unique))
+{
     $tabListJson = herdr tab list --workspace $workspaceId
-    if ($LASTEXITCODE -ne 0) {
+    if ($LASTEXITCODE -ne 0)
+    {
         Write-Host "herdr tab list --workspace $workspaceId failed: $tabListJson"
         Start-Sleep -Seconds 2
         return
@@ -114,12 +125,14 @@ $lines = ConvertTo-HerdrAgentPickerLines -Agents $agents -WorkspaceLabels $works
 
 $selection = $lines | fzf --prompt 'agent> ' --delimiter "`t" --with-nth 1
 $paneId = Get-HerdrPaneIdFromSelection -Selection $selection
-if (-not $paneId) {
+if (-not $paneId)
+{
     return
 }
 
 $focus = herdr agent focus $paneId
-if ($LASTEXITCODE -ne 0) {
+if ($LASTEXITCODE -ne 0)
+{
     Write-Host "herdr agent focus $paneId failed (exit $LASTEXITCODE): $focus"
     Start-Sleep -Seconds 2
 }

@@ -27,7 +27,8 @@ BeforeAll {
     # Dropping a ruleset is Add-Ruleset's job, deliberately kept separate: a $SettingsDir
     # parameter here would bind $null to '' and silently place the ruleset at the root,
     # turning the no-ruleset case into a root-ruleset case.
-    function New-LintTree {
+    function New-LintTree
+    {
         param([string] $Root)
 
         $sub = Join-Path $Root 'sub'
@@ -38,7 +39,8 @@ BeforeAll {
         return $edited
     }
 
-    function Add-Ruleset {
+    function Add-Ruleset
+    {
         param([string] $Dir)
 
         New-Item -ItemType Directory -Path $Dir -Force | Out-Null
@@ -50,20 +52,23 @@ BeforeAll {
     # into $env:TEMP's ancestors and the result depends on whether the machine happens to
     # have a stray ruleset in a parent dir - so these tests would pass or fail on
     # environment, not behaviour.
-    function Add-VcsRoot {
+    function Add-VcsRoot
+    {
         param([string] $Dir)
 
         New-Item -ItemType Directory -Path (Join-Path $Dir '.git') -Force | Out-Null
     }
 
     # Drives the hook exactly as Claude Code does: tool-call JSON on stdin.
-    function Invoke-LintHook {
+    function Invoke-LintHook
+    {
         param([string] $FilePath)
         $json = @{ tool_input = @{ file_path = $FilePath } } | ConvertTo-Json -Compress
         return ($json | & pwsh -NoProfile -File $script:Hook 2>&1 | Out-String)
     }
 
-    function New-TempRoot {
+    function New-TempRoot
+    {
         $root = Join-Path ([IO.Path]::GetTempPath()) ('lintbook-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $root -Force | Out-Null
         return $root
@@ -76,27 +81,33 @@ Describe 'claude/lint-powershell.ps1 ruleset discovery' -Skip:(-not $script:HasP
         # really does trip a rule, so silence below means "ruleset applied", not "hook
         # never ran". Without this an inert hook would green the whole suite.
         $root = New-TempRoot
-        try {
+        try
+        {
             $edited = New-LintTree -Root $root
             Add-VcsRoot -Dir $root
             $out = Invoke-LintHook -FilePath $edited
 
             $out | Should -Match 'PSAvoidUsingWriteHost' -Because 'PSSA defaults flag Write-Host, so the fixture is a real violation'
-        } finally {
+        }
+        finally
+        {
             Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
 
     It 'honours a ruleset in .vscode/' {
         $root = New-TempRoot
-        try {
+        try
+        {
             $edited = New-LintTree -Root $root
             Add-VcsRoot -Dir $root
             Add-Ruleset -Dir (Join-Path $root '.vscode')
             $out = Invoke-LintHook -FilePath $edited
 
             $out.Trim() | Should -BeNullOrEmpty -Because 'the ruleset excludes the only rule the fixture trips'
-        } finally {
+        }
+        finally
+        {
             Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
@@ -108,14 +119,17 @@ Describe 'claude/lint-powershell.ps1 ruleset discovery' -Skip:(-not $script:HasP
         # with defaults and false-flagged rules this repo excludes (Write-Host on
         # git/work-hooks/policy.ps1 was the recurring one).
         $root = New-TempRoot
-        try {
+        try
+        {
             $edited = New-LintTree -Root $root
             Add-VcsRoot -Dir $root
             Add-Ruleset -Dir $root
             $out = Invoke-LintHook -FilePath $edited
 
             $out.Trim() | Should -BeNullOrEmpty -Because 'a root ruleset is what CI uses and the hook must match it'
-        } finally {
+        }
+        finally
+        {
             Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
@@ -126,7 +140,8 @@ Describe 'claude/lint-powershell.ps1 ruleset discovery' -Skip:(-not $script:HasP
         # govern the linting of every repo on the machine. Checking the ruleset BEFORE the
         # boundary is what still allows a ruleset sitting AT the root (the case above).
         $root = New-TempRoot
-        try {
+        try
+        {
             $project = Join-Path $root 'project'
             $edited = New-LintTree -Root $project
             Add-VcsRoot -Dir $project
@@ -134,7 +149,9 @@ Describe 'claude/lint-powershell.ps1 ruleset discovery' -Skip:(-not $script:HasP
             $out = Invoke-LintHook -FilePath $edited
 
             $out | Should -Match 'PSAvoidUsingWriteHost' -Because 'a ruleset outside the project must not silently apply to it'
-        } finally {
+        }
+        finally
+        {
             Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
@@ -145,7 +162,8 @@ Describe 'claude/lint-powershell.ps1 ruleset discovery' -Skip:(-not $script:HasP
         # walk would escape the project, so pin the file form - it is the form that actually
         # ships here, and the failure would be silent.
         $root = New-TempRoot
-        try {
+        try
+        {
             $project = Join-Path $root 'project'
             $edited = New-LintTree -Root $project
             Set-Content -LiteralPath (Join-Path $project '.git') `
@@ -155,7 +173,9 @@ Describe 'claude/lint-powershell.ps1 ruleset discovery' -Skip:(-not $script:HasP
             $out = Invoke-LintHook -FilePath $edited
 
             $out | Should -Match 'PSAvoidUsingWriteHost' -Because 'a worktree .git is a file and must still bound the walk'
-        } finally {
+        }
+        finally
+        {
             Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
         }
     }

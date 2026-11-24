@@ -18,13 +18,15 @@ BeforeAll {
     $script:Hook = Join-Path $script:RepoRoot 'claude/block-destructive-vcs.ps1'
 
     # Drives the hook with a raw stdin payload (string). Returns stdout as one string.
-    function Invoke-Hook {
+    function Invoke-Hook
+    {
         param([string] $Payload)
         return ($Payload | & pwsh -NoProfile -File $script:Hook 2>&1 | Out-String)
     }
 
     # Convenience: wrap a command string as the tool-call JSON the hook parses.
-    function Invoke-HookCmd {
+    function Invoke-HookCmd
+    {
         param([string] $Command)
         $json = @{ tool_input = @{ command = $Command } } | ConvertTo-Json -Compress
         return (Invoke-Hook -Payload $json)

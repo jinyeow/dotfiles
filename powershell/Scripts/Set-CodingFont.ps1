@@ -41,15 +41,15 @@ $ErrorActionPreference = 'Stop'
 
 # Short name -> installed Windows Terminal face (the font family as registered on the system).
 $faces = @{
-  fira      = 'Fira Code'
-  jetbrains = 'JetBrainsMono NFM'
-  maple     = 'Maple Mono NF'
-  monaspace = 'MonaspiceNe NFM'
-  '0xproto' = '0xProto Nerd Font Mono'
-  iosevka   = 'Iosevka NFM'
-  victor    = 'VictorMono NFM'
-  commit    = 'CommitMono Nerd Font Mono'
-  geist     = 'GeistMono NFM'
+    fira = 'Fira Code'
+    jetbrains = 'JetBrainsMono NFM'
+    maple = 'Maple Mono NF'
+    monaspace = 'MonaspiceNe NFM'
+    '0xproto' = '0xProto Nerd Font Mono'
+    iosevka = 'Iosevka NFM'
+    victor = 'VictorMono NFM'
+    commit = 'CommitMono Nerd Font Mono'
+    geist = 'GeistMono NFM'
 }
 $face = $faces[$Name]
 $vscodeFamily = "$face, Fira Code, monospace"
@@ -60,25 +60,27 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 # Replace every regex match in a file, in place, preserving the original trailing newline.
 # Strict: a repo dotfile that is missing or has no font setting is a real error (the repo is
 # the source of truth and must always update), so this throws rather than skipping silently.
-function Update-FontInFile {
-  param([string]$Path, [string]$Pattern, [string]$Replacement, [string]$Label)
-  if (-not (Test-Path -LiteralPath $Path)) { throw "${Label}: file not found ($Path)" }
-  $text = Get-Content -LiteralPath $Path -Raw
-  $rx = [regex]$Pattern
-  if (-not $rx.IsMatch($text)) { throw "${Label}: no font setting matched ($Path)" }
-  $new = $rx.Replace($text, $Replacement)
-  if ($new -ceq $text) { Write-Host "  $Label (already set)"; return }
-  Set-Content -LiteralPath $Path -Value $new -NoNewline -Encoding utf8
-  Write-Host "  $Label"
+function Update-FontInFile
+{
+    param([string]$Path, [string]$Pattern, [string]$Replacement, [string]$Label)
+    if (-not (Test-Path -LiteralPath $Path)) { throw "${Label}: file not found ($Path)" }
+    $text = Get-Content -LiteralPath $Path -Raw
+    $rx = [regex]$Pattern
+    if (-not $rx.IsMatch($text)) { throw "${Label}: no font setting matched ($Path)" }
+    $new = $rx.Replace($text, $Replacement)
+    if ($new -ceq $text) { Write-Host "  $Label (already set)"; return }
+    Set-Content -LiteralPath $Path -Value $new -NoNewline -Encoding utf8
+    Write-Host "  $Label"
 }
 
 # A live application target is optional: the app may not be installed on this machine, which is
 # fine (warn + skip). But if it IS present, defer to the strict updater so a real anomaly (an
 # installed app whose settings lack the font key) still surfaces.
-function Update-LiveFont {
-  param([string]$Path, [string]$Pattern, [string]$Replacement, [string]$Label)
-  if (Test-Path -LiteralPath $Path) { Update-FontInFile $Path $Pattern $Replacement $Label }
-  else { Write-Warning "skip ${Label}: app not installed ($Path)" }
+function Update-LiveFont
+{
+    param([string]$Path, [string]$Pattern, [string]$Replacement, [string]$Label)
+    if (Test-Path -LiteralPath $Path) { Update-FontInFile $Path $Pattern $Replacement $Label }
+    else { Write-Warning "skip ${Label}: app not installed ($Path)" }
 }
 
 Write-Host "Setting coding font -> '$face'"

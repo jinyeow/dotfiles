@@ -19,44 +19,54 @@ BeforeAll {
     # finally, so isolation holds on every OS. Default home is an empty temp dir so path-1
     # (in-repo brain) tests never read the real ~/.claude/project-brain/brains.json and stay
     # machine-independent.
-    function Invoke-SessionStart {
+    function Invoke-SessionStart
+    {
         param([string] $Payload, [string] $Cwd, [string] $HomeDir)
         if (-not $Payload) { $Payload = @{ cwd = $Cwd } | ConvertTo-Json -Compress }
         $ownHome = $false
-        if (-not $HomeDir) {
+        if (-not $HomeDir)
+        {
             $HomeDir = Join-Path ([IO.Path]::GetTempPath()) ('pb-emptyhome-' + [guid]::NewGuid())
             New-Item -ItemType Directory -Path $HomeDir -Force | Out-Null
             $ownHome = $true
         }
         $savedUserProfile = $env:USERPROFILE
         $savedHome = $env:HOME
-        try {
+        try
+        {
             $env:USERPROFILE = $HomeDir
             $env:HOME = $HomeDir
             $out = ($Payload | & pwsh -NoProfile -File $script:Script 2>&1 | Out-String).Trim()
             $script:LastExitCode = $LASTEXITCODE
             return $out
-        } finally {
+        }
+        finally
+        {
             $env:USERPROFILE = $savedUserProfile
             $env:HOME = $savedHome
             if ($ownHome) { Remove-Item -LiteralPath $HomeDir -Recurse -Force -ErrorAction SilentlyContinue }
         }
     }
 
-    function New-Workspace {
+    function New-Workspace
+    {
         param([string[]] $StatusLines, [string] $StatusRaw, [switch] $NoStatus)
         $ws = Join-Path ([IO.Path]::GetTempPath()) ('pb-session-start-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path (Join-Path $ws '.claude/brain') -Force | Out-Null
         Set-Content -LiteralPath (Join-Path $ws '.claude/brain/core.md') -Value '# core' -Encoding utf8
-        if ($StatusRaw) {
+        if ($StatusRaw)
+        {
             Set-Content -LiteralPath (Join-Path $ws '.claude/brain/STATUS.md') -Value $StatusRaw -NoNewline -Encoding utf8
-        } elseif (-not $NoStatus) {
+        }
+        elseif (-not $NoStatus)
+        {
             Set-Content -LiteralPath (Join-Path $ws '.claude/brain/STATUS.md') -Value ($StatusLines -join "`n") -Encoding utf8
         }
         return $ws
     }
 
-    function ConvertTo-CwdNorm([string] $path) {
+    function ConvertTo-CwdNorm([string] $path)
+    {
         return ($path -replace '\\', '/').TrimEnd('/')
     }
 
@@ -67,7 +77,8 @@ BeforeAll {
     # on-disk initiatives (for the staleness scan) come from -Initiatives; each is a
     # hashtable @{ Id; StatusRaw?; Archived? }. A raw -RegistryJson overrides the registry
     # file verbatim (used to drive the malformed-registry fail-safe case).
-    function New-RegisteredHome {
+    function New-RegisteredHome
+    {
         param(
             [Parameter(Mandatory)][string] $Cwd,
             [string] $LoadedId = 'loaded',
@@ -86,9 +97,12 @@ BeforeAll {
         Set-Content -LiteralPath (Join-Path $fixtureHome '.claude/project-brain/brains.json') `
             -Value ($brains | ConvertTo-Json -Depth 6) -Encoding utf8
 
-        if ($RegistryJson) {
+        if ($RegistryJson)
+        {
             Set-Content -LiteralPath (Join-Path $brain 'registry.json') -Value $RegistryJson -NoNewline -Encoding utf8
-        } else {
+        }
+        else
+        {
             $reg = @{ initiatives = @{ $LoadedId = @{ title = $LoadedTitle; dirs = @($cwdNorm) } } }
             Set-Content -LiteralPath (Join-Path $brain 'registry.json') `
                 -Value ($reg | ConvertTo-Json -Depth 6) -Encoding utf8
@@ -100,15 +114,20 @@ BeforeAll {
         $loadedStatus = if ($LoadedStatusRaw) { $LoadedStatusRaw } else { "# loaded status`nnow" }
         Set-Content -LiteralPath (Join-Path $loadedDir 'STATUS.md') -Value $loadedStatus -NoNewline -Encoding utf8
 
-        foreach ($init in $Initiatives) {
-            $dir = if ($init.Archived) {
+        foreach ($init in $Initiatives)
+        {
+            $dir = if ($init.Archived)
+            {
                 Join-Path $brain "initiatives/_archive/$($init.Id)"
-            } else {
+            }
+            else
+            {
                 Join-Path $brain "initiatives/$($init.Id)"
             }
             New-Item -ItemType Directory -Path $dir -Force | Out-Null
             Set-Content -LiteralPath (Join-Path $dir 'core.md') -Value "# $($init.Id) core" -Encoding utf8
-            if ($init.ContainsKey('StatusRaw')) {
+            if ($init.ContainsKey('StatusRaw'))
+            {
                 Set-Content -LiteralPath (Join-Path $dir 'STATUS.md') -Value $init.StatusRaw -NoNewline -Encoding utf8
             }
         }
@@ -117,7 +136,8 @@ BeforeAll {
 
     # A conformant STATUS.md front matter block with the given stale_after date plus
     # $BodyLines lines of body. Total line count = 6 frontmatter lines + $BodyLines.
-    function New-StatusMd {
+    function New-StatusMd
+    {
         param([string] $StaleAfter, [int] $BodyLines = 3)
         $fm = "---`ninitiative: x`ntype: status`nupdated: 2026-01-01`nstale_after: $StaleAfter`n---"
         $body = (1..$BodyLines | ForEach-Object { "body$_" }) -join "`n"
@@ -127,15 +147,19 @@ BeforeAll {
     # Registers $Initiatives (plus a fresh loaded initiative matching cwd) under an
     # isolated fixture home, runs the hook via path 2, and returns the emitted
     # additionalContext. Used by the staleness/oversize advisory tests.
-    function Invoke-Path2 {
+    function Invoke-Path2
+    {
         param([hashtable[]] $Initiatives, [string] $LoadedStatusRaw)
         $cwd = Join-Path ([IO.Path]::GetTempPath()) ('pb-cwd-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $cwd -Force | Out-Null
         $fx = New-RegisteredHome -Cwd $cwd -Initiatives $Initiatives -LoadedStatusRaw $LoadedStatusRaw
-        try {
+        try
+        {
             $out = Invoke-SessionStart -Cwd $cwd -HomeDir $fx.Home
             return ($out | ConvertFrom-Json).hookSpecificOutput.additionalContext
-        } finally {
+        }
+        finally
+        {
             Remove-Item -LiteralPath $cwd -Recurse -Force -ErrorAction SilentlyContinue
             Remove-Item -LiteralPath $fx.Home -Recurse -Force -ErrorAction SilentlyContinue
             Remove-Item -LiteralPath $fx.Brain -Recurse -Force -ErrorAction SilentlyContinue
@@ -147,36 +171,42 @@ Describe 'ai-agents/skills/project-brain/scripts/session-start.ps1' {
     It 'emits no warning line when STATUS.md is under the cap' {
         $lines = 1..5 | ForEach-Object { "line$_" }
         $ws = New-Workspace -StatusLines $lines
-        try {
+        try
+        {
             $out = Invoke-SessionStart -Cwd $ws
             $json = $out | ConvertFrom-Json
             $ctx = $json.hookSpecificOutput.additionalContext
             $ctx | Should -Not -Match '\[project-brain\] STATUS\.md is \d+ lines'
-        } finally { Remove-Item -LiteralPath $ws -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+        finally { Remove-Item -LiteralPath $ws -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
     It 'appends exactly one warning line carrying the real count when STATUS.md exceeds the cap' {
         $lines = 1..61 | ForEach-Object { "line$_" }
         $ws = New-Workspace -StatusLines $lines
-        try {
+        try
+        {
             $out = Invoke-SessionStart -Cwd $ws
             $json = $out | ConvertFrom-Json
             $ctx = $json.hookSpecificOutput.additionalContext
             $warningMatches = [regex]::Matches($ctx, '\[project-brain\] STATUS\.md is \d+ lines')
             $warningMatches.Count | Should -Be 1
             $ctx | Should -Match ([regex]::Escape('[project-brain] STATUS.md is 61 lines; the contract caps it at about 60. Move history to log.md in this initiative at the next status update.'))
-        } finally { Remove-Item -LiteralPath $ws -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+        finally { Remove-Item -LiteralPath $ws -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
     It 'keeps the missing-STATUS.md line and emits no warning when STATUS.md is absent' {
         $ws = New-Workspace -NoStatus
-        try {
+        try
+        {
             $out = Invoke-SessionStart -Cwd $ws
             $json = $out | ConvertFrom-Json
             $ctx = $json.hookSpecificOutput.additionalContext
             $ctx | Should -Match ([regex]::Escape('(No STATUS.md yet - this initiative may be newly scaffolded.)'))
             $ctx | Should -Not -Match '\[project-brain\] STATUS\.md is \d+ lines'
-        } finally { Remove-Item -LiteralPath $ws -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+        finally { Remove-Item -LiteralPath $ws -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
     It 'exits 0 with no output on malformed stdin' {
@@ -188,24 +218,28 @@ Describe 'ai-agents/skills/project-brain/scripts/session-start.ps1' {
     It 'emits no warning line when STATUS.md is exactly at the cap' {
         $lines = 1..60 | ForEach-Object { "line$_" }
         $ws = New-Workspace -StatusLines $lines
-        try {
+        try
+        {
             $out = Invoke-SessionStart -Cwd $ws
             $json = $out | ConvertFrom-Json
             $ctx = $json.hookSpecificOutput.additionalContext
             $ctx | Should -Not -Match '\[project-brain\] STATUS\.md is \d+ lines'
-        } finally { Remove-Item -LiteralPath $ws -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+        finally { Remove-Item -LiteralPath $ws -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
     It 'counts a trailing blank line as real content, not as the terminator' {
         $raw = (1..61 | ForEach-Object { "line$_" }) -join "`n"
         $raw += "`n`n"
         $ws = New-Workspace -StatusRaw $raw
-        try {
+        try
+        {
             $out = Invoke-SessionStart -Cwd $ws
             $json = $out | ConvertFrom-Json
             $ctx = $json.hookSpecificOutput.additionalContext
             $ctx | Should -Match ([regex]::Escape('[project-brain] STATUS.md is 62 lines'))
-        } finally { Remove-Item -LiteralPath $ws -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+        finally { Remove-Item -LiteralPath $ws -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
     Context 'path 2: global brains.json -> registry -> initiative' {
@@ -213,14 +247,17 @@ Describe 'ai-agents/skills/project-brain/scripts/session-start.ps1' {
             $cwd = Join-Path ([IO.Path]::GetTempPath()) ('pb-cwd-' + [guid]::NewGuid())
             New-Item -ItemType Directory -Path $cwd -Force | Out-Null
             $fx = New-RegisteredHome -Cwd $cwd -LoadedId 'PBI-9' -LoadedTitle 'Ninth thing'
-            try {
+            try
+            {
                 $out = Invoke-SessionStart -Cwd $cwd -HomeDir $fx.Home
                 $json = $out | ConvertFrom-Json
                 $ctx = $json.hookSpecificOutput.additionalContext
                 $ctx | Should -Match ([regex]::Escape('[project-brain] Active initiative: PBI-9 - Ninth thing.'))
                 $ctx | Should -Match ([regex]::Escape('# loaded core'))
                 $script:LastExitCode | Should -Be 0
-            } finally {
+            }
+            finally
+            {
                 Remove-Item -LiteralPath $cwd -Recurse -Force -ErrorAction SilentlyContinue
                 Remove-Item -LiteralPath $fx.Home -Recurse -Force -ErrorAction SilentlyContinue
                 Remove-Item -LiteralPath $fx.Brain -Recurse -Force -ErrorAction SilentlyContinue
@@ -231,7 +268,8 @@ Describe 'ai-agents/skills/project-brain/scripts/session-start.ps1' {
             $cwd = Join-Path ([IO.Path]::GetTempPath()) ('pb-cwd-' + [guid]::NewGuid())
             New-Item -ItemType Directory -Path $cwd -Force | Out-Null
             $fx = New-RegisteredHome -Cwd $cwd
-            try {
+            try
+            {
                 # Point the child at a sibling dir the scope does not cover.
                 $other = Join-Path ([IO.Path]::GetTempPath()) ('pb-other-' + [guid]::NewGuid())
                 New-Item -ItemType Directory -Path $other -Force | Out-Null
@@ -239,7 +277,9 @@ Describe 'ai-agents/skills/project-brain/scripts/session-start.ps1' {
                 $out | Should -BeNullOrEmpty
                 $script:LastExitCode | Should -Be 0
                 Remove-Item -LiteralPath $other -Recurse -Force -ErrorAction SilentlyContinue
-            } finally {
+            }
+            finally
+            {
                 Remove-Item -LiteralPath $cwd -Recurse -Force -ErrorAction SilentlyContinue
                 Remove-Item -LiteralPath $fx.Home -Recurse -Force -ErrorAction SilentlyContinue
                 Remove-Item -LiteralPath $fx.Brain -Recurse -Force -ErrorAction SilentlyContinue
@@ -251,7 +291,8 @@ Describe 'ai-agents/skills/project-brain/scripts/session-start.ps1' {
         It 'appends exactly one notice naming the shadowed id and still loads the in-repo brain' {
             $ws = New-Workspace -StatusLines @('now')
             $fx = New-RegisteredHome -Cwd $ws -LoadedId 'PBI-7'
-            try {
+            try
+            {
                 $out = Invoke-SessionStart -Cwd $ws -HomeDir $fx.Home
                 $json = $out | ConvertFrom-Json
                 $ctx = $json.hookSpecificOutput.additionalContext
@@ -260,7 +301,9 @@ Describe 'ai-agents/skills/project-brain/scripts/session-start.ps1' {
                 $notices.Count | Should -Be 1
                 $ctx | Should -Match 'NOT loaded: PBI-7 at .+initiatives.+PBI-7\. Read its core\.md and STATUS\.md if the task concerns it\.'
                 $script:LastExitCode | Should -Be 0
-            } finally {
+            }
+            finally
+            {
                 Remove-Item -LiteralPath $ws -Recurse -Force -ErrorAction SilentlyContinue
                 Remove-Item -LiteralPath $fx.Home -Recurse -Force -ErrorAction SilentlyContinue
                 Remove-Item -LiteralPath $fx.Brain -Recurse -Force -ErrorAction SilentlyContinue
@@ -269,13 +312,15 @@ Describe 'ai-agents/skills/project-brain/scripts/session-start.ps1' {
 
         It 'appends no notice when no registered initiative matches, keeping the in-repo context' {
             $ws = New-Workspace -StatusLines @('now')
-            try {
+            try
+            {
                 $out = Invoke-SessionStart -Cwd $ws
                 $json = $out | ConvertFrom-Json
                 $ctx = $json.hookSpecificOutput.additionalContext
                 $ctx | Should -Match ([regex]::Escape('# core'))
                 $ctx | Should -Not -Match '\[project-brain\] A registered initiative also matches'
-            } finally { Remove-Item -LiteralPath $ws -Recurse -Force -ErrorAction SilentlyContinue }
+            }
+            finally { Remove-Item -LiteralPath $ws -Recurse -Force -ErrorAction SilentlyContinue }
         }
 
         It 'keeps the in-repo context and adds no notice when the brains.json scope does not cover cwd' {
@@ -286,14 +331,17 @@ Describe 'ai-agents/skills/project-brain/scripts/session-start.ps1' {
             $unrelated = Join-Path ([IO.Path]::GetTempPath()) ('pb-unrelated-' + [guid]::NewGuid())
             New-Item -ItemType Directory -Path $unrelated -Force | Out-Null
             $fx = New-RegisteredHome -Cwd $unrelated
-            try {
+            try
+            {
                 $out = Invoke-SessionStart -Cwd $ws -HomeDir $fx.Home
                 $json = $out | ConvertFrom-Json
                 $ctx = $json.hookSpecificOutput.additionalContext
                 $ctx | Should -Match ([regex]::Escape('# core'))
                 $ctx | Should -Not -Match '\[project-brain\] A registered initiative also matches'
                 $script:LastExitCode | Should -Be 0
-            } finally {
+            }
+            finally
+            {
                 Remove-Item -LiteralPath $ws -Recurse -Force -ErrorAction SilentlyContinue
                 Remove-Item -LiteralPath $unrelated -Recurse -Force -ErrorAction SilentlyContinue
                 Remove-Item -LiteralPath $fx.Home -Recurse -Force -ErrorAction SilentlyContinue
@@ -304,14 +352,17 @@ Describe 'ai-agents/skills/project-brain/scripts/session-start.ps1' {
         It 'still emits the in-repo context with no notice and exit 0 when registry.json is malformed' {
             $ws = New-Workspace -StatusLines @('now')
             $fx = New-RegisteredHome -Cwd $ws -RegistryJson '{ "initiatives": { not valid'
-            try {
+            try
+            {
                 $out = Invoke-SessionStart -Cwd $ws -HomeDir $fx.Home
                 $json = $out | ConvertFrom-Json
                 $ctx = $json.hookSpecificOutput.additionalContext
                 $ctx | Should -Match ([regex]::Escape('# core'))
                 $ctx | Should -Not -Match '\[project-brain\] A registered initiative also matches'
                 $script:LastExitCode | Should -Be 0
-            } finally {
+            }
+            finally
+            {
                 Remove-Item -LiteralPath $ws -Recurse -Force -ErrorAction SilentlyContinue
                 Remove-Item -LiteralPath $fx.Home -Recurse -Force -ErrorAction SilentlyContinue
                 Remove-Item -LiteralPath $fx.Brain -Recurse -Force -ErrorAction SilentlyContinue

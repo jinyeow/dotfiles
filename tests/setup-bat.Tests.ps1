@@ -17,9 +17,11 @@ BeforeAll {
     # no PATHEXT resolution for a bare `bat` off Windows). It answers `bat --config-dir` with
     # $env:BAT_SHIM_CONFIGDIR and appends every invocation's args to $env:BAT_SHIM_LOG, so a
     # test can assert whether `bat cache --build` ran without needing a real bat.
-    function script:New-BatShim ([string]$ShimDir) {
+    function script:New-BatShim ([string]$ShimDir)
+    {
         New-Item -ItemType Directory -Path $ShimDir -Force | Out-Null
-        if ($IsWindows) {
+        if ($IsWindows)
+        {
             $body = @'
 @echo off
 if "%~1"=="--config-dir" (
@@ -30,7 +32,9 @@ echo %* >> "%BAT_SHIM_LOG%"
 exit /b 0
 '@
             Set-Content -Path (Join-Path $ShimDir 'bat.cmd') -Value $body -Encoding ASCII
-        } else {
+        }
+        else
+        {
             $shimPath = Join-Path $ShimDir 'bat'
             $body = @'
 #!/bin/sh
@@ -48,7 +52,8 @@ exit 0
 
     # Strips any directory containing a `bat`/`bat.cmd`/`bat.exe` from PATH, so the
     # "bat not found" guard test is not at the mercy of whether the host machine has bat.
-    function script:Get-PathWithoutBat {
+    function script:Get-PathWithoutBat
+    {
         $sep = [IO.Path]::PathSeparator
         ($env:PATH -split [regex]::Escape($sep)) | Where-Object {
             -not (Test-Path (Join-Path $_ 'bat')) -and

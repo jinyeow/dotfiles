@@ -9,53 +9,60 @@
 $global:PromptConst = @{
     # WindowsIdentity/WindowsPrincipal throw PlatformNotSupportedException off
     # Windows, so gate the admin check on $IsWindows. On Linux/macOS root is uid 0.
-    IsAdmin = if ($IsWindows) {
+    IsAdmin = if ($IsWindows)
+    {
         ([System.Security.Principal.WindowsPrincipal](
             [System.Security.Principal.WindowsIdentity]::GetCurrent()
         )).IsInRole('Administrators')
-    } elseif (Get-Command id -ErrorAction Ignore) {
+    }
+    elseif (Get-Command id -ErrorAction Ignore)
+    {
         (id -u) -eq '0'
-    } else {
+    }
+    else
+    {
         $false
     }
 
     # ANSI escape sequences
-    ESC          = [char]27
-    Reset        = "`e[0m"
-    Bold         = "`e[1m"
-    Blue         = "`e[34m"
-    BrightBlue   = "`e[94m"
-    Red          = "`e[91m"
-    Green        = "`e[92m"
-    Yellow       = "`e[93m"
-    Cyan         = "`e[36m"
-    Magenta      = "`e[95m"
-    BrightCyan   = "`e[96m"
-    Grey         = "`e[37m"
-    White        = "`e[97m"
-    DimWhite     = "`e[37;2m"
+    ESC = [char]27
+    Reset = "`e[0m"
+    Bold = "`e[1m"
+    Blue = "`e[34m"
+    BrightBlue = "`e[94m"
+    Red = "`e[91m"
+    Green = "`e[92m"
+    Yellow = "`e[93m"
+    Cyan = "`e[36m"
+    Magenta = "`e[95m"
+    BrightCyan = "`e[96m"
+    Grey = "`e[37m"
+    White = "`e[97m"
+    DimWhite = "`e[37;2m"
 
     # Prompt settings
-    MaxPathLength   = 50   # upper cap; the prompt scales this to ~1/3 of pane width
+    MaxPathLength = 50   # upper cap; the prompt scales this to ~1/3 of pane width
     MaxBranchLength = 35
-    ShowWorktree    = $true
-    ShowUsername     = $true
-    ShowJj          = $true   # jj (Jujutsu) takes precedence over git in colocated repos
+    ShowWorktree = $true
+    ShowUsername = $true
+    ShowJj = $true   # jj (Jujutsu) takes precedence over git in colocated repos
 }
 
 # --- Az context async infrastructure ---------------------------------------
 # Guarded so `. $PROFILE` reuses the live long-lived runspace/timer instead of
 # orphaning them (a fresh hashtable would strand the open runspace and its Az
 # import, not just the timer).
-if (-not $global:PromptCache) {
+if (-not $global:PromptCache)
+{
     $global:PromptCache = @{
-        AzContext       = $null   # cached result hashtable
-        AzRunspace      = $null   # persistent [runspace], opened once and reused
-        AzInvocation    = $null   # per-tick @{ PowerShell; Handle } on that runspace
+        AzContext = $null   # cached result hashtable
+        AzRunspace = $null   # persistent [runspace], opened once and reused
+        AzInvocation = $null   # per-tick @{ PowerShell; Handle } on that runspace
     }
 }
 
-function Start-AzContextRefresh {
+function Start-AzContextRefresh
+{
     <#
     .SYNOPSIS
     Fires a background invocation to fetch Get-AzContext on a long-lived runspace.
@@ -69,7 +76,8 @@ function Start-AzContextRefresh {
     # Concurrency guard: a runspace runs only ONE pipeline at a time. If the previous
     # invocation is still running, skip this tick (starting a second pipeline on the
     # busy runspace throws "runspace is already in use"). If it finished, dispose it.
-    if ($global:PromptCache.AzInvocation) {
+    if ($global:PromptCache.AzInvocation)
+    {
         if (-not $global:PromptCache.AzInvocation.Handle.IsCompleted) { return }
         try { $global:PromptCache.AzInvocation.PowerShell.Dispose() } catch {}
         $global:PromptCache.AzInvocation = $null
@@ -79,8 +87,9 @@ function Start-AzContextRefresh {
     # absent or broken. A bare runspace opens in ~10ms; the Az.Accounts import is done
     # once by the priming invocation below (kept off the main thread — see $created).
     $runspace = $global:PromptCache.AzRunspace
-    $created  = $false
-    if (-not $runspace -or $runspace.RunspaceStateInfo.State -eq 'Broken') {
+    $created = $false
+    if (-not $runspace -or $runspace.RunspaceStateInfo.State -eq 'Broken')
+    {
         if ($runspace) { try { $runspace.Dispose() } catch {} }
         $runspace = [runspacefactory]::CreateRunspace()
         $runspace.Open()
@@ -93,18 +102,22 @@ function Start-AzContextRefresh {
 
     # Per-tick script: module already loaded in the runspace's session state.
     $tick = {
-        try {
+        try
+        {
             $ctx = Get-AzContext -ErrorAction Stop
-            if ($ctx) {
+            if ($ctx)
+            {
                 @{
-                    Account      = $ctx.Account.Id
+                    Account = $ctx.Account.Id
                     Subscription = $ctx.Subscription.Name
-                    TenantId     = $ctx.Tenant.Id
-                    Environment  = $ctx.Environment.Name
-                    Timestamp    = [datetime]::Now
+                    TenantId = $ctx.Tenant.Id
+                    Environment = $ctx.Environment.Name
+                    Timestamp = [datetime]::Now
                 }
             }
-        } catch {
+        }
+        catch
+        {
             $null
         }
     }
@@ -113,26 +126,33 @@ function Start-AzContextRefresh {
     # once, then read the context. Import stays async here (never on the main thread);
     # it persists in the runspace's session state for every later Get-AzContext tick.
     $prime = {
-        try {
+        try
+        {
             Import-Module Az.Accounts -ErrorAction Stop
-        } catch {
+        }
+        catch
+        {
             # Signal an import failure distinctly: the caller drops this runspace so
             # the next refresh recreates and re-primes it, rather than ticking forever
             # on a healthy-but-unprimed session where every Get-AzContext would fail.
             return @{ PrimeFailed = $true }
         }
-        try {
+        try
+        {
             $ctx = Get-AzContext -ErrorAction Stop
-            if ($ctx) {
+            if ($ctx)
+            {
                 @{
-                    Account      = $ctx.Account.Id
+                    Account = $ctx.Account.Id
                     Subscription = $ctx.Subscription.Name
-                    TenantId     = $ctx.Tenant.Id
-                    Environment  = $ctx.Environment.Name
-                    Timestamp    = [datetime]::Now
+                    TenantId = $ctx.Tenant.Id
+                    Environment = $ctx.Environment.Name
+                    Timestamp = [datetime]::Now
                 }
             }
-        } catch {
+        }
+        catch
+        {
             $null
         }
     }
@@ -144,11 +164,12 @@ function Start-AzContextRefresh {
 
     $global:PromptCache.AzInvocation = @{
         PowerShell = $ps
-        Handle     = $handle
+        Handle = $handle
     }
 }
 
-function Update-AzPrompt {
+function Update-AzPrompt
+{
     <#
     .SYNOPSIS
     Manually trigger an Az context refresh. Call after Connect-AzAccount.
@@ -157,7 +178,8 @@ function Update-AzPrompt {
     Write-Host 'Az context refresh triggered.' -ForegroundColor Cyan
 }
 
-function Get-AzAsyncResult {
+function Get-AzAsyncResult
+{
     <#
     .SYNOPSIS
     Non-blocking check for Az context result. Returns cached value if not ready.
@@ -165,18 +187,25 @@ function Get-AzAsyncResult {
     $info = $global:PromptCache.AzInvocation
     if (-not $info) { return $global:PromptCache.AzContext }
 
-    if ($info.Handle.IsCompleted) {
-        try {
+    if ($info.Handle.IsCompleted)
+    {
+        try
+        {
             $result = $info.PowerShell.EndInvoke($info.Handle)
-            if ($result -and $result.PrimeFailed) {
+            if ($result -and $result.PrimeFailed)
+            {
                 # Priming import failed — drop the runspace so the next refresh
                 # recreates and re-primes it instead of ticking on a dead session.
                 try { $global:PromptCache.AzRunspace.Dispose() } catch {}
                 $global:PromptCache.AzRunspace = $null
-            } elseif ($result) {
+            }
+            elseif ($result)
+            {
                 $global:PromptCache.AzContext = $result
             }
-        } catch {} finally {
+        }
+        catch {} finally
+        {
             # Dispose only the per-tick PowerShell; the runspace is long-lived.
             try { $info.PowerShell.Dispose() } catch {}
             $global:PromptCache.AzInvocation = $null
@@ -187,7 +216,8 @@ function Get-AzAsyncResult {
 }
 
 # --- Az context auto-refresh timer (60s) ------------------------------------
-function Initialize-AzTimer {
+function Initialize-AzTimer
+{
     # Idempotent: unregister existing before re-registering. Runs *before* the Az
     # guard so a reload never leaves a stale PowerShell.Exiting handler behind when
     # Az has since become unavailable (the guard would otherwise return early).
@@ -198,12 +228,13 @@ function Initialize-AzTimer {
     # unregister every module's hidden Exiting handler on a `. $PROFILE` reload.
     Get-EventSubscriber -Force -ErrorAction SilentlyContinue |
         Where-Object { $_.SourceIdentifier -like 'Profile.Az*' -or
-                       ($_.SourceIdentifier -eq 'PowerShell.Exiting' -and $_.SupportEvent -and
-                        $_.Action -and $_.Action.Command -match 'PromptCache\.Az') } |
+            ($_.SourceIdentifier -eq 'PowerShell.Exiting' -and $_.SupportEvent -and
+            $_.Action -and $_.Action.Command -match 'PromptCache\.Az') } |
         Unregister-Event -Force
 
     # Dispose previous timer object if reloading profile
-    if ($global:PromptCache.AzTimer) {
+    if ($global:PromptCache.AzTimer)
+    {
         $global:PromptCache.AzTimer.Stop()
         $global:PromptCache.AzTimer.Dispose()
         $global:PromptCache.AzTimer = $null
@@ -217,17 +248,22 @@ function Initialize-AzTimer {
     # only the mandatory OnIdle registration to absorb that one-time cost. The
     # matching unregister lives in the top cleanup block above (before the guard).
     Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action {
-        if ($global:PromptCache.AzTimer) {
+        if ($global:PromptCache.AzTimer)
+        {
             $global:PromptCache.AzTimer.Stop()
             $global:PromptCache.AzTimer.Dispose()
         }
-        if ($global:PromptCache.AzInvocation) {
-            try {
+        if ($global:PromptCache.AzInvocation)
+        {
+            try
+            {
                 $global:PromptCache.AzInvocation.PowerShell.Stop()
                 $global:PromptCache.AzInvocation.PowerShell.Dispose()
-            } catch {}
+            }
+            catch {}
         }
-        if ($global:PromptCache.AzRunspace) {
+        if ($global:PromptCache.AzRunspace)
+        {
             try { $global:PromptCache.AzRunspace.Dispose() } catch {}
         }
     } -SupportEvent | Out-Null
@@ -255,7 +291,8 @@ function Initialize-AzTimer {
 }
 
 # --- Git helpers (synchronous) ----------------------------------------------
-function Get-GitPromptInfo {
+function Get-GitPromptInfo
+{
     <#
     .SYNOPSIS
     Returns a hashtable with git status info, or $null if not in a repo.
@@ -273,39 +310,43 @@ function Get-GitPromptInfo {
     # commit), unlike `rev-parse --abbrev-ref HEAD`, which exits 128 there and used
     # to wipe the whole git segment exactly when the "new repo" signal is most useful.
     $revParts = git rev-parse --show-toplevel --git-dir --git-common-dir 2>$null
-    if ($LASTEXITCODE -eq 0 -and $revParts) {
-        $revLines     = @($revParts)
-        $topLevel     = $revLines[0]
-        $gitDir       = if ($revLines.Count -gt 1) { $revLines[1] } else { $null }
+    if ($LASTEXITCODE -eq 0 -and $revParts)
+    {
+        $revLines = @($revParts)
+        $topLevel = $revLines[0]
+        $gitDir = if ($revLines.Count -gt 1) { $revLines[1] } else { $null }
         $gitCommonDir = if ($revLines.Count -gt 2) { $revLines[2] } else { $null }
-    } else {
+    }
+    else
+    {
         $revParts = git rev-parse --git-dir --git-common-dir 2>$null
         if ($LASTEXITCODE -ne 0 -or -not $revParts) { return $null }
-        $revLines     = @($revParts)
-        $topLevel     = $null
-        $gitDir       = $revLines[0]
+        $revLines = @($revParts)
+        $topLevel = $null
+        $gitDir = $revLines[0]
         $gitCommonDir = if ($revLines.Count -gt 1) { $revLines[1] } else { $null }
     }
 
     $info = @{
-        Branch     = $null
+        Branch = $null
         IsWorktree = $false
         # git emits forward slashes; normalise to the platform separator so the
         # truncate-to-repo prefix match against $PWD.Path works on Windows.
-        TopLevel   = if ($topLevel) { $topLevel.Replace('/', [IO.Path]::DirectorySeparatorChar) } else { $null }
-        Ahead      = 0
-        Behind     = 0
-        Staged     = 0
-        Modified   = 0
-        Deleted    = 0
-        Untracked  = 0
-        Conflicts  = 0
-        Renamed    = 0
+        TopLevel = if ($topLevel) { $topLevel.Replace('/', [IO.Path]::DirectorySeparatorChar) } else { $null }
+        Ahead = 0
+        Behind = 0
+        Staged = 0
+        Modified = 0
+        Deleted = 0
+        Untracked = 0
+        Conflicts = 0
+        Renamed = 0
         HasChanges = $false
     }
 
     # Worktree detection: git-dir differs from git-common-dir in linked worktrees
-    if ($gitDir -and $gitCommonDir -and ($gitDir -ne $gitCommonDir)) {
+    if ($gitDir -and $gitCommonDir -and ($gitDir -ne $gitCommonDir))
+    {
         $info.IsWorktree = $true
     }
 
@@ -322,19 +363,25 @@ function Get-GitPromptInfo {
     # In a bare repo status also errors (exit 128) and yields nothing — Branch stays
     # null so the bare repo shows no git segment, exactly as before.
     $status = git status --porcelain=v2 --branch 2>$null
-    if ($status) {
-        foreach ($line in $status) {
+    if ($status)
+    {
+        foreach ($line in $status)
+        {
             if ($line.Length -lt 1) { continue }
             $c0 = $line[0]
 
             # Header lines: branch name + ahead/behind.
-            if ($c0 -eq '#') {
-                if ($line.StartsWith('# branch.head ')) {
+            if ($c0 -eq '#')
+            {
+                if ($line.StartsWith('# branch.head '))
+                {
                     $name = $line.Substring(14)
                     # `(detached)` -> leave Branch null (renders no branch, as before).
                     if ($name -ne '(detached)') { $info.Branch = $name }
-                } elseif ($line.StartsWith('# branch.ab ') -and $line -match '\+(\d+)\s+-(\d+)') {
-                    $info.Ahead  = [int]$Matches[1]   # +A ahead
+                }
+                elseif ($line.StartsWith('# branch.ab ') -and $line -match '\+(\d+)\s+-(\d+)')
+                {
+                    $info.Ahead = [int]$Matches[1]   # +A ahead
                     $info.Behind = [int]$Matches[2]   # -B behind
                 }
                 continue
@@ -350,10 +397,11 @@ function Get-GitPromptInfo {
             $fields = $line.Split(' ')
             if ($fields.Count -lt 2 -or $fields[1].Length -lt 2) { continue }
             $idx = $fields[1][0]   # index (staged) side
-            $wt  = $fields[1][1]   # working-tree side
+            $wt = $fields[1][1]   # working-tree side
 
             # Staged (index side). Copied (C) counts as staged; renamed (R) is its own.
-            switch ($idx) {
+            switch ($idx)
+            {
                 'M' { $info.Staged++ }
                 'A' { $info.Staged++ }
                 'D' { $info.Staged++ }
@@ -362,7 +410,8 @@ function Get-GitPromptInfo {
             }
 
             # Working tree side.
-            switch ($wt) {
+            switch ($wt)
+            {
                 'M' { $info.Modified++ }
                 'D' { $info.Deleted++ }
             }
@@ -373,7 +422,8 @@ function Get-GitPromptInfo {
 }
 
 # --- jj (Jujutsu) helpers (synchronous) -------------------------------------
-function Find-JjRoot {
+function Find-JjRoot
+{
     <#
     .SYNOPSIS
     Walks up from $StartPath looking for a `.jj` directory and returns the
@@ -383,7 +433,8 @@ function Find-JjRoot {
     #>
     param([string]$StartPath)
     $dir = $StartPath
-    while ($dir) {
+    while ($dir)
+    {
         if (Test-Path -LiteralPath (Join-Path $dir '.jj') -PathType Container) { return $dir }
         $parent = Split-Path $dir -Parent
         if (-not $parent -or $parent -eq $dir) { break }
@@ -392,7 +443,8 @@ function Find-JjRoot {
     return $null
 }
 
-function Get-JjPromptInfo {
+function Get-JjPromptInfo
+{
     <#
     .SYNOPSIS
     Returns a hashtable of jj working-copy (@) status, or $null if not in a jj
@@ -408,8 +460,8 @@ function Get-JjPromptInfo {
     # Single template for @: change-id, conflict, empty, has-description, file
     # count — tab-separated on one line.
     $tpl = 'change_id.shortest(8) ++ "\t" ++ if(conflict,"1","0") ++ "\t" ++ ' +
-           'if(empty,"1","0") ++ "\t" ++ if(description,"1","0") ++ "\t" ++ ' +
-           'self.diff().files().len()'
+    'if(empty,"1","0") ++ "\t" ++ if(description,"1","0") ++ "\t" ++ ' +
+    'self.diff().files().len()'
     $raw = jj log --ignore-working-copy --no-graph --color never --limit 1 -r '@' -T $tpl 2>$null
     if ($LASTEXITCODE -ne 0 -or -not $raw) { return $null }
 
@@ -421,14 +473,14 @@ function Get-JjPromptInfo {
     [void][int]::TryParse($f[4], [ref]$fileCount)
 
     $info = @{
-        Root              = $root
-        ChangeId          = $f[0]
-        Conflict          = $f[1] -eq '1'
-        Empty             = $f[2] -eq '1'
-        HasDesc           = $f[3] -eq '1'
-        FileCount         = $fileCount
-        Bookmark          = ''
-        BookmarkDistance  = 0
+        Root = $root
+        ChangeId = $f[0]
+        Conflict = $f[1] -eq '1'
+        Empty = $f[2] -eq '1'
+        HasDesc = $f[3] -eq '1'
+        FileCount = $fileCount
+        Bookmark = ''
+        BookmarkDistance = 0
     }
 
     # Closest ancestor bookmark — the branch-like pointer @ is working ahead of.
@@ -436,7 +488,8 @@ function Get-JjPromptInfo {
     # bookmarked ancestor instead, the way git shows the branch you're on.
     $closest = 'heads(::@ & bookmarks())'
     $bm = jj log --ignore-working-copy --no-graph --color never --limit 1 -r $closest -T 'bookmarks.join(",")' 2>$null
-    if ($LASTEXITCODE -eq 0 -and $bm) {
+    if ($LASTEXITCODE -eq 0 -and $bm)
+    {
         $info.Bookmark = [string]$bm
         # Commits between that bookmark and @ (one 'x' per rev). Only meaningful
         # when a bookmark exists; an empty left side would match all ancestors.
@@ -451,7 +504,8 @@ function Get-JjPromptInfo {
 }
 
 # --- Path shortening --------------------------------------------------------
-function Test-PathUnder {
+function Test-PathUnder
+{
     <#
     .SYNOPSIS
     True if $Path equals $Base or is a descendant of it, matching only on a
@@ -464,7 +518,8 @@ function Test-PathUnder {
     return $Path.StartsWith($Base.TrimEnd($sep) + $sep, [StringComparison]::OrdinalIgnoreCase)
 }
 
-function Get-ShortenedPath {
+function Get-ShortenedPath
+{
     <#
     .SYNOPSIS
     Responsive path shortening, anchored at the git repo root when inside one
@@ -479,16 +534,18 @@ function Get-ShortenedPath {
         [string]$RepoRoot
     )
 
-    $sep  = [IO.Path]::DirectorySeparatorChar
+    $sep = [IO.Path]::DirectorySeparatorChar
     $path = $PWD.Path
 
-    if ($RepoRoot -and (Test-PathUnder $path $RepoRoot)) {
+    if ($RepoRoot -and (Test-PathUnder $path $RepoRoot))
+    {
         # truncate-to-repo: anchor at the repo-root leaf, drop everything above it
         $repoLeaf = Split-Path $RepoRoot -Leaf
-        $rel      = $path.Substring($RepoRoot.Length).TrimStart($sep)
-        $path     = if ($rel) { "${repoLeaf}${sep}${rel}" } else { $repoLeaf }
+        $rel = $path.Substring($RepoRoot.Length).TrimStart($sep)
+        $path = if ($rel) { "${repoLeaf}${sep}${rel}" } else { $repoLeaf }
     }
-    elseif (Test-PathUnder $path $HOME) {
+    elseif (Test-PathUnder $path $HOME)
+    {
         $path = '~' + $path.Substring($HOME.Length)
     }
 
@@ -501,25 +558,28 @@ function Get-ShortenedPath {
 
     # Abbreviate leading segments left-to-right, stopping as soon as it fits.
     # Hidden dirs keep their leading dot (.config -> .c) so they stay recognisable.
-    for ($i = 1; $i -lt $parts.Count - 1; $i++) {
+    for ($i = 1; $i -lt $parts.Count - 1; $i++)
+    {
         $seg = $parts[$i]
         if ([string]::IsNullOrEmpty($seg)) { continue }  # UNC leading '\\' empties
         $parts[$i] = if ($seg.StartsWith('.') -and $seg.Length -gt 1) { $seg.Substring(0, 2) }
-                     else { $seg.Substring(0, 1) }
+        else { $seg.Substring(0, 1) }
         if (($parts -join $sep).Length -le $MaxLength) { break }
     }
 
     return $parts -join $sep
 }
 
-function Get-ShortenedBranch {
+function Get-ShortenedBranch
+{
     param([string]$Branch, [int]$MaxLength = 35)
     if (-not $Branch -or $Branch.Length -le $MaxLength) { return $Branch }
     $keep = [Math]::Floor($MaxLength / 2) - 2
     return $Branch.Substring(0, $keep) + '...' + $Branch.Substring($Branch.Length - $keep)
 }
 
-function Get-AzCliAccountSegment {
+function Get-AzCliAccountSegment
+{
     <#
     .SYNOPSIS
     Render the active az CLI account tag (az:<name> / az:default) for the
@@ -531,7 +591,8 @@ function Get-AzCliAccountSegment {
     Profile/AzCliAccount.ps1 (Switch-AzProfile).
     #>
     $c = $global:PromptConst
-    if ($env:AZURE_CONFIG_DIR) {
+    if ($env:AZURE_CONFIG_DIR)
+    {
         $name = Split-Path -Leaf $env:AZURE_CONFIG_DIR
         return "$($c.DimWhite)az:$($c.Magenta)$name$($c.Reset) "
     }
@@ -539,20 +600,23 @@ function Get-AzCliAccountSegment {
 }
 
 # --- Prompt function --------------------------------------------------------
-function prompt {
+function prompt
+{
     # Capture immediately before any commands corrupt these
     $lastSuccess = $?
-    $savedExit   = $LASTEXITCODE
+    $savedExit = $LASTEXITCODE
 
     $c = $global:PromptConst
     $out = [System.Text.StringBuilder]::new(256)
 
     # --- CWD tracking ---
     $loc = Get-Location
-    if ($loc.Provider.Name -eq 'FileSystem') {
+    if ($loc.Provider.Name -eq 'FileSystem')
+    {
         # Sync the Win32 process CWD so Zellij opens new panes in this directory
         # (pwsh's Set-Location only moves its provider, not the process CWD).
-        if ($loc.ProviderPath -ne [System.Environment]::CurrentDirectory) {
+        if ($loc.ProviderPath -ne [System.Environment]::CurrentDirectory)
+        {
             try { [System.Environment]::CurrentDirectory = $loc.ProviderPath }
             catch [System.IO.IOException] { }  # cwd deleted or UNC — leave process CWD as-is
         }
@@ -570,9 +634,11 @@ function prompt {
         # process spawns only when the directory changed, and the LASTEXITCODE
         # restore below undoes the exit code `zoxide add` leaves behind. Guarded on
         # __zoxide_pwd so it no-ops until Phase 2a initialises zoxide.
-        if ($null -ne $function:__zoxide_pwd) {
+        if ($null -ne $function:__zoxide_pwd)
+        {
             $zoxidePwd = __zoxide_pwd
-            if ($zoxidePwd -ne $global:__zoxide_oldpwd) {
+            if ($zoxidePwd -ne $global:__zoxide_oldpwd)
+            {
                 if ($null -ne $zoxidePwd) { zoxide add '--' $zoxidePwd }
                 $global:__zoxide_oldpwd = $zoxidePwd
             }
@@ -587,7 +653,8 @@ function prompt {
     $null = $out.Append("$($c.ESC)[G")
 
     # Username
-    if ($c.ShowUsername) {
+    if ($c.ShowUsername)
+    {
         $null = $out.Append("$($c.Blue)$([Environment]::UserName)$($c.Reset) ")
     }
 
@@ -598,75 +665,89 @@ function prompt {
     # under HKCU:/Cert:/Env: the jj/git helpers would spawn against the last synced
     # Win32 CWD and render stale repo info from wherever the shell last was.
     $isFileSystem = $loc.Provider.Name -eq 'FileSystem'
-    $jj  = if ($isFileSystem -and $c.ShowJj) { Get-JjPromptInfo } else { $null }
+    $jj = if ($isFileSystem -and $c.ShowJj) { Get-JjPromptInfo } else { $null }
     $git = if ($isFileSystem -and -not $jj) { Get-GitPromptInfo } else { $null }
 
     # Path — width-relative budget (~1/3 of the pane), capped, with a sane floor.
     # Anchored at the repo root when inside one (truncate-to-repo).
     $width = try { [Console]::WindowWidth } catch { 0 }
-    $pathMax = if ($width -gt 0) {
+    $pathMax = if ($width -gt 0)
+    {
         [Math]::Max(20, [Math]::Min($c.MaxPathLength, [int]($width / 3)))
-    } else { $c.MaxPathLength }
-    $repoRoot  = if ($jj) { $jj.Root } elseif ($git) { $git.TopLevel } else { $null }
+    }
+    else { $c.MaxPathLength }
+    $repoRoot = if ($jj) { $jj.Root } elseif ($git) { $git.TopLevel } else { $null }
     $shortPath = Get-ShortenedPath -MaxLength $pathMax -RepoRoot $repoRoot
     $null = $out.Append("in $($c.Green)$shortPath$($c.Reset) ")
 
     # jj (Jujutsu) — change-id is the stable identity; bookmarks are the
     # branch-like pointers. Rendered instead of git when a jj repo is detected.
-    if ($jj) {
+    if ($jj)
+    {
         # change-id always BrightCyan so jj is visually distinct from git's ±
         $null = $out.Append("$($c.BrightCyan)jj:$($jj.ChangeId)$($c.Reset)")
 
         # Closest bookmark (branch-like); colour mirrors git: red when dirty
-        if ($jj.Bookmark) {
+        if ($jj.Bookmark)
+        {
             $bmColor = if ($jj.HasChanges) { $c.Red } else { $c.Yellow }
             $bm = Get-ShortenedBranch -Branch $jj.Bookmark -MaxLength $c.MaxBranchLength
             $null = $out.Append(" ${bmColor}${bm}$($c.Reset)")
         }
 
         # Commits ahead of that bookmark
-        if ($jj.BookmarkDistance -gt 0) {
+        if ($jj.BookmarkDistance -gt 0)
+        {
             $null = $out.Append(" $($c.Green)↑$($jj.BookmarkDistance)$($c.Reset)")
         }
 
         # State indicators
         $jjInd = [System.Text.StringBuilder]::new(32)
-        if ($jj.Conflict)        { $null = $jjInd.Append(" $($c.Red)!$($c.Reset)") }
+        if ($jj.Conflict) { $null = $jjInd.Append(" $($c.Red)!$($c.Reset)") }
         if ($jj.FileCount -gt 0) { $null = $jjInd.Append(" $($c.Yellow)*$($jj.FileCount)$($c.Reset)") }
-        if ($jj.Empty)           { $null = $jjInd.Append(" $($c.DimWhite)∅$($c.Reset)") }
-        if (-not $jj.HasDesc)    { $null = $jjInd.Append(" $($c.Magenta)✎$($c.Reset)") }
+        if ($jj.Empty) { $null = $jjInd.Append(" $($c.DimWhite)∅$($c.Reset)") }
+        if (-not $jj.HasDesc) { $null = $jjInd.Append(" $($c.Magenta)✎$($c.Reset)") }
         $null = $out.Append($jjInd.ToString())
 
         $null = $out.Append(' ')
     }
     # Git
-    elseif ($git -and $git.Branch) {
+    elseif ($git -and $git.Branch)
+    {
         $branchDisplay = Get-ShortenedBranch -Branch $git.Branch -MaxLength $c.MaxBranchLength
         $branchColor = if ($git.HasChanges) { $c.Red } else { $c.Yellow }
 
         # wt: prefix for worktrees, ± for normal repos
-        if ($c.ShowWorktree -and $git.IsWorktree) {
+        if ($c.ShowWorktree -and $git.IsWorktree)
+        {
             $null = $out.Append("${branchColor}wt:${branchDisplay}$($c.Reset)")
-        } else {
+        }
+        else
+        {
             $null = $out.Append("${branchColor}±${branchDisplay}$($c.Reset)")
         }
 
         # Upstream indicators
-        if ($git.Ahead -gt 0 -and $git.Behind -gt 0) {
+        if ($git.Ahead -gt 0 -and $git.Behind -gt 0)
+        {
             $null = $out.Append(" $($c.Yellow)↕$($c.Reset)")
-        } elseif ($git.Ahead -gt 0) {
+        }
+        elseif ($git.Ahead -gt 0)
+        {
             $null = $out.Append(" $($c.Green)↑$($git.Ahead)$($c.Reset)")
-        } elseif ($git.Behind -gt 0) {
+        }
+        elseif ($git.Behind -gt 0)
+        {
             $null = $out.Append(" $($c.Red)↓$($git.Behind)$($c.Reset)")
         }
 
         # File status
         $indicators = [System.Text.StringBuilder]::new(32)
         if ($git.Conflicts -gt 0) { $null = $indicators.Append(" $($c.Red)!$($git.Conflicts)$($c.Reset)") }
-        if ($git.Staged -gt 0)    { $null = $indicators.Append(" $($c.Green)+$($git.Staged)$($c.Reset)") }
-        if ($git.Modified -gt 0)  { $null = $indicators.Append(" $($c.Yellow)*$($git.Modified)$($c.Reset)") }
-        if ($git.Deleted -gt 0)   { $null = $indicators.Append(" $($c.Red)-$($git.Deleted)$($c.Reset)") }
-        if ($git.Renamed -gt 0)   { $null = $indicators.Append(" $($c.BrightCyan)R$($git.Renamed)$($c.Reset)") }
+        if ($git.Staged -gt 0) { $null = $indicators.Append(" $($c.Green)+$($git.Staged)$($c.Reset)") }
+        if ($git.Modified -gt 0) { $null = $indicators.Append(" $($c.Yellow)*$($git.Modified)$($c.Reset)") }
+        if ($git.Deleted -gt 0) { $null = $indicators.Append(" $($c.Red)-$($git.Deleted)$($c.Reset)") }
+        if ($git.Renamed -gt 0) { $null = $indicators.Append(" $($c.BrightCyan)R$($git.Renamed)$($c.Reset)") }
         if ($git.Untracked -gt 0) { $null = $indicators.Append(" $($c.Magenta)?$($git.Untracked)$($c.Reset)") }
         $null = $out.Append($indicators.ToString())
 
@@ -679,7 +760,8 @@ function prompt {
 
     # Az context (non-blocking read of async result)
     $az = Get-AzAsyncResult
-    if ($az -and $az.Subscription) {
+    if ($az -and $az.Subscription)
+    {
         $null = $contextLine.Append("$($c.BrightBlue)☁$($c.Reset) ")
         $null = $contextLine.Append("$($c.Cyan)$($az.Subscription)$($c.Reset) ")
     }
@@ -692,11 +774,13 @@ function prompt {
 
     # Background jobs count
     $runningJobs = @(Get-Job -State Running).Count
-    if ($runningJobs -gt 0) {
+    if ($runningJobs -gt 0)
+    {
         $null = $contextLine.Append("$($c.Yellow)⚙ ${runningJobs}$($c.Reset) ")
     }
 
-    if ($contextLine.Length -gt 0) {
+    if ($contextLine.Length -gt 0)
+    {
         # CR+LF+clear-to-EOL — hardens against a dirty console left by fzf's Windows
         # renderer (newline-auto-return stuck) so each line starts at column 0. No-op
         # when the cursor is already there.
@@ -711,18 +795,26 @@ function prompt {
 
     # Last command duration
     $lastCmd = Get-History -Count 1
-    if ($lastCmd) {
+    if ($lastCmd)
+    {
         $ms = $lastCmd.Duration.TotalMilliseconds
-        if ($ms -ge 60000) {
+        if ($ms -ge 60000)
+        {
             $timeStr = "$($lastCmd.Duration.TotalMinutes.ToString('#.##'))m"
             $timeColor = $c.Red
-        } elseif ($ms -ge 1000) {
+        }
+        elseif ($ms -ge 1000)
+        {
             $timeStr = "$($lastCmd.Duration.TotalSeconds.ToString('#.##'))s"
             $timeColor = $c.Red
-        } elseif ($ms -ge 250) {
+        }
+        elseif ($ms -ge 250)
+        {
             $timeStr = "$($ms.ToString('0'))ms"
             $timeColor = $c.Yellow
-        } else {
+        }
+        else
+        {
             # '0' not '#': the '#' custom format renders sub-0.5ms as an EMPTY string
             # (e.g. 0.4 -> ''), yielding a blank "[ms]" segment; '0' always emits a digit.
             $timeStr = "$($ms.ToString('0'))ms"
@@ -732,13 +824,19 @@ function prompt {
     }
 
     # Exit status
-    if (-not $lastSuccess) {
-        if ($savedExit -and $savedExit -ne 0) {
+    if (-not $lastSuccess)
+    {
+        if ($savedExit -and $savedExit -ne 0)
+        {
             $null = $out.Append("$($c.Red)✗ $savedExit$($c.Reset) ")
-        } else {
+        }
+        else
+        {
             $null = $out.Append("$($c.Red)✗$($c.Reset) ")
         }
-    } else {
+    }
+    else
+    {
         $null = $out.Append("$($c.Green)✓$($c.Reset) ")
     }
 

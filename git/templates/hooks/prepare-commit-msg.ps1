@@ -14,13 +14,17 @@ if (-not $branchName) { exit 0 }
 # Branch skip list. Override per-repo with:
 #   git config hooks.skipBranches "main,release/*,hotfix/*"
 $configSkip = git config --get hooks.skipBranches 2>$null
-$skipList   = if ($configSkip) {
+$skipList = if ($configSkip)
+{
     $configSkip -split ',' | ForEach-Object { $_.Trim() }
-} else {
+}
+else
+{
     @('main', 'master', 'develop', 'staging', 'test', 'deploy/*')
 }
 
-foreach ($pattern in $skipList) {
+foreach ($pattern in $skipList)
+{
     if ($branchName -like $pattern) { exit 0 }
 }
 
@@ -28,11 +32,16 @@ foreach ($pattern in $skipList) {
 #   JIRA: feature/PROJ-123-description  →  Refs: PROJ-123
 #   ADO:  feature/1234-description      →  Refs: AB#1234
 $trailer = $null
-if ($branchName -cmatch '.*/(?<ticket>[A-Z][A-Z]+-\d+)') {
+if ($branchName -cmatch '.*/(?<ticket>[A-Z][A-Z]+-\d+)')
+{
     $trailer = "Refs: $($Matches.ticket)"
-} elseif ($branchName -cmatch '.*/(?<id>\d+)-') {
+}
+elseif ($branchName -cmatch '.*/(?<id>\d+)-')
+{
     $trailer = "Refs: AB#$($Matches.id)"
-} else {
+}
+else
+{
     exit 0
 }
 

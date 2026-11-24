@@ -28,28 +28,30 @@ $scrubbed = $cmd -replace '"(?:\\.|[^"\\])*"', '' -replace "'[^']*'", ''
 # cmdlet in the second segment. `&&` is listed before `&` so it wins the alternation.
 $segments = $scrubbed -split '(\||;|&&|\|\||&|\n)'
 $verbs = 'Get|Set|New|Remove|Test|Select|Where|ForEach|Out|Write|Read|Import|Export|' +
-  'ConvertTo|ConvertFrom|Invoke|Start|Stop|Join|Split|Add|Clear|Copy|Move|Rename|' +
-  'Push|Pop|Format|Measure|Sort|Group|Compare|Resolve|Wait|Enable|Disable|Register|Unregister|' +
-  'Install|Uninstall|Update|Save|Find|Show|Send|Restart|Compress|Expand|Publish|Restore'
+'ConvertTo|ConvertFrom|Invoke|Start|Stop|Join|Split|Add|Clear|Copy|Move|Rename|' +
+'Push|Pop|Format|Measure|Sort|Group|Compare|Resolve|Wait|Enable|Disable|Register|Unregister|' +
+'Install|Uninstall|Update|Save|Find|Show|Send|Restart|Compress|Expand|Publish|Restore'
 
-foreach ($segment in $segments) {
-  $head = $segment.TrimStart().TrimStart('(', '{', '$', '&').TrimStart()
-  $head = $head -replace '^(\w+=\S*\s+)+', ''  # drop env-assignment prefixes: FOO=bar pwsh ...
-  $hit = $null
-  if ($head -cmatch '^(pwsh|powershell)(\.exe)?\b')      { $hit = 'a pwsh/powershell invocation' }
-  elseif ($head -cmatch '^env:[A-Za-z_]')                { $hit = 'a $env: variable' }
-  elseif ($head -cmatch "^($verbs)-[A-Z][A-Za-z]+\b")    { $hit = "the cmdlet `"$($Matches[0])`"" }
+foreach ($segment in $segments)
+{
+    $head = $segment.TrimStart().TrimStart('(', '{', '$', '&').TrimStart()
+    $head = $head -replace '^(\w+=\S*\s+)+', ''  # drop env-assignment prefixes: FOO=bar pwsh ...
+    $hit = $null
+    if ($head -cmatch '^(pwsh|powershell)(\.exe)?\b') { $hit = 'a pwsh/powershell invocation' }
+    elseif ($head -cmatch '^env:[A-Za-z_]') { $hit = 'a $env: variable' }
+    elseif ($head -cmatch "^($verbs)-[A-Z][A-Za-z]+\b") { $hit = "the cmdlet `"$($Matches[0])`"" }
 
-  if ($hit) {
-    @{
-      hookSpecificOutput = @{
-        hookEventName            = 'PreToolUse'
-        permissionDecision       = 'deny'
-        permissionDecisionReason = "This Bash command looks like PowerShell ($hit). " +
-          'Re-run it with the PowerShell tool, not the Bash tool (your pwsh-native rule).'
-      }
-    } | ConvertTo-Json -Depth 5 -Compress
-    exit 0
-  }
+    if ($hit)
+    {
+        @{
+            hookSpecificOutput = @{
+                hookEventName = 'PreToolUse'
+                permissionDecision = 'deny'
+                permissionDecisionReason = "This Bash command looks like PowerShell ($hit). " +
+                'Re-run it with the PowerShell tool, not the Bash tool (your pwsh-native rule).'
+            }
+        } | ConvertTo-Json -Depth 5 -Compress
+        exit 0
+    }
 }
 exit 0
