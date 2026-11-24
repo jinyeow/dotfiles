@@ -31,14 +31,14 @@
 #     is still caught — scrubbing must not scrub away a real banned term in the message
 #     content itself
 #   - `isRepoScopedIn` (repo scoping, mirroring git/templates/hooks/pre-commit's own
-#     scoping) allows everything when there is no origin remote or the origin's dev.azure.com
-#     organisation segment isn't the org named by `git config work.adoOrgUrl` (scoped out when that
-#     key is unset), and only then does matchCommand's own
+#     scoping) allows everything unless `git config --type=bool --get work.aiReferenceScan`
+#     prints `true` (scoped out when the key is unset, false or not a boolean, whatever the
+#     remote), and only then does matchCommand's own
 #     wordlist/no-verify/SKIP-var logic apply — exercised against real throwaway repos
 #     (mirroring tests/git-templates-ai-reference-hook.Tests.ps1's New-TestRepo pattern),
 #     not mocked, since matchCommand itself has no filesystem/process dependency to mock.
 #     This also covers a command carrying its own `git -C <path>` target: scoping follows
-#     that path's origin, not process.cwd()'s
+#     that path's config, not process.cwd()'s
 #   - `--discussion`, `--text`, and `--query-parameters` are recognized message-flag shapes
 #     alongside the existing -m/--title/--body/--fields/--route-parameters set
 #   - SKIP_AI_REFERENCE_SCAN=1 / SKIP_GITLEAKS=1 still deny even when the value is quoted
@@ -248,10 +248,10 @@ process.stdout.write(JSON.stringify(isRepoScopedIn(cwd, command ?? "", execFileS
     }
 
     # Mirrors tests/git-templates-ai-reference-hook.Tests.ps1's New-TestRepo: a throwaway
-    # repo with an origin remote set (or not) to exercise real `git remote get-url origin`.
+    # repo that sets work.aiReferenceScan (or not) to exercise a real `git config` lookup.
     function New-TestRepo
     {
-        param([string] $OriginUrl, [string] $WorkOrgUrl)
+        param([string] $OriginUrl, [string] $AiReferenceScan)
         $root = Join-Path $TestDrive ('ai-ref-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $root -Force | Out-Null
         & git -C $root init -q . 2>&1 | Out-Null
@@ -259,18 +259,16 @@ process.stdout.write(JSON.stringify(isRepoScopedIn(cwd, command ?? "", execFileS
         {
             & git -C $root remote add origin $OriginUrl 2>&1 | Out-Null
         }
-        if ($WorkOrgUrl)
+        if ($AiReferenceScan)
         {
-            & git -C $root config work.adoOrgUrl $WorkOrgUrl 2>&1 | Out-Null
+            & git -C $root config work.aiReferenceScan $AiReferenceScan 2>&1 | Out-Null
         }
         return $root
     }
 
-    # isRepoScopedIn reads the work organisation from `git config work.adoOrgUrl`, so the
-    # scoped-in repos set it in their local config.
-    $script:WorkOrgUrl = 'https://dev.azure.com/ExampleOrg'
+    # isRepoScopedIn scans only when `git config --type=bool work.aiReferenceScan` is true, so
+    # the scoped-in repos set it in their local config. The remote does not matter.
     $script:WorkHttps = 'https://dev.azure.com/ExampleOrg/Proj/_git/Repo'
-    $script:WorkSsh = 'git@ssh.dev.azure.com:v3/ExampleOrg/Proj/Repo'
     $script:GitHubUrl = 'https://github.com/jinyeow/dotfiles.git'
 
     # Third node harness: exercises the real DEFAULT_WORDLIST_PATH-resolution fallback and
@@ -563,43 +561,26 @@ Describe 'pi/extensions/ai-reference-guard.ts' {
     }
 
     Context 'isRepoScopedIn repo scoping (real throwaway repos, mirroring pre-commit)' {
-        It 'is scoped in for a work HTTPS origin' {
-            $repo = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
-            Invoke-IsRepoScopedIn -Cwd $repo | Should -BeTrue
-        }
-
-        It 'is scoped in for a work SSH origin' {
-            $repo = New-TestRepo -OriginUrl $script:WorkSsh -WorkOrgUrl $script:WorkOrgUrl
-            Invoke-IsRepoScopedIn -Cwd $repo | Should -BeTrue
-        }
-
-        It 'is scoped out for a GitHub origin' {
-            $repo = New-TestRepo -OriginUrl $script:GitHubUrl
-            Invoke-IsRepoScopedIn -Cwd $repo | Should -BeFalse
-        }
-
-        It 'is scoped out when there is no origin remote at all' {
-            $repo = New-TestRepo -OriginUrl $null
-            Invoke-IsRepoScopedIn -Cwd $repo | Should -BeFalse
-        }
-
-        It 'is scoped in for a work HTTPS origin with a user name and different case' {
-            $repo = New-TestRepo -OriginUrl 'https://exampleorg@dev.azure.com/EXAMPLEORG/Proj/_git/Repo' -WorkOrgUrl $script:WorkOrgUrl
-            Invoke-IsRepoScopedIn -Cwd $repo | Should -BeTrue
-        }
-
-        It 'is scoped out when the work organisation is not the origin organisation: <OriginUrl>' -TestCases @(
-            @{ OriginUrl = 'https://dev.azure.com/OtherOrg/Proj/_git/ExampleOrg-tools' }
-            @{ OriginUrl = 'https://dev.azure.com/ExampleOrgTools/Proj/_git/Repo' }
-            @{ OriginUrl = 'https://example.com/dev.azure.com/ExampleOrg/Proj/_git/Repo' }
-            @{ OriginUrl = 'git@ssh.dev.azure.com:v3/OtherOrg/ExampleOrg/Repo' }
+        It 'is scoped in when the key is true, whatever the remote: <Name>' -TestCases @(
+            @{ Name = 'work HTTPS remote'; OriginUrl = 'https://dev.azure.com/ExampleOrg/Proj/_git/Repo' }
+            @{ Name = 'GitHub remote'; OriginUrl = 'https://github.com/jinyeow/dotfiles.git' }
+            @{ Name = 'no remote'; OriginUrl = $null }
         ) {
-            param($OriginUrl)
-            $repo = New-TestRepo -OriginUrl $OriginUrl -WorkOrgUrl $script:WorkOrgUrl
+            param($Name, $OriginUrl)
+            $repo = New-TestRepo -OriginUrl $OriginUrl -AiReferenceScan 'true'
+            Invoke-IsRepoScopedIn -Cwd $repo | Should -BeTrue
+        }
+
+        It 'is scoped out for a work origin when the key is <Value>' -TestCases @(
+            @{ Value = 'false' }
+            @{ Value = 'not-a-bool' }
+        ) {
+            param($Value)
+            $repo = New-TestRepo -OriginUrl $script:WorkHttps -AiReferenceScan $Value
             Invoke-IsRepoScopedIn -Cwd $repo | Should -BeFalse
         }
 
-        It 'is scoped out for a work origin when work.adoOrgUrl is unset (fails open)' {
+        It 'is scoped out for a work origin when the key is unset (fails open)' {
             # Isolate from the developer's global and system config, which may set the key.
             $repo = New-TestRepo -OriginUrl $script:WorkHttps
             $emptyGlobal = Join-Path $TestDrive 'empty-gitconfig'
@@ -693,28 +674,28 @@ Describe 'pi/extensions/ai-reference-guard.ts' {
 
     Context 'isRepoScopedIn follows a command''s own -C target over process.cwd()' {
         It 'is scoped in via -C when cwd itself is unscoped' {
-            $workRepo = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
-            $unscopedCwd = New-TestRepo -OriginUrl $script:GitHubUrl
+            $workRepo = New-TestRepo -OriginUrl $script:WorkHttps -AiReferenceScan 'true'
+            $unscopedCwd = New-TestRepo -OriginUrl $script:GitHubUrl -AiReferenceScan 'false'
             $command = "git -C ""$workRepo"" commit -m ""Generated with Claude"""
             Invoke-IsRepoScopedIn -Cwd $unscopedCwd -Command $command | Should -BeTrue
         }
 
-        It 'is scoped out via -C when the -C target is not a work repo, even if cwd is' {
-            $githubRepo = New-TestRepo -OriginUrl $script:GitHubUrl
-            $workCwd = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
+        It 'is scoped out via -C when the -C target has the key false, even if cwd is scoped in' {
+            $githubRepo = New-TestRepo -OriginUrl $script:GitHubUrl -AiReferenceScan 'false'
+            $workCwd = New-TestRepo -OriginUrl $script:WorkHttps -AiReferenceScan 'true'
             $command = "git -C ""$githubRepo"" commit -m ""fix"""
             Invoke-IsRepoScopedIn -Cwd $workCwd -Command $command | Should -BeFalse
         }
 
         It 'falls back to cwd when the command carries no -C flag' {
-            $workCwd = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
+            $workCwd = New-TestRepo -OriginUrl $script:WorkHttps -AiReferenceScan 'true'
             Invoke-IsRepoScopedIn -Cwd $workCwd -Command 'git commit -m "fix"' | Should -BeTrue
         }
     }
 
     Context 'isRepoScopedIn does not execute shell metacharacters in a malicious -C path (command injection)' {
         It 'treats a crafted -C value as a literal non-existent path, executing no injected command' {
-            $repo = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
+            $repo = New-TestRepo -OriginUrl $script:WorkHttps -AiReferenceScan 'true'
             $marker = Join-Path $TestDrive ('pwned-' + [guid]::NewGuid() + '.txt')
             # Breaks out of the `git -C "${dashCPath}" ...` double-quoted shell interpolation
             # the vulnerable code used to build: closes the quote, chains an `echo` that

@@ -9,12 +9,11 @@ BeforeAll {
 
 Describe 'setup.ps1 git module' {
     It 'runs the git module in -DryRun, installs ~/.gitattributes and wires the hook links' {
-        # ~/.git_work_hooks stays a separate link from ~/.git_templates: the work-only hooks
-        # are wired by [hook "work-policy"] in gitconfig-work, apart from the global hooks.
         $output = & pwsh -NoProfile -File $script:SetupScript -Module git -DryRun 2>&1 | Out-String
         $LASTEXITCODE | Should -Be 0
         $output | Should -Match '=== Git'
-        $output | Should -Match '\.git_work_hooks -> .*git.work-hooks'
+        # There are no work-only hooks to link.
+        $output | Should -Not -Match '\.git_work_hooks'
         # core.attributesfile points at ~/.gitattributes, and the config-based hooks in
         # git/gitconfig run scripts under ~/.git_templates/hooks.
         $output | Should -Match 'git.gitattributes -> .*\.gitattributes'
@@ -23,8 +22,8 @@ Describe 'setup.ps1 git module' {
 }
 
 Describe 'setup.ps1 Test-GitHookSupport' {
-    # Config-based hooks (the [hook "dotfiles-<event>"] stanzas in gitconfig and
-    # [hook "work-policy"] in gitconfig-work) need Git >= 2.54; below that they are ignored
+    # Config-based hooks (the [hook "dotfiles-<event>"] stanzas in gitconfig) need
+    # Git >= 2.54; below that they are ignored
     # SILENTLY, so the global hooks enforce nothing with no error.
     # The install-time warning is the only signal, which makes the version gate worth testing.
     #

@@ -121,7 +121,7 @@ Describe 'setup.sh --dry-run' {
             $LASTEXITCODE | Should -Be 0
             $out | Should -Match '\.gitattributes -> .*git/gitattributes'
             $out | Should -Match '\.git_templates -> .*git/templates'
-            $out | Should -Match '\.git_work_hooks -> .*git/work-hooks'
+            $out | Should -Not -Match '\.git_work_hooks'
         }
         finally
         {

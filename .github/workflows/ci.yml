@@ -200,9 +200,7 @@ jobs:
             claude/statusline-command.sh \
             git/templates/hooks/pre-commit \
             git/templates/hooks/prepare-commit-msg \
-            git/templates/hooks/prepare-commit-msg.sh \
-            git/work-hooks/policy \
-            git/work-hooks/policy.sh
+            git/templates/hooks/prepare-commit-msg.sh
 
   gitleaks:
     name: gitleaks (secret scan)

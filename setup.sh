@@ -235,8 +235,8 @@ make_managed_directory_symlink() {
 
 # ── Modules ───────────────────────────────────────────────────────────────────
 
-# Config-based hooks (the [hook "dotfiles-<event>"] stanzas in gitconfig and
-# [hook "work-policy"] in gitconfig-work) need Git >= 2.54. Older git ignores them
+# Config-based hooks (the [hook "dotfiles-<event>"] stanzas in gitconfig) need
+# Git >= 2.54. Older git ignores them
 # SILENTLY — no error, the hooks simply never run — so warn at install time.
 check_git_hook_support() {
     if ! command -v git >/dev/null 2>&1; then
@@ -255,7 +255,7 @@ check_git_hook_support() {
     esac
 
     if [ "$major" -lt 2 ] || { [ "$major" -eq 2 ] && [ "$minor" -lt 54 ]; }; then
-        warn "git $raw is older than 2.54 — the global hooks (gitleaks, AI-reference scan) do not run, and neither does the work-policy hook."
+        warn "git $raw is older than 2.54 — the global hooks (gitleaks, AI-reference scan) do not run."
         warn '  Upgrade git: below 2.54 git ignores the config-based hooks without an error.'
     else
         ok "git $raw supports config-based hooks (>= 2.54)."
@@ -274,8 +274,6 @@ install_git() {
     # Global hook scripts: each [hook "dotfiles-<event>"] stanza in gitconfig runs
     # ~/.git_templates/hooks/<event>.
     make_symlink "$DOTFILES/git/templates"      "$HOME/.git_templates"
-    # Work-only hooks, wired by [hook "work-policy"] in gitconfig-work.
-    make_symlink "$DOTFILES/git/work-hooks"     "$HOME/.git_work_hooks"
     check_git_hook_support
 }
 

@@ -85,24 +85,21 @@ fi
 # segment boundary — see those checks' own comments.
 COMMAND_FLAT=$(printf '%s' "$COMMAND" | tr '\n' ' ')
 
-# ── Repo scoping: work Azure-DevOps remotes only ─────────────────────────────────
-# Mirrors git/templates/hooks/pre-commit's own scoping (see its lines ~59-61): read the
-# origin remote from the git command's own target, not just the hook's inherited cwd —
-# `git -C <path> ...` retargets git at a different repo than cwd, and the hook must
-# scope against THAT repo's origin, or a `-C`-qualified command against an in-scope repo
-# run from an unrelated cwd would silently bypass every check below. When no `-C <path>`
-# global flag is present, fall back to cwd's origin (the common case). If the origin
-# lookup fails (not a repo, no origin) or the URL isn't a dev.azure.com URL whose
-# organisation segment is the work organisation (case-insensitive), this is a GitHub repo (dotfiles, wiki,
-# brain, ...) that legitimately says "Claude"/"Codex" in its own subject matter — ALLOW
-# everything, before any check, including the fail-closed missing-wordlist check below.
-# Deliberately does not track `cd <path> && ...` shell state — out of scope; only an
-# explicit `-C <path>` global flag on the git invocation itself is honored.
-#
-# The work organisation is never named in this public repo: it is the last path segment of
-# `git config work.adoOrgUrl` (e.g. https://dev.azure.com/ExampleOrg, set in the untracked
-# ~/.gitconfig.local), read from the same target repo as the origin. If that key is unset or
-# empty, fail open and allow everything.
+# ── Repo scoping: work repos only (work.aiReferenceScan) ─────────────────────────
+# Mirrors git/templates/hooks/pre-commit's own scoping: the hook runs only when
+# `git config --type=bool --get work.aiReferenceScan` prints `true`. git/gitconfig-work sets
+# that key, and the [includeIf] blocks in the untracked ~/.gitconfig.local load that file for
+# the work repos, with or without a remote. The key is read from the git command's own
+# target, not just the hook's inherited cwd — `git -C <path> ...` retargets git at a
+# different repo than cwd, and the hook must scope against THAT repo, or a `-C`-qualified
+# command against an in-scope repo run from an unrelated cwd would silently bypass every
+# check below. When no `-C <path>` global flag is present, fall back to cwd (the common
+# case). If the key is unset, false or not a boolean, or the target is not a repo (GitHub
+# repos such as dotfiles, wiki and brain legitimately say "Claude"/"Codex" in their own
+# subject matter), ALLOW everything, before any check, including the fail-closed
+# missing-wordlist check below. Deliberately does not track `cd <path> && ...` shell
+# state — out of scope; only an explicit `-C <path>` global flag on the git invocation
+# itself is honored.
 CGIT_TOKEN='(?:"[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)'
 CGIT_RAW=$(printf '%s' "$COMMAND_FLAT" | grep -oP -- 'git[[:space:]]+-C[[:space:]]+\K'"$CGIT_TOKEN" | head -1 || echo "")
 CGIT_PATH="$CGIT_RAW"
@@ -111,23 +108,11 @@ if [[ "$CGIT_PATH" == \"*\" && "$CGIT_PATH" == *\" ]] || [[ "$CGIT_PATH" == \'*\
 fi
 
 if [[ -n "$CGIT_PATH" ]]; then
-  origin_url=$(git -C "$CGIT_PATH" remote get-url origin 2>/dev/null) || exit 0
-  WORK_ORG_URL=$(git -C "$CGIT_PATH" config --get work.adoOrgUrl 2>/dev/null) || exit 0
+  AI_REFERENCE_SCAN=$(git -C "$CGIT_PATH" config --type=bool --get work.aiReferenceScan 2>/dev/null) || exit 0
 else
-  origin_url=$(git remote get-url origin 2>/dev/null) || exit 0
-  WORK_ORG_URL=$(git config --get work.adoOrgUrl 2>/dev/null) || exit 0
+  AI_REFERENCE_SCAN=$(git config --type=bool --get work.aiReferenceScan 2>/dev/null) || exit 0
 fi
-WORK_ORG=${WORK_ORG_URL%/}
-WORK_ORG=${WORK_ORG##*/}
-[[ -n "$WORK_ORG" ]] || exit 0
-# Compare the organisation segment of an Azure DevOps origin (HTTPS, with an optional
-# user name, or SSH v3), so a repo or org name that only contains the work org is out.
-ORIGIN_ORG=$(printf '%s' "$origin_url" | tr '[:upper:]' '[:lower:]' |
-  sed -nE 's#^(https://([^@/]+@)?dev\.azure\.com/|git@ssh\.dev\.azure\.com:v3/)([^/]+)(/.*)?$#\3#p')
-WORK_ORG=$(printf '%s' "$WORK_ORG" | tr '[:upper:]' '[:lower:]')
-if [[ -z "$ORIGIN_ORG" || "$ORIGIN_ORG" != "$WORK_ORG" ]]; then
-  exit 0
-fi
+[[ "$AI_REFERENCE_SCAN" == "true" ]] || exit 0
 
 # Fail CLOSED only for a missing/unreadable wordlist — without it we cannot tell a
 # banned reference from a clean command, so refuse to run rather than silently allow.

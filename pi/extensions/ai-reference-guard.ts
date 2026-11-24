@@ -94,14 +94,16 @@ function extractDashCPath(command: string): string | undefined {
 }
 
 // Repo scoping, mirroring git/templates/hooks/pre-commit's own scoping (see that file's
-// AI-reference section): this whole extension only applies inside a work Azure DevOps
-// remote repo. `git remote get-url origin` runs against the command's own `-C <path>`
-// target when the command carries one (e.g. `git -C <work-root>/<repo> commit ...`
-// run from an unscoped cwd) — otherwise against cwd (the extension's own inherited
-// working directory, same as the bash ports use their inherited cwd). If it throws (not
-// a repo, no origin) or the URL isn't a dev.azure.com URL whose organisation segment is
-// the work organisation (case-insensitive), the repo is out of scope — a GitHub repo like dotfiles/wiki/brain
-// legitimately says "Claude"/"Codex" in its own subject matter and must stay unscanned.
+// AI-reference section): this whole extension only applies when
+// `git config --type=bool --get work.aiReferenceScan` prints `true`. git/gitconfig-work sets
+// that key, and the [includeIf] blocks in the untracked ~/.gitconfig.local load that file for
+// the work repos, with or without a remote. The key is read from the command's own
+// `-C <path>` target when the command carries one (e.g. `git -C <work-root>/<repo> commit ...`
+// run from an unscoped cwd) — otherwise from cwd (the extension's own inherited working
+// directory, same as the bash ports use their inherited cwd). If git throws (not a repo, key
+// unset, value not a boolean) or prints anything else, the repo is out of scope — a GitHub
+// repo like dotfiles/wiki/brain legitimately says "Claude"/"Codex" in its own subject matter
+// and must stay unscanned.
 //
 // SECURITY: dashCPath comes straight out of the model-controlled command string this
 // whole extension exists to gate, so it must never be interpolated into a shell-
@@ -112,33 +114,18 @@ function extractDashCPath(command: string): string | undefined {
 // specially, regardless of quoting — used for both branches, including the non -C path,
 // for consistency and defense-in-depth even though cwd isn't attacker-controlled the
 // same way.
-//
-// The work organisation is never named in this public repo: it is the last path segment of
-// `git config work.adoOrgUrl` (e.g. https://dev.azure.com/ExampleOrg, set in the untracked
-// ~/.gitconfig.local), read from the same git target as the origin. If that key is unset or
-// empty, the extension fails open (scoped out).
 function isRepoScopedIn(cwd: string, command: string): boolean {
 	const dashCPath = extractDashCPath(command);
-	let originUrl: string;
-	let workOrgUrl: string;
+	const configArgs = ["config", "--type=bool", "--get", "work.aiReferenceScan"];
+	let aiReferenceScan: string;
 	try {
-		originUrl = dashCPath
-			? execFileSync("git", ["-C", dashCPath, "remote", "get-url", "origin"], { cwd, encoding: "utf8" })
-			: execFileSync("git", ["remote", "get-url", "origin"], { cwd, encoding: "utf8" });
-		workOrgUrl = dashCPath
-			? execFileSync("git", ["-C", dashCPath, "config", "--get", "work.adoOrgUrl"], { cwd, encoding: "utf8" })
-			: execFileSync("git", ["config", "--get", "work.adoOrgUrl"], { cwd, encoding: "utf8" });
+		aiReferenceScan = dashCPath
+			? execFileSync("git", ["-C", dashCPath, ...configArgs], { cwd, encoding: "utf8" })
+			: execFileSync("git", configArgs, { cwd, encoding: "utf8" });
 	} catch {
 		return false;
 	}
-	const workOrg = workOrgUrl.trim().replace(/\/+$/, "").split("/").pop();
-	if (!workOrg) {
-		return false;
-	}
-	// Compare the organisation segment of an Azure DevOps origin (HTTPS, with an optional
-	// user name, or SSH v3), so a repo or org name that only contains the work org is out.
-	const originOrg = /^(?:https:\/\/(?:[^@/]+@)?dev\.azure\.com\/|git@ssh\.dev\.azure\.com:v3\/)([^/]+)(?:\/|$)/i.exec(originUrl.trim());
-	return originOrg !== null && originOrg[1].toLowerCase() === workOrg.toLowerCase();
+	return aiReferenceScan.trim() === "true";
 }
 
 // Parses banned-ai-terms.txt's documented format (one case-insensitive ERE per line,

@@ -458,19 +458,11 @@ function Install-Git
     }
     New-Junction @params
 
-    # ~/.git_work_hooks — work-only policy hooks, referenced by [hook "work-policy"]
-    # in gitconfig-work. Kept apart from ~/.git_templates, which holds the global hooks.
-    $params = @{
-        Link = Join-Path $env:USERPROFILE '.git_work_hooks'
-        Target = Join-Path $Dotfiles 'git\work-hooks'
-    }
-    New-Junction @params
-
     Test-GitHookSupport
 }
 
-# Config-based hooks (the [hook "dotfiles-<event>"] stanzas in gitconfig and
-# [hook "work-policy"] in gitconfig-work) need Git >= 2.54. Older git ignores them
+# Config-based hooks (the [hook "dotfiles-<event>"] stanzas in gitconfig) need
+# Git >= 2.54. Older git ignores them
 # SILENTLY — no error, the hooks simply never run — so warn at install time.
 function Test-GitHookSupport
 {
@@ -490,7 +482,7 @@ function Test-GitHookSupport
     [version] $found = [version]::new([int]$Matches[1], [int]$Matches[2])
     if ($found -lt [version]'2.54')
     {
-        Write-Warn "git $raw is older than 2.54 — the global hooks (gitleaks, AI-reference scan) do not run, and neither does the work-policy hook."
+        Write-Warn "git $raw is older than 2.54 — the global hooks (gitleaks, AI-reference scan) do not run."
         Write-Warn '  Upgrade git: below 2.54 git ignores the config-based hooks without an error.'
     }
     else
