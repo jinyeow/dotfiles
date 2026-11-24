@@ -147,3 +147,4 @@ See [`AGENTS.d/git-worktrees.md`](AGENTS.d/git-worktrees.md) — only applies to
 ## Pull requests
 
 - When replying to review comments, never mark the thread resolved yourself. See [`AGENTS.d/pr-review-replies.md`](AGENTS.d/pr-review-replies.md) for the full reply workflow.
+- Stacked PRs: when a lower PR squash-merges, restack the PR above it at once. Run `git rebase --onto origin/main <old-lower-tip> <upper-branch>`, re-run its tests, then `git push --force-with-lease`. For a stack of three or more, use `git rebase --update-refs` to move every branch in one pass. Do this before the forge reports a conflict. A merge of main into the upper branch also resolves it, but it keeps the old lower commits in the PR history.
