@@ -160,6 +160,11 @@ read a specific ADR/research item from the map only if the task needs it. Do not
 Read the initiative's `log.md` on demand only, for example when `STATUS.md` points at it or the task
 needs session history.
 
+**On session start, read the tracker:** read the comments others posted on the initiative's work
+items since `STATUS.md`'s `updated:` date. Record what matters in `STATUS.md` as inputs (a dated
+line under `Now`, or under `Blocked on` when it blocks work). Do not copy whole comments. If the
+tracker cannot be reached, say so and go on from `STATUS.md`.
+
 **On a decision** (anything you'd not want re-litigated): write a new `adr/NNNN-slug.md` from
 `templates/adr.md` (MADR-lite). Never edit an accepted ADR - supersede it. Add a one-line link under
 `core.md`'s "Key decisions". Cross-cutting decisions (spanning initiatives) go in the brain's top-level `adr/`.
@@ -167,6 +172,20 @@ needs session history.
 **On a status-relevant event** (build/run result, PR merged, gate passed/failed, blocker found/cleared):
 edit `STATUS.md` now - refresh `Now` / `Blocked on` / `Next action`, bump `updated:`. `STATUS.md` holds
 the current state only; session narrative goes to the initiative `log.md` instead.
+
+**On a tracker update** (the team-facing view of the work): `STATUS.md` stays the source of truth.
+The tracker gets team updates only. Find the tracker in the initiative's `core.md` under Work
+tracking, or in the workspace `AGENTS.md`. A repo that differs points at its own workflow config.
+If no tracker is recorded, post nothing.
+- Progress: when you commit, draft a progress comment for the work item you are committing against.
+- Completion: when that item is complete, draft a summary comment for its parent item. State what
+  was done, what is left, and what is next.
+- Final: when nothing is left, the summary also says the parent can be closed.
+- Approval: show the user every comment before you post it. Post only after the user approves.
+  Closing an item is a user action. Never close an item yourself.
+- Access: use the tracker's CLI or REST API. On Azure DevOps, for example,
+  `az boards work-item update --id <id> --discussion "<comment>"` adds a comment.
+- Refresh `STATUS.md` first, so the comment matches it.
 
 **On producing research or a report:** file research under `research/` with a one-line entry in
 `research/index.md` (date, question, verdict); file HTML/other reports under `reports/` named
