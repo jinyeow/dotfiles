@@ -34,7 +34,7 @@ for the full rationale.
 
 ## User Stories
 
-1. As the developer maintaining Hollard's firewall/NSG rules, I want to create a BAU RFC in one command, so that I don't have to hand-fill ~30 CAB fields for a routine, low-risk change.
+1. As the developer maintaining the work organisation's firewall/NSG rules, I want to create a BAU RFC in one command, so that I don't have to hand-fill ~30 CAB fields for a routine, low-risk change.
 2. As the developer, I want the skill to auto-detect whether my change is firewall-only or NSG-only from the linked PR diff, so that I don't have to classify the change myself. (Both-scope changes are a hard stop in this slice; see Out of Scope.)
 3. As the developer, I want the RFC's repeated fields (SOP links, distribution list, secondary contact) sourced from my own prior RFCs rather than typed into the skill, so that no confidential value has to live in a public repo.
 4. As the developer, I want the deployment window computed automatically (next full clock hour + 2h, UTC), so that I don't have to do the timezone math by hand each time.
@@ -42,7 +42,7 @@ for the full rationale.
 6. As the developer, I want the RFC linked to its parent work item and to every relevant PR automatically, so that traceability from PR → RFC → parent PBI is preserved without manual linking.
 7. As the developer, I want the skill to report the created RFC's URL back to me, so that I can jump straight to it in Azure DevOps without searching.
 8. As the developer, I want the skill to validate the created work item against the intended field table immediately after creation, so that a silently-rejected field (wrong picklist value, wrong reference name) is caught and reported rather than reported as a false success.
-9. As a maintainer of this dotfiles repo who does not work at Hollard, I want `rfc-bau-nsg-fw` to fail cleanly (an Azure CLI auth error) rather than expose or require any secret if I happen to invoke it, so that the skill being present in a portable skills directory carries no confidentiality risk.
+9. As a maintainer of this dotfiles repo who has no access to the work organisation, I want `rfc-bau-nsg-fw` to fail cleanly (an Azure CLI auth error) rather than expose or require any secret if I happen to invoke it, so that the skill being present in a portable skills directory carries no confidentiality risk.
 10. As the developer, I want to keep this skill scoped to BAU firewall/NSG RFCs only, so that other RFC types and non-BAU RFCs remain explicitly unimplemented rather than half-guessed.
 
 ## Implementation Decisions
@@ -55,8 +55,8 @@ for the full rationale.
 - **Fields copied verbatim from the clone**: everything not listed above as forced-fresh — including `Custom.Secondary`, the SOP document URLs, the distribution list, and every other static CAB field. This is the mechanism that removes confidential literals from the skill file; it must not be reintroduced as a hardcoded fallback.
 - **Reused prototype logic** (already implemented and validated in `~/.claude/skills/rfc/SKILL.md` against a real created RFC): parent work item resolution (context-derived from the active PBI/PR, or asked if absent), firewall/NSG/both scope detection from linked PR diffs, deployment-window computation, the pre-write confirmation gate (full resolved field table, explicit go-ahead required, no implied confirmation), the `az devops invoke` JSON-patch creation call (required because the RFC template rejects partial creates and two static fields contain unescaped `&` that breaks `az` on Windows when passed as `--fields` args), the `ArtifactLink` relation for the linked PR (this skill handles exactly one linked PR; multiple linked PRs are a hard stop, deferred to #129), returning the created RFC's URL, and post-write validation (`az boards work-item show` diffed against the intended field table before reporting success).
 - **No values file, no template/example file**: superseded by the clone-based design; do not add one.
-- **No explicit gating mechanism**: the skill always loads for every runtime it's projected to. Running it without Hollard Azure DevOps access fails at the `az` authentication step with a normal CLI error — that failure is accepted as the gate, rather than adding a bespoke tenant/account check.
-- **Org/project identifiers** (`https://dev.azure.com/HollardInsuranceRetail`, "TSC Change Control" project, custom field reference names) remain hardcoded in the skill — these are org-specific but not confidential, matching the prototype and the ticket's original scope decision.
+- **No explicit gating mechanism**: the skill always loads for every runtime it's projected to. Running it without work Azure DevOps access fails at the `az` authentication step with a normal CLI error — that failure is accepted as the gate, rather than adding a bespoke tenant/account check.
+- **Org/project identifiers** (`<work-ado-org-url>`, the `<work-ado-project>` project) are read at runtime from `git config work.adoOrgUrl` / `work.adoProject` in the untracked `~/.gitconfig.local`, so this public repo never names the organisation; custom field reference names remain in the skill.
 
 ## Testing Decisions
 

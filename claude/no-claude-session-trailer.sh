@@ -27,12 +27,16 @@
 # The `git ... commit` matcher allows each leading global flag to carry an argument (git -C
 # <path> commit, git -c k=v commit): a unit is `-flag` optionally followed by one argument
 # token — a bare non-flag token, or a quoted (possibly multi-word) token such as
-# `-C "C:/Hollard Repo"` — so a flag WITH an argument can't slip between `git` and `commit`
+# `-C "C:/Work Repo"` — so a flag WITH an argument can't slip between `git` and `commit`
 # and evade the check.
 #
-# Scoped to Hollard/Azure DevOps repos only, mirroring git/templates/hooks/pre-commit's own
+# Scoped to work Azure DevOps repos only, mirroring git/templates/hooks/pre-commit's own
 # scoping: `git remote get-url origin`, run against the command's actual git target, must
-# succeed AND contain both dev.azure.com and HollardInsuranceRetail (case-insensitive). If the
+# succeed AND contain both dev.azure.com and the work organisation name (case-insensitive). The
+# organisation is never named in this public repo: it is the last path segment of
+# `git config work.adoOrgUrl` (e.g. https://dev.azure.com/ExampleOrg, set in the untracked
+# ~/.gitconfig.local), read from the same git target. If that key is unset or empty, the hook
+# fails open and allows everything. If the
 # repo has no origin, isn't a repo at all, or the origin is a GitHub URL (dotfiles, wiki, brain
 # — repos that legitimately say "Claude"/"Codex" in their own subject matter), every check below
 # is skipped: the wordlist scan, the --no-verify/-n denies, and the SKIP_*-env-var denies alike.
@@ -63,11 +67,16 @@ fi
 
 if [[ -n "$c_path" ]]; then
   origin_url=$(git -C "$c_path" remote get-url origin 2>/dev/null) || exit 0
+  work_org_url=$(git -C "$c_path" config --get work.adoOrgUrl 2>/dev/null) || exit 0
 else
   origin_url=$(git remote get-url origin 2>/dev/null) || exit 0
+  work_org_url=$(git config --get work.adoOrgUrl 2>/dev/null) || exit 0
 fi
+work_org=${work_org_url%/}
+work_org=${work_org##*/}
+[[ -n "$work_org" ]] || exit 0
 if ! { printf '%s' "$origin_url" | grep -qi 'dev\.azure\.com' &&
-       printf '%s' "$origin_url" | grep -qi 'HollardInsuranceRetail'; }; then
+       printf '%s' "$origin_url" | grep -qiF -- "$work_org"; }; then
   exit 0
 fi
 
@@ -87,7 +96,7 @@ wordlist_pattern=$(grep -Ev '^[[:space:]]*(#|$)' "$wordlist" | paste -sd'|' -)
 
 # A leading global flag's optional argument token: a double- or single-quoted (possibly
 # multi-word) value, or a bare non-flag token — mirrors c_path_token_re/git_global_flag_group
-# above so `git -C "C:/Hollard Repo" commit ...` doesn't stop matching mid-quote (a quoted
+# above so `git -C "C:/Work Repo" commit ...` doesn't stop matching mid-quote (a quoted
 # multi-word -C value used to break commit_re/commit_dashn_re/skip_commit_re entirely, since
 # the old `[^-][^[:space:]]*` alternative only consumed one non-whitespace token).
 #

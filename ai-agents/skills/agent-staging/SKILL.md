@@ -24,7 +24,9 @@ Resolve it from where you are working:
 
 The two current roots are concrete examples:
 - `E:\Personal Projects\` (personal), giving `E:\Personal Projects\agent-staging\`.
-- `E:\HollardInsuranceRetail\` (work), giving `E:\HollardInsuranceRetail\agent-staging\`.
+- `<work-root>\` (work), giving `<work-root>\agent-staging\`.
+  `<work-root>` is never written into this public repo: read it with `git config --get work.root`
+  (set in the untracked `~/.gitconfig.local`). If that key is unset, no pseudo-root is the work root.
 
 The folder is created on first use and is always outside any git repo. It is a plain folder. There
 is no wrapper script, CLI, module, daemon, or sync, and none should be added.
@@ -62,11 +64,11 @@ contract. There is no mirrored `README.txt` that holds a parallel copy of the co
 ## Work-PC hand-carry (work pseudo-root only)
 
 This sub-section applies only when a file must cross to the work PC (WPC) under the work pseudo-root
-`E:\HollardInsuranceRetail\`, where Azure DevOps is reachable only from the WPC. It adds a
+`<work-root>\`, where Azure DevOps is reachable only from the WPC. It adds a
 strict apparatus on top of the general rules above. It applies to the work-root folder
-`E:\HollardInsuranceRetail\agent-staging\` only; the general rules cover every other pseudo-root.
+`<work-root>\agent-staging\` only; the general rules cover every other pseudo-root.
 
-Fixed work root: `E:\HollardInsuranceRetail\agent-staging\`
+Fixed work root: `<work-root>\agent-staging\`
 - `agent-outputs\` holds the agent's outputs. This skill writes scripts and prose steps here.
 - `agent-inputs\` holds the agent's inputs. The engineer pastes WPC output or error text here.
 - `done\<YYYY-MM-DD>\agent-outputs\` and `done\<YYYY-MM-DD>\agent-inputs\` are the archive, split by
@@ -115,7 +117,7 @@ ticket `700412` being `01`:
 
 ```
 # Creates three feature-branch PRs from the open work items in this sprint.
-# Run on: WPC from C:\Repos\HollardInsuranceRetail\api on branch feature/sprint-42
+# Run on: WPC from C:\Repos\<work-org>\api on branch feature/sprint-42
 # Paste output into: agent-inputs\sprint-42\700412-01-create-three-prs-out.txt
 # Needs: az login done; no secrets in this file
 ```
@@ -159,7 +161,7 @@ or export credentials. In particular, never paste access-token output, `--debug`
 unfiltered Key Vault secret values into any file.
 
 Inputs: the engineer redacts before pasting into `agent-inputs\`. Point them at
-`E:\HollardInsuranceRetail\agent-staging\INBOUND-SAFETY.txt` for the full rules rather than repeating
+`<work-root>\agent-staging\INBOUND-SAFETY.txt` for the full rules rather than repeating
 them here. If a secret lands in `agent-inputs\` anyway, the file gets deleted and the secret rotated.
 It is never edited to strip the secret and kept.
 

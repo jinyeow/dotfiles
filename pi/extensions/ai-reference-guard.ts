@@ -94,12 +94,12 @@ function extractDashCPath(command: string): string | undefined {
 }
 
 // Repo scoping, mirroring git/templates/hooks/pre-commit's own scoping (see that file's
-// AI-reference section): this whole extension only applies inside a Hollard/Azure DevOps
+// AI-reference section): this whole extension only applies inside a work Azure DevOps
 // remote repo. `git remote get-url origin` runs against the command's own `-C <path>`
-// target when the command carries one (e.g. `git -C E:/work/HollardRepo commit ...`
+// target when the command carries one (e.g. `git -C <work-root>/<repo> commit ...`
 // run from an unscoped cwd) — otherwise against cwd (the extension's own inherited
 // working directory, same as the bash ports use their inherited cwd). If it throws (not
-// a repo, no origin) or the URL isn't both dev.azure.com AND HollardInsuranceRetail
+// a repo, no origin) or the URL isn't both dev.azure.com AND the work organisation
 // (case-insensitive), the repo is out of scope — a GitHub repo like dotfiles/wiki/brain
 // legitimately says "Claude"/"Codex" in its own subject matter and must stay unscanned.
 //
@@ -112,17 +112,30 @@ function extractDashCPath(command: string): string | undefined {
 // specially, regardless of quoting — used for both branches, including the non -C path,
 // for consistency and defense-in-depth even though cwd isn't attacker-controlled the
 // same way.
+//
+// The work organisation is never named in this public repo: it is the last path segment of
+// `git config work.adoOrgUrl` (e.g. https://dev.azure.com/ExampleOrg, set in the untracked
+// ~/.gitconfig.local), read from the same git target as the origin. If that key is unset or
+// empty, the extension fails open (scoped out).
 function isRepoScopedIn(cwd: string, command: string): boolean {
 	const dashCPath = extractDashCPath(command);
 	let originUrl: string;
+	let workOrgUrl: string;
 	try {
 		originUrl = dashCPath
 			? execFileSync("git", ["-C", dashCPath, "remote", "get-url", "origin"], { cwd, encoding: "utf8" })
 			: execFileSync("git", ["remote", "get-url", "origin"], { cwd, encoding: "utf8" });
+		workOrgUrl = dashCPath
+			? execFileSync("git", ["-C", dashCPath, "config", "--get", "work.adoOrgUrl"], { cwd, encoding: "utf8" })
+			: execFileSync("git", ["config", "--get", "work.adoOrgUrl"], { cwd, encoding: "utf8" });
 	} catch {
 		return false;
 	}
-	return /dev\.azure\.com/i.test(originUrl) && /HollardInsuranceRetail/i.test(originUrl);
+	const workOrg = workOrgUrl.trim().replace(/\/+$/, "").split("/").pop();
+	if (!workOrg) {
+		return false;
+	}
+	return /dev\.azure\.com/i.test(originUrl) && originUrl.toLowerCase().includes(workOrg.toLowerCase());
 }
 
 // Parses banned-ai-terms.txt's documented format (one case-insensitive ERE per line,

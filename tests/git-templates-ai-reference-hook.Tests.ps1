@@ -3,7 +3,7 @@
 # git/templates/hooks/commit-msg (new) and the AI-reference section added to the
 # existing git/templates/hooks/pre-commit. Both are POSIX sh, so the suite drives
 # them directly through a real bash (skip, not false-green, when absent), against
-# throwaway repos with an origin remote set to either a Hollard/Azure DevOps URL
+# throwaway repos with an origin remote set to either a work Azure DevOps URL
 # or a GitHub URL — exercising the shipped hooks rather than copies that could
 # drift from them.
 
@@ -78,13 +78,16 @@ BeforeAll {
     $script:PreCommitHook = Join-Path $script:HooksDir 'pre-commit'
     $script:Wordlist = Join-Path $script:RepoRoot 'ai-agents/_shared/banned-ai-terms.txt'
 
-    $script:HollardHttps = 'https://dev.azure.com/HollardInsuranceRetail/Proj/_git/Repo'
-    $script:HollardSsh = 'git@ssh.dev.azure.com:v3/HollardInsuranceRetail/Proj/Repo'
+    # The hooks read the work organisation from `git config work.adoOrgUrl`, so the
+    # scoped-in repos set it in their local config.
+    $script:WorkOrgUrl = 'https://dev.azure.com/ExampleOrg'
+    $script:WorkHttps = 'https://dev.azure.com/ExampleOrg/Proj/_git/Repo'
+    $script:WorkSsh = 'git@ssh.dev.azure.com:v3/ExampleOrg/Proj/Repo'
     $script:GitHubUrl = 'https://github.com/jinyeow/dotfiles.git'
 
     function New-TestRepo
     {
-        param([string] $OriginUrl)
+        param([string] $OriginUrl, [string] $WorkOrgUrl)
         $root = Join-Path ([IO.Path]::GetTempPath()) ('ai-ref-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $root -Force | Out-Null
         & git -C $root init -q . 2>&1 | Out-Null
@@ -94,7 +97,33 @@ BeforeAll {
         {
             & git -C $root remote add origin $OriginUrl 2>&1 | Out-Null
         }
+        if ($WorkOrgUrl)
+        {
+            & git -C $root config work.adoOrgUrl $WorkOrgUrl 2>&1 | Out-Null
+        }
         return $root
+    }
+
+    # Runs a script block with the developer's global and system git config hidden, so a
+    # test can see the hooks' behaviour when work.adoOrgUrl is unset.
+    function Invoke-WithoutUserGitConfig
+    {
+        param([scriptblock] $ScriptBlock)
+        $emptyGlobal = Join-Path $TestDrive 'empty-gitconfig'
+        Set-Content -Path $emptyGlobal -Value '' -NoNewline
+        $savedGlobal = $env:GIT_CONFIG_GLOBAL
+        $savedNoSystem = $env:GIT_CONFIG_NOSYSTEM
+        try
+        {
+            $env:GIT_CONFIG_GLOBAL = $emptyGlobal
+            $env:GIT_CONFIG_NOSYSTEM = '1'
+            return & $ScriptBlock
+        }
+        finally
+        {
+            $env:GIT_CONFIG_GLOBAL = $savedGlobal
+            $env:GIT_CONFIG_NOSYSTEM = $savedNoSystem
+        }
     }
 
     # Runs the shipped commit-msg hook against a message file, returning exit code + output.
@@ -169,29 +198,29 @@ Describe 'git/templates/hooks/commit-msg' -Skip:(-not $script:HasBash) {
         Remove-Item -Path $script:Repo -Recurse -Force -ErrorAction SilentlyContinue
     }
 
-    It 'blocks a banned term in a Hollard HTTPS-remote repo' {
-        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+    It 'blocks a banned term in a work HTTPS-remote repo' {
+        $script:Repo = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
         $r = Invoke-CommitMsgHook -Repo $script:Repo -Message 'feat: written by Claude'
         $r.ExitCode | Should -Not -Be 0
         $r.Output | Should -Match 'AI-reference scan blocked'
     }
 
-    It 'blocks a banned term in a Hollard SSH-remote repo' {
-        $script:Repo = New-TestRepo -OriginUrl $script:HollardSsh
+    It 'blocks a banned term in a work SSH-remote repo' {
+        $script:Repo = New-TestRepo -OriginUrl $script:WorkSsh -WorkOrgUrl $script:WorkOrgUrl
         $r = Invoke-CommitMsgHook -Repo $script:Repo -Message 'feat: use Codex for this'
         $r.ExitCode | Should -Not -Be 0
     }
 
-    It 'allows a clean message in a Hollard repo' {
-        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+    It 'allows a clean message in a work repo' {
+        $script:Repo = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
         $r = Invoke-CommitMsgHook -Repo $script:Repo -Message 'feat: add the thing'
         $r.ExitCode | Should -Be 0
     }
 
     It 'allows a legitimate near-miss phrase the wordlist deliberately excludes' {
         # ai-agents/_shared/banned-ai-terms.txt intentionally does not ban bare "AI" or
-        # "Copilot" so real Hollard work can say "Azure AI Search" / "M365 Copilot".
-        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        # "Copilot" so real work can say "Azure AI Search" / "M365 Copilot".
+        $script:Repo = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
         $r = Invoke-CommitMsgHook -Repo $script:Repo -Message 'feat: integrate Azure AI Search and M365 Copilot'
         $r.ExitCode | Should -Be 0
     }
@@ -208,14 +237,20 @@ Describe 'git/templates/hooks/commit-msg' -Skip:(-not $script:HasBash) {
         $r.ExitCode | Should -Be 0
     }
 
-    It 'honours SKIP_AI_REFERENCE_SCAN=1 in a Hollard repo' {
-        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+    It 'allows a banned term in a work-remote repo when work.adoOrgUrl is unset (fails open)' {
+        $script:Repo = New-TestRepo -OriginUrl $script:WorkHttps
+        $r = Invoke-WithoutUserGitConfig { Invoke-CommitMsgHook -Repo $script:Repo -Message 'feat: written by Claude' }
+        $r.ExitCode | Should -Be 0
+    }
+
+    It 'honours SKIP_AI_REFERENCE_SCAN=1 in a work repo' {
+        $script:Repo = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
         $r = Invoke-CommitMsgHook -Repo $script:Repo -Message 'feat: written by Claude' -Env @{ SKIP_AI_REFERENCE_SCAN = '1' }
         $r.ExitCode | Should -Be 0
     }
 
-    It 'fails closed when the wordlist is missing in a Hollard repo' {
-        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+    It 'fails closed when the wordlist is missing in a work repo' {
+        $script:Repo = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
         # Simulate a missing wordlist by pointing the hook at a repo copy that has no
         # ai-agents/_shared directory at the resolved location: copy the hooks dir alone
         # into a fake repo tree three levels below a root with no ai-agents/.
@@ -249,14 +284,14 @@ Describe 'git/templates/hooks/commit-msg' -Skip:(-not $script:HasBash) {
     }
 
     It 'matches a real wordlist term ("Claude") straight off disk, catching CRLF/locale drift' {
-        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        $script:Repo = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
         Test-Path -LiteralPath $script:Wordlist | Should -BeTrue -Because 'the shared wordlist must exist for this layer to do anything'
         $r = Invoke-CommitMsgHook -Repo $script:Repo -Message 'Claude'
         $r.ExitCode | Should -Not -Be 0
     }
 
-    It 'fails closed when the wordlist exists but is unreadable in a Hollard repo' {
-        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+    It 'fails closed when the wordlist exists but is unreadable in a work repo' {
+        $script:Repo = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
         # Same fake-root layout as the missing-wordlist test above, but this time the
         # wordlist file is actually present at the resolved location with real content,
         # then its ACL is denied read access for the current user via icacls — existence
@@ -327,15 +362,15 @@ Describe 'git/templates/hooks/pre-commit AI-reference section' -Skip:(-not $scri
         Remove-Item -Path $script:Repo -Recurse -Force -ErrorAction SilentlyContinue
     }
 
-    It 'blocks a banned term on an ADDED line in a Hollard repo' {
-        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+    It 'blocks a banned term on an ADDED line in a work repo' {
+        $script:Repo = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
         $r = Invoke-PreCommitHook -Repo $script:Repo -FileContent '// written with Claude'
         $r.ExitCode | Should -Not -Be 0
         $r.Output | Should -Match 'AI-reference scan blocked'
     }
 
     It 'does NOT block a banned term that only appears on a REMOVED line' {
-        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        $script:Repo = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
         # Commit the banned line first (scan bypassed for setup), then remove it and
         # verify the removal alone does not trip the added-lines-only scan.
         $r0 = Invoke-PreCommitHook -Repo $script:Repo -FileContent '// written with Claude' -Env @{ SKIP_AI_REFERENCE_SCAN = '1' }
@@ -357,8 +392,8 @@ Describe 'git/templates/hooks/pre-commit AI-reference section' -Skip:(-not $scri
         $rc | Should -Be 0
     }
 
-    It 'allows a clean added line in a Hollard repo' {
-        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+    It 'allows a clean added line in a work repo' {
+        $script:Repo = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
         $r = Invoke-PreCommitHook -Repo $script:Repo -FileContent '// normal comment'
         $r.ExitCode | Should -Be 0
     }
@@ -368,7 +403,7 @@ Describe 'git/templates/hooks/pre-commit AI-reference section' -Skip:(-not $scri
         # then the content's own leading '+' from "++i". A regex that excludes any
         # line where the second character is '+' would wrongly skip this line and
         # never check it for a banned term.
-        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        $script:Repo = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
         $r = Invoke-PreCommitHook -Repo $script:Repo -FileContent '++i; // written with Claude'
         $r.ExitCode | Should -Not -Be 0
         $r.Output | Should -Match 'AI-reference scan blocked'
@@ -381,14 +416,14 @@ Describe 'git/templates/hooks/pre-commit AI-reference section' -Skip:(-not $scri
         # file-header line and skip it. The real header is always immediately
         # followed by 'a/', 'b/', or '/dev/null' — this content isn't, so it must
         # still be scanned.
-        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        $script:Repo = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
         $r = Invoke-PreCommitHook -Repo $script:Repo -FileContent '++ i; // written with Claude'
         $r.ExitCode | Should -Not -Be 0
         $r.Output | Should -Match 'AI-reference scan blocked'
     }
 
     It 'does not false-positive-block on the real "+++" diff file header' {
-        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        $script:Repo = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
         $r = Invoke-PreCommitHook -Repo $script:Repo -FileContent '// normal comment' -FileName 'written-with-claude.js'
         $r.ExitCode | Should -Be 0
     }
@@ -399,28 +434,34 @@ Describe 'git/templates/hooks/pre-commit AI-reference section' -Skip:(-not $scri
         $r.ExitCode | Should -Be 0
     }
 
-    It 'honours SKIP_AI_REFERENCE_SCAN=1 in a Hollard repo' {
-        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+    It 'allows a banned term in a work-remote repo when work.adoOrgUrl is unset (fails open)' {
+        $script:Repo = New-TestRepo -OriginUrl $script:WorkHttps
+        $r = Invoke-WithoutUserGitConfig { Invoke-PreCommitHook -Repo $script:Repo -FileContent '// written with Claude' }
+        $r.ExitCode | Should -Be 0
+    }
+
+    It 'honours SKIP_AI_REFERENCE_SCAN=1 in a work repo' {
+        $script:Repo = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
         $r = Invoke-PreCommitHook -Repo $script:Repo -FileContent '// written with Claude' -Env @{ SKIP_AI_REFERENCE_SCAN = '1' }
         $r.ExitCode | Should -Be 0
     }
 
     It 'still blocks via the AI-reference scan when SKIP_GITLEAKS=1 (that var must not also skip it)' {
-        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        $script:Repo = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
         $r = Invoke-PreCommitHook -Repo $script:Repo -FileContent '// written with Claude' -Env @{ SKIP_GITLEAKS = '1' }
         $r.ExitCode | Should -Not -Be 0
         $r.Output | Should -Match 'AI-reference scan blocked'
     }
 
     It 'still blocks via the AI-reference scan when gitleaks is not on PATH (its absence must not also skip it)' -Skip:(-not $script:NoGitleaksPath) {
-        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        $script:Repo = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
         $r = Invoke-PreCommitHook -Repo $script:Repo -FileContent '// written with Claude' -Env @{ PATH = $script:NoGitleaksPath }
         $r.ExitCode | Should -Not -Be 0
         $r.Output | Should -Match 'AI-reference scan blocked'
     }
 
-    It 'fails closed when the wordlist is missing in a Hollard repo' {
-        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+    It 'fails closed when the wordlist is missing in a work repo' {
+        $script:Repo = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
         $fakeRoot = Join-Path ([IO.Path]::GetTempPath()) ('ai-ref-nowl-pc-' + [guid]::NewGuid())
         $fakeHooksDir = Join-Path $fakeRoot 'git/templates/hooks'
         New-Item -ItemType Directory -Path $fakeHooksDir -Force | Out-Null
@@ -449,8 +490,8 @@ Describe 'git/templates/hooks/pre-commit AI-reference section' -Skip:(-not $scri
         }
     }
 
-    It 'fails closed when the wordlist exists but is unreadable in a Hollard repo' {
-        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+    It 'fails closed when the wordlist exists but is unreadable in a work repo' {
+        $script:Repo = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
         $fakeRoot = Join-Path ([IO.Path]::GetTempPath()) ('ai-ref-unreadwl-pc-' + [guid]::NewGuid())
         $fakeHooksDir = Join-Path $fakeRoot 'git/templates/hooks'
         $fakeSharedDir = Join-Path $fakeRoot 'ai-agents/_shared'
@@ -511,7 +552,7 @@ Describe 'git/templates/hooks/pre-commit AI-reference section' -Skip:(-not $scri
         # diff.noprefix=true / diff.mnemonicPrefix strip or change the a/ b/ prefixes the
         # header exclusion regex expects. The hook forces --src-prefix/--dst-prefix on
         # the command line so the exclusion still matches regardless of repo config.
-        $script:Repo = New-TestRepo -OriginUrl $script:HollardHttps
+        $script:Repo = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
         & git -C $script:Repo config diff.noprefix true 2>&1 | Out-Null
         $r = Invoke-PreCommitHook -Repo $script:Repo -FileContent '// normal comment' -FileName 'written-with-claude.js'
         $r.ExitCode | Should -Be 0

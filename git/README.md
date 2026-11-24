@@ -14,8 +14,8 @@ Git configuration, global ignore rules, commit template, and hook templates.
 
 | File | Installed as | Notes |
 |---|---|---|
-| `gitconfig` | `~/.gitconfig` | Base config for all machines |
-| `gitconfig-work` | `~/.gitconfig-work` | Work overrides; auto-included per-repo via `[includeIf]` |
+| `gitconfig` | `~/.gitconfig` | Base config for all machines. Ends by including the untracked `~/.gitconfig.local` |
+| `gitconfig-work` | `~/.gitconfig-work` | Work overrides; included per repo by the `[includeIf]` blocks in `~/.gitconfig.local`. Ends by including the untracked `~/.gitconfig-work.local` |
 | `gitignore` | `~/.gitignore` | Global ignore rules |
 | `gitignore-work` | `~/.gitignore-work` | Global ignore rules for work repos. Replaces `gitignore` there via `core.excludesFile` in `gitconfig-work`. Adds .NET, Terraform, and Azure Functions build output, plus AI tooling files |
 | `gitmessage` | `~/.gitmessage` | Commit message template |
@@ -45,16 +45,78 @@ Git configuration, global ignore rules, commit template, and hook templates.
 - **`submodule.fetchJobs = 0`** (work only, `gitconfig-work`) — parallelizes submodule fetches, alongside `submodule.recurse = true`
 - **GitHub SSH rewrite** — both `https://github.com/` and `gh:` resolve to SSH
 
-## Work identity (`[includeIf]`)
+## Machine-local config (`~/.gitconfig.local`, `~/.gitconfig-work.local`)
 
-Work email and `diff.tool = delta` are applied automatically for any repo whose
-remote URL matches the work domain. Requires Git 2.36+. Three `hasconfig:remote.*.url`
-stanzas cover HTTPS (with and without embedded userinfo) and SSH clones of the same
-Azure DevOps org, plus a `gitdir/i` fallback for a fixed local work path.
+This repo is public, so it never names the employer, its Azure DevOps organisation or
+project, the work email, or the work root. Those values live in two untracked files in
+your home folder:
 
-For local-only work repos without a remote yet:
+- `~/.gitconfig.local` holds the `[work]` keys and the `[includeIf]` blocks that load
+  `~/.gitconfig-work` in work repos.
+- `~/.gitconfig-work.local` holds the work `[user]` email.
+
+The include chain:
+
+1. `gitconfig` includes `~/.gitconfig.local` last, so its values win over the base config.
+2. The `[includeIf]` blocks in `~/.gitconfig.local` load `~/.gitconfig-work` for any repo
+   with a work remote, and for repos under the work root.
+3. `gitconfig-work` includes `~/.gitconfig-work.local` last. So the work email overrides
+   the personal one only in work repos.
+
+Git ignores a missing include file. Without `~/.gitconfig.local`, no repo gets the work
+identity. The `hasconfig:remote.*.url` conditions need Git 2.36+.
+
+The AI-reference hooks (`pre-commit` and `commit-msg` below, plus the Claude Code, Codex,
+and Pi guards) read `work.adoOrgUrl`. The `rfc`, `agent-staging`, and board-triage skills
+read the `[work]` keys too. `tests/public-repo-hygiene.Tests.ps1` reads all four keys
+and checks that no tracked file names their values. The hooks fail open when the key
+is unset or empty: they treat every repo as a non-work repo.
+
+Template for `~/.gitconfig.local` (replace every `<...>` placeholder):
+
+```ini
+# ~/.gitconfig.local (untracked; never commit)
+[work]
+    employer = <employer>
+    adoOrgUrl = https://dev.azure.com/<org>
+    adoProject = <project>
+    root = <work-root>
+
+# Work identity: load ~/.gitconfig-work for any repo with a work remote, and for
+# local-only repos under the work root. hasconfig needs Git 2.36+.
+[includeIf "hasconfig:remote.*.url:https://<org>@dev.azure.com/**"]
+    path = ~/.gitconfig-work
+[includeIf "hasconfig:remote.*.url:git@ssh.dev.azure.com:v3/<org>/**"]
+    path = ~/.gitconfig-work
+[includeIf "hasconfig:remote.*.url:https://dev.azure.com/<org>/**"]
+    path = ~/.gitconfig-work
+[includeIf "gitdir/i:<work-root>/"]
+    path = ~/.gitconfig-work
+```
+
+Template for `~/.gitconfig-work.local`:
+
+```ini
+# ~/.gitconfig-work.local (untracked; never commit)
+[user]
+    email = <work-email>
+```
+
+Write `<work-root>` with forward slashes, in the `root` key and in the `gitdir/i`
+condition. Git reads a backslash in a config value as an escape. A hand-written
+`X:\Foo` makes the file invalid, and because `gitconfig` includes it, every git command
+then fails. To set a key safely, use the command line, which escapes the value for you:
+
 ```sh
-git config user.email your-work-email
+git config --file ~/.gitconfig.local work.root '<work-root>'
+```
+
+To check which identity a repo gets, run `git config --show-origin user.email`.
+
+A work repo outside the work root with no remote yet matches no condition. Set its
+email by hand:
+```sh
+git config user.email <work-email>
 ```
 
 ## Hooks (`templates/hooks/`)
@@ -99,7 +161,7 @@ Two independent checks, gitleaks first:
   the gitleaks CI job is the backstop. Bypass one commit: `SKIP_GITLEAKS=1 git commit ...`
 - **AI-reference scan** — blocks a commit whose staged diff adds a line matching
   `ai-agents/_shared/banned-ai-terms.txt` (added lines only; a banned term on a
-  removed line does not block). Scoped to Hollard/Azure DevOps repos only — see
+  removed line does not block). Scoped to work Azure DevOps repos only — see
   `### commit-msg` below for the scoping rule and fail-open/closed behaviour,
   which this check shares. Bypass one commit: `SKIP_AI_REFERENCE_SCAN=1 git commit ...`
 
@@ -116,13 +178,14 @@ the hard-block layer for AI/Claude/Codex/Copilot/co-authorship references
 Git invokes `commit-msg <path-to-commit-msg-file>`, so this sees the final
 message text regardless of `-m`, `-F`, an editor, `--amend`, or a merge.
 
-Scoped to Hollard/Azure DevOps repos only, via the same signal `gitconfig`'s
-`[includeIf]` uses for work identity: `git remote get-url origin` contains both
-`dev.azure.com` and `HollardInsuranceRetail`, case-insensitive (covers both the
-HTTPS and SSH remote forms). GitHub repos (dotfiles, wiki, brain) legitimately
+Scoped to work Azure DevOps repos only, via the same signal the work identity
+uses: `git remote get-url origin` contains both `dev.azure.com` and the
+organisation, case-insensitive (covers both the HTTPS and SSH remote forms). The
+organisation is the last path segment of `git config work.adoOrgUrl`, set in
+`~/.gitconfig.local` (see above). GitHub repos (dotfiles, wiki, brain) legitimately
 say "Claude"/"Codex" in their own subject matter and are never scanned. If
-`git remote get-url origin` fails (no remote, not a repo) or the URL doesn't
-match, the commit is allowed.
+`git remote get-url origin` fails (no remote, not a repo), `work.adoOrgUrl` is
+unset or empty, or the URL doesn't match, the commit is allowed.
 
 Fails open on every other condition, and fails closed only when scoped-in AND
 the wordlist itself is missing or unreadable — mirroring `gitconfig-work`'s

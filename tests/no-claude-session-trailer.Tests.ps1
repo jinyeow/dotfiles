@@ -12,11 +12,12 @@
 # shared wordlist into an isolated temp directory (mimicking the sibling layout) and invokes it
 # from there; the fail-closed test uses a temp directory with the script only.
 #
-# The whole hook is scoped to Hollard/Azure-DevOps-remote repos (mirroring
+# The whole hook is scoped to work Azure-DevOps-remote repos (mirroring
 # git/templates/hooks/pre-commit's own scoping): it reads `git remote get-url origin` from its
-# inherited cwd and allows everything outright when that fails or doesn't match. So every check
+# inherited cwd, matches it against the org in `git config work.adoOrgUrl`, and allows everything
+# outright when either is missing or doesn't match. So every check
 # below runs with the process cwd pushed into a throwaway repo whose origin is set accordingly —
-# a Hollard-remote repo by default (Invoke-Hook's default -RepoDir), so the existing deny
+# a work-remote repo by default (Invoke-Hook's default -RepoDir), so the existing deny
 # behaviour is exercised as before; a dedicated context covers the GitHub/no-origin allow cases.
 #
 # The suite needs bash + jq (as the hook does); it skips rather than false-green when absent.
@@ -33,7 +34,10 @@ BeforeAll {
     $script:HookSource = Join-Path $script:RepoRoot 'claude/no-claude-session-trailer.sh'
     $script:WordlistSource = Join-Path $script:RepoRoot 'ai-agents/_shared/banned-ai-terms.txt'
 
-    $script:HollardHttps = 'https://dev.azure.com/HollardInsuranceRetail/Proj/_git/Repo'
+    # The hook reads the work organisation from `git config work.adoOrgUrl`, so the scoped-in
+    # repos set it in their local config.
+    $script:WorkOrgUrl = 'https://dev.azure.com/ExampleOrg'
+    $script:WorkHttps = 'https://dev.azure.com/ExampleOrg/Proj/_git/Repo'
     $script:GitHubUrl = 'https://github.com/jinyeow/dotfiles.git'
 
     # Sibling layout (hook + wordlist together), mimicking ~/.claude/.
@@ -53,7 +57,7 @@ BeforeAll {
     # tests/git-templates-ai-reference-hook.Tests.ps1's New-TestRepo helper.
     function New-TestRepo
     {
-        param([string] $OriginUrl, [string] $NameHint = '')
+        param([string] $OriginUrl, [string] $WorkOrgUrl, [string] $NameHint = '')
         $suffix = if ($NameHint) { "$NameHint-$([guid]::NewGuid())" } else { [guid]::NewGuid() }
         $root = Join-Path ([System.IO.Path]::GetTempPath()) ('no-claude-trailer-' + $suffix)
         New-Item -ItemType Directory -Path $root -Force | Out-Null
@@ -64,25 +68,29 @@ BeforeAll {
         {
             & git -C $root remote add origin $OriginUrl 2>&1 | Out-Null
         }
+        if ($WorkOrgUrl)
+        {
+            & git -C $root config work.adoOrgUrl $WorkOrgUrl 2>&1 | Out-Null
+        }
         return $root
     }
 
-    $script:HollardRepo = New-TestRepo -OriginUrl $script:HollardHttps
+    $script:WorkRepo = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl
     $script:GitHubRepo = New-TestRepo -OriginUrl $script:GitHubUrl
     $script:NoOriginRepo = New-TestRepo -OriginUrl $null
-    # A Hollard-remote repo whose own path contains a space, to exercise a quoted multi-word
+    # A work-remote repo whose own path contains a space, to exercise a quoted multi-word
     # `-C "<path>"` value (this repo's own path contains a space too — see AGENTS.md).
-    $script:HollardRepoWithSpace = New-TestRepo -OriginUrl $script:HollardHttps -NameHint 'Hollard Repo'
+    $script:WorkRepoWithSpace = New-TestRepo -OriginUrl $script:WorkHttps -WorkOrgUrl $script:WorkOrgUrl -NameHint 'Work Repo'
 
     # Drive the bash hook with a command string wrapped as the tool-call JSON on stdin, from
-    # inside the given repo (default: the Hollard-remote repo, so scoped-in behaviour is the
+    # inside the given repo (default: the work-remote repo, so scoped-in behaviour is the
     # default for the existing deny-focused tests).
     function Invoke-Hook
     {
         param(
             [string] $Command,
             [string] $HookPath = $script:Hook,
-            [string] $RepoDir = $script:HollardRepo
+            [string] $RepoDir = $script:WorkRepo
         )
         $json = @{ tool_input = @{ command = $Command } } | ConvertTo-Json -Compress
         Push-Location $RepoDir
@@ -98,7 +106,7 @@ BeforeAll {
 }
 
 AfterAll {
-    foreach ($dir in @($script:InstalledDir, $script:NoWordlistDir, $script:HollardRepo, $script:GitHubRepo, $script:NoOriginRepo, $script:HollardRepoWithSpace))
+    foreach ($dir in @($script:InstalledDir, $script:NoWordlistDir, $script:WorkRepo, $script:GitHubRepo, $script:NoOriginRepo, $script:WorkRepoWithSpace))
     {
         if ($dir -and (Test-Path -LiteralPath $dir))
         {
@@ -117,11 +125,11 @@ Describe 'claude/no-claude-session-trailer.sh' -Skip:(-not $script:HasBash) {
             # The flag group allows each global flag to carry an argument (-C <path>): a unit is
             # `-flag` optionally followed by one non-flag argument token, so a flag WITH an
             # argument can't slip between git and commit and evade the deny. Uses the real
-            # Hollard-remote repo as the -C target: -C now also drives the repo-scoping check
+            # work-remote repo as the -C target: -C now also drives the repo-scoping check
             # (see the `git -C` scoping context below), so a decoy path with no real origin
             # would be scoped out before the wordlist check ever ran.
-            $hollardPath = $script:HollardRepo -replace '\\', '/'
-            $out = Invoke-Hook -Command "git -C $hollardPath commit -m `"Co-Authored-By: Claude`""
+            $workPath = $script:WorkRepo -replace '\\', '/'
+            $out = Invoke-Hook -Command "git -C $workPath commit -m `"Co-Authored-By: Claude`""
             $out | Should -Match '"permissionDecision":"deny"'
         }
         It 'denies `git -c k=v commit` with a banned term' {
@@ -216,10 +224,10 @@ Describe 'claude/no-claude-session-trailer.sh' -Skip:(-not $script:HasBash) {
             $out.Trim() | Should -BeNullOrEmpty
         }
         It 'allows `git -C <path> commit` without a banned term' {
-            # Uses the real Hollard-remote repo as the -C target so this exercises the clean
+            # Uses the real work-remote repo as the -C target so this exercises the clean
             # wordlist path in scope, not an out-of-scope allow via a decoy -C target.
-            $hollardPath = $script:HollardRepo -replace '\\', '/'
-            $out = Invoke-Hook -Command "git -C $hollardPath commit -m `"normal`""
+            $workPath = $script:WorkRepo -replace '\\', '/'
+            $out = Invoke-Hook -Command "git -C $workPath commit -m `"normal`""
             $out.Trim() | Should -BeNullOrEmpty
         }
         It 'allows a clean PR create' {
@@ -342,7 +350,7 @@ Describe 'claude/no-claude-session-trailer.sh' -Skip:(-not $script:HasBash) {
         }
     }
 
-    Context 'repo scoping (Hollard/Azure DevOps remotes only)' {
+    Context 'repo scoping (work Azure DevOps remotes only)' {
         It 'allows a banned commit term in a GitHub-remote repo (out of scope)' {
             $out = Invoke-Hook -Command 'git commit -m "Co-Authored-By: Claude"' -RepoDir $script:GitHubRepo
             $out.Trim() | Should -BeNullOrEmpty
@@ -359,18 +367,39 @@ Describe 'claude/no-claude-session-trailer.sh' -Skip:(-not $script:HasBash) {
             $out = Invoke-Hook -Command 'SKIP_GITLEAKS=1 git commit -m "clean message"' -RepoDir $script:GitHubRepo
             $out.Trim() | Should -BeNullOrEmpty
         }
-        It 'still denies a banned commit term in a Hollard-remote repo' {
-            $out = Invoke-Hook -Command 'git commit -m "Co-Authored-By: Claude"' -RepoDir $script:HollardRepo
+        It 'allows a banned commit term in a work-remote repo when work.adoOrgUrl is unset (fails open)' {
+            # Isolate from the developer's global and system config, which may set the key.
+            $repo = New-TestRepo -OriginUrl $script:WorkHttps
+            $emptyGlobal = Join-Path $TestDrive 'empty-gitconfig'
+            Set-Content -Path $emptyGlobal -Value '' -NoNewline
+            $savedGlobal = $env:GIT_CONFIG_GLOBAL
+            $savedNoSystem = $env:GIT_CONFIG_NOSYSTEM
+            try
+            {
+                $env:GIT_CONFIG_GLOBAL = $emptyGlobal
+                $env:GIT_CONFIG_NOSYSTEM = '1'
+                $out = Invoke-Hook -Command 'git commit -m "Co-Authored-By: Claude"' -RepoDir $repo
+            }
+            finally
+            {
+                $env:GIT_CONFIG_GLOBAL = $savedGlobal
+                $env:GIT_CONFIG_NOSYSTEM = $savedNoSystem
+                Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            $out.Trim() | Should -BeNullOrEmpty
+        }
+        It 'still denies a banned commit term in a work-remote repo' {
+            $out = Invoke-Hook -Command 'git commit -m "Co-Authored-By: Claude"' -RepoDir $script:WorkRepo
             $out | Should -Match '"permissionDecision":"deny"'
         }
         It 'scopes via `git -C <path>` to the target repo''s origin, not the inherited cwd (out-of-scope cwd, in-scope -C target)' {
-            $hollardPath = $script:HollardRepo -replace '\\', '/'
-            $out = Invoke-Hook -Command "git -C $hollardPath commit --no-verify -m `"Generated with Claude`"" -RepoDir $script:GitHubRepo
+            $workPath = $script:WorkRepo -replace '\\', '/'
+            $out = Invoke-Hook -Command "git -C $workPath commit --no-verify -m `"Generated with Claude`"" -RepoDir $script:GitHubRepo
             $out | Should -Match '"permissionDecision":"deny"'
         }
         It 'scopes via `git -C <path>` and allows when the -C target is out of scope (in-scope cwd, out-of-scope -C target)' {
             $githubPath = $script:GitHubRepo -replace '\\', '/'
-            $out = Invoke-Hook -Command "git -C $githubPath commit -m `"Generated with Claude`"" -RepoDir $script:HollardRepo
+            $out = Invoke-Hook -Command "git -C $githubPath commit -m `"Generated with Claude`"" -RepoDir $script:WorkRepo
             $out.Trim() | Should -BeNullOrEmpty
         }
     }
@@ -396,38 +425,38 @@ Describe 'claude/no-claude-session-trailer.sh' -Skip:(-not $script:HasBash) {
     }
 
     Context 'quoted `-C <path>` value is unquoted before the origin lookup (cycle-4 regression)' {
-        It 'denies `git -C "." commit -nm "..."` run from a Hollard-origin cwd (quoted "." -C path)' {
+        It 'denies `git -C "." commit -nm "..."` run from a work-origin cwd (quoted "." -C path)' {
             # Before the fix, the extracted -C value kept its literal quotes (".\""), the
             # `git -C '".\"' remote get-url origin` lookup failed, and the `|| exit 0` fallback
             # let the whole command through — skipping the -n (--no-verify) deny below.
-            $out = Invoke-Hook -Command 'git -C "." commit -nm "Generated with Claude"' -RepoDir $script:HollardRepo
+            $out = Invoke-Hook -Command 'git -C "." commit -nm "Generated with Claude"' -RepoDir $script:WorkRepo
             $out | Should -Match '"permissionDecision":"deny"'
         }
-        It 'denies `git -C "." commit --no-verify -m "clean"` run from a Hollard-origin cwd (quoted "." -C path)' {
-            $out = Invoke-Hook -Command 'git -C "." commit --no-verify -m "clean"' -RepoDir $script:HollardRepo
+        It 'denies `git -C "." commit --no-verify -m "clean"` run from a work-origin cwd (quoted "." -C path)' {
+            $out = Invoke-Hook -Command 'git -C "." commit --no-verify -m "clean"' -RepoDir $script:WorkRepo
             $out | Should -Match '"permissionDecision":"deny"'
         }
         It 'still denies `git -C . commit -m "..."` with an unquoted "." -C path (control, no regression)' {
-            $out = Invoke-Hook -Command 'git -C . commit -m "Generated with Claude"' -RepoDir $script:HollardRepo
+            $out = Invoke-Hook -Command 'git -C . commit -m "Generated with Claude"' -RepoDir $script:WorkRepo
             $out | Should -Match '"permissionDecision":"deny"'
         }
     }
 
     Context 'quoted multi-word `-C "path-with-a-space"` value (flag_group argument capture)' {
         It 'denies `git -C "path-with-a-space" commit -nm "..."` (no-verify, quoted multi-word -C value)' {
-            $hollardSpacePath = $script:HollardRepoWithSpace -replace '\\', '/'
-            $out = Invoke-Hook -Command "git -C `"$hollardSpacePath`" commit -nm `"Generated with Claude`"" -RepoDir $script:GitHubRepo
+            $workSpacePath = $script:WorkRepoWithSpace -replace '\\', '/'
+            $out = Invoke-Hook -Command "git -C `"$workSpacePath`" commit -nm `"Generated with Claude`"" -RepoDir $script:GitHubRepo
             $out | Should -Match '"permissionDecision":"deny"'
             $out | Should -Match 'no-verify'
         }
         It 'denies `git -C "path-with-a-space" commit -m "..."` (wordlist, quoted multi-word -C value)' {
-            $hollardSpacePath = $script:HollardRepoWithSpace -replace '\\', '/'
-            $out = Invoke-Hook -Command "git -C `"$hollardSpacePath`" commit -m `"Generated with Claude`"" -RepoDir $script:GitHubRepo
+            $workSpacePath = $script:WorkRepoWithSpace -replace '\\', '/'
+            $out = Invoke-Hook -Command "git -C `"$workSpacePath`" commit -m `"Generated with Claude`"" -RepoDir $script:GitHubRepo
             $out | Should -Match '"permissionDecision":"deny"'
         }
         It 'allows `git -C "path-with-a-space" commit -m "..."` with a clean message (no false positive)' {
-            $hollardSpacePath = $script:HollardRepoWithSpace -replace '\\', '/'
-            $out = Invoke-Hook -Command "git -C `"$hollardSpacePath`" commit -m `"a normal message`"" -RepoDir $script:GitHubRepo
+            $workSpacePath = $script:WorkRepoWithSpace -replace '\\', '/'
+            $out = Invoke-Hook -Command "git -C `"$workSpacePath`" commit -m `"a normal message`"" -RepoDir $script:GitHubRepo
             $out.Trim() | Should -BeNullOrEmpty
         }
     }
@@ -446,12 +475,12 @@ Describe 'claude/no-claude-session-trailer.sh' -Skip:(-not $script:HasBash) {
             $out.Trim() | Should -BeNullOrEmpty
         }
         It 'still denies `git -C "path-with-a-space" commit -nm "..."` (must not regress the cycle-4 quoted multi-word -C fix)' {
-            $hollardSpacePath = $script:HollardRepoWithSpace -replace '\\', '/'
-            $out = Invoke-Hook -Command "git -C `"$hollardSpacePath`" commit -nm `"Generated with Claude`"" -RepoDir $script:GitHubRepo
+            $workSpacePath = $script:WorkRepoWithSpace -replace '\\', '/'
+            $out = Invoke-Hook -Command "git -C `"$workSpacePath`" commit -nm `"Generated with Claude`"" -RepoDir $script:GitHubRepo
             $out | Should -Match '"permissionDecision":"deny"'
         }
         It 'still denies `git -C "." commit -nm "..."` (must not regress the cycle-4 simple quoted -C fix)' {
-            $out = Invoke-Hook -Command 'git -C "." commit -nm "Generated with Claude"' -RepoDir $script:HollardRepo
+            $out = Invoke-Hook -Command 'git -C "." commit -nm "Generated with Claude"' -RepoDir $script:WorkRepo
             $out | Should -Match '"permissionDecision":"deny"'
         }
     }
