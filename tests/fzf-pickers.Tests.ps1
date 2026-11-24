@@ -11,8 +11,10 @@ BeforeAll {
     $wanted = 'Format-FzfPickInsertion', 'Get-FzfDedupedHistory'
     $funcs = $ast.FindAll(
         { param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true)
-    foreach ($fn in $funcs) {
-        if ($wanted | Where-Object { $fn.Name -match $_ }) {
+    foreach ($fn in $funcs)
+    {
+        if ($wanted | Where-Object { $fn.Name -match $_ })
+        {
             . ([scriptblock]::Create($fn.Extent.Text))
         }
     }

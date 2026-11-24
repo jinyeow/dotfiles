@@ -24,7 +24,8 @@ BeforeAll {
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:ExtensionFile = Join-Path $script:RepoRoot 'pi/extensions/git-guardrails.ts'
 
-    if (-not (Test-Path $script:ExtensionFile)) {
+    if (-not (Test-Path $script:ExtensionFile))
+    {
         throw "Extension file not found: $script:ExtensionFile"
     }
 
@@ -72,17 +73,20 @@ process.stdout.write(JSON.stringify(results));
 
     # Runs the real BLOCKED_PATTERNS through node for a list of commands. Returns a
     # hashtable keyed by command with a bool matched value.
-    function Invoke-Guardrails {
+    function Invoke-Guardrails
+    {
         param([string[]] $Command)
 
         $commandsJson = $Command | ConvertTo-Json -Compress -AsArray
         $output = & node $script:NodeHarness $script:ExtensionFile $commandsJson
-        if ($LASTEXITCODE -ne 0) {
+        if ($LASTEXITCODE -ne 0)
+        {
             throw "node harness failed: $output"
         }
 
         $results = @{}
-        foreach ($entry in ($output | ConvertFrom-Json)) {
+        foreach ($entry in ($output | ConvertFrom-Json))
+        {
             $results[$entry.command] = $entry.matched
         }
         return $results

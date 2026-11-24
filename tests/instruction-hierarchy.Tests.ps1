@@ -76,7 +76,8 @@ Describe 'repository instruction hierarchy' {
         $workGitignore | Should -Match ([regex]::Escape('.agents/*'))
         $workGitignore | Should -Match ([regex]::Escape('!.agents/workflow.md'))
 
-        foreach ($consumerPath in $script:WorkflowConsumerPaths) {
+        foreach ($consumerPath in $script:WorkflowConsumerPaths)
+        {
             $consumer = Get-Content -Raw (Join-Path $script:RepoRoot $consumerPath)
             $localIndex = $consumer.IndexOf('.agents/workflow.local.md')
             $sharedIndex = $consumer.IndexOf('.agents/workflow.md')
@@ -120,9 +121,11 @@ Describe 'repository instruction hierarchy' {
             @('Pi', 'pi/README.md', 'pi/settings.json')
         )
 
-        foreach ($route in $routes) {
+        foreach ($route in $routes)
+        {
             $routeName = $route[0]
-            foreach ($target in $route[1..($route.Count - 1)]) {
+            foreach ($target in $route[1..($route.Count - 1)])
+            {
                 $linkPattern = '\]\(' + [regex]::Escape($target) + '(?:#[^)]+)?\)'
                 $agents | Should -Match $linkPattern -Because "$routeName routing should link $target"
                 (Test-Path (Join-Path $script:RepoRoot $target)) | Should -BeTrue -Because "$routeName target $target should exist"
@@ -139,7 +142,8 @@ Describe 'repository instruction hierarchy' {
             Select-Object -Unique
 
         $references.Count | Should -BeGreaterThan 0
-        foreach ($reference in $references) {
+        foreach ($reference in $references)
+        {
             (Test-Path (Join-Path $script:RepoRoot $reference)) | Should -BeTrue -Because "linked repository path $reference should not be stale"
         }
     }

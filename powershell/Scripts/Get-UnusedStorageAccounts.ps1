@@ -1,8 +1,8 @@
 #!/usr/bin/env pwsh
 
 Param(
-  [Parameter()]
-  [Int32] $TimeAgo = 3
+    [Parameter()]
+    [Int32] $TimeAgo = 3
 )
 
 # Connect to Azure
@@ -21,14 +21,16 @@ $unusedStorageAccounts = @()
 $storageAccounts = Get-AzStorageAccount
 
 # Iterate through each storage account
-foreach ($storageAccount in $storageAccounts) {
-  # Get the usage metrics for the storage account
-  $metrics = Get-AzMetric -ResourceId $storageAccount.ResourceId -Metric "Transactions", "Ingress", "Egress" -DetailedOutput -StartTime $startTime -EndTime $now
-  # Check if the usage metrics are empty
-  if ($null -eq $metrics.Data) {
-    # If the usage metrics are empty, add the storage account to the unused storage accounts array
-    $unusedStorageAccounts += $storageAccount
-  }
+foreach ($storageAccount in $storageAccounts)
+{
+    # Get the usage metrics for the storage account
+    $metrics = Get-AzMetric -ResourceId $storageAccount.ResourceId -Metric "Transactions", "Ingress", "Egress" -DetailedOutput -StartTime $startTime -EndTime $now
+    # Check if the usage metrics are empty
+    if ($null -eq $metrics.Data)
+    {
+        # If the usage metrics are empty, add the storage account to the unused storage accounts array
+        $unusedStorageAccounts += $storageAccount
+    }
 }
 
 # Print the unused storage accounts

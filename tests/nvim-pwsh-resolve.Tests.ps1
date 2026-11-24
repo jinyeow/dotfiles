@@ -8,7 +8,8 @@
 BeforeAll {
     $script:nvim = Get-Command nvim -CommandType Application -ErrorAction SilentlyContinue |
         Select-Object -First 1
-    if (-not $script:nvim) {
+    if (-not $script:nvim)
+    {
         throw 'nvim is not on PATH. Install Neovim 0.12+ to run tests/nvim-pwsh-resolve.Tests.ps1 (this suite never skips).'
     }
     $script:nvimConfig = Join-Path (Split-Path $PSScriptRoot -Parent) 'nvim'
@@ -37,7 +38,8 @@ BeforeAll {
     #   system_result   { code, stdout, stderr } that the vim.system stub returns
     # The body must return a table; system_calls holds each argv passed to vim.system.
     # Returns the table as a PSCustomObject.
-    function script:Invoke-PwshCase {
+    function script:Invoke-PwshCase
+    {
         param(
             [Parameter(Mandatory)][string]$Prelude,
             [Parameter(Mandatory)][string]$Body
@@ -72,7 +74,8 @@ f:close()
         Set-Content -LiteralPath $scriptPath -Value $lua -Encoding utf8NoBOM
         & $script:nvim.Source --clean --headless -l $scriptPath 2> $errPath
         $stderr = Get-Content -LiteralPath $errPath -Raw
-        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $outPath)) {
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $outPath))
+        {
             throw "nvim exited $LASTEXITCODE for case script '$scriptPath'. stderr: $stderr"
         }
         return Get-Content -LiteralPath $outPath -Raw -Encoding utf8 | ConvertFrom-Json

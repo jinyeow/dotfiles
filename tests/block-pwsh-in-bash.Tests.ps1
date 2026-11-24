@@ -14,11 +14,13 @@ BeforeAll {
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:Hook = Join-Path $script:RepoRoot 'claude/block-pwsh-in-bash.ps1'
 
-    function Invoke-Hook {
+    function Invoke-Hook
+    {
         param([string] $Payload)
         return ($Payload | & pwsh -NoProfile -File $script:Hook 2>&1 | Out-String)
     }
-    function Invoke-HookCmd {
+    function Invoke-HookCmd
+    {
         param([string] $Command)
         $json = @{ tool_input = @{ command = $Command } } | ConvertTo-Json -Compress
         return (Invoke-Hook -Payload $json)

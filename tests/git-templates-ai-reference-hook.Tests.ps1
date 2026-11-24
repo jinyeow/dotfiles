@@ -25,8 +25,10 @@ $script:HasBash = [bool]$script:TestBash
 # Pester's discovery phase, which runs in a separate scope pass before
 # BeforeAll, so a value set only inside BeforeAll wouldn't be seen by -Skip.
 $script:NoGitleaksPath = $null
-if ($script:TestBash) {
-    try {
+if ($script:TestBash)
+{
+    try
+    {
         $gitBashDir = Split-Path -Path $script:TestBash -Parent
         $gitRoot = Split-Path -Path $gitBashDir -Parent
         $fso = New-Object -ComObject Scripting.FileSystemObject
@@ -37,7 +39,9 @@ if ($script:TestBash) {
         $gitCmdDir = "$posixRoot/cmd"
         $usrBin = "$posixRoot/usr/bin"
         $script:NoGitleaksPath = "${gitCmdDir}:${usrBin}"
-    } catch {
+    }
+    catch
+    {
         $script:NoGitleaksPath = $null
     }
 }
@@ -46,8 +50,10 @@ BeforeAll {
     . (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
     $script:TestBash = Resolve-TestBash
     $script:NoGitleaksPath = $null
-    if ($script:TestBash) {
-        try {
+    if ($script:TestBash)
+    {
+        try
+        {
             $gitBashDir = Split-Path -Path $script:TestBash -Parent
             $gitRoot = Split-Path -Path $gitBashDir -Parent
             $fso = New-Object -ComObject Scripting.FileSystemObject
@@ -58,7 +64,9 @@ BeforeAll {
             $gitCmdDir = "$posixRoot/cmd"
             $usrBin = "$posixRoot/usr/bin"
             $script:NoGitleaksPath = "${gitCmdDir}:${usrBin}"
-        } catch {
+        }
+        catch
+        {
             $script:NoGitleaksPath = $null
         }
     }
@@ -73,21 +81,24 @@ BeforeAll {
     $script:HollardSsh = 'git@ssh.dev.azure.com:v3/HollardInsuranceRetail/Proj/Repo'
     $script:GitHubUrl = 'https://github.com/jinyeow/dotfiles.git'
 
-    function New-TestRepo {
+    function New-TestRepo
+    {
         param([string] $OriginUrl)
         $root = Join-Path ([IO.Path]::GetTempPath()) ('ai-ref-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $root -Force | Out-Null
         & git -C $root init -q . 2>&1 | Out-Null
         & git -C $root config user.email 'test@example.invalid' 2>&1 | Out-Null
         & git -C $root config user.name 'Test' 2>&1 | Out-Null
-        if ($OriginUrl) {
+        if ($OriginUrl)
+        {
             & git -C $root remote add origin $OriginUrl 2>&1 | Out-Null
         }
         return $root
     }
 
     # Runs the shipped commit-msg hook against a message file, returning exit code + output.
-    function Invoke-CommitMsgHook {
+    function Invoke-CommitMsgHook
+    {
         param(
             [string] $Repo,
             [string] $Message,
@@ -98,21 +109,28 @@ BeforeAll {
 
         $envAssignments = ($Env.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join ' '
         Push-Location $Repo
-        try {
-            if ($envAssignments) {
+        try
+        {
+            if ($envAssignments)
+            {
                 $out = & $script:TestBash -c "$envAssignments `"$($script:CommitMsgHook -replace '\\', '/')`" `"$($msgFile -replace '\\', '/')`"" 2>&1 | Out-String
-            } else {
+            }
+            else
+            {
                 $out = & $script:TestBash "$($script:CommitMsgHook -replace '\\', '/')" "$($msgFile -replace '\\', '/')" 2>&1 | Out-String
             }
             $rc = $LASTEXITCODE
-        } finally {
+        }
+        finally
+        {
             Pop-Location
         }
         return @{ ExitCode = $rc; Output = $out }
     }
 
     # Stages one file's content, then runs the shipped pre-commit hook.
-    function Invoke-PreCommitHook {
+    function Invoke-PreCommitHook
+    {
         param(
             [string] $Repo,
             [string] $FileContent,
@@ -125,14 +143,20 @@ BeforeAll {
 
         $envAssignments = ($Env.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join ' '
         Push-Location $Repo
-        try {
-            if ($envAssignments) {
+        try
+        {
+            if ($envAssignments)
+            {
                 $out = & $script:TestBash -c "$envAssignments `"$($script:PreCommitHook -replace '\\', '/')`"" 2>&1 | Out-String
-            } else {
+            }
+            else
+            {
                 $out = & $script:TestBash -c "`"$($script:PreCommitHook -replace '\\', '/')`"" 2>&1 | Out-String
             }
             $rc = $LASTEXITCODE
-        } finally {
+        }
+        finally
+        {
             Pop-Location
         }
         return @{ ExitCode = $rc; Output = $out }
@@ -198,21 +222,27 @@ Describe 'git/templates/hooks/commit-msg' -Skip:(-not $script:HasBash) {
         $fakeHooksDir = Join-Path $fakeRoot 'git/templates/hooks'
         New-Item -ItemType Directory -Path $fakeHooksDir -Force | Out-Null
         Copy-Item -Path $script:CommitMsgHook -Destination (Join-Path $fakeHooksDir 'commit-msg')
-        try {
+        try
+        {
             $msgFile = Join-Path $script:Repo 'COMMIT_EDITMSG'
             Set-Content -Path $msgFile -Value 'feat: add the thing' -NoNewline
             Push-Location $script:Repo
-            try {
+            try
+            {
                 $hookPath = (Join-Path $fakeHooksDir 'commit-msg') -replace '\\', '/'
                 $msgPath = $msgFile -replace '\\', '/'
                 $out = & $script:TestBash "$hookPath" "$msgPath" 2>&1 | Out-String
                 $rc = $LASTEXITCODE
-            } finally {
+            }
+            finally
+            {
                 Pop-Location
             }
             $rc | Should -Not -Be 0
             $out | Should -Match 'wordlist not found'
-        } finally {
+        }
+        finally
+        {
             Remove-Item -Path $fakeRoot -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
@@ -238,18 +268,23 @@ Describe 'git/templates/hooks/commit-msg' -Skip:(-not $script:HasBash) {
         Copy-Item -Path $script:CommitMsgHook -Destination (Join-Path $fakeHooksDir 'commit-msg')
         $fakeWordlist = Join-Path $fakeSharedDir 'banned-ai-terms.txt'
         Set-Content -Path $fakeWordlist -Value 'claude' -NoNewline
-        if ($IsWindows) {
+        if ($IsWindows)
+        {
             icacls $fakeWordlist /deny "$($env:USERNAME):(R)" | Out-Null
-        } else {
+        }
+        else
+        {
             chmod 000 $fakeWordlist
         }
-        try {
+        try
+        {
             # Precondition: confirm the deny actually blocks a real read through the same
             # bash used to run the hook. If it doesn't bite on this machine, skip rather
             # than false-RED/false-fail on an ACL quirk unrelated to the hook's own logic.
             $probe = & $script:TestBash -c "cat `"$($fakeWordlist -replace '\\', '/')`"" 2>&1
             $probeReadable = ($LASTEXITCODE -eq 0)
-            if ($probeReadable) {
+            if ($probeReadable)
+            {
                 Set-ItResult -Skipped -Because 'the ACL deny did not block a real read on this machine'
                 return
             }
@@ -257,20 +292,28 @@ Describe 'git/templates/hooks/commit-msg' -Skip:(-not $script:HasBash) {
             $msgFile = Join-Path $script:Repo 'COMMIT_EDITMSG'
             Set-Content -Path $msgFile -Value 'feat: add the thing' -NoNewline
             Push-Location $script:Repo
-            try {
+            try
+            {
                 $hookPath = (Join-Path $fakeHooksDir 'commit-msg') -replace '\\', '/'
                 $msgPath = $msgFile -replace '\\', '/'
                 $out = & $script:TestBash "$hookPath" "$msgPath" 2>&1 | Out-String
                 $rc = $LASTEXITCODE
-            } finally {
+            }
+            finally
+            {
                 Pop-Location
             }
             $rc | Should -Not -Be 0
             $out | Should -Match 'AI-reference scan blocked'
-        } finally {
-            if ($IsWindows) {
+        }
+        finally
+        {
+            if ($IsWindows)
+            {
                 icacls $fakeWordlist /reset 2>&1 | Out-Null
-            } else {
+            }
+            else
+            {
                 chmod 644 $fakeWordlist
             }
             Remove-Item -Path $fakeRoot -Recurse -Force -ErrorAction SilentlyContinue
@@ -301,10 +344,13 @@ Describe 'git/templates/hooks/pre-commit AI-reference section' -Skip:(-not $scri
         Set-Content -Path (Join-Path $script:Repo 'code.js') -Value '// normal comment' -NoNewline
         & git -C $script:Repo add code.js 2>&1 | Out-Null
         Push-Location $script:Repo
-        try {
+        try
+        {
             $out = & $script:TestBash -c "`"$($script:PreCommitHook -replace '\\', '/')`"" 2>&1 | Out-String
             $rc = $LASTEXITCODE
-        } finally {
+        }
+        finally
+        {
             Pop-Location
         }
         $rc | Should -Be 0
@@ -378,20 +424,26 @@ Describe 'git/templates/hooks/pre-commit AI-reference section' -Skip:(-not $scri
         $fakeHooksDir = Join-Path $fakeRoot 'git/templates/hooks'
         New-Item -ItemType Directory -Path $fakeHooksDir -Force | Out-Null
         Copy-Item -Path $script:PreCommitHook -Destination (Join-Path $fakeHooksDir 'pre-commit')
-        try {
+        try
+        {
             Set-Content -Path (Join-Path $script:Repo 'code.js') -Value '// normal comment' -NoNewline
             & git -C $script:Repo add code.js 2>&1 | Out-Null
             Push-Location $script:Repo
-            try {
+            try
+            {
                 $hookPath = (Join-Path $fakeHooksDir 'pre-commit') -replace '\\', '/'
                 $out = & $script:TestBash -c "`"$hookPath`"" 2>&1 | Out-String
                 $rc = $LASTEXITCODE
-            } finally {
+            }
+            finally
+            {
                 Pop-Location
             }
             $rc | Should -Not -Be 0
             $out | Should -Match 'wordlist not found'
-        } finally {
+        }
+        finally
+        {
             Remove-Item -Path $fakeRoot -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
@@ -406,15 +458,20 @@ Describe 'git/templates/hooks/pre-commit AI-reference section' -Skip:(-not $scri
         Copy-Item -Path $script:PreCommitHook -Destination (Join-Path $fakeHooksDir 'pre-commit')
         $fakeWordlist = Join-Path $fakeSharedDir 'banned-ai-terms.txt'
         Set-Content -Path $fakeWordlist -Value 'claude' -NoNewline
-        if ($IsWindows) {
+        if ($IsWindows)
+        {
             icacls $fakeWordlist /deny "$($env:USERNAME):(R)" | Out-Null
-        } else {
+        }
+        else
+        {
             chmod 000 $fakeWordlist
         }
-        try {
+        try
+        {
             $probe = & $script:TestBash -c "cat `"$($fakeWordlist -replace '\\', '/')`"" 2>&1
             $probeReadable = ($LASTEXITCODE -eq 0)
-            if ($probeReadable) {
+            if ($probeReadable)
+            {
                 Set-ItResult -Skipped -Because 'the ACL deny did not block a real read on this machine'
                 return
             }
@@ -422,19 +479,27 @@ Describe 'git/templates/hooks/pre-commit AI-reference section' -Skip:(-not $scri
             Set-Content -Path (Join-Path $script:Repo 'code.js') -Value '// normal comment' -NoNewline
             & git -C $script:Repo add code.js 2>&1 | Out-Null
             Push-Location $script:Repo
-            try {
+            try
+            {
                 $hookPath = (Join-Path $fakeHooksDir 'pre-commit') -replace '\\', '/'
                 $out = & $script:TestBash -c "`"$hookPath`"" 2>&1 | Out-String
                 $rc = $LASTEXITCODE
-            } finally {
+            }
+            finally
+            {
                 Pop-Location
             }
             $rc | Should -Not -Be 0
             $out | Should -Match 'AI-reference scan blocked'
-        } finally {
-            if ($IsWindows) {
+        }
+        finally
+        {
+            if ($IsWindows)
+            {
                 icacls $fakeWordlist /reset 2>&1 | Out-Null
-            } else {
+            }
+            else
+            {
                 chmod 644 $fakeWordlist
             }
             Remove-Item -Path $fakeRoot -Recurse -Force -ErrorAction SilentlyContinue

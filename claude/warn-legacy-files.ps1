@@ -23,10 +23,12 @@ if (-not $filePath) { exit 0 }
 $root = $env:DOTFILES
 if (-not $root) { exit 0 }
 
-try {
-  $full = [System.IO.Path]::GetFullPath($filePath)
-  $rootFull = [System.IO.Path]::GetFullPath($root).TrimEnd('\', '/')
-} catch { exit 0 }
+try
+{
+    $full = [System.IO.Path]::GetFullPath($filePath)
+    $rootFull = [System.IO.Path]::GetFullPath($root).TrimEnd('\', '/')
+}
+catch { exit 0 }
 
 $sep = [System.IO.Path]::DirectorySeparatorChar
 if (-not $full.StartsWith($rootFull + $sep, [System.StringComparison]::OrdinalIgnoreCase)) { exit 0 }
@@ -37,10 +39,10 @@ $legacy = '^((vim|i3|mpd|ncmpcpp|postgres|ruby|Xresources\.d|urxvt|etc|scripts|c
 if ($rel -notmatch $legacy) { exit 0 }
 
 @{
-  hookSpecificOutput = @{
-    hookEventName            = 'PreToolUse'
-    permissionDecision       = 'ask'
-    permissionDecisionReason = "'$rel' is a legacy / Linux-snapshot file (AGENTS.md: edit only when explicitly asked). Confirm you intend to edit it."
-  }
+    hookSpecificOutput = @{
+        hookEventName = 'PreToolUse'
+        permissionDecision = 'ask'
+        permissionDecisionReason = "'$rel' is a legacy / Linux-snapshot file (AGENTS.md: edit only when explicitly asked). Confirm you intend to edit it."
+    }
 } | ConvertTo-Json -Depth 5 -Compress
 exit 0

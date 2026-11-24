@@ -1,6 +1,6 @@
 @{
     # Gate on Error + Warning; Information is noise for dotfiles.
-    Severity     = @('Error', 'Warning')
+    Severity = @('Error', 'Warning')
 
     # Rules excluded repo-wide, each justified by a documented convention or a
     # known false-positive class for this codebase. Two security-relevant rules are
@@ -49,4 +49,41 @@
         # a local wrapper); scoped to that script, never dot-sourced into a session.
         'PSAvoidOverwritingBuiltInCmdlets'
     )
+
+    # Formatting rules: Allman braces. Statement braces (function, if/else,
+    # try/catch, class) sit on their own line; scriptblock arguments such as
+    # `ForEach-Object {`, hashtables, and one-line blocks stay as written.
+    # Invoke-Formatter with these settings fixes every finding.
+    Rules = @{
+        PSPlaceOpenBrace = @{
+            Enable = $true
+            OnSameLine = $false
+            NewLineAfter = $true
+            IgnoreOneLineBlock = $true
+        }
+        PSPlaceCloseBrace = @{
+            Enable = $true
+            NewLineAfter = $true
+            IgnoreOneLineBlock = $true
+            NoEmptyLineBefore = $false
+        }
+        PSUseConsistentIndentation = @{
+            Enable = $true
+            IndentationSize = 4
+            PipelineIndentation = 'IncreaseIndentationForFirstPipeline'
+            Kind = 'space'
+        }
+        PSUseConsistentWhitespace = @{
+            Enable = $true
+            CheckOpenBrace = $true
+            CheckOpenParen = $true
+            CheckOperator = $true
+            # Off: a native command receives `a,b` as one argument and `a, b` as two, so a
+            # space added after a comma can change what an .exe or script is given.
+            CheckSeparator = $false
+            CheckInnerBrace = $true
+            CheckPipe = $true
+            CheckParameter = $false
+        }
+    }
 }

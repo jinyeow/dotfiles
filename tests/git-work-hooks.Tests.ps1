@@ -10,7 +10,8 @@
 # BeforeAll (which runs later, leaving the flag unset and silently skipping every test).
 $script:HasConfigHooks = $false
 $gitRaw = (& git --version) -replace '^git version\s*', ''
-if ($gitRaw -match '^(\d+)\.(\d+)') {
+if ($gitRaw -match '^(\d+)\.(\d+)')
+{
     $script:HasConfigHooks = [version]::new([int]$Matches[1], [int]$Matches[2]) -ge [version]'2.54'
 }
 
@@ -21,7 +22,8 @@ BeforeAll {
     # Build a repo whose gitconfig includes the real gitconfig-work unconditionally (the
     # [includeIf] scoping is git's own, already covered by git's tests; what matters here is
     # what the stanza does once included).
-    function New-WorkRepo {
+    function New-WorkRepo
+    {
         param([string] $Root)
 
         $home_ = Join-Path $Root 'home'
@@ -49,7 +51,8 @@ Describe 'git/gitconfig-work work-policy hook' -Skip:(-not $script:HasConfigHook
 
         $origHome, $origProfile = $env:HOME, $env:USERPROFILE
         $origNoSystem, $origXdgConfig = $env:GIT_CONFIG_NOSYSTEM, $env:XDG_CONFIG_HOME
-        try {
+        try
+        {
             $env:HOME = $env:USERPROFILE = (Join-Path $root 'home')
             $env:GIT_CONFIG_NOSYSTEM = '1'
             $env:XDG_CONFIG_HOME = ''
@@ -60,7 +63,9 @@ Describe 'git/gitconfig-work work-policy hook' -Skip:(-not $script:HasConfigHook
 
             $out | Should -Not -Match 'cannot spawn'
             (& git -C $repo log --oneline 2>$null | Measure-Object).Count | Should -Be 1 -Because 'a missing dispatcher must fail open, not block the commit'
-        } finally {
+        }
+        finally
+        {
             $env:HOME, $env:USERPROFILE = $origHome, $origProfile
             $env:GIT_CONFIG_NOSYSTEM, $env:XDG_CONFIG_HOME = $origNoSystem, $origXdgConfig
             Remove-Item -Path $root -Recurse -Force -ErrorAction SilentlyContinue
@@ -86,7 +91,8 @@ Describe 'git/gitconfig-work work-policy hook' -Skip:(-not $script:HasConfigHook
 
         $origHome, $origProfile = $env:HOME, $env:USERPROFILE
         $origNoSystem, $origXdgConfig = $env:GIT_CONFIG_NOSYSTEM, $env:XDG_CONFIG_HOME
-        try {
+        try
+        {
             $env:HOME = $env:USERPROFILE = (Join-Path $root 'home')
             $env:GIT_CONFIG_NOSYSTEM = '1'
             $env:XDG_CONFIG_HOME = ''
@@ -97,7 +103,9 @@ Describe 'git/gitconfig-work work-policy hook' -Skip:(-not $script:HasConfigHook
             (& git -C $repo log --oneline 2>$null | Measure-Object).Count | Should -Be 0 -Because 'a failing policy must still block the commit'
             $out | Should -Match 'POLICY VIOLATION' -Because 'the policy must be what blocked it, not a spawn or parse error'
             $out | Should -Not -Match 'cannot spawn'
-        } finally {
+        }
+        finally
+        {
             $env:HOME, $env:USERPROFILE = $origHome, $origProfile
             $env:GIT_CONFIG_NOSYSTEM, $env:XDG_CONFIG_HOME = $origNoSystem, $origXdgConfig
             Remove-Item -Path $root -Recurse -Force -ErrorAction SilentlyContinue
@@ -119,14 +127,16 @@ Describe 'git/gitconfig-work work-policy hook' -Skip:(-not $script:HasConfigHook
         $policy = Join-Path $hookDir 'policy'
         Set-Content -Path $policy -Value "#!/bin/sh`nexit 1" -Encoding ASCII -NoNewline
         & chmod -x $policy
-        if ((& sh -c "test -x '$($policy -replace '\\', '/')' && echo x") -eq 'x') {
+        if ((& sh -c "test -x '$($policy -replace '\\', '/')' && echo x") -eq 'x')
+        {
             Set-ItResult -Skipped -Because 'filesystem does not honour the exec bit (NTFS/MSYS)'
             return
         }
 
         $origHome, $origProfile = $env:HOME, $env:USERPROFILE
         $origNoSystem, $origXdgConfig = $env:GIT_CONFIG_NOSYSTEM, $env:XDG_CONFIG_HOME
-        try {
+        try
+        {
             $env:HOME = $env:USERPROFILE = (Join-Path $root 'home')
             $env:GIT_CONFIG_NOSYSTEM = '1'
             $env:XDG_CONFIG_HOME = ''
@@ -135,7 +145,9 @@ Describe 'git/gitconfig-work work-policy hook' -Skip:(-not $script:HasConfigHook
             & git -C $repo commit -m 'test' 2>&1 | Out-Null
 
             (& git -C $repo log --oneline 2>$null | Measure-Object).Count | Should -Be 0 -Because 'a broken install must fail closed, not skip the policy silently'
-        } finally {
+        }
+        finally
+        {
             $env:HOME, $env:USERPROFILE = $origHome, $origProfile
             $env:GIT_CONFIG_NOSYSTEM, $env:XDG_CONFIG_HOME = $origNoSystem, $origXdgConfig
             Remove-Item -Path $root -Recurse -Force -ErrorAction SilentlyContinue

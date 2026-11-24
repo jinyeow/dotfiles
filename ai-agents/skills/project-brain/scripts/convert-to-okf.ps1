@@ -60,7 +60,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-function Get-WikilinkIndex {
+function Get-WikilinkIndex
+{
     param([string] $RepoRoot)
 
     # A bare-filename wikilink target (no '/' in it, Obsidian-style same-vault resolution)
@@ -69,7 +70,8 @@ function Get-WikilinkIndex {
     # actually lives in a subdirectory. Build a basename -> real-path index once per repo so
     # such targets resolve to where the file genuinely is.
     if (-not $script:WikilinkIndexCache) { $script:WikilinkIndexCache = @{} }
-    if ($script:WikilinkIndexCache.ContainsKey($RepoRoot)) {
+    if ($script:WikilinkIndexCache.ContainsKey($RepoRoot))
+    {
         return $script:WikilinkIndexCache[$RepoRoot]
     }
 
@@ -80,10 +82,12 @@ function Get-WikilinkIndex {
     # real traversal failure surfaces instead of masquerading as "no such file".
     $mdFiles = Get-ChildItem -LiteralPath $RepoRoot -Filter '*.md' -File -Recurse |
         Where-Object { $_.FullName -notmatch '[\\/]\.git[\\/]' }
-    foreach ($f in $mdFiles) {
+    foreach ($f in $mdFiles)
+    {
         $rel = ([IO.Path]::GetRelativePath($RepoRoot, $f.FullName)) -replace '\\', '/'
         $base = ([IO.Path]::GetFileNameWithoutExtension($f.Name)).ToLowerInvariant()
-        if (-not $index.ContainsKey($base)) {
+        if (-not $index.ContainsKey($base))
+        {
             $index[$base] = [System.Collections.Generic.List[string]]::new()
         }
         $index[$base].Add($rel)
@@ -92,17 +96,19 @@ function Get-WikilinkIndex {
     return $index
 }
 
-function Resolve-AmbiguousMatch {
+function Resolve-AmbiguousMatch
+{
     param([string[]] $Found, [string] $Target, [string] $CurrentDir)
 
     # Wrap in @() — Where-Object unwraps a single match to a bare string rather than a
     # 1-element array, and indexing a string with [0] returns its first character, not
     # the string itself (silently resolving to a garbage one-letter path).
     $sameDir = @($Found | Where-Object {
-        $dir = if ($_ -match '^(.*)/[^/]+$') { $Matches[1] } else { '' }
-        $dir -eq $CurrentDir
-    })
-    if ($sameDir.Count -gt 0) {
+            $dir = if ($_ -match '^(.*)/[^/]+$') { $Matches[1] } else { '' }
+            $dir -eq $CurrentDir
+        })
+    if ($sameDir.Count -gt 0)
+    {
         Write-Warning "convert-to-okf.ps1: ambiguous wikilink target '$Target' ($($Found.Count) matches) — resolved to same-directory match '$($sameDir[0])'."
         return $sameDir[0]
     }
@@ -111,7 +117,8 @@ function Resolve-AmbiguousMatch {
     return $picked
 }
 
-function Resolve-BareWikilinkTarget {
+function Resolve-BareWikilinkTarget
+{
     param([string] $Target, [string] $RepoRoot, [string] $CurrentDir)
 
     $index = Get-WikilinkIndex -RepoRoot $RepoRoot
@@ -123,7 +130,8 @@ function Resolve-BareWikilinkTarget {
     return Resolve-AmbiguousMatch -Found $found -Target $Target -CurrentDir $CurrentDir
 }
 
-function Resolve-PathWikilinkTarget {
+function Resolve-PathWikilinkTarget
+{
     param([string] $Target, [string] $RepoRoot, [string] $CurrentDir)
 
     # Obsidian same-vault resolution is relative to the linking note's own directory tree
@@ -133,8 +141,10 @@ function Resolve-PathWikilinkTarget {
     # of colliding with a same-named file in an unrelated initiative, or double-counting a
     # path segment ($CurrentDir already inside "adr/") that a naive join would repeat.
     $dir = $CurrentDir
-    while ($true) {
-        if ($dir) {
+    while ($true)
+    {
+        if ($dir)
+        {
             $candidate = Join-Path $RepoRoot ("$dir/$Target.md" -replace '/', [IO.Path]::DirectorySeparatorChar)
             if (Test-Path -LiteralPath $candidate) { return "$dir/$Target.md" }
         }
@@ -165,7 +175,8 @@ function Resolve-PathWikilinkTarget {
     return Resolve-AmbiguousMatch -Found $found -Target $Target -CurrentDir $CurrentDir
 }
 
-function Format-WikilinkTarget {
+function Format-WikilinkTarget
+{
     param([string] $Target, [string] $RepoRoot, [string] $CurrentDir)
 
     # Split off a #fragment before appending .md, so the anchor doesn't get folded into
@@ -179,28 +190,33 @@ function Format-WikilinkTarget {
     # than emitted as a bare, unresolvable "#". Strip an existing .md suffix from the
     # target first, so a target that already ends in .md doesn't get a second one.
     $fragment = ''
-    if ($Target -match '^([^#]*)#(.*)$') {
+    if ($Target -match '^([^#]*)#(.*)$')
+    {
         $Target = $Matches[1]
         $slug = $Matches[2].ToLower() -replace '[^a-z0-9]+', '-'
         $slug = $slug.Trim('-')
-        if ($slug) {
+        if ($slug)
+        {
             $fragment = "#$slug"
         }
     }
     $Target = $Target -replace '\.md$', ''
-    if (-not $Target) {
+    if (-not $Target)
+    {
         # [[#Heading]] — a bare local-heading link with no path segment before the
         # fragment. OKF's link syntax covers cross-file references, not intra-file
         # headings, so there is no filename to fold ".md" into; emit a plain in-page
         # anchor instead of the malformed "/.md#Heading".
         return $fragment
     }
-    if ($Target -match '\.[A-Za-z0-9]+$') {
+    if ($Target -match '\.[A-Za-z0-9]+$')
+    {
         # The target already names a concrete non-markdown asset file (image, PDF, etc.)
         # — leave its extension as-is instead of appending a wrong ".md" suffix.
         return "/$Target$fragment"
     }
-    if ($RepoRoot) {
+    if ($RepoRoot)
+    {
         # A wikilink target's path segment (if any) is Obsidian-vault-relative, which in
         # this brain's layout usually means relative to the initiative directory, not the
         # bundle root — so treating it as bundle-root-relative literally is only safe when
@@ -208,10 +224,14 @@ function Format-WikilinkTarget {
         # lookup keyed on just the last path segment (same as the no-slash case) rather
         # than assuming the wrong base and emitting a dead link.
         $literalMdPath = Join-Path $RepoRoot ("$Target.md" -replace '/', [IO.Path]::DirectorySeparatorChar)
-        if (-not (Test-Path -LiteralPath $literalMdPath)) {
-            $resolved = if ($Target -match '/') {
+        if (-not (Test-Path -LiteralPath $literalMdPath))
+        {
+            $resolved = if ($Target -match '/')
+            {
                 Resolve-PathWikilinkTarget -Target $Target -RepoRoot $RepoRoot -CurrentDir $CurrentDir
-            } else {
+            }
+            else
+            {
                 Resolve-BareWikilinkTarget -Target $Target -RepoRoot $RepoRoot -CurrentDir $CurrentDir
             }
             if ($resolved) { return "/$resolved$fragment" }
@@ -220,35 +240,42 @@ function Format-WikilinkTarget {
     return "/$Target.md$fragment"
 }
 
-function Convert-WikilinksInSegment {
+function Convert-WikilinksInSegment
+{
     param([string] $Text, [string] $RepoRoot, [string] $CurrentDir)
 
     # [[a/b|label]] -> [label](/a/b.md) — must run before the bare-link pattern.
     $Text = [regex]::Replace($Text, '\[\[([^\]\|]+)\|([^\]]+)\]\]', {
-        param($m)
-        "[$($m.Groups[2].Value)]($(Format-WikilinkTarget $m.Groups[1].Value $RepoRoot $CurrentDir))"
-    })
+            param($m)
+            "[$($m.Groups[2].Value)]($(Format-WikilinkTarget $m.Groups[1].Value $RepoRoot $CurrentDir))"
+        })
 
     # [[a/b]] -> [b](/a/b.md)
     $Text = [regex]::Replace($Text, '\[\[([^\]\|]+)\]\]', {
-        param($m)
-        $rawTarget = $m.Groups[1].Value
-        $labelSource = $rawTarget -replace '#.*$', '' -replace '\.md$', ''
-        $label = if ($labelSource) {
-            ($labelSource -split '/')[-1]
-        } elseif ($rawTarget -match '^#(.*)$') {
-            # Bare [[#Heading]] with no explicit label — fall back to the heading text.
-            $Matches[1]
-        } else {
-            ''
-        }
-        "[$label]($(Format-WikilinkTarget $rawTarget $RepoRoot $CurrentDir))"
-    })
+            param($m)
+            $rawTarget = $m.Groups[1].Value
+            $labelSource = $rawTarget -replace '#.*$', '' -replace '\.md$', ''
+            $label = if ($labelSource)
+            {
+                ($labelSource -split '/')[-1]
+            }
+            elseif ($rawTarget -match '^#(.*)$')
+            {
+                # Bare [[#Heading]] with no explicit label — fall back to the heading text.
+                $Matches[1]
+            }
+            else
+            {
+                ''
+            }
+            "[$label]($(Format-WikilinkTarget $rawTarget $RepoRoot $CurrentDir))"
+        })
 
     return $Text
 }
 
-function Convert-Wikilinks {
+function Convert-Wikilinks
+{
     param([string] $Text, [string] $RepoRoot, [string] $CurrentDir)
 
     # Skip fenced code blocks (``` or ~~~ fences, 3+ delimiters) and inline code spans
@@ -267,7 +294,8 @@ function Convert-Wikilinks {
 
     $sb = [System.Text.StringBuilder]::new()
     $lastIndex = 0
-    foreach ($m in [regex]::Matches($Text, $pattern)) {
+    foreach ($m in [regex]::Matches($Text, $pattern))
+    {
         $prose = $Text.Substring($lastIndex, $m.Index - $lastIndex)
         [void]$sb.Append((Convert-WikilinksInSegment -Text $prose -RepoRoot $RepoRoot -CurrentDir $CurrentDir))
         [void]$sb.Append($m.Value)
@@ -277,29 +305,33 @@ function Convert-Wikilinks {
     return $sb.ToString()
 }
 
-function Get-FrontMatter {
+function Get-FrontMatter
+{
     param([string] $Content)
 
-    if ($Content -match '(?s)^---\r?\n(.*?)\r?\n---(?:\r?\n(.*))?$') {
+    if ($Content -match '(?s)^---\r?\n(.*?)\r?\n---(?:\r?\n(.*))?$')
+    {
         return [PSCustomObject]@{
             HasFrontMatter = $true
-            Lines          = @($Matches[1] -split '\r?\n')
-            Body           = $(if ($Matches[2]) { $Matches[2] } else { '' })
+            Lines = @($Matches[1] -split '\r?\n')
+            Body = $(if ($Matches[2]) { $Matches[2] } else { '' })
         }
     }
     return [PSCustomObject]@{
         HasFrontMatter = $false
-        Lines          = @()
-        Body           = $Content
+        Lines = @()
+        Body = $Content
     }
 }
 
-function Test-TopLevelKey {
+function Test-TopLevelKey
+{
     param([string[]] $Lines, [string] $Key)
     return [bool]($Lines | Where-Object { $_ -match "^$Key\s*:" })
 }
 
-function Get-TopLevelValue {
+function Get-TopLevelValue
+{
     param([string[]] $Lines, [string] $Key)
     $line = $Lines | Where-Object { $_ -match "^$Key\s*:\s*(.*)$" } | Select-Object -First 1
     if ($null -eq $line) { return $null }
@@ -307,7 +339,8 @@ function Get-TopLevelValue {
     return $null
 }
 
-function Get-OkfType {
+function Get-OkfType
+{
     param([string] $RelativePath)
 
     $norm = ($RelativePath -replace '\\', '/')
@@ -327,11 +360,13 @@ function Get-OkfType {
     return $null
 }
 
-function Find-GitRoot {
+function Find-GitRoot
+{
     param([string] $StartDir)
 
     $dir = $StartDir
-    while ($dir) {
+    while ($dir)
+    {
         if (Test-Path -LiteralPath (Join-Path $dir '.git')) { return $dir }
         $parent = Split-Path -Parent $dir
         if (-not $parent -or $parent -eq $dir) { return $null }
@@ -340,13 +375,15 @@ function Find-GitRoot {
     return $null
 }
 
-function Get-GitAddedDate {
+function Get-GitAddedDate
+{
     param([string] $RepoRoot, [string] $FilePath)
 
     $relative = [IO.Path]::GetRelativePath($RepoRoot, $FilePath) -replace '\\', '/'
     $output = @(& git -C $RepoRoot log --diff-filter=A --follow --format=%aI -- $relative 2>&1)
     $logExitCode = $LASTEXITCODE
-    if ($logExitCode -eq 0) {
+    if ($logExitCode -eq 0)
+    {
         if (-not $output -or $output.Count -eq 0) { return $null }
         # git log lists newest first; the oldest add event is original authorship.
         return $output[-1]
@@ -363,7 +400,8 @@ function Get-GitAddedDate {
     # yet), so require both: `symbolic-ref -q HEAD` succeeds AND `rev-parse --verify -q
     # HEAD` fails. Anything else falls through to the throw below.
     & git -C $RepoRoot rev-parse --is-inside-work-tree 2>&1 | Out-Null
-    if ($LASTEXITCODE -eq 0) {
+    if ($LASTEXITCODE -eq 0)
+    {
         & git -C $RepoRoot symbolic-ref -q HEAD 2>&1 | Out-Null
         $isValidSymbolicRef = ($LASTEXITCODE -eq 0)
         & git -C $RepoRoot rev-parse --verify -q HEAD 2>&1 | Out-Null
@@ -374,7 +412,8 @@ function Get-GitAddedDate {
     throw "Get-GitAddedDate: git log failed (exit $logExitCode) in repo '$RepoRoot' for file '$relative': $($output -join "`n")"
 }
 
-function ConvertTo-OkfFile {
+function ConvertTo-OkfFile
+{
     [CmdletBinding(SupportsShouldProcess)]
     param([string] $FilePath)
 
@@ -382,9 +421,12 @@ function ConvertTo-OkfFile {
     if ($null -eq $original) { $original = '' }
 
     $repoRoot = Find-GitRoot -StartDir (Split-Path -Parent $FilePath)
-    $relativePath = if ($repoRoot) {
+    $relativePath = if ($repoRoot)
+    {
         [IO.Path]::GetRelativePath($repoRoot, $FilePath)
-    } else {
+    }
+    else
+    {
         $FilePath
     }
     $currentDir = (Split-Path -Parent $relativePath) -replace '\\', '/'
@@ -396,70 +438,92 @@ function ConvertTo-OkfFile {
 
     $type = Get-OkfType -RelativePath $relativePath
 
-    if ($type -and -not (Test-TopLevelKey -Lines $lines -Key 'type')) {
+    if ($type -and -not (Test-TopLevelKey -Lines $lines -Key 'type'))
+    {
         $lines.Add("type: $type")
     }
 
-    if ($type -eq 'status') {
+    if ($type -eq 'status')
+    {
         $updatedRaw = Get-TopLevelValue -Lines $lines -Key 'updated'
-        if ($updatedRaw) {
+        if ($updatedRaw)
+        {
             $parsedDate = [datetime]::MinValue
-            if ([datetime]::TryParse($updatedRaw, [cultureinfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::None, [ref]$parsedDate)) {
+            if ([datetime]::TryParse($updatedRaw, [cultureinfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::None, [ref]$parsedDate))
+            {
                 $staleAfter = $parsedDate.AddDays(7).ToString('yyyy-MM-dd')
                 $staleAfterLine = "stale_after: $staleAfter"
                 $existingIndex = -1
-                for ($i = 0; $i -lt $lines.Count; $i++) {
+                for ($i = 0; $i -lt $lines.Count; $i++)
+                {
                     if ($lines[$i] -match '^stale_after\s*:') { $existingIndex = $i; break }
                 }
-                if ($existingIndex -ge 0) {
+                if ($existingIndex -ge 0)
+                {
                     $lines[$existingIndex] = $staleAfterLine
-                } else {
+                }
+                else
+                {
                     $lines.Add($staleAfterLine)
                 }
             }
         }
     }
 
-    if ($type -in @('adr', 'research') -and -not (Test-TopLevelKey -Lines $lines -Key 'verified')) {
+    if ($type -in @('adr', 'research') -and -not (Test-TopLevelKey -Lines $lines -Key 'verified'))
+    {
         $lines.Add('verified: []')
     }
 
-    if ($type -and $repoRoot) {
+    if ($type -and $repoRoot)
+    {
         $generatedIndex = -1
-        for ($i = 0; $i -lt $lines.Count; $i++) {
+        for ($i = 0; $i -lt $lines.Count; $i++)
+        {
             if ($lines[$i] -match '^generated\s*:') { $generatedIndex = $i; break }
         }
 
-        if ($generatedIndex -lt 0) {
+        if ($generatedIndex -lt 0)
+        {
             $at = Get-GitAddedDate -RepoRoot $repoRoot -FilePath $FilePath
-            if ($at) {
+            if ($at)
+            {
                 $lines.Add('generated:')
                 $lines.Add("  at: $at")
             }
-        } elseif ($lines[$generatedIndex] -match '^generated\s*:\s*\{(.*)\}\s*$') {
+        }
+        elseif ($lines[$generatedIndex] -match '^generated\s*:\s*\{(.*)\}\s*$')
+        {
             # Inline-map style: generated: { by: ... }. Backfill at: into the same map
             # if it is missing, rather than leaving the block incomplete.
             $inner = $Matches[1]
-            if ($inner -notmatch '(^|,)\s*at\s*:') {
+            if ($inner -notmatch '(^|,)\s*at\s*:')
+            {
                 $at = Get-GitAddedDate -RepoRoot $repoRoot -FilePath $FilePath
-                if ($at) {
+                if ($at)
+                {
                     $trimmedInner = $inner.Trim()
                     $newInner = if ($trimmedInner) { "$trimmedInner, at: $at" } else { "at: $at" }
                     $lines[$generatedIndex] = "generated: { $newInner }"
                 }
             }
-        } else {
+        }
+        else
+        {
             # Block style: generated: on its own line, children indented below it.
             # Backfill at: into that same block if it is missing.
             $blockEnd = $generatedIndex + 1
             $hasAt = $false
-            while ($blockEnd -lt $lines.Count -and $lines[$blockEnd] -match '^\s+\S') {
+            while ($blockEnd -lt $lines.Count -and $lines[$blockEnd] -match '^\s+\S')
+            {
                 if ($lines[$blockEnd] -match '^\s+at\s*:') { $hasAt = $true }
                 $blockEnd++
             }
-            if (-not $hasAt) {
+            if (-not $hasAt)
+            {
                 $at = Get-GitAddedDate -RepoRoot $repoRoot -FilePath $FilePath
-                if ($at) {
+                if ($at)
+                {
                     $lines.Insert($blockEnd, "  at: $at")
                 }
             }
@@ -472,36 +536,45 @@ function ConvertTo-OkfFile {
     # reporting `changed: $true` forever and ending up with mixed line endings.
     $eol = if ($original -match "`r`n") { "`r`n" } else { "`n" }
     $newFrontMatter = ($lines -join $eol)
-    $newContent = if ($lines.Count -gt 0) {
+    $newContent = if ($lines.Count -gt 0)
+    {
         "---$eol$newFrontMatter$eol---$eol$($fm.Body)"
-    } else {
+    }
+    else
+    {
         $fm.Body
     }
 
     $changed = $newContent -ne $original
-    if ($changed -and $PSCmdlet.ShouldProcess($FilePath, 'Convert to OKF')) {
+    if ($changed -and $PSCmdlet.ShouldProcess($FilePath, 'Convert to OKF'))
+    {
         Set-Content -LiteralPath $FilePath -Value $newContent -NoNewline -Encoding utf8
     }
 
     return [PSCustomObject]@{
-        Path    = $FilePath
-        Type    = $type
+        Path = $FilePath
+        Type = $type
         Changed = $changed
     }
 }
 
-if (-not (Test-Path -LiteralPath $Path)) {
+if (-not (Test-Path -LiteralPath $Path))
+{
     throw "convert-to-okf.ps1: path not found: $Path"
 }
 
 $item = Get-Item -LiteralPath $Path
-$files = if ($item.PSIsContainer) {
+$files = if ($item.PSIsContainer)
+{
     Get-ChildItem -LiteralPath $Path -Filter '*.md' -File -Recurse
-} else {
+}
+else
+{
     @($item)
 }
 
-$results = foreach ($f in $files) {
+$results = foreach ($f in $files)
+{
     ConvertTo-OkfFile -FilePath $f.FullName
 }
 

@@ -43,7 +43,8 @@ BeforeAll {
     $script:HasCodexCli = [bool](Get-Command codex -ErrorAction Ignore)
     $script:HasPiCli = [bool](Get-Command pi -ErrorAction Ignore)
 
-    function Get-ReparseTarget ([IO.FileSystemInfo]$Item) {
+    function Get-ReparseTarget ([IO.FileSystemInfo]$Item)
+    {
         if ($Item.LinkTarget) { return $Item.LinkTarget }
         return @($Item.Target)[0]
     }
@@ -63,13 +64,15 @@ Describe 'Installed Claude skill projection (live smoke)' {
         # (target under a dev-worktree path deleted by commit afa79c4) for months, undetected
         # because no test read the live destination.
         $entries = @(Get-ChildItem -LiteralPath $script:ClaudeSkillsDst -Force |
-            Where-Object { ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) -and $_.Name -notmatch $script:BackupSuffixPattern })
+                Where-Object { ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) -and $_.Name -notmatch $script:BackupSuffixPattern })
         $entries.Count | Should -BeGreaterThan 0
 
         $dangling = @()
-        foreach ($entry in $entries) {
+        foreach ($entry in $entries)
+        {
             $target = Get-ReparseTarget $entry
-            if (-not $target -or -not (Test-Path -LiteralPath $target)) {
+            if (-not $target -or -not (Test-Path -LiteralPath $target))
+            {
                 $dangling += $entry.FullName
             }
         }
@@ -80,15 +83,17 @@ Describe 'Installed Claude skill projection (live smoke)' {
 Describe 'Installed Codex skill projection (live smoke)' {
     It 'has no dangling managed junctions in the real ~/.codex/skills' -Skip:(-not ($IsWindows -and $script:HasCodexCli -and (Test-Path $script:CodexSkillsDst))) {
         $entries = @(Get-ChildItem -LiteralPath $script:CodexSkillsDst -Force -ErrorAction SilentlyContinue |
-            Where-Object { ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) -and $_.Name -notmatch $script:BackupSuffixPattern })
+                Where-Object { ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) -and $_.Name -notmatch $script:BackupSuffixPattern })
         # Codex's own built-in skills live under ~/.codex/skills/.system/ and are excluded above
         # (that entry is a plain directory, not a reparse point). No managed links yet is a valid
         # state (e.g. codex/skills has no native skills today), so this test only asserts on the
         # links that do exist rather than requiring a nonzero count.
         $dangling = @()
-        foreach ($entry in $entries) {
+        foreach ($entry in $entries)
+        {
             $target = Get-ReparseTarget $entry
-            if (-not $target -or -not (Test-Path -LiteralPath $target)) {
+            if (-not $target -or -not (Test-Path -LiteralPath $target))
+            {
                 $dangling += $entry.FullName
             }
         }
@@ -135,12 +140,14 @@ Describe 'Cross-runtime leakage (live smoke)' {
         $claudeNativeNames = @(Get-ChildItem (Join-Path $repo 'claude\skills') -Directory -ErrorAction SilentlyContinue | ForEach-Object Name)
         $claudeNativeNames.Count | Should -BeGreaterThan 0
 
-        if (Test-Path $script:CodexSkillsDst) {
+        if (Test-Path $script:CodexSkillsDst)
+        {
             $codexEntries = @(Get-ChildItem -LiteralPath $script:CodexSkillsDst -Force -ErrorAction SilentlyContinue | ForEach-Object Name)
             $leaked = @($codexEntries | Where-Object { $_ -in $claudeNativeNames })
             $leaked | Should -BeNullOrEmpty -Because "Claude-only skills must not be projected into Codex: $($leaked -join ', ')"
         }
-        if (Test-Path $script:PiSkillsDst) {
+        if (Test-Path $script:PiSkillsDst)
+        {
             $piEntries = @(Get-ChildItem -LiteralPath $script:PiSkillsDst -Force -ErrorAction SilentlyContinue | ForEach-Object Name)
             $leaked = @($piEntries | Where-Object { $_ -in $claudeNativeNames })
             $leaked | Should -BeNullOrEmpty -Because "Claude-only skills must not be projected into Pi: $($leaked -join ', ')"
@@ -154,7 +161,8 @@ Describe 'Cross-runtime leakage (live smoke)' {
         $repo = Split-Path $PSScriptRoot -Parent
         $portableNames = @(Get-ChildItem (Join-Path $repo 'ai-agents\skills') -Directory | ForEach-Object Name)
         $portableNames.Count | Should -BeGreaterThan 0
-        foreach ($nativeDir in @('claude\skills', 'codex\skills', 'pi\skills')) {
+        foreach ($nativeDir in @('claude\skills', 'codex\skills', 'pi\skills'))
+        {
             $nativeNames = @(Get-ChildItem (Join-Path $repo $nativeDir) -Directory -ErrorAction SilentlyContinue | ForEach-Object Name)
             $collisions = @($nativeNames | Where-Object { $_ -in $portableNames })
             $collisions | Should -BeNullOrEmpty -Because "a name collision here needs a live precedence re-check, not just the dry-run fixture tests: $($collisions -join ', ')"

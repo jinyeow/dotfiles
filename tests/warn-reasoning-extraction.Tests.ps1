@@ -13,11 +13,13 @@ BeforeAll {
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:Hook = Join-Path $script:RepoRoot 'claude/warn-reasoning-extraction.ps1'
 
-    function Invoke-Hook {
+    function Invoke-Hook
+    {
         param([string] $Payload)
         return ($Payload | & pwsh -NoProfile -File $script:Hook 2>&1 | Out-String)
     }
-    function Invoke-Prompt {
+    function Invoke-Prompt
+    {
         param([string] $Prompt)
         $json = @{ hook_event_name = 'UserPromptSubmit'; prompt = $Prompt } | ConvertTo-Json -Compress
         return (Invoke-Hook -Payload $json)

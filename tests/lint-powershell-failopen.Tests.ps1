@@ -14,12 +14,14 @@ BeforeAll {
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:Hook = Join-Path $script:RepoRoot 'claude/lint-powershell.ps1'
 
-    function Invoke-LintHook {
+    function Invoke-LintHook
+    {
         param([string] $FilePath)
         $json = @{ tool_input = @{ file_path = $FilePath } } | ConvertTo-Json -Compress
         return ($json | & pwsh -NoProfile -File $script:Hook 2>&1 | Out-String)
     }
-    function New-TempRoot {
+    function New-TempRoot
+    {
         $root = Join-Path ([IO.Path]::GetTempPath()) ('lintfailopen-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $root -Force | Out-Null
         return $root
@@ -29,7 +31,8 @@ BeforeAll {
 Describe 'claude/lint-powershell.ps1 fail-open' -Skip:(-not $script:HasPSSA) {
     It 'exits silently when the ruleset file is malformed' {
         $root = New-TempRoot
-        try {
+        try
+        {
             $edited = Join-Path $root 'edited.ps1'
             Set-Content -LiteralPath $edited -Value "Write-Host 'hi'" -Encoding UTF8
             # Project boundary so the walk-up stops here and finds this ruleset.
@@ -41,7 +44,9 @@ Describe 'claude/lint-powershell.ps1 fail-open' -Skip:(-not $script:HasPSSA) {
             $out = Invoke-LintHook -FilePath $edited
 
             $out.Trim() | Should -BeNullOrEmpty -Because 'a malformed ruleset must fail open silently, not surface an error'
-        } finally {
+        }
+        finally
+        {
             Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
         }
     }

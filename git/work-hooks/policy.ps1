@@ -16,14 +16,16 @@ if ($env:SKIP_WORK_POLICY -eq '1') { exit 0 }
 
 [string] $tool = if ($env:WORK_POLICY_TOOL) { $env:WORK_POLICY_TOOL } else { 'work-policy-scan' }
 
-if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
+if (-not (Get-Command $tool -ErrorAction SilentlyContinue))
+{
     [Console]::Error.WriteLine("work-policy: '$tool' not on PATH — skipping policy scan (placeholder hook, nothing enforced).")
     exit 0
 }
 
 & $tool --staged
 [int] $status = $LASTEXITCODE
-if ($status -ne 0) {
+if ($status -ne 0)
+{
     [Console]::Error.WriteLine('')
     [Console]::Error.WriteLine('work-policy blocked this commit: a staged change failed the policy scan (see above).')
     [Console]::Error.WriteLine('Fix it, or bypass this one commit with:  SKIP_WORK_POLICY=1 git commit ...')

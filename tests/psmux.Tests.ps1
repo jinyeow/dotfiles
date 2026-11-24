@@ -29,7 +29,8 @@ Describe 'psmux.conf' {
             Copy-Item -Path $_.FullName -Destination (Join-Path $tmpHome '.psmux/plugins') -Recurse -Force
         }
         $origUP, $origH = $env:USERPROFILE, $env:HOME
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome; $env:HOME = $tmpHome
             psmux -L $sock kill-server 2>&1 | Out-Null
             $out = psmux -L $sock -f $script:Conf new-session -d -s cfgtest -x 80 -y 24 2>&1 | Out-String
@@ -38,7 +39,8 @@ Describe 'psmux.conf' {
             $keys = psmux -L $sock list-keys -T prefix 2>&1 | Out-String
             $keys | Should -Match 'C-s'
         }
-        finally {
+        finally
+        {
             psmux -L $sock kill-server 2>&1 | Out-Null
             $env:USERPROFILE = $origUP; $env:HOME = $origH
             Get-Job -ErrorAction SilentlyContinue | Where-Object { $_.Command -match 'auto_save' } | Remove-Job -Force -ErrorAction SilentlyContinue
@@ -74,9 +76,9 @@ Describe 'psmux-resurrect save.ps1' {
         # Seed a known-good non-empty snapshot and point `last` at it.
         $goodSave = Join-Path $resurrectDir 'psmux_resurrect_GOOD.json'
         $goodJson = @{
-            version   = 2
+            version = 2
             timestamp = 'GOOD'
-            sessions  = @(@{ name = 'work'; windows = @(@{ index = 0; name = 'pwsh'; layout = 'x'; active = $true; zoomed = $false; flags = '*'; panes = @(@{ index = 0; directory = $tmpHome; active = $true; title = 't'; command = 'pwsh' }) }) })
+            sessions = @(@{ name = 'work'; windows = @(@{ index = 0; name = 'pwsh'; layout = 'x'; active = $true; zoomed = $false; flags = '*'; panes = @(@{ index = 0; directory = $tmpHome; active = $true; title = 't'; command = 'pwsh' }) }) })
         } | ConvertTo-Json -Depth 10
         Set-Content -Path $goodSave -Value $goodJson -Encoding UTF8
         $lastFile = Join-Path $resurrectDir 'last'
@@ -86,7 +88,8 @@ Describe 'psmux-resurrect save.ps1' {
         Set-Content -Path (Join-Path $shimDir 'psmux.cmd') -Value $ShimBody -Encoding ASCII
 
         $origUP, $origPath = $env:USERPROFILE, $env:PATH
-        try {
+        try
+        {
             $env:USERPROFILE = $tmpHome
             $env:PATH = $shimDir + [IO.Path]::PathSeparator + $env:PATH
             $out = (& pwsh -NoProfile -File $script:SaveScript 2>&1 | Out-String)
@@ -100,7 +103,8 @@ Describe 'psmux-resurrect save.ps1' {
             @(Get-ChildItem -Path $resurrectDir -Filter 'psmux_resurrect_*.json' | ForEach-Object Name) |
                 Should -Be 'psmux_resurrect_GOOD.json'
         }
-        finally {
+        finally
+        {
             $env:USERPROFILE = $origUP; $env:PATH = $origPath
             Remove-Item $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
         }

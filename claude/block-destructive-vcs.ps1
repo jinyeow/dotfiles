@@ -29,10 +29,10 @@ if (-not $cmd) { exit 0 }
 # message (git commit -m "say \"reset --hard\"") does not terminate the match early and get
 # mangled into a bare `reset --hard`. Single quotes need no escape form (bash forbids \').
 $scrubEval = {
-  param($m)
-  $inner = $m.Groups[1].Value
-  # Flag-shaped: -x, --long, or short-combined (-fd). Kept (unquoted) so it still matches.
-  if ($inner -match '^-{1,2}[A-Za-z][A-Za-z-]*$') { $inner } else { '' }
+    param($m)
+    $inner = $m.Groups[1].Value
+    # Flag-shaped: -x, --long, or short-combined (-fd). Kept (unquoted) so it still matches.
+    if ($inner -match '^-{1,2}[A-Za-z][A-Za-z-]*$') { $inner } else { '' }
 }
 $scrubbed = [regex]::Replace($cmd, '"((?:\\.|[^"\\])*)"', $scrubEval)
 $scrubbed = [regex]::Replace($scrubbed, "'([^']*)'", $scrubEval)
@@ -42,30 +42,32 @@ $scrubbed = [regex]::Replace($scrubbed, "'([^']*)'", $scrubEval)
 # (safe) vs `-D` (force) differ only by case, so a case-insensitive match would deny the safe
 # form too. (`git` is lowercase by universal convention, so a capitalized `Git` is not gated.)
 $rules = [ordered]@{
-  '\bgit\b[^\n;|&]*\bpush\b[^\n;|&]*(--force(?!-(?:with-lease|if-includes))\b|(?<![\w-])-[a-z]*f)' =
+    '\bgit\b[^\n;|&]*\bpush\b[^\n;|&]*(--force(?!-(?:with-lease|if-includes))\b|(?<![\w-])-[a-z]*f)' =
     'Blocked `git push --force` - it can clobber the remote. Use `--force-with-lease` instead.'
-  '\bgit\b[^\n;|&]*\breset\b[^\n;|&]*--hard\b' =
+    '\bgit\b[^\n;|&]*\breset\b[^\n;|&]*--hard\b' =
     'Blocked `git reset --hard` - it discards uncommitted work. Stash or commit first.'
-  '\bgit\b[^\n;|&]*\bclean\b[^\n;|&]*(--force\b|(?<![\w-])-[a-z]*f)' =
+    '\bgit\b[^\n;|&]*\bclean\b[^\n;|&]*(--force\b|(?<![\w-])-[a-z]*f)' =
     'Blocked `git clean -f` - it permanently deletes untracked files. Run `git clean -n` to preview first.'
-  '\bgit\b[^\n;|&]*\bbranch\b[^\n;|&]*((?<![\w-])-[a-z]*D|--delete\b[^\n;|&]*--force\b|--force\b[^\n;|&]*--delete\b)' =
+    '\bgit\b[^\n;|&]*\bbranch\b[^\n;|&]*((?<![\w-])-[a-z]*D|--delete\b[^\n;|&]*--force\b|--force\b[^\n;|&]*--delete\b)' =
     'Blocked `git branch -D` - it force-deletes an unmerged branch. Use `-d` (safe) or confirm the branch is merged.'
 }
 
-foreach ($pattern in $rules.Keys) {
-  if ($scrubbed -cmatch $pattern) {
-    # Surface the raw command so the assistant can hand it back for the user to copy and
-    # run themselves (e.g. via Claude Code's `! <command>` shell passthrough) instead of
-    # only naming the rule that fired.
-    $reason = "$($rules[$pattern]) If you want to run it yourself, type: ! $cmd"
-    @{
-      hookSpecificOutput = @{
-        hookEventName            = 'PreToolUse'
-        permissionDecision       = 'deny'
-        permissionDecisionReason = $reason
-      }
-    } | ConvertTo-Json -Depth 5 -Compress
-    exit 0
-  }
+foreach ($pattern in $rules.Keys)
+{
+    if ($scrubbed -cmatch $pattern)
+    {
+        # Surface the raw command so the assistant can hand it back for the user to copy and
+        # run themselves (e.g. via Claude Code's `! <command>` shell passthrough) instead of
+        # only naming the rule that fired.
+        $reason = "$($rules[$pattern]) If you want to run it yourself, type: ! $cmd"
+        @{
+            hookSpecificOutput = @{
+                hookEventName = 'PreToolUse'
+                permissionDecision = 'deny'
+                permissionDecisionReason = $reason
+            }
+        } | ConvertTo-Json -Depth 5 -Compress
+        exit 0
+    }
 }
 exit 0

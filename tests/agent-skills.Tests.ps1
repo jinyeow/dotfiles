@@ -10,10 +10,12 @@ Describe 'agent skill source layout' {
     }
 
     It 'has the approved current source directories and no superseded trees' {
-        foreach ($path in @($portable, $portableSupport, $claude, $codex, $pi, $agents)) {
+        foreach ($path in @($portable, $portableSupport, $claude, $codex, $pi, $agents))
+        {
             Test-Path $path | Should -BeTrue
         }
-        foreach ($path in @('ai-agents/shared/skills', 'ai-agents/claude/skills', 'ai-agents/codex/skills')) {
+        foreach ($path in @('ai-agents/shared/skills', 'ai-agents/claude/skills', 'ai-agents/codex/skills'))
+        {
             Test-Path (Join-Path $repo $path) | Should -BeFalse
         }
     }
@@ -48,7 +50,8 @@ Describe 'agent skill source layout' {
     }
 
     It 'owns council skills only in the portable source area' {
-        foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc')) {
+        foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc'))
+        {
             Test-Path (Join-Path $portable "$name/SKILL.md") | Should -BeTrue
             Test-Path (Join-Path $claude $name) | Should -BeFalse
             Test-Path (Join-Path $codex $name) | Should -BeFalse
@@ -63,12 +66,14 @@ Describe 'agent skill source layout' {
         # segment) is a separate, unrelated, source-only copy that predates the split and is not
         # projected — the two must not be confused.
         $portableSkillsShared = Join-Path $portable '_shared'
-        foreach ($name in @('dimensions.md', 'findings-schema.md', 'review-rubric.md', 'reviewer-models.md')) {
+        foreach ($name in @('dimensions.md', 'findings-schema.md', 'review-rubric.md', 'reviewer-models.md'))
+        {
             Test-Path (Join-Path $portableSkillsShared $name) | Should -BeTrue
         }
         # ai-agents/_shared/ (source-only, unrelated) predates the #101 skill split and never
         # picked up reviewer-models.md — only the three original files.
-        foreach ($name in @('dimensions.md', 'findings-schema.md', 'review-rubric.md')) {
+        foreach ($name in @('dimensions.md', 'findings-schema.md', 'review-rubric.md'))
+        {
             Test-Path (Join-Path $portableSupport $name) | Should -BeTrue
         }
         Test-Path (Join-Path $portableSkillsShared 'SKILL.md') | Should -BeFalse
@@ -77,7 +82,8 @@ Describe 'agent skill source layout' {
     }
 
     It 'keeps council aliases thin and linked to the portable contract' {
-        foreach ($name in @('council-code', 'council-business', 'council-plan', 'council-doc')) {
+        foreach ($name in @('council-code', 'council-business', 'council-plan', 'council-doc'))
+        {
             $aliasPath = Join-Path $portable "$name/SKILL.md"
             $content = Get-Content $aliasPath -Raw
             $contractLink = [regex]::Match($content, '\]\((\.\./council/SKILL\.md)\)').Groups[1].Value
@@ -126,14 +132,16 @@ Describe 'review skill split' {
     }
 
     It 'owns deep-review, review-fix-loop, and fix-findings as portable skills (#115)' {
-        foreach ($name in @('deep-review', 'review-fix-loop', 'fix-findings')) {
+        foreach ($name in @('deep-review', 'review-fix-loop', 'fix-findings'))
+        {
             Test-Path (Join-Path $portableSkills "$name/SKILL.md") | Should -BeTrue
             Test-Path (Join-Path $claudeSkills $name) | Should -BeFalse
         }
     }
 
     It 'folds quick-review onto the existing dimension labels and the shared pipeline' {
-        foreach ($dimension in @('correctness', 'conventions', 'tests')) {
+        foreach ($dimension in @('correctness', 'conventions', 'tests'))
+        {
             $quickReview | Should -Match "``$dimension``"
         }
         $quickReview | Should -Match ([regex]::Escape('../_shared/findings-schema.md'))
@@ -158,7 +166,8 @@ Describe 'review skill split' {
     }
 
     It 'documents --reviewers on the reviewer skills and the loop, resolving the sol alias' {
-        foreach ($content in @($quickReview, $loop, $deepReview)) {
+        foreach ($content in @($quickReview, $loop, $deepReview))
+        {
             $content | Should -Match ([regex]::Escape('--reviewers'))
         }
         $reviewerModels | Should -Match 'gpt-5\.6-sol'
@@ -169,7 +178,8 @@ Describe 'review skill split' {
     It 'flags --reviewers as unsupported on Codex CLI on the reviewer skills Args tables and the loop' {
         # Row-specific: assert against the Args table row itself, not the whole file, so a
         # regression in that row can't hide behind matching wording elsewhere in the file.
-        foreach ($content in @($quickReview, $deepReviewReference, $loop)) {
+        foreach ($content in @($quickReview, $deepReviewReference, $loop))
+        {
             $row = @($content -split "`n" | Where-Object { $_ -match '\|.*--reviewers.*\|' })
             $row | Should -Not -BeNullOrEmpty
             $row | Should -Match ([regex]::Escape('unsupported on Codex CLI'))
@@ -179,7 +189,8 @@ Describe 'review skill split' {
         $deepReview | Should -Not -Match ([regex]::Escape('no-op on Codex CLI'))
         $reviewerModels | Should -Match ([regex]::Escape('actionable error'))
         $reviewerModels | Should -Not -Match ([regex]::Escape('no wired resolution'))
-        foreach ($content in @($quickReview, $deepReview, $deepReviewReference, $loop)) {
+        foreach ($content in @($quickReview, $deepReview, $deepReviewReference, $loop))
+        {
             $content | Should -Match 'stop and\s+report an actionable error'
         }
     }
@@ -199,7 +210,8 @@ Describe 'review skill split' {
         $reviewerModels | Should -Match 'Never `fable`|never `fable`'
 
         # Every dispatching doc points at the canonical home instead of restating the pin.
-        foreach ($content in @($loop, $fixFindings)) {
+        foreach ($content in @($loop, $fixFindings))
+        {
             $content | Should -Match ([regex]::Escape('_shared/reviewer-models.md'))
             $content | Should -Match 'Fixer pin'
             $content | Should -Not -Match 'Opus 4\.8'
@@ -210,13 +222,15 @@ Describe 'review skill split' {
     }
 
     It 'sets the Codex sandbox and approval policy per call in both reviewer skills' {
-        foreach ($content in @($quickReview, $deepReview)) {
+        foreach ($content in @($quickReview, $deepReview))
+        {
             $content | Should -Match ([regex]::Escape('approval-policy: never'))
             $content | Should -Match ([regex]::Escape('sandbox: read-only'))
         }
 
         # deep-review calls Codex twice (fan out + the verify second voice); both call sites carry it.
-        foreach ($token in @('approval-policy: never', 'sandbox: read-only')) {
+        foreach ($token in @('approval-policy: never', 'sandbox: read-only'))
+        {
             [regex]::Matches($deepReview, [regex]::Escape($token)).Count | Should -BeGreaterOrEqual 2
         }
     }
@@ -253,7 +267,8 @@ Describe 'techdebt skill' {
         $toolsPath = Join-Path $skillDir 'TOOLS.md'
         Test-Path $toolsPath | Should -BeTrue
         $tools = Get-Content $toolsPath -Raw
-        foreach ($label in @('tool-backed', 'grep-native', 'skip when absent')) {
+        foreach ($label in @('tool-backed', 'grep-native', 'skip when absent'))
+        {
             $tools | Should -Match ([regex]::Escape($label))
         }
         # category-level policy (what counts as debt, what to verify) lives once in SKILL.md;

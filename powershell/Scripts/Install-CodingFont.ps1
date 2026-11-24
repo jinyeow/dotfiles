@@ -37,10 +37,10 @@
     Windows-only. Requires internet access to the GitHub release.
 #>
 param(
-  [Parameter(Mandatory)]
-  [ValidateSet('JetBrainsMono', 'Monaspace', '0xProto', 'Iosevka', 'VictorMono', 'CommitMono', 'GeistMono', 'FiraCode')]
-  [string[]]$Name,
-  [string]$Version = 'v3.4.0'
+    [Parameter(Mandatory)]
+    [ValidateSet('JetBrainsMono', 'Monaspace', '0xProto', 'Iosevka', 'VictorMono', 'CommitMono', 'GeistMono', 'FiraCode')]
+    [string[]]$Name,
+    [string]$Version = 'v3.4.0'
 )
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -52,41 +52,48 @@ New-Item -ItemType Directory -Force -Path $fontDir | Out-Null
 $wanted = 'NerdFontMono-(Regular|Italic|Bold|BoldItalic)\.(ttf|otf)$'
 
 # Download with retry-then-raise (transient GitHub/network failures are common).
-function Get-FontArchive {
-  param([string]$Url, [string]$OutFile, [int]$MaxAttempts = 3)
-  for ($i = 1; $i -le $MaxAttempts; $i++) {
-    try { Invoke-WebRequest -Uri $Url -OutFile $OutFile; return }
-    catch {
-      if ($i -eq $MaxAttempts) { throw "download failed after $MaxAttempts attempts ($Url): $($_.Exception.Message)" }
-      Write-Warning "download attempt $i/$MaxAttempts failed ($Url): $($_.Exception.Message); retrying"
-      Start-Sleep -Seconds ($i * 2)
+function Get-FontArchive
+{
+    param([string]$Url, [string]$OutFile, [int]$MaxAttempts = 3)
+    for ($i = 1; $i -le $MaxAttempts; $i++)
+    {
+        try { Invoke-WebRequest -Uri $Url -OutFile $OutFile; return }
+        catch
+        {
+            if ($i -eq $MaxAttempts) { throw "download failed after $MaxAttempts attempts ($Url): $($_.Exception.Message)" }
+            Write-Warning "download attempt $i/$MaxAttempts failed ($Url): $($_.Exception.Message); retrying"
+            Start-Sleep -Seconds ($i * 2)
+        }
     }
-  }
 }
 
 $installed = @()
-foreach ($n in $Name) {
-  $tmp = Join-Path $env:TEMP "fontdl_$n"; $zip = "$tmp.zip"
-  try {
-    Write-Host "==> $n : downloading ($Version)"
-    Get-FontArchive -Url "https://github.com/ryanoasis/nerd-fonts/releases/download/$Version/$n.zip" -OutFile $zip
-    if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
-    Expand-Archive -Path $zip -DestinationPath $tmp -Force
-    $files = Get-ChildItem -Path $tmp -Recurse -File | Where-Object { $_.Name -match $wanted }
-    if (-not $files) { Write-Warning "    no *NerdFontMono faces found in $n.zip" }
-    foreach ($f in $files) {
-      $dest = Join-Path $fontDir $f.Name
-      Copy-Item $f.FullName $dest -Force
-      $tag = if ($f.Extension -ieq '.otf') { ' (OpenType)' } else { ' (TrueType)' }
-      New-ItemProperty -Path $regPath -Name ([IO.Path]::GetFileNameWithoutExtension($f.Name) + $tag) -Value $f.Name -PropertyType String -Force | Out-Null
-      $installed += $dest
-      Write-Host "    $($f.Name)"
+foreach ($n in $Name)
+{
+    $tmp = Join-Path $env:TEMP "fontdl_$n"; $zip = "$tmp.zip"
+    try
+    {
+        Write-Host "==> $n : downloading ($Version)"
+        Get-FontArchive -Url "https://github.com/ryanoasis/nerd-fonts/releases/download/$Version/$n.zip" -OutFile $zip
+        if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
+        Expand-Archive -Path $zip -DestinationPath $tmp -Force
+        $files = Get-ChildItem -Path $tmp -Recurse -File | Where-Object { $_.Name -match $wanted }
+        if (-not $files) { Write-Warning "    no *NerdFontMono faces found in $n.zip" }
+        foreach ($f in $files)
+        {
+            $dest = Join-Path $fontDir $f.Name
+            Copy-Item $f.FullName $dest -Force
+            $tag = if ($f.Extension -ieq '.otf') { ' (OpenType)' } else { ' (TrueType)' }
+            New-ItemProperty -Path $regPath -Name ([IO.Path]::GetFileNameWithoutExtension($f.Name) + $tag) -Value $f.Name -PropertyType String -Force | Out-Null
+            $installed += $dest
+            Write-Host "    $($f.Name)"
+        }
     }
-  }
-  finally {
-    if (Test-Path $zip) { Remove-Item $zip -Force }
-    if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
-  }
+    finally
+    {
+        if (Test-Path $zip) { Remove-Item $zip -Force }
+        if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
+    }
 }
 
 if (-not $installed) { Write-Warning 'nothing installed'; return }
@@ -109,9 +116,9 @@ Write-Host "activated $ok / $($installed.Count) faces"
 Add-Type -AssemblyName System.Drawing
 $names = (New-Object System.Drawing.Text.InstalledFontCollection).Families.Name
 $installed | ForEach-Object {
-  $pfc = New-Object System.Drawing.Text.PrivateFontCollection; $pfc.AddFontFile($_)
-  $fam = $pfc.Families[0].Name
-  $present = if ($names -contains $fam) { 'YES' } else { 'no (restart may be needed)' }
-  "{0,-40} family '{1}' -> installed: {2}" -f [IO.Path]::GetFileName($_), $fam, $present
+    $pfc = New-Object System.Drawing.Text.PrivateFontCollection; $pfc.AddFontFile($_)
+    $fam = $pfc.Families[0].Name
+    $present = if ($names -contains $fam) { 'YES' } else { 'no (restart may be needed)' }
+    "{0,-40} family '{1}' -> installed: {2}" -f [IO.Path]::GetFileName($_), $fam, $present
 }
 Write-Host 'DONE'

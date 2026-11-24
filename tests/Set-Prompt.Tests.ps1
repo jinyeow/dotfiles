@@ -19,14 +19,15 @@ BeforeAll {
     foreach ($k in $script:gitEnvKeys) { $script:gitEnvSaved[$k] = [Environment]::GetEnvironmentVariable($k) }
     $script:emptyGitConfig = Join-Path ([System.IO.Path]::GetTempPath()) ("promptgit_empty_" + [guid]::NewGuid().ToString('N') + '.cfg')
     Set-Content -LiteralPath $script:emptyGitConfig -Value ''
-    $env:GIT_CONFIG_GLOBAL   = $script:emptyGitConfig
-    $env:GIT_CONFIG_SYSTEM   = $script:emptyGitConfig
+    $env:GIT_CONFIG_GLOBAL = $script:emptyGitConfig
+    $env:GIT_CONFIG_SYSTEM = $script:emptyGitConfig
     $env:GIT_CONFIG_NOSYSTEM = '1'
-    $env:GIT_AUTHOR_NAME     = 'Test';            $env:GIT_COMMITTER_NAME  = 'Test'
-    $env:GIT_AUTHOR_EMAIL    = 'test@example.com'; $env:GIT_COMMITTER_EMAIL = 'test@example.com'
+    $env:GIT_AUTHOR_NAME = 'Test';            $env:GIT_COMMITTER_NAME = 'Test'
+    $env:GIT_AUTHOR_EMAIL = 'test@example.com'; $env:GIT_COMMITTER_EMAIL = 'test@example.com'
 
     $script:tempRepos = [System.Collections.Generic.List[string]]::new()
-    function script:New-TempGitRepo {
+    function script:New-TempGitRepo
+    {
         $dir = Join-Path ([System.IO.Path]::GetTempPath()) ("promptgit_" + [guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $dir | Out-Null
         git init -q -b main $dir 2>$null
@@ -47,7 +48,8 @@ Describe 'Start-AzContextRefresh persistent runspace' {
         # Reap the first (priming) invocation so the concurrency guard doesn't
         # short-circuit the second call — otherwise call #2 is a no-op and the
         # reuse branch is never exercised.
-        while (-not $global:PromptCache.AzInvocation.Handle.IsCompleted) {
+        while (-not $global:PromptCache.AzInvocation.Handle.IsCompleted)
+        {
             Start-Sleep -Milliseconds 50
         }
         $null = Get-AzAsyncResult
@@ -97,12 +99,14 @@ Describe 'Get-GitPromptInfo — unmerged/conflict counting' {
     It 'does not count an AD (staged add, deleted in worktree) pair as a conflict' {
         $repo = New-TempGitRepo
         Push-Location $repo
-        try {
+        try
+        {
             Set-Content -LiteralPath (Join-Path $repo 'newfile') -Value 'hi'
             git add newfile 2>$null
             Remove-Item -LiteralPath (Join-Path $repo 'newfile')   # -> "AD newfile"
             $info = Get-GitPromptInfo
-        } finally { Pop-Location }
+        }
+        finally { Pop-Location }
         $info.Conflicts | Should -Be 0
         $info.Staged    | Should -Be 1   # the 'A' still counts as staged
         $info.Deleted   | Should -Be 1   # the worktree 'D' still counts as deleted
@@ -111,7 +115,8 @@ Describe 'Get-GitPromptInfo — unmerged/conflict counting' {
     It 'counts a real merge conflict (UU) as a conflict' {
         $repo = New-TempGitRepo
         Push-Location $repo
-        try {
+        try
+        {
             Set-Content -LiteralPath (Join-Path $repo 'f.txt') -Value 'base'
             git add f.txt 2>$null; git commit -q -m base 2>$null
             git checkout -q -b other 2>$null
@@ -122,7 +127,8 @@ Describe 'Get-GitPromptInfo — unmerged/conflict counting' {
             git commit -q -am main 2>$null
             git merge -q other 2>$null   # fails -> "UU f.txt"
             $info = Get-GitPromptInfo
-        } finally { Pop-Location }
+        }
+        finally { Pop-Location }
         $info.Conflicts | Should -BeGreaterThan 0
     }
 }
@@ -135,11 +141,13 @@ Describe 'Get-GitPromptInfo — copied (C) index status counts as staged' {
     # resolution. The canned output matches the NEW single `status --porcelain=v2
     # --branch` command (branch + ahead/behind + records all in one stream).
     It 'increments Staged for a C (copied) index entry' {
-        function global:git {
+        function global:git
+        {
             $a = $args -join ' '
             $global:LASTEXITCODE = 0
-            if ($a -like 'rev-parse*')          { return @('/repo', '/repo/.git', '/repo/.git') }
-            if ($a -like 'status --porcelain=v2*') {
+            if ($a -like 'rev-parse*') { return @('/repo', '/repo/.git', '/repo/.git') }
+            if ($a -like 'status --porcelain=v2*')
+            {
                 return @(
                     '# branch.oid 0000000000000000000000000000000000000000',
                     '# branch.head main',
@@ -163,11 +171,13 @@ Describe 'Get-GitPromptInfo — porcelain v2 branch + ahead/behind parse' {
     It 'reports the branch name and ahead/behind from a single status --porcelain=v2 --branch stream' {
         # `# branch.ab +A -B`: + is ahead, - is behind (opposite operand order from the
         # old `rev-list --left-right --count @{upstream}...HEAD`, which printed behind ahead).
-        function global:git {
+        function global:git
+        {
             $a = $args -join ' '
             $global:LASTEXITCODE = 0
-            if ($a -like 'rev-parse*')          { return @('/repo', '/repo/.git', '/repo/.git') }
-            if ($a -like 'status --porcelain=v2*') {
+            if ($a -like 'rev-parse*') { return @('/repo', '/repo/.git', '/repo/.git') }
+            if ($a -like 'status --porcelain=v2*')
+            {
                 return @(
                     '# branch.oid 0000000000000000000000000000000000000000',
                     '# branch.head feature/x',
@@ -184,11 +194,13 @@ Describe 'Get-GitPromptInfo — porcelain v2 branch + ahead/behind parse' {
     }
 
     It 'renders a detached HEAD as an empty branch' {
-        function global:git {
+        function global:git
+        {
             $a = $args -join ' '
             $global:LASTEXITCODE = 0
-            if ($a -like 'rev-parse*')          { return @('/repo', '/repo/.git', '/repo/.git') }
-            if ($a -like 'status --porcelain=v2*') {
+            if ($a -like 'rev-parse*') { return @('/repo', '/repo/.git', '/repo/.git') }
+            if ($a -like 'status --porcelain=v2*')
+            {
                 return @(
                     '# branch.oid abcdef0000000000000000000000000000000000',
                     '# branch.head (detached)'
@@ -206,12 +218,14 @@ Describe 'Get-GitPromptInfo — renamed (R) index status counts as renamed' {
     It 'increments Renamed for a real git mv after a commit' {
         $repo = New-TempGitRepo
         Push-Location $repo
-        try {
+        try
+        {
             Set-Content -LiteralPath (Join-Path $repo 'orig.txt') -Value "l1`nl2`nl3`nl4"
             git add orig.txt 2>$null; git commit -q -m base 2>$null
             git mv orig.txt renamed.txt 2>$null   # -> "2 R. ... renamed.txt<TAB>orig.txt"
             $info = Get-GitPromptInfo
-        } finally { Pop-Location }
+        }
+        finally { Pop-Location }
         $info.Renamed | Should -Be 1
         $info.Staged  | Should -Be 0   # a rename is NOT double-counted as staged
     }
@@ -222,12 +236,14 @@ Describe 'Get-GitPromptInfo — git invocation count' {
         # The rewrite collapsed 4 spawns (rev-parse + branch + rev-list + status) to 2
         # (rev-parse gate/top-level/worktree + one status --porcelain=v2 --branch).
         $global:gitCallCount = 0
-        function global:git {
+        function global:git
+        {
             $global:gitCallCount++
             $a = $args -join ' '
             $global:LASTEXITCODE = 0
-            if ($a -like 'rev-parse*')          { return @('/repo', '/repo/.git', '/repo/.git') }
-            if ($a -like 'status --porcelain=v2*') {
+            if ($a -like 'rev-parse*') { return @('/repo', '/repo/.git', '/repo/.git') }
+            if ($a -like 'status --porcelain=v2*')
+            {
                 return @(
                     '# branch.oid 0000000000000000000000000000000000000000',
                     '# branch.head main',
@@ -246,7 +262,7 @@ Describe 'Get-GitPromptInfo — git invocation count' {
 Describe 'prompt skips VCS helpers on non-FileSystem providers' {
     It 'does not invoke git/jj helpers under a non-FileSystem provider (Env:)' {
         Mock Get-GitPromptInfo { $null }
-        Mock Get-JjPromptInfo  { $null }
+        Mock Get-JjPromptInfo { $null }
         Push-Location Env:
         try { $null = prompt } finally { Pop-Location }
         Should -Invoke Get-GitPromptInfo -Times 0
@@ -255,7 +271,7 @@ Describe 'prompt skips VCS helpers on non-FileSystem providers' {
 
     It 'does invoke the VCS helpers under a FileSystem provider (positive control)' {
         Mock Get-GitPromptInfo { $null }
-        Mock Get-JjPromptInfo  { $null }
+        Mock Get-JjPromptInfo { $null }
         $repo = New-TempGitRepo
         Push-Location $repo
         try { $null = prompt } finally { Pop-Location }
@@ -293,19 +309,23 @@ Describe 'Get-AzCliAccountSegment — az CLI account tag' {
 }
 
 AfterAll {
-    if ($global:PromptCache.AzInvocation) {
+    if ($global:PromptCache.AzInvocation)
+    {
         try { $global:PromptCache.AzInvocation.PowerShell.Dispose() } catch {}
     }
-    if ($global:PromptCache.AzRunspace) {
+    if ($global:PromptCache.AzRunspace)
+    {
         try { $global:PromptCache.AzRunspace.Dispose() } catch {}
     }
     # Restore git env and clean up temp repos.
-    foreach ($k in $script:gitEnvKeys) {
+    foreach ($k in $script:gitEnvKeys)
+    {
         if ($null -eq $script:gitEnvSaved[$k]) { Remove-Item "Env:\$k" -ErrorAction Ignore }
         else { Set-Item "Env:\$k" $script:gitEnvSaved[$k] }
     }
     if (Test-Path -LiteralPath $script:emptyGitConfig) { Remove-Item -LiteralPath $script:emptyGitConfig -ErrorAction Ignore }
-    foreach ($r in $script:tempRepos) {
+    foreach ($r in $script:tempRepos)
+    {
         if (Test-Path -LiteralPath $r) { Remove-Item -LiteralPath $r -Recurse -Force -ErrorAction Ignore }
     }
 }

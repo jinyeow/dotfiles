@@ -11,11 +11,13 @@ BeforeAll {
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:CtagsHook = Join-Path $script:RepoRoot 'git/templates/hooks/ctags'
     $script:Bash = Resolve-TestBash
-    if (-not $script:Bash) {
+    if (-not $script:Bash)
+    {
         throw 'ctags-hook.Tests.ps1: no usable bash found, WSL launchers excluded — install Git for Windows'
     }
 
-    function New-TestRepo {
+    function New-TestRepo
+    {
         $root = Join-Path ([IO.Path]::GetTempPath()) ('ctags-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $root -Force | Out-Null
         & git -C $root init -q . 2>&1 | Out-Null
@@ -30,7 +32,8 @@ BeforeAll {
     # A fake `ctags` on PATH: touches $env:CTAGS_MARKER (proving it was invoked) and
     # writes an empty file at whatever -f<path> it was given, so the hook's later
     # `mv "$dir/$$.tags" "$dir/tags"` has something to move.
-    function New-CtagsShim {
+    function New-CtagsShim
+    {
         param([string] $Root)
         $shimDir = Join-Path $Root 'shim'
         New-Item -ItemType Directory -Path $shimDir -Force | Out-Null
@@ -53,17 +56,21 @@ exit 0
         return $shimDir
     }
 
-    function Invoke-CtagsHook {
+    function Invoke-CtagsHook
+    {
         param([string] $Repo, [string] $ShimDir, [string] $Marker)
         $origPath = $env:PATH
         $origMarker = $env:CTAGS_MARKER
         Push-Location $Repo
-        try {
+        try
+        {
             $env:PATH = $ShimDir + [IO.Path]::PathSeparator + $origPath
             $env:CTAGS_MARKER = $Marker
             & $script:Bash $script:CtagsHook 2>&1 | Out-Null
             return $LASTEXITCODE
-        } finally {
+        }
+        finally
+        {
             Pop-Location
             $env:PATH = $origPath
             $env:CTAGS_MARKER = $origMarker

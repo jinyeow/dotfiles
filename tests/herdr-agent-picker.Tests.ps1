@@ -10,8 +10,10 @@ BeforeAll {
     $wanted = 'ConvertTo-HerdrAgentPickerLines', 'Get-HerdrPaneIdFromSelection'
     $funcs = $ast.FindAll(
         { param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true)
-    foreach ($fn in $funcs) {
-        if ($wanted | Where-Object { $fn.Name -match $_ }) {
+    foreach ($fn in $funcs)
+    {
+        if ($wanted | Where-Object { $fn.Name -match $_ })
+        {
             . ([scriptblock]::Create($fn.Extent.Text))
         }
     }
@@ -20,12 +22,12 @@ BeforeAll {
 Describe 'ConvertTo-HerdrAgentPickerLines' {
     BeforeAll {
         $agent = [pscustomobject]@{
-            agent_status            = 'working'
-            agent                   = 'claude'
-            workspace_id            = 'w6'
-            tab_id                  = 'w6:t1'
+            agent_status = 'working'
+            agent = 'claude'
+            workspace_id = 'w6'
+            tab_id = 'w6:t1'
             terminal_title_stripped = 'Planning session'
-            pane_id                 = 'w6:p1Z'
+            pane_id = 'w6:p1Z'
         }
     }
 
@@ -43,12 +45,12 @@ Describe 'ConvertTo-HerdrAgentPickerLines' {
 
     It 'emits one line per agent, in order' {
         $second = [pscustomobject]@{
-            agent_status            = 'idle'
-            agent                   = 'claude'
-            workspace_id            = 'w7'
-            tab_id                  = 'w7:tG'
+            agent_status = 'idle'
+            agent = 'claude'
+            workspace_id = 'w7'
+            tab_id = 'w7:tG'
             terminal_title_stripped = 'Claude Code'
-            pane_id                 = 'w7:p17'
+            pane_id = 'w7:p17'
         }
         $lines = ConvertTo-HerdrAgentPickerLines -Agents @($agent, $second)
         $lines.Count | Should -Be 2

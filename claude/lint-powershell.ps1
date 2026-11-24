@@ -30,44 +30,48 @@ Import-Module PSScriptAnalyzer -ErrorAction Stop
 # false positive.
 $analyzerArgs = @{ Path = $filePath }
 $dir = Split-Path -Parent (Resolve-Path -LiteralPath $filePath)
-while ($dir) {
-  $candidate = '.vscode/PSScriptAnalyzerSettings.psd1', 'PSScriptAnalyzerSettings.psd1' |
-    ForEach-Object { Join-Path $dir $_ } |
-    Where-Object { Test-Path -LiteralPath $_ } |
-    Select-Object -First 1
-  if ($candidate) { $analyzerArgs['Settings'] = $candidate; break }
-  # Stop at the project boundary. A ruleset further up belongs to another project - or to
-  # the user's home, where one stray file would silently govern linting in every repo on
-  # the machine. Checked AFTER the ruleset so a ruleset sitting AT the root still wins.
-  # `.jj` as well as `.git` because a non-colocated Jujutsu repo has no `.git` (same
-  # reason nvim/lua/config/autocmds.lua roots on both); no -PathType, since `.git` is a
-  # file rather than a directory in a worktree.
-  if ((Test-Path -LiteralPath (Join-Path $dir '.git')) -or (Test-Path -LiteralPath (Join-Path $dir '.jj'))) { break }
-  $parent = Split-Path -Parent $dir
-  if ($parent -eq $dir) { break }
-  $dir = $parent
+while ($dir)
+{
+    $candidate = '.vscode/PSScriptAnalyzerSettings.psd1', 'PSScriptAnalyzerSettings.psd1' |
+        ForEach-Object { Join-Path $dir $_ } |
+        Where-Object { Test-Path -LiteralPath $_ } |
+        Select-Object -First 1
+    if ($candidate) { $analyzerArgs['Settings'] = $candidate; break }
+    # Stop at the project boundary. A ruleset further up belongs to another project - or to
+    # the user's home, where one stray file would silently govern linting in every repo on
+    # the machine. Checked AFTER the ruleset so a ruleset sitting AT the root still wins.
+    # `.jj` as well as `.git` because a non-colocated Jujutsu repo has no `.git` (same
+    # reason nvim/lua/config/autocmds.lua roots on both); no -PathType, since `.git` is a
+    # file rather than a directory in a worktree.
+    if ((Test-Path -LiteralPath (Join-Path $dir '.git')) -or (Test-Path -LiteralPath (Join-Path $dir '.jj'))) { break }
+    $parent = Split-Path -Parent $dir
+    if ($parent -eq $dir) { break }
+    $dir = $parent
 }
 
 # Fail open silently if analysis throws (e.g. a malformed/unparseable ruleset file): this
 # hook is an advisory nudge, never a gate, so a broken settings file must not surface an
 # error - it just goes quiet, mirroring the PSSA-absent no-op above.
-try {
-  $violations = Invoke-ScriptAnalyzer @analyzerArgs
-} catch {
-  exit 0
+try
+{
+    $violations = Invoke-ScriptAnalyzer @analyzerArgs
+}
+catch
+{
+    exit 0
 }
 if (-not $violations) { exit 0 }
 
 $lines = $violations | ForEach-Object {
-  "  [$($_.Severity)] $($_.RuleName) (line $($_.Line)): $($_.Message)"
+    "  [$($_.Severity)] $($_.RuleName) (line $($_.Line)): $($_.Message)"
 }
 $context = "PSScriptAnalyzer flagged $(@($violations).Count) issue(s) in $(Split-Path -Leaf $filePath):`n" +
-  ($lines -join "`n") + "`nFix these before finishing."
+($lines -join "`n") + "`nFix these before finishing."
 
 @{
-  hookSpecificOutput = @{
-    hookEventName     = 'PostToolUse'
-    additionalContext = $context
-  }
+    hookSpecificOutput = @{
+        hookEventName = 'PostToolUse'
+        additionalContext = $context
+    }
 } | ConvertTo-Json -Depth 5 -Compress
 exit 0

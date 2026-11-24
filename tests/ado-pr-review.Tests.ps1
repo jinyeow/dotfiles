@@ -19,7 +19,8 @@ BeforeAll {
     $funcs = $ast.FindAll(
         { param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true) |
         Where-Object { $fn = $_.Name; $wanted | Where-Object { $fn -match $_ } }
-    foreach ($fn in $funcs) {
+    foreach ($fn in $funcs)
+    {
         . ([scriptblock]::Create($fn.Extent.Text))
     }
 
@@ -28,9 +29,12 @@ BeforeAll {
     $script:shimDir = Join-Path $TestDrive 'shims'
     $script:nvimArgsFile = Join-Path $TestDrive 'nvim-args.txt'
     New-Item -ItemType Directory -Path $script:shimDir | Out-Null
-    if ($IsWindows) {
+    if ($IsWindows)
+    {
         Set-Content -Path (Join-Path $script:shimDir 'nvim.cmd') -Value "@echo %*> `"$script:nvimArgsFile`""
-    } else {
+    }
+    else
+    {
         $shim = Join-Path $script:shimDir 'nvim'
         Set-Content -Path $shim -Value "#!/bin/sh`nprintf '%s ' `"`$@`" > '$script:nvimArgsFile'"
         chmod +x $shim
@@ -123,7 +127,8 @@ Describe 'Invoke-AdoPrReview' {
         It 'errors instead of checking out when the review worktree is dirty' {
             # Self-sufficient under test filtering: ensure the review worktree exists even if
             # the creation test above did not run.
-            if (-not (Test-Path (Join-Path $script:layout 'review'))) {
+            if (-not (Test-Path (Join-Path $script:layout 'review')))
+            {
                 git -C (Join-Path $script:layout '.bare') worktree add --detach ../review 2>&1 | Out-Null
             }
             Set-Content -Path (Join-Path $script:layout 'review' 'file.txt') -Value 'dirty'

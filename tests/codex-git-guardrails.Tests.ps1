@@ -11,28 +11,31 @@ BeforeAll {
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:HookScript = Join-Path $script:RepoRoot 'codex/block-dangerous-git.sh'
     $script:Bash = Resolve-TestBash
-    if (-not $script:Bash) {
+    if (-not $script:Bash)
+    {
         throw 'codex-git-guardrails.Tests.ps1: no usable bash found, WSL launchers excluded — install Git for Windows'
     }
 
-    function Invoke-GuardrailHook {
+    function Invoke-GuardrailHook
+    {
         param([string] $Command)
         $payload = @{ tool_input = @{ command = $Command } } | ConvertTo-Json -Compress
         $stderr = $null
         $output = $payload | & $script:Bash $script:HookScript 2>&1
         return [PSCustomObject]@{
             ExitCode = $LASTEXITCODE
-            Output   = ($output -join "`n")
+            Output = ($output -join "`n")
         }
     }
 
-    function Invoke-GuardrailHookRawPayload {
+    function Invoke-GuardrailHookRawPayload
+    {
         param([string] $Payload)
         $stderr = $null
         $output = $Payload | & $script:Bash $script:HookScript 2>&1
         return [PSCustomObject]@{
             ExitCode = $LASTEXITCODE
-            Output   = ($output -join "`n")
+            Output = ($output -join "`n")
         }
     }
 
@@ -40,36 +43,40 @@ BeforeAll {
     # forcing the hook into its grep/sed fallback tier regardless of the host's real Python.
     $script:NoPythonStubDir = Join-Path ([System.IO.Path]::GetTempPath()) "codex-git-guardrails-nopython-$PID"
     New-Item -ItemType Directory -Path $script:NoPythonStubDir -Force | Out-Null
-    foreach ($stubName in @('python3', 'python')) {
+    foreach ($stubName in @('python3', 'python'))
+    {
         $stubPath = Join-Path $script:NoPythonStubDir $stubName
         Set-Content -Path $stubPath -Value "#!/bin/bash`nexit 1`n" -NoNewline
         & $script:Bash -c 'chmod +x "$1"' _ ($stubPath -replace '\\', '/')
     }
 
-    function Invoke-GuardrailHookNoPython {
+    function Invoke-GuardrailHookNoPython
+    {
         param([string] $Command)
         $payload = @{ tool_input = @{ command = $Command } } | ConvertTo-Json -Compress
         $stderr = $null
         $output = $payload | & $script:Bash -c "PATH='$($script:NoPythonStubDir)':`"`$PATH`" bash '$($script:HookScript)'" 2>&1
         return [PSCustomObject]@{
             ExitCode = $LASTEXITCODE
-            Output   = ($output -join "`n")
+            Output = ($output -join "`n")
         }
     }
 
-    function Invoke-GuardrailHookNoPythonRawPayload {
+    function Invoke-GuardrailHookNoPythonRawPayload
+    {
         param([string] $Payload)
         $stderr = $null
         $output = $Payload | & $script:Bash -c "PATH='$($script:NoPythonStubDir)':`"`$PATH`" bash '$($script:HookScript)'" 2>&1
         return [PSCustomObject]@{
             ExitCode = $LASTEXITCODE
-            Output   = ($output -join "`n")
+            Output = ($output -join "`n")
         }
     }
 }
 
 AfterAll {
-    if ($script:NoPythonStubDir -and (Test-Path -LiteralPath $script:NoPythonStubDir)) {
+    if ($script:NoPythonStubDir -and (Test-Path -LiteralPath $script:NoPythonStubDir))
+    {
         Remove-Item -LiteralPath $script:NoPythonStubDir -Recurse -Force -ErrorAction Ignore
     }
 }
