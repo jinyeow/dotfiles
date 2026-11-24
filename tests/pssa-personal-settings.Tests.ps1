@@ -75,4 +75,16 @@ Describe 'PSScriptAnalyzerSettings.Personal.psd1' -Skip:(-not $script:HasPSSA) {
         $formatted = Invoke-Formatter -ScriptDefinition $script:Otbs -Settings $script:Settings
         $formatted | Should -Match ([regex]::Escape('ForEach-Object { $_.ToUpper() }'))
     }
+
+    # A native command receives `a,b` as one argument and `a, b` as two, so neither the
+    # linter nor the formatter may add a space after the comma.
+    It 'leaves a comma list passed to a native command unchanged' {
+        $native = "& ./setup.sh -m lazygit,windowsterminal`n"
+
+        $findings = Invoke-ScriptAnalyzer -ScriptDefinition $native -Settings $script:Settings
+        $formatted = Invoke-Formatter -ScriptDefinition $native -Settings $script:Settings
+
+        $findings | Should -BeNullOrEmpty
+        $formatted | Should -BeExactly $native
+    }
 }

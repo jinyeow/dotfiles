@@ -35,7 +35,9 @@
             CheckOpenBrace = $true
             CheckOpenParen = $true
             CheckOperator = $true
-            CheckSeparator = $true
+            # Off: a native command receives `a,b` as one argument and `a, b` as two, so a
+            # space added after a comma can change what an .exe or script is given.
+            CheckSeparator = $false
             CheckInnerBrace = $true
             CheckPipe = $true
             CheckParameter = $false
