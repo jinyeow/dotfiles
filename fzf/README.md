@@ -41,7 +41,10 @@ back to its built-in walker. Live `Alt+f` search (`Invoke-FzfRipgrep`) still use
 | `Ctrl+a` | Select all matches |
 | `Ctrl+/` | Toggle preview pane |
 
-### PowerShell shell (PSFzf)
+### PowerShell shell
+
+All pickers run bare `fzf` and need only the fzf binary. `Tab` and the aliases
+below additionally need the PSFzf module.
 
 | Key | Action |
 |---|---|
