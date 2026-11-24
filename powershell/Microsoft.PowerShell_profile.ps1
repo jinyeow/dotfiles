@@ -125,6 +125,10 @@ if ($global:ProfileInteractiveConsole) {
 . "$(Split-Path -Path $PROFILE)/Profile/AzCliAccount.ps1"
 Restore-AzActiveProfile
 
+# --- Staging vault capture (note) --------------------------------------------
+# Defines functions and the note alias only; the Obsidian CLI runs when note is called.
+. "$(Split-Path -Path $PROFILE)/Profile/StagingNote.ps1"
+
 # Native tab-completers for az + zellij are registered in Phase 2b
 # (Initialize-DeferredProfileSecondary) — they only matter once you tab-complete,
 # so registering them at load just delayed the first prompt.

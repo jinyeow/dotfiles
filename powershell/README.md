@@ -23,6 +23,7 @@ PowerShell 7 profile and prompt for Windows (and Linux where applicable).
 | `Microsoft.PowerShell_profile.ps1` | Shared profile — used on all machines |
 | `Profile/Set-Prompt.ps1` | Prompt definition (jj/git + Azure context) |
 | `Profile/AzCliAccount.ps1` | Azure CLI named-profile switch (`azs`) — defines functions only; the profile calls `Restore-AzActiveProfile` in Phase 1 |
+| `Profile/StagingNote.ps1` | `note` capture into the Staging Obsidian vault — defines functions only |
 
 The installer generates a stub at `~/Documents/PowerShell/Microsoft.PowerShell_profile.ps1`
 that dot-sources the repo file — changes are live immediately without re-running setup.
