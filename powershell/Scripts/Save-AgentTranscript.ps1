@@ -45,58 +45,72 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 
-function Copy-NewerTree {
+function Copy-NewerTree
+{
     # Copy new and newer files from Source into Destination; never delete from Destination.
     # A source file older than its archived copy is skipped (/XO).
     param([Parameter(Mandatory)][string]$Source, [Parameter(Mandatory)][string]$Destination)
 
     robocopy $Source $Destination /E /XO /COPY:DAT /DCOPY:T /R:1 /W:1 /NP /NJH /NJS /NFL /NDL | Out-Null
-    if ($LASTEXITCODE -ge 8) {
+    if ($LASTEXITCODE -ge 8)
+    {
         throw [System.IO.IOException]::new("robocopy exit code $LASTEXITCODE copying '$Source' to '$Destination'")
     }
 }
 
-function Copy-NewerFile {
+function Copy-NewerFile
+{
     # Copy one file into DestinationFolder when it is new or newer than the archived copy.
     param([Parameter(Mandatory)][string]$Source, [Parameter(Mandatory)][string]$DestinationFolder)
 
     robocopy (Split-Path $Source) $DestinationFolder (Split-Path $Source -Leaf) /XO /COPY:DAT /R:1 /W:1 /NP /NJH /NJS /NFL /NDL | Out-Null
-    if ($LASTEXITCODE -ge 8) {
+    if ($LASTEXITCODE -ge 8)
+    {
         throw [System.IO.IOException]::new("robocopy exit code $LASTEXITCODE copying '$Source' to '$DestinationFolder'")
     }
 }
 
 [System.Collections.Generic.List[string]]$failures = [System.Collections.Generic.List[string]]::new()
 
-function Invoke-ArchiveStep {
+function Invoke-ArchiveStep
+{
     # Run one copy. A missing source warns and is skipped. An I/O failure (for example a file
     # locked by a running agent) warns and is recorded, so the remaining sources still run.
     param([Parameter(Mandatory)][string]$Source, [Parameter(Mandatory)][scriptblock]$Copy)
 
-    if (-not (Test-Path -LiteralPath $Source)) {
+    if (-not (Test-Path -LiteralPath $Source))
+    {
         Write-Warning "Source not found, skipped: $Source"
         return
     }
-    try {
+    try
+    {
         & $Copy
-    } catch [System.IO.IOException] {
+    }
+    catch [System.IO.IOException]
+    {
         Write-Warning $_.Exception.Message
         $failures.Add($_.Exception.Message)
     }
 }
 
-if (-not (Test-Path -LiteralPath $ArchiveRoot)) {
+if (-not (Test-Path -LiteralPath $ArchiveRoot))
+{
     New-Item -ItemType Directory -Path $ArchiveRoot | Out-Null
 }
 
 [string]$projects = Join-Path $SourceHome '.claude' 'projects'
-if (Test-Path -LiteralPath $projects) {
-    foreach ($project in Get-ChildItem -LiteralPath $projects -Directory -Force) {
+if (Test-Path -LiteralPath $projects)
+{
+    foreach ($project in Get-ChildItem -LiteralPath $projects -Directory -Force)
+    {
         [string]$scope = if ($WorkProjectPattern -and $project.Name -match $WorkProjectPattern) { 'work' } else { 'personal' }
         [string]$projectDest = Join-Path $ArchiveRoot $scope 'claude' 'projects' $project.Name
         Invoke-ArchiveStep -Source $project.FullName -Copy { Copy-NewerTree -Source $project.FullName -Destination $projectDest }
     }
-} else {
+}
+else
+{
     Write-Warning "Source not found, skipped: $projects"
 }
 
@@ -111,10 +125,12 @@ Invoke-ArchiveStep -Source $piSessions -Copy { Copy-NewerTree -Source $piSession
 
 # Compress anything not yet compressed (/I continues past files in use, /Q keeps output short).
 compact.exe /C /S:"$ArchiveRoot" /I /Q | Out-Null
-if ($LASTEXITCODE -ne 0) {
+if ($LASTEXITCODE -ne 0)
+{
     throw "compact.exe failed with exit code $LASTEXITCODE on '$ArchiveRoot'"
 }
 
-if ($failures.Count) {
+if ($failures.Count)
+{
     throw [System.IO.IOException]::new("Archive incomplete: $($failures.Count) source(s) failed. $($failures -join ' | ')")
 }

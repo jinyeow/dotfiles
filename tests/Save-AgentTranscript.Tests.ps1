@@ -6,7 +6,8 @@
 BeforeAll {
     $script:ScriptPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'powershell' 'Scripts' 'Save-AgentTranscript.ps1'
 
-    function New-TestFile([string]$Path, [string]$Content = 'line') {
+    function New-TestFile([string]$Path, [string]$Content = 'line')
+    {
         New-Item -ItemType Directory -Path (Split-Path $Path) -Force | Out-Null
         Set-Content -LiteralPath $Path -Value $Content -NoNewline
     }
@@ -83,10 +84,13 @@ Describe 'Save-AgentTranscript' -Skip:(-not $IsWindows) {
     It 'archives the other sources when one source has a locked file, then fails naming that source' {
         $locked = Join-Path $SourceHome '.claude' 'projects' 'E--Personal-dotfiles' 'personal.jsonl'
         $handle = [IO.File]::Open($locked, 'Open', 'Read', 'None')
-        try {
+        try
+        {
             { & $ScriptPath -ArchiveRoot $Archive -SourceHome $SourceHome -WorkProjectPattern '^E--Acme' } |
                 Should -Throw '*E--Personal-dotfiles*'
-        } finally {
+        }
+        finally
+        {
             $handle.Dispose()
         }
 

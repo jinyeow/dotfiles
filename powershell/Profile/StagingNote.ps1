@@ -9,7 +9,8 @@
 # its length.
 # ============================================================================
 
-function Invoke-ObsidianCli {
+function Invoke-ObsidianCli
+{
     <#
     .SYNOPSIS
     Run one Obsidian CLI command and return its trimmed output. Throws on a non-zero exit.
@@ -21,13 +22,15 @@ function Invoke-ObsidianCli {
         Select-Object -First 1
     # Capturing the output makes PowerShell wait for the GUI-subsystem exe to exit.
     [string]$output = (& $cli.Source @Arguments 2>&1 | Out-String).Trim()
-    if ($LASTEXITCODE -ne 0) {
+    if ($LASTEXITCODE -ne 0)
+    {
         throw "obsidian $($Arguments -join ' ') failed with exit code ${LASTEXITCODE}: $output"
     }
     return $output
 }
 
-function Add-StagingNote {
+function Add-StagingNote
+{
     <#
     .SYNOPSIS
     Append a labelled section to today's daily note in the Staging vault.
@@ -47,16 +50,20 @@ function Add-StagingNote {
         [Parameter(ValueFromPipeline)][object]$InputObject
     )
 
-    begin {
+    begin
+    {
         [System.Collections.Generic.List[object]]$items = [System.Collections.Generic.List[object]]::new()
     }
-    process {
+    process
+    {
         if ($null -ne $InputObject) { $items.Add($InputObject) }
     }
-    end {
+    end
+    {
         [string]$content = if ($items.Count) { $items | Out-String } else { Get-Clipboard -Raw }
         $content = ($content -replace "`r`n?", "`n").Trim("`n")
-        if (-not $content.Trim()) {
+        if (-not $content.Trim())
+        {
             throw [System.ArgumentException]::new('Nothing to add: pipe text into note or copy it to the clipboard first.')
         }
 
@@ -64,9 +71,11 @@ function Add-StagingNote {
         [string]$vaultRoot = Invoke-ObsidianCli -Arguments @("vault=$vault", 'vault', 'info=path')
         [string]$relative = Invoke-ObsidianCli -Arguments @("vault=$vault", 'daily:path')
         [string]$file = Join-Path $vaultRoot $relative
-        if (-not (Test-Path -LiteralPath $file)) {
+        if (-not (Test-Path -LiteralPath $file))
+        {
             Invoke-ObsidianCli -Arguments @("vault=$vault", 'create', "path=$relative", 'template=Daily') | Out-Null
-            if (-not (Test-Path -LiteralPath $file)) {
+            if (-not (Test-Path -LiteralPath $file))
+            {
                 throw [System.IO.FileNotFoundException]::new("Obsidian did not create today's note at $file", $file)
             }
         }
