@@ -554,8 +554,14 @@ function Initialize-DeferredProfile {
         # split behaviour plus a duplicate row in Get-PSReadLineKeyHandler. Insert is what fires
         # while typing, so overriding both tables makes Ctrl+r = fzf history in either Vi mode.
         Set-PSReadLineKeyHandler -Chord 'Ctrl+t' -ScriptBlock { Invoke-FzfFilePicker }
-        Set-PSReadLineKeyHandler -Chord 'Ctrl+r' -ViMode Insert  -BriefDescription FzfHistory -ScriptBlock { Invoke-FzfHistoryPicker }
-        Set-PSReadLineKeyHandler -Chord 'Ctrl+r' -ViMode Command -BriefDescription FzfHistory -ScriptBlock { Invoke-FzfHistoryPicker }
+        # -ViMode needs EditMode Vi, which Phase 1 sets only on an interactive console. Under any
+        # other EditMode PSReadLine throws NullReferenceException, so bind the single table there.
+        if ((Get-PSReadLineOption).EditMode -eq 'Vi') {
+            Set-PSReadLineKeyHandler -Chord 'Ctrl+r' -ViMode Insert  -BriefDescription FzfHistory -ScriptBlock { Invoke-FzfHistoryPicker }
+            Set-PSReadLineKeyHandler -Chord 'Ctrl+r' -ViMode Command -BriefDescription FzfHistory -ScriptBlock { Invoke-FzfHistoryPicker }
+        } else {
+            Set-PSReadLineKeyHandler -Chord 'Ctrl+r' -BriefDescription FzfHistory -ScriptBlock { Invoke-FzfHistoryPicker }
+        }
         Set-PSReadLineKeyHandler -Chord 'Alt+c' -ScriptBlock { Invoke-FzfSetLocationPicker }
     }
 
