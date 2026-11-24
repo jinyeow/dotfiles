@@ -1,0 +1,5 @@
+# Mechanical reformats to skip in git blame.
+# Use: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# style(powershell): reformat to Allman braces
+167467841be8065d8fa1ec8cbafb0119d9728351
