@@ -234,15 +234,9 @@ A repo outside any workspace keeps single-directory work in-repo under `.claude/
    `title`, not just the registry key.
 5. Add a row to the brain's `index.md`; append to `log.md`; commit.
 
-**New workspace** (a whole new Home Repo and brain, e.g. personal projects): propose the common
-ancestor as the `scope` root and **confirm with the user**. Then `git init` `<scope>/gateroom/`,
-create the layout above, and scaffold `<scope>/gateroom/brain/` with `index.md`/`log.md`/
-`registry.json`/`templates/`/`adr/`, and append `{ scope, path }` (the path is the `brain/` folder) to
-`brains.json`. If `brains.json`
-does not exist yet, create it as `{ "version": 1, "brains": [] }` before appending. Seed the brain's
-`templates/` by copying `templates/` from this skill directory (`core.md`, `STATUS.md`, `adr.md`,
-`log.md`). The scaffolded `index.md` must include an empty `## Archived` section, so the first
-initiative close has somewhere to move a row into.
+**New workspace** (a whole new Home Repo and brain, e.g. personal projects): run the `home-repo-init`
+skill. It is user-invoked, so ask the user to run it. It creates or adopts the Home Repo, scaffolds `brain/`
+from this skill's `templates/`, and adds the `brains.json` entry.
 
 **Initiative close:**
 

@@ -61,6 +61,7 @@ own `SKILL.md` frontmatter, trimmed to one line. Claude-native skills live in `.
 - **`grilling`** — Interview the user relentlessly about a plan or design until reaching shared understanding, resolving each branch of the decision tree in batched frontier rounds.
 - **`grill-with-docs`** — Thin pointer invoking `grilling` and `domain-modeling` together for a grilling session that also updates documentation (CONTEXT.md, ADRs) inline as decisions crystallise.
 - **`health`** — Manual engineering health audit of your agent setup: Claude/Codex config drift, hooks, MCP, skills, memory and skill supply-chain security, and AI-maintainability drift.
+- **`home-repo-init`**: Set up or adopt a Home Repo (`gateroom`) for a workspace on any machine, in four steps with an approval gate before any change.
 - **`i-have-adhd`** — Shape output for a reader with ADHD: lead with the next action, number multi-step work, restate state across turns, suppress tangents, give specific time estimates, make wins visible. `disable-model-invocation: true` — invoke explicitly with `/i-have-adhd`; stays on until "stop adhd mode". Adapted from [ayghri/i-have-adhd](https://github.com/ayghri/i-have-adhd) (MIT).
 - **`implement`** — Implement a piece of work from a spec or set of tickets: TDD at agreed seams, review, then commit.
 - **`implement-spec`** — Implement a whole spec as one pull request, working the ticket frontier with concurrent implementer subagents until every ticket lands, then review and open the PR.
@@ -121,8 +122,8 @@ auto-update by default. To get new commits, run `claude plugin marketplace updat
 
 The hook needs PowerShell 7 (`pwsh`) on `PATH`. The plugin does not create
 `~/.claude/project-brain/brains.json`. Until a brain workspace exists, the hook loads nothing. To start
-a brain, ask Claude in a session to set up a new project-brain workspace. The skill's "New workspace" flow
-creates the Home Repo and its brain from the bundled `templates/` and writes `brains.json`.
+a brain, run the user-invoked `home-repo-init` skill. It creates the Home Repo and its brain from the
+`project-brain` skill's `templates/` and writes `brains.json`.
 
 Do not install the plugin on a machine where `setup.ps1 -Module claude` has run. That setup
 already links the skill into `~/.claude/skills/` and registers the same hook in `settings.json`,
