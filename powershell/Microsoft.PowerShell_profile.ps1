@@ -125,10 +125,6 @@ if ($global:ProfileInteractiveConsole) {
 . "$(Split-Path -Path $PROFILE)/Profile/AzCliAccount.ps1"
 Restore-AzActiveProfile
 
-# --- Staging vault capture (note) --------------------------------------------
-# Defines functions and the note alias only; the Obsidian CLI runs when note is called.
-. "$(Split-Path -Path $PROFILE)/Profile/StagingNote.ps1"
-
 # Native tab-completers for az + zellij are registered in Phase 2b
 # (Initialize-DeferredProfileSecondary) — they only matter once you tab-complete,
 # so registering them at load just delayed the first prompt.
@@ -346,6 +342,13 @@ if (-not $env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME = "$HOME/.config" }
 # Tool config files — paths relative to this repo so they survive repo moves
 $_dotfiles = Split-Path $PSScriptRoot
 $env:DOTFILES = $_dotfiles  # persist so wrapper functions can find theme files at runtime
+# Personal modules (powershell/Modules) autoload on first use of an exported command, so
+# they cost nothing at startup and nothing errors on a machine that leaves one out.
+$_dotfilesModules = Join-Path $_dotfiles 'powershell\Modules'
+if (($env:PSModulePath -split [IO.Path]::PathSeparator) -notcontains $_dotfilesModules)
+{
+    $env:PSModulePath = $_dotfilesModules + [IO.Path]::PathSeparator + $env:PSModulePath
+}
 $env:RIPGREP_CONFIG_PATH  = Join-Path $_dotfiles 'ripgrep\ripgreprc'
 $env:FZF_DEFAULT_OPTS_FILE = Join-Path $_dotfiles 'fzf\fzfrc'
 

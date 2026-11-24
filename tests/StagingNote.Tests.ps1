@@ -1,12 +1,16 @@
 #Requires -Version 7
-# Pester tests for powershell/Profile/StagingNote.ps1 (the `note` command). The file
-# defines functions with no load-time side effects, so it is dot-sourced directly.
-# Invoke-ObsidianCli is the only boundary to the running Obsidian app; it is mocked to
-# point the Staging vault at $TestDrive, so no test touches a real vault. Assertions are
-# on the daily-note file content.
+# Pester tests for the StagingNote module (powershell/Modules/StagingNote, the `note`
+# command). Invoke-ObsidianCli is the only boundary to the running Obsidian app; it is
+# mocked inside the module to point the Staging vault at $TestDrive, so no test touches a
+# real vault. Assertions are on the daily-note file content.
 
 BeforeAll {
-    . (Join-Path (Split-Path $PSScriptRoot -Parent) 'powershell' 'Profile' 'StagingNote.ps1')
+    $script:ModulesRoot = Join-Path (Split-Path $PSScriptRoot -Parent) 'powershell' 'Modules'
+    Import-Module (Join-Path $script:ModulesRoot 'StagingNote') -Force
+}
+
+AfterAll {
+    Remove-Module StagingNote -ErrorAction Ignore
 }
 
 Describe 'Add-StagingNote' {
@@ -15,9 +19,9 @@ Describe 'Add-StagingNote' {
         New-Item -ItemType Directory -Path (Join-Path $script:vaultRoot 'daily') -Force | Out-Null
         $script:dailyFile = Join-Path $script:vaultRoot 'daily' '2026-11-24.md'
 
-        Mock Invoke-ObsidianCli { $script:vaultRoot } -ParameterFilter { $Arguments -contains 'info=path' }
-        Mock Invoke-ObsidianCli { 'daily/2026-11-24.md' } -ParameterFilter { $Arguments -contains 'daily:path' }
-        Mock Invoke-ObsidianCli {
+        Mock Invoke-ObsidianCli -ModuleName StagingNote { $script:vaultRoot } -ParameterFilter { $Arguments -contains 'info=path' }
+        Mock Invoke-ObsidianCli -ModuleName StagingNote { 'daily/2026-11-24.md' } -ParameterFilter { $Arguments -contains 'daily:path' }
+        Mock Invoke-ObsidianCli -ModuleName StagingNote {
             [IO.File]::WriteAllText($script:dailyFile, "# from template`n")
         } -ParameterFilter { $Arguments -contains 'create' }
     }
@@ -76,7 +80,7 @@ Describe 'Add-StagingNote' {
 
     It 'uses the clipboard when nothing is piped' {
         [IO.File]::WriteAllText($script:dailyFile, '')
-        Mock Get-Clipboard { 'from clipboard' }
+        Mock Get-Clipboard -ModuleName StagingNote { 'from clipboard' }
 
         Add-StagingNote 'clip'
 
@@ -91,7 +95,7 @@ Describe 'Add-StagingNote' {
 
     It 'throws and writes nothing when there is no content' {
         [IO.File]::WriteAllText($script:dailyFile, 'unchanged')
-        Mock Get-Clipboard { '' }
+        Mock Get-Clipboard -ModuleName StagingNote { '' }
 
         { Add-StagingNote 'empty' } | Should -Throw '*Nothing to add*'
         [IO.File]::ReadAllText($script:dailyFile) | Should -BeExactly 'unchanged'
@@ -99,5 +103,23 @@ Describe 'Add-StagingNote' {
 
     It 'is available as the note alias' {
         (Get-Alias note).Definition | Should -Be 'Add-StagingNote'
+    }
+}
+
+Describe 'StagingNote module autoloading' {
+    It 'resolves note from the module in a fresh session without Import-Module' {
+        $sep = [IO.Path]::PathSeparator
+        $command = "`$env:PSModulePath = '$ModulesRoot' + '$sep' + `$env:PSModulePath; (Get-Command note).Source"
+
+        $source = & (Get-Process -Id $PID).Path -NoProfile -NonInteractive -Command $command
+
+        $source | Should -BeExactly 'StagingNote'
+    }
+
+    It 'exports only Add-StagingNote and the note alias' {
+        $module = Get-Module StagingNote
+
+        @($module.ExportedFunctions.Keys) | Should -BeExactly @('Add-StagingNote')
+        @($module.ExportedAliases.Keys) | Should -BeExactly @('note')
     }
 }

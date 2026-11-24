@@ -1,7 +1,8 @@
 # ============================================================================
-# StagingNote.ps1 — `note`: append text to today's note in the Staging Obsidian vault
+# StagingNote.psm1 — `note`: append text to today's note in the Staging Obsidian vault
 # ============================================================================
-# Defines functions and the `note` alias only; NO side effects at dot-source.
+# Defines functions and the `note` alias only; NO side effects at import. PowerShell
+# autoloads the module the first time `note` or Add-StagingNote runs (see the manifest).
 # The Obsidian CLI (Obsidian.exe on PATH, app running) resolves the vault folder and
 # today's daily-note path, and creates the note from the vault's `Daily` template. The
 # text itself is appended straight to the file: the CLI's content= argument rewrites
