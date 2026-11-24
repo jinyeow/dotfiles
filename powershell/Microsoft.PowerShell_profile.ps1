@@ -125,6 +125,10 @@ if ($global:ProfileInteractiveConsole) {
 . "$(Split-Path -Path $PROFILE)/Profile/AzCliAccount.ps1"
 Restore-AzActiveProfile
 
+# --- Staging vault capture (note) --------------------------------------------
+# Defines functions and the note alias only; the Obsidian CLI runs when note is called.
+. "$(Split-Path -Path $PROFILE)/Profile/StagingNote.ps1"
+
 # Native tab-completers for az + zellij are registered in Phase 2b
 # (Initialize-DeferredProfileSecondary) — they only matter once you tab-complete,
 # so registering them at load just delayed the first prompt.
@@ -550,8 +554,14 @@ function Initialize-DeferredProfile {
         # split behaviour plus a duplicate row in Get-PSReadLineKeyHandler. Insert is what fires
         # while typing, so overriding both tables makes Ctrl+r = fzf history in either Vi mode.
         Set-PSReadLineKeyHandler -Chord 'Ctrl+t' -ScriptBlock { Invoke-FzfFilePicker }
-        Set-PSReadLineKeyHandler -Chord 'Ctrl+r' -ViMode Insert  -BriefDescription FzfHistory -ScriptBlock { Invoke-FzfHistoryPicker }
-        Set-PSReadLineKeyHandler -Chord 'Ctrl+r' -ViMode Command -BriefDescription FzfHistory -ScriptBlock { Invoke-FzfHistoryPicker }
+        # -ViMode needs EditMode Vi, which Phase 1 sets only on an interactive console. Under any
+        # other EditMode PSReadLine throws NullReferenceException, so bind the single table there.
+        if ((Get-PSReadLineOption).EditMode -eq 'Vi') {
+            Set-PSReadLineKeyHandler -Chord 'Ctrl+r' -ViMode Insert  -BriefDescription FzfHistory -ScriptBlock { Invoke-FzfHistoryPicker }
+            Set-PSReadLineKeyHandler -Chord 'Ctrl+r' -ViMode Command -BriefDescription FzfHistory -ScriptBlock { Invoke-FzfHistoryPicker }
+        } else {
+            Set-PSReadLineKeyHandler -Chord 'Ctrl+r' -BriefDescription FzfHistory -ScriptBlock { Invoke-FzfHistoryPicker }
+        }
         Set-PSReadLineKeyHandler -Chord 'Alt+c' -ScriptBlock { Invoke-FzfSetLocationPicker }
     }
 
