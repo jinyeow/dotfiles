@@ -181,6 +181,12 @@ Describe 'worktree-janitor skill' {
         $content | Should -Match '(?s)Sync the initiative registry in the same step.*git -C .* commit'
     }
 
+    It 'requires clean brain target files before the sync and a commit message that matches what changed' {
+        $content = Get-Content $skillPath -Raw
+        $content | Should -Match '(?is)Sync the initiative registry in the same step.*clean\s+before\s+you\s+edit'
+        $content | Should -Match '(?is)Sync the initiative registry in the same step.*if\s+the\s+glob\s+stays'
+    }
+
     It 'is registered in the root README skills table' {
         Get-Content (Join-Path $repo 'README.md') -Raw | Should -Match '`worktree-janitor`'
     }

@@ -151,10 +151,13 @@ approves it.
         globs (`<scope>/gateroom/brain/initiatives/<id>` and `<id>/*`). Initiative close removes
         them.
 
-     Then commit both files with `git -C '<brain>' add 'registry.json' 'initiatives/<id>/STATUS.md'`
-     and `git -C '<brain>' commit -m 'chore(<id>): mark <dir> merged and drop its glob'`. If the
-     brain repo has other staged or unrelated changes, stage only these two files. Add the row
-     and the glob you removed to the final report.
+     Check that `git -C '<brain>' status --porcelain -- 'registry.json' 'initiatives/<id>/STATUS.md'`
+     prints nothing. Both files must be clean before you edit them. If either has uncommitted
+     changes, stop and report it, because a commit would include edits that are not yours.
+     Then stage only those two files and run `git -C '<brain>' commit`. Use the message
+     `chore(<id>): mark '<dir>' merged and drop its glob` when the glob went too. Use
+     `chore(<id>): mark '<dir>' merged` if the glob stays because another worktree of the item
+     remains. Add the row and the glob you removed, if any, to the final report.
    - `git branch -d '<branch>'` (non-force). This succeeds for a normal/fast-forward merge and
      is itself fully automated — no confirmation needed once step 2–4 already established
      safety and the ancestor check above passed.
