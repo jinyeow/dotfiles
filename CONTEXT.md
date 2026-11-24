@@ -31,3 +31,15 @@ _Avoid_: brain (ambiguous — could mean the repo, an initiative, or the concept
 **OKF concept**:
 A single Markdown file with a `type:` frontmatter field, per the Open Knowledge Format. Every non-reserved `.md` file under a brain (`core.md`, `STATUS.md`, `adr/*.md`, `research/*.md`, `reports/*.md`) is a concept; `index.md` and `log.md` are reserved filenames and are not concepts.
 _Avoid_: document, page (too generic — "concept" is OKF's own term and is what a consumer routes on via `type:`)
+
+**Workspace**:
+One `brains.json` scope plus its Home Repo, such as all work under `~/work/`. Every work item in a workspace is an initiative. A repo outside any workspace keeps its brain in-repo under `.claude/brain/`.
+_Avoid_: area, brain area (the word "area" keeps one meaning: a group of repos in a `repos/<area>.md` pointer file)
+
+**Home Repo**:
+The git repo directly inside a workspace's scope folder that holds `AGENTS.md`, a `CLAUDE.md` pointer, `repos/` pointer files, a `wiki/`, workspace-only `skills/`, and the `brain/` folder. The `AGENTS.md` carries the workspace default tracker under Work tracking. See `docs/adr/home-repo-is-workspace-brain.md`.
+_Avoid_: hub repo, meta repo, brain repo (the brain is only the `brain/` folder inside it)
+
+**gateroom**:
+The fixed name of the Home Repo in every workspace, so skills and docs describe one layout.
+_Avoid_: other Home Repo names such as `home` or `hub`

@@ -45,6 +45,7 @@ See [`AGENTS.d/project-brain.md`](AGENTS.d/project-brain.md) — only applies wh
 Route a durable fact by what it is:
 
 - **Project brain** (`core.md`/`STATUS.md`/ADRs/research, per [`AGENTS.d/project-brain.md`](AGENTS.d/project-brain.md)) — deliberate, cross-repo *initiative* knowledge: a decision, a status-relevant event, a research/report artifact. Git-repo-external, versioned, human-reviewable. Portable across Claude Code, Codex CLI, and Pi.
+- **Workspace wiki** (`wiki/` in the workspace's Home Repo): long-term workspace knowledge: standards, conventions and facts that outlive an initiative. Initiative status stays in the project brain.
 - A standing rule goes in this file or `claude/CLAUDE.md`. A decision with rejected alternatives goes in an ADR under `docs/adr/`. Repo-specific facts go in that repo's docs.
 
 ## Prompting downstream models

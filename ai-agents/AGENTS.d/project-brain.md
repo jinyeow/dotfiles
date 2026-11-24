@@ -5,4 +5,6 @@ Durable cross-repo initiative knowledge (per-initiative `core.md` plus volatile 
 2. Read that brain's `registry.json`, find the initiative whose `dirs` glob matches cwd, and read its `core.md` and `STATUS.md` (read `research/`, `adr/`, `reports/` only on demand).
 3. If `STATUS.md`'s `updated:` is more than 7 days old, flag that before trusting it.
 
+In a workspace (a `brains.json` scope plus its Home Repo, `gateroom`), every work item is an initiative, including a single-repo item. In-repo `.claude/brain/` is only for a repo outside a workspace. Never keep durable state in gitignored worktree scratch.
+
 The full contract (record decisions as ADRs, file research/reports, refresh STATUS, append the session narrative to the initiative's `log.md`, then append to the brain's root log on session close) is in `~/.claude/skills/project-brain/SKILL.md`.

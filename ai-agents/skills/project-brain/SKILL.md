@@ -4,31 +4,63 @@ description: >
   Load and maintain the "project brain" - durable cross-repo initiative knowledge (core context,
   volatile STATUS, ADRs, research, reports) that lives in a git repo OUTSIDE any single code repo, so
   work spanning multiple repos/worktrees/spikes stays coherent between sessions. Use when resuming or
-  continuing a multi-directory initiative, scaffolding a new initiative or a new brain area, recording a
+  continuing a multi-directory initiative, scaffolding a new initiative or a new workspace, recording a
   decision as an ADR, updating status, closing out a session, or filing a research/report artifact.
 ---
 
 # project-brain
 
-A **brain** is a versioned knowledge base for one *area* (e.g. all work under
-`~/work/`). It holds per-initiative working knowledge and is the single source of
-truth for "where are we". It is distinct from the code **wiki** (`<area>\wiki\`), which is code-derived
-and regenerate-able; the brain's truth source is the work.
+A **workspace** is one `brains.json` scope (for example all work under `~/work/`) plus its **Home
+Repo**. The Home Repo is named `gateroom` and is a git repo directly inside the scope folder (`<scope>/gateroom/`). A **brain** is the
+versioned knowledge base in the Home Repo's `brain/` folder. It holds per-initiative working
+knowledge and is the single source of truth for "where are we". It is distinct from the workspace
+**wiki** (`wiki/` in the Home Repo), which holds long-term knowledge and is regenerate-able; the
+brain's truth source is the work.
+
+The word "area" has one meaning left: a group of repos in a `repos/<area>.md` pointer file.
+
+Decision record: `docs/adr/home-repo-is-workspace-brain.md` in the dotfiles repo.
+
+## Home Repo layout
+
+```
+gateroom/
+  AGENTS.md    intro, Work tracking, Other Repos pointers, a rule against .claude/handoff.md,
+               and a line saying global rules and skills load from the runtime folders
+  CLAUDE.md    one-line pointer to AGENTS.md
+  repos/       <area>.md pointer files, once the workspace passes about 20 repos
+  wiki/        long-term knowledge, standards and conventions, plus a hand-written rules section
+  skills/      workspace-only, ad hoc skills
+  brain/       the brain: the OKF bundle that `brains.json` points at
+```
+
+- Work tracking: the workspace default tracker goes in `AGENTS.md`, under a Work tracking
+  heading. A repo that uses another tracker gets a hint on its pointer line in `AGENTS.md`. The
+  hint points at the repo's own workflow config. Tracker details live in that config only.
+- Wiki: ingests never overwrite the hand-written rules section.
+- Every work item in a workspace is an initiative, including a single-repo item. There is no
+  per-item notes folder.
+- In-repo `.claude/brain/` is only for a repo outside any workspace.
+- Durable state never goes in gitignored scratch inside a worktree. Removing the worktree
+  deletes that scratch. Put the state in the brain.
+- The Home Repo never names the repo that installs the global rules and skills. It names the
+  runtime folders (Claude, Codex, shared agent skills, Pi) when it refers to global material.
 
 ## Where things live
 
-- Global map: `~/.claude/project-brain/brains.json` - `[{ scope, path }]`, one per area. The SessionStart
+- Global map: `~/.claude/project-brain/brains.json` - `[{ scope, path }]`, one per workspace. The SessionStart
   hook (`scripts/session-start.ps1` in this skill directory, whether installed by the dotfiles setup or
   as the Claude Code plugin) reads it.
-- A brain repo per area: `index.md`, `log.md`, `registry.json`, `adr/`, `templates/`, `reports/`,
-  `initiatives/<id>/`, and optionally `learner.md` — the `/walkthrough` skill's area-level learner
-  profile (domain knowledge the user has demonstrated; written by walkthrough close-out, read to
-  pitch tour depth). Area-level, not per-initiative, because the user's knowledge spans initiatives.
+- A brain per workspace (the Home Repo's `brain/` folder): `index.md`, `log.md`, `registry.json`,
+  `adr/`, `templates/`, `reports/`, `initiatives/<id>/`, and optionally `learner.md`, the
+  `/walkthrough` skill's workspace-level learner profile (domain knowledge the user has
+  demonstrated; written by walkthrough close-out, read to pitch tour depth). It sits at workspace
+  level because the user's knowledge spans initiatives.
 - An initiative: `core.md` (stable, auto-loaded), `STATUS.md` (volatile, auto-loaded),
   `log.md` (session history for this initiative, read on demand, not auto-loaded), `adr/`,
-  `research/` (+ `index.md`), `reports/`, `spikes/`, and — per initiative role — `tickets/` (per-PBI
-  ticket files) or a one-off `kanban.md`.
-- Single-directory work uses the same schema in the repo's gitignored `.claude/brain/` instead.
+  `research/` (+ `index.md`), `reports/`, `spikes/`, `specs/`, and, per initiative role, `tickets/`
+  (per-PBI ticket files) or a one-off `kanban.md`.
+- A repo outside any workspace uses the same schema in its gitignored `.claude/brain/` instead.
 
 ## Schema: the Open Knowledge Format
 
@@ -82,7 +114,7 @@ forward, by a session that actually re-performs the confirmation.
 
 **Link syntax:** Obsidian-style `[[wikilink]]` is retired in favor of OKF's standard markdown links —
 `[text](/path)` (absolute, bundle-root-relative) or `[text](./path)` (relative). Applies to
-`core.md`'s Map section, area-level `index.md`, and ADR cross-references.
+`core.md`'s Map section, the brain-root `index.md`, and ADR cross-references.
 
 **Conversion script:** `scripts/convert-to-okf.ps1` in this directory does the mechanical part of
 migrating a pre-existing file — wikilink rewrite, `type:`/`stale_after:` insertion, `verified: []`
@@ -146,8 +178,8 @@ anything that is history into the initiative `log.md`; (2) append the session na
 the brain's root `log.md` (`## [date] <op> | <initiative> - <what moved>`); (4) `git -C <brain> add -A
 && git commit` (conventional message); (5) delete anything this session duplicated outside the brain.
 
-**On landing** (initiative changes a durable fact the code wiki asserts): promote that fact into
-`<area>/wiki/` via a wiki ingest and log it. Volatile status never goes to the wiki. The brain may link to
+**On landing** (initiative changes a durable fact the workspace wiki asserts): promote that fact into
+the Home Repo's `wiki/` via a wiki ingest and log it. Volatile status never goes to the wiki. The brain may link to
 wiki pages; the wiki never depends on the brain.
 
 **Always:** no secrets in the brain (no credentials/tokens/PATs/connection strings). Identifiers (SPN/MG
@@ -155,11 +187,11 @@ names, PBI/run IDs) are fine.
 
 ## Scaffolding
 
-**New initiative** (spans >1 working directory - worktrees/repos/spikes; single-directory work stays
-in-repo under `.claude/brain/`):
+**New initiative** (in a workspace, every work item is an initiative, including a single-repo item.
+A repo outside any workspace keeps single-directory work in-repo under `.claude/brain/`):
 1. Gather the directories it spans; compute their longest common ancestor.
 2. Find the `brains.json` entry whose `scope` is an ancestor of that. **Confirm the target brain/scope
-   with the user before scaffolding** (always, even when a scope matches). If none matches, run "new area".
+   with the user before scaffolding** (always, even when a scope matches). If none matches, run "new workspace".
 3. Key it `<PBI-id>-<slug>` (bare slug if no PBI). Create `initiatives/<id>/` from `templates/` (`core.md`,
    `STATUS.md`, `log.md`, `adr/`, `research/index.md`, `reports/index.md`).
 4. Add a `registry.json` entry: `"<id>": { "title", "status": "active", "dirs": ["<glob>", ...] }`, where
@@ -169,9 +201,11 @@ in-repo under `.claude/brain/`):
    findable string — the loading fallback above greps `title`, not just the registry key.
 5. Add a row to the brain's `index.md`; append to `log.md`; commit.
 
-**New area** (a whole new brain, e.g. personal projects): propose the common ancestor as the `scope` root
-and **confirm with the user**. Then `git init` `<scope>/brain/`, scaffold `index.md`/`log.md`/
-`registry.json`/`templates/`/`adr/`, and append `{ scope, path }` to `brains.json`. If `brains.json`
+**New workspace** (a whole new Home Repo and brain, e.g. personal projects): propose the common
+ancestor as the `scope` root and **confirm with the user**. Then `git init` `<scope>/gateroom/`,
+create the layout above, and scaffold `<scope>/gateroom/brain/` with `index.md`/`log.md`/
+`registry.json`/`templates/`/`adr/`, and append `{ scope, path }` (the path is the `brain/` folder) to
+`brains.json`. If `brains.json`
 does not exist yet, create it as `{ "version": 1, "brains": [] }` before appending. Seed the brain's
 `templates/` by copying `templates/` from this skill directory (`core.md`, `STATUS.md`, `adr.md`,
 `log.md`). The scaffolded `index.md` must include an empty `## Archived` section, so the first
@@ -187,7 +221,7 @@ initiative close has somewhere to move a row into.
    link, e.g. `[<id>](/initiatives/_archive/<id>/core.md)` — the link path gains `_archive/`
    because the folder moved.
 4. Fix relative paths inside the moved files that broke because the folder is now one level
-   deeper: from `_archive/<id>/`, the brain root is `../../../` and an area wiki is
+   deeper: from `_archive/<id>/`, the brain root is `../../../` and the workspace wiki is
    `../../../../wiki/`. This is separate from the index-row link in step 3, which is
    root-absolute. A 2026-09-17 review found four archived files with paths broken by exactly
    this move — the path fix is not optional.

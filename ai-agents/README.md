@@ -120,9 +120,9 @@ auto-update by default. To get new commits, run `claude plugin marketplace updat
 `claude plugin update project-brain@dotfiles`.
 
 The hook needs PowerShell 7 (`pwsh`) on `PATH`. The plugin does not create
-`~/.claude/project-brain/brains.json`. Until a brain area exists, the hook loads nothing. To start
-a brain, ask Claude in a session to set up a new project-brain area. The skill's "New area" flow
-creates the brain repo from the bundled `templates/` and writes `brains.json`.
+`~/.claude/project-brain/brains.json`. Until a brain workspace exists, the hook loads nothing. To start
+a brain, ask Claude in a session to set up a new project-brain workspace. The skill's "New workspace" flow
+creates the Home Repo and its brain from the bundled `templates/` and writes `brains.json`.
 
 Do not install the plugin on a machine where `setup.ps1 -Module claude` has run. That setup
 already links the skill into `~/.claude/skills/` and registers the same hook in `settings.json`,
