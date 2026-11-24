@@ -24,6 +24,7 @@ PowerShell 7 profile and prompt for Windows (and Linux where applicable).
 | `Profile/Set-Prompt.ps1` | Prompt definition (jj/git + Azure context) |
 | `Profile/AzCliAccount.ps1` | Azure CLI named-profile switch (`azs`) — defines functions only; the profile calls `Restore-AzActiveProfile` in Phase 1 |
 | `Profile/StagingNote.ps1` | `note` capture into the Staging Obsidian vault — defines functions only |
+| `PSScriptAnalyzerSettings.Personal.psd1` | PSScriptAnalyzer template for personal projects. It sets Allman statement braces and 4-space indentation, and keeps scriptblock arguments (`ForEach-Object {`) on the same line. Copy it into a project root as `PSScriptAnalyzerSettings.psd1`, or pass it with `-Settings` to `Invoke-ScriptAnalyzer` or `Invoke-Formatter`. Tested by `tests/pssa-personal-settings.Tests.ps1` |
 
 The installer generates a stub at `~/Documents/PowerShell/Microsoft.PowerShell_profile.ps1`
 that dot-sources the repo file — changes are live immediately without re-running setup.
