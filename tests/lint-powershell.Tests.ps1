@@ -117,8 +117,8 @@ Describe 'claude/lint-powershell.ps1 ruleset discovery' -Skip:(-not $script:HasP
         # THE BUG: this repo keeps PSScriptAnalyzerSettings.psd1 at the root — that is the
         # file CI passes (ci.yml: -Settings ./PSScriptAnalyzerSettings.psd1). The hook only
         # ever looked for `.vscode/PSScriptAnalyzerSettings.psd1`, so it silently linted
-        # with defaults and false-flagged rules this repo excludes (Write-Host on
-        # git/work-hooks/policy.ps1 was the recurring one).
+        # with defaults and false-flagged rules this repo excludes (Write-Host in a
+        # hook script was the recurring one).
         $root = New-TempRoot
         try
         {

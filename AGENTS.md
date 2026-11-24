@@ -35,7 +35,7 @@ These are repository paths, so this routing works without runtime-specific impor
 | PowerShell profile and deferred phases | [`powershell/README.md`](powershell/README.md); [`powershell/Microsoft.PowerShell_profile.ps1`](powershell/Microsoft.PowerShell_profile.ps1); [`tests/setup.Tests.ps1`](tests/setup.Tests.ps1) |
 | Prompt, jj/git status, exit code, and CWD | [`powershell/Profile/Set-Prompt.ps1`](powershell/Profile/Set-Prompt.ps1); [`tests/Set-Prompt.Tests.ps1`](tests/Set-Prompt.Tests.ps1) |
 | Profile-pointed tool configs (fzf, ripgrep, bat, lazygit, eza, tig) | [`powershell/README.md`](powershell/README.md) (Phase 1): env vars point at the repo files via `$env:DOTFILES`; nothing is copied |
-| Git config and work hooks | [`git/README.md`](git/README.md); [`git/gitconfig`](git/gitconfig); [`git/work-hooks/`](git/work-hooks/); [`tests/git-work-hooks.Tests.ps1`](tests/git-work-hooks.Tests.ps1) |
+| Git config and hooks | [`git/README.md`](git/README.md); [`git/gitconfig`](git/gitconfig); [`git/gitconfig-work`](git/gitconfig-work); [`tests/git-config.Tests.ps1`](tests/git-config.Tests.ps1) |
 | Neovim APIs and plugins | [`nvim/README.md`](nvim/README.md); [`nvim/init.lua`](nvim/init.lua); [`nvim/lua/`](nvim/lua/); [`nvim/nvim-pack-lock.json`](nvim/nvim-pack-lock.json) |
 | psmux | [`psmux/README.md`](psmux/README.md); [`psmux/psmux.conf`](psmux/psmux.conf) |
 | Zellij | [`zellij/README.md`](zellij/README.md); [`zellij/config.kdl`](zellij/config.kdl) |

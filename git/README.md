@@ -16,13 +16,12 @@ Git configuration, global ignore rules and attributes, commit template, and glob
 | File | Installed as | Notes |
 |---|---|---|
 | `gitconfig` | `~/.gitconfig` | Base config for all machines. Ends by including the untracked `~/.gitconfig.local` |
-| `gitconfig-work` | `~/.gitconfig-work` | Work overrides; included per repo by the `[includeIf]` blocks in `~/.gitconfig.local`. Ends by including the untracked `~/.gitconfig-work.local` |
+| `gitconfig-work` | `~/.gitconfig-work` | Work overrides; included per repo by the `[includeIf]` blocks in `~/.gitconfig.local`. Sets `work.aiReferenceScan = true`. Ends by including the untracked `~/.gitconfig-work.local` |
 | `gitignore` | `~/.gitignore` | Global ignore rules |
 | `gitignore-work` | `~/.gitignore-work` | Global ignore rules for work repos. Replaces `gitignore` there via `core.excludesFile` in `gitconfig-work`. Adds .NET, Terraform, and Azure Functions build output, plus AI tooling files |
 | `gitmessage` | `~/.gitmessage` | Commit message template |
 | `gitattributes` | `~/.gitattributes` | Global attributes (`core.attributesfile`). Per-type whitespace rules for formats indented with tabs (Go, Makefiles, `.gitmodules`, TSV) |
 | `templates/` | `~/.git_templates/` | Global hook scripts in `templates/hooks/`, run by the `[hook "dotfiles-<event>"]` stanzas in `gitconfig` |
-| `work-hooks/` | `~/.git_work_hooks/` | Work-only hooks, wired via `[hook]` in `gitconfig-work` |
 
 ## Key settings
 
@@ -62,17 +61,20 @@ The include chain:
 1. `gitconfig` includes `~/.gitconfig.local` last, so its values win over the base config.
 2. The `[includeIf]` blocks in `~/.gitconfig.local` load `~/.gitconfig-work` for any repo
    with a work remote, and for repos under the work root.
-3. `gitconfig-work` includes `~/.gitconfig-work.local` last. So the work email overrides
-   the personal one only in work repos.
+3. `gitconfig-work` sets `work.aiReferenceScan = true`, then includes
+   `~/.gitconfig-work.local` last. So the work email overrides the personal one only in
+   work repos, and the AI-reference scan runs only there.
 
 Git ignores a missing include file. Without `~/.gitconfig.local`, no repo gets the work
 identity. The `hasconfig:remote.*.url` conditions need Git 2.36+.
 
 The AI-reference hooks (`pre-commit` and `commit-msg` below, plus the Claude Code, Codex,
-and Pi guards) read `work.adoOrgUrl`. The `rfc`, `agent-staging`, and board-triage skills
-read the `[work]` keys too. `tests/public-repo-hygiene.Tests.ps1` reads all four keys
-and checks that no tracked file names their values. The hooks fail open when the key
-is unset or empty: they treat every repo as a non-work repo.
+and Pi guards) read `work.aiReferenceScan`, which `gitconfig-work` sets. So they scan
+exactly the repos that get the work identity, including a repo with no remote under the
+work root. They fail open when the key is unset or false. The `rfc`, `agent-staging`, and
+board-triage skills read the `[work]` keys in `~/.gitconfig.local`.
+`tests/public-repo-hygiene.Tests.ps1` reads those four keys and checks that no tracked
+file names their values.
 
 Template for `~/.gitconfig.local` (replace every `<...>` placeholder):
 
@@ -251,14 +253,13 @@ Two independent checks, gitleaks first:
   the gitleaks CI job is the backstop. Bypass one commit: `SKIP_GITLEAKS=1 git commit ...`
 - **AI-reference scan** — blocks a commit whose staged diff adds a line matching
   `ai-agents/_shared/banned-ai-terms.txt` (added lines only; a banned term on a
-  removed line does not block). Scoped to work Azure DevOps repos only — see
+  removed line does not block). Scoped to work repos only — see
   `### commit-msg` below for the scoping rule and fail-open/closed behaviour,
   which this check shares. Bypass one commit: `SKIP_AI_REFERENCE_SCAN=1 git commit ...`
 
 Both checks run in the same file, under the one `dotfiles-pre-commit` stanza.
-Neither check has pwsh-native logic worth a `.ps1`/`.sh` split
-(see "Why this splits when `pre-commit` doesn't" below, which explains why
-`prepare-commit-msg` splits and this doesn't).
+Neither check has pwsh-native logic worth a `.ps1`/`.sh` split: both only shell
+out to cross-platform binaries.
 
 ### `commit-msg`
 
@@ -268,20 +269,22 @@ the hard-block layer for AI/Claude/Codex/Copilot/co-authorship references
 Git invokes `commit-msg <path-to-commit-msg-file>`, so this sees the final
 message text regardless of `-m`, `-F`, an editor, `--amend`, or a merge.
 
-Scoped to work Azure DevOps repos only, via the same signal the work identity
-uses: `git remote get-url origin` is a `dev.azure.com` URL whose organisation
-segment is the work organisation, case-insensitive. The HTTPS form (with or
-without a user name) and the SSH v3 form both count. The
-organisation is the last path segment of `git config work.adoOrgUrl`, set in
-`~/.gitconfig.local` (see above). GitHub repos (dotfiles, wiki, brain) legitimately
-say "Claude"/"Codex" in their own subject matter and are never scanned. If
-`git remote get-url origin` fails (no remote, not a repo), `work.adoOrgUrl` is
-unset or empty, or the URL doesn't match, the commit is allowed.
+Scoped to work repos only. The scan runs when
+`git config --type=bool --get work.aiReferenceScan` prints `true`. `gitconfig-work`
+sets the key, so the `[includeIf]` blocks that apply the work identity also turn on
+the scan. The remote does not matter. GitHub repos (dotfiles, wiki, brain)
+legitimately say "Claude"/"Codex" in their own subject matter and are never scanned.
+If the key is unset, false, or not a boolean, or this is not a repo, the commit is
+allowed. To turn the scan off in one work repo:
+
+```sh
+git config work.aiReferenceScan false
+```
 
 Fails open on every other condition, and fails closed only when scoped-in AND
-the wordlist itself is missing or unreadable — mirroring `gitconfig-work`'s
-`[hook "work-policy"]` reasoning (fail-open covers "not installed yet", never
-"installed but broken"; a missing wordlist in a scoped-in repo is the latter).
+the wordlist itself is missing or unreadable. This follows the guard in the
+`[hook "dotfiles-<event>"]` commands: fail-open covers "not installed yet", never
+"installed but broken". A missing wordlist in a scoped-in repo is the latter.
 
 Bypass one commit: `SKIP_AI_REFERENCE_SCAN=1 git commit ...`
 
@@ -290,89 +293,19 @@ Bypass one commit: `SKIP_AI_REFERENCE_SCAN=1 git commit ...`
 Auto-regenerate ctags after relevant git operations. Reads `~/.ctags` for
 tag configuration. Create a `.notags` file in any repo to disable.
 
-## Work-only hooks (`work-hooks/`)
-
-The global hooks in `gitconfig` run in every repo. A `[hook]` stanza in
-`gitconfig-work` runs only in work repos, because it obeys the same `[includeIf]`
-conditions as everything else in that file:
-
-```ini
-[hook "work-policy"]
-    event = pre-commit
-    command = "test -f ~/.git_work_hooks/policy || exit 0; exec ~/.git_work_hooks/policy"
-```
-
-Three things about that value are load-bearing, all pinned by
-`tests/git-work-hooks.Tests.ps1`:
-
-- **The guard makes it fail open when the dispatcher isn't installed.** Git does
-  *not* fail open on a missing command — it errors `cannot spawn <path>` and
-  **blocks the commit**. `~/.gitconfig-work` includes the repo copy, so the stanza
-  goes live the moment a clone pulls, while `~/.git_work_hooks` only appears once
-  `setup.ps1 -Module git` re-runs; without the guard every work commit fails in
-  that window. A dispatcher that *is* present and exits non-zero still blocks.
-- **`-f` (exists), not `-x` (executable).** Fail-open is meant to cover "not
-  installed yet", never "installed but broken". With `-x`, a present-but-non-
-  executable dispatcher — an install that dropped the exec bit — makes the guard
-  exit 0 and the policy is **silently skipped**; with `-f` it reaches `exec` and
-  fails loudly (126). The difference is only visible on Linux: Windows reports
-  every file executable and `chmod` is a no-op there.
-- **The double quotes are required.** `;` starts a comment in git config, so
-  unquoted the value silently truncates to `test -f ... || exit 0` — the policy
-  never runs and the hook enforces nothing while still appearing in
-  `git hook list`. Git strips the quotes before handing the value to sh, so `~`
-  still expands. (`test -x ... && exec ...` dodges the `;` but is wrong: with the
-  dispatcher absent, `test` exits 1 and that becomes the hook's status, blocking
-  the commit. The explicit `|| exit 0` is what fails open.)
-
-`policy` is a POSIX-sh dispatcher that execs `policy.ps1` (pwsh) or `policy.sh`
-(fallback) — the same shim pattern as `prepare-commit-msg`. It is an **example
-placeholder**: it looks for a generic `work-policy-scan` tool, and when absent
-warns and allows the commit (fails **open**, like the gitleaks hook). Override
-the tool name with `WORK_POLICY_TOOL`; bypass one commit with
-`SKIP_WORK_POLICY=1 git commit ...`.
-
-### Why this splits when `pre-commit` doesn't
-
-The gitleaks `pre-commit` is one sh file, and documents that a `.ps1`/`.sh` split
-is only warranted for real pwsh-native logic. This hook splits anyway, for a
-reason that rule doesn't cover: **sh and pwsh resolve PATH differently.**
-`command -v` follows Unix semantics and does not find a Windows `.cmd`/`.bat`/
-`.ps1` — only `.exe` — while pwsh's `Get-Command` honours `PATHEXT` and does.
-gitleaks is unaffected because it ships as a `.exe`. A policy scanner shipping as
-a `.cmd` wrapper would be invisible to sh, and this hook fails **open**, so an
-sh-only version would silently enforce nothing on Windows — the same trap as
-running it on git < 2.54. Collapse to a single sh file only once the scanner is
-guaranteed to be a `.exe`.
-
 ### Ordering is additive — existing hooks still run
 
 Configured hooks run **first** (system → global → local, in file order), then the
-repo's own `.git/hooks` script runs **last**. `gitconfig` includes `~/.gitconfig.local`
-at its end, so `work-policy` comes after the `dotfiles-*` stanzas. Verify:
+repo's own `.git/hooks` script runs **last**. Verify:
 
 ```console
-$ git hook list pre-commit          # in a work repo
+$ git hook list pre-commit
 dotfiles-pre-commit                 # <- gitleaks and the AI-reference scan
-work-policy
 hook from hookdir                   # <- only if the repo has its own pre-commit
-
-$ git hook list pre-commit          # in a personal repo
-dotfiles-pre-commit                 # work-policy absent: [includeIf] did not match
 ```
 
 `git hook list --show-scope pre-commit` adds where each came from (`global`,
-`local`). Opt out without deleting the stanza:
-
-```sh
-git config hook.work-policy.enabled false   # -> "disabled  work-policy"
-```
-
-### The `work-policy` path is unquoted
-
-The `command` path is deliberately **unquoted**: git runs it through `sh`, which
-expands the leading `~`. Quoting would defeat that, so the path must stay free of
-spaces (`sh` word-splits an unquoted path).
+`local`).
 
 ### Requires Git >= 2.54
 
@@ -382,7 +315,7 @@ git --version
 
 Below 2.54 git **ignores every `[hook]` stanza silently**. There is no error, and
 `git hook list` does not exist. No global hook runs: not gitleaks, not the
-AI-reference scan, and not `work-policy`. `setup.ps1`/`setup.sh -Module git` check the
+AI-reference scan. `setup.ps1`/`setup.sh -Module git` check the
 version and warn at install time. Verified on 2.56.1.windows.1. Debian bookworm ships
 2.39.2, so WSL needs a newer git before any hook runs there.
 
@@ -419,5 +352,4 @@ Caveats:
 Installs `~/.gitconfig` and `~/.gitconfig-work` as `[include]` stubs pointing
 to the repo files (changes are live immediately, works cross-volume).
 Installs `~/.gitattributes` from `gitattributes`. Junctions/symlinks `~/.git_templates`
-→ `git/templates/` and `~/.git_work_hooks` → `git/work-hooks/`, then warns if git is
-older than 2.54.
+→ `git/templates/`, then warns if git is older than 2.54.

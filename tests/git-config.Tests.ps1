@@ -256,6 +256,28 @@ Describe 'git/gitconfig kept settings' {
     }
 }
 
+Describe 'git/gitconfig-work' {
+    BeforeAll {
+        $script:WorkConfig = Join-Path $script:RepoRoot 'git/gitconfig-work'
+    }
+
+    It 'turns on the AI-reference scan for the repos that include it' {
+        $value = & git config --file $script:WorkConfig --type=bool --get work.aiReferenceScan
+        $value | Should -Be 'true'
+    }
+
+    It 'includes ~/.gitconfig-work.local as the last entry, so it can override the scan key' {
+        $entries = @(& git config --file $script:WorkConfig --list)
+        $entries[-1] | Should -Be 'include.path=~/.gitconfig-work.local'
+        $entries | Should -Contain 'work.aireferencescan=true'
+    }
+
+    It 'defines no hook stanza' {
+        $hooks = @(& git config --file $script:WorkConfig --get-regexp '^hook\.')
+        $hooks | Should -BeNullOrEmpty
+    }
+}
+
 Describe 'git/gitattributes' {
     It 'uses tab indentation rules for <Path>' -ForEach @(
         @{ Path = 'main.go'; Expected = 'trailing-space,space-before-tab,indent-with-non-tab' }

@@ -36,22 +36,20 @@ fi
 # added inline rather than split into its own file: it shares this file's single
 # config-hook registration, and (like gitleaks above) this only
 # shells out to POSIX git/grep, so a .ps1/.sh split would duplicate identical
-# logic for no reason (see git/README.md's "Why this splits when pre-commit
-# doesn't").
+# logic for no reason.
 #
-# Scoped to work Azure DevOps repos only, via the same signal the work identity uses:
-# origin is a dev.azure.com URL whose organisation segment is the work organisation,
-# case-insensitive.
-# The organisation is the last path segment of `git config work.adoOrgUrl`, set in the
-# untracked ~/.gitconfig.local (see git/README.md). GitHub repos (dotfiles, wiki,
-# brain) legitimately say "Claude"/"Codex" in their own subject matter and must stay
-# unscanned. If `git remote get-url origin` fails, the key is unset or empty, or the
-# URL doesn't match, ALLOW.
+# Scoped to work repos only: the scan runs when
+# `git config --type=bool --get work.aiReferenceScan` prints `true`. git/gitconfig-work
+# sets that key, and the [includeIf] blocks in the untracked ~/.gitconfig.local load
+# that file for the same repos that get the work identity, with or without a remote.
+# GitHub repos (dotfiles, wiki, brain) legitimately say "Claude"/"Codex" in their own
+# subject matter and must stay unscanned. If the key is unset, false or not a boolean,
+# or this is not a repo, ALLOW.
 #
 # Scans only ADDED lines of the staged diff (excluding the `+++` file header) —
 # a banned term in a REMOVED line must not block. Fails OPEN on everything
 # except one case: scoped-in AND the wordlist itself is missing/unreadable,
-# which fails CLOSED, mirroring gitconfig-work's [hook "work-policy"] reasoning
+# which fails CLOSED, mirroring the config-hook guard in git/gitconfig
 # (fail-open covers "not installed yet", never "installed but broken").
 #
 # Bypass one commit:  SKIP_AI_REFERENCE_SCAN=1 git commit ...
@@ -62,17 +60,7 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 # the live junction; do not shorten without re-checking.
 WORDLIST="$DIR/../../../ai-agents/_shared/banned-ai-terms.txt"
 
-origin_url=$(git remote get-url origin 2>/dev/null) || exit 0
-work_org_url=$(git config --get work.adoOrgUrl 2>/dev/null) || exit 0
-work_org=${work_org_url%/}
-work_org=${work_org##*/}
-[ -n "$work_org" ] || exit 0
-# Compare the organisation segment of an Azure DevOps origin (HTTPS, with an optional
-# user name, or SSH v3), so a repo or org name that only contains the work org is out.
-origin_org=$(printf '%s' "$origin_url" | tr '[:upper:]' '[:lower:]' |
-    sed -nE 's#^(https://([^@/]+@)?dev\.azure\.com/|git@ssh\.dev\.azure\.com:v3/)([^/]+)(/.*)?$#\3#p')
-work_org=$(printf '%s' "$work_org" | tr '[:upper:]' '[:lower:]')
-if [ -n "$origin_org" ] && [ "$origin_org" = "$work_org" ]; then
+if [ "$(git config --type=bool --get work.aiReferenceScan 2>/dev/null)" = "true" ]; then
 
     if [ "$SKIP_AI_REFERENCE_SCAN" != "1" ]; then
         if [ ! -r "$WORDLIST" ]; then

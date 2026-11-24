@@ -107,10 +107,10 @@ bypasses this repo's global `commit-msg`/`pre-commit` git hooks (see `git/README
 carry the same scan — and denies an exported `SKIP_AI_REFERENCE_SCAN`/`SKIP_GITLEAKS=1`
 bypassing those same hooks the same way.
 
-Scoped to work Azure DevOps repos only, mirroring `git/README.md`'s `commit-msg` scoping:
-`git remote get-url origin` must be a `dev.azure.com` URL whose organisation segment is the
-`<org>` name from the untracked `git config work.adoOrgUrl`. If that key is unset, the hook allows everything.
-The check runs against `git -C <path>`'s actual target repo when the command carries one
+Scoped to work repos only, mirroring `git/README.md`'s `commit-msg` scoping:
+`git config --type=bool --get work.aiReferenceScan` must print `true`. `git/gitconfig-work` sets
+that key for the repos that get the work identity. If the key is unset or false, the hook allows
+everything. The check runs against `git -C <path>`'s actual target repo when the command carries one
 (quoted or bare), not just the hook's inherited cwd; `cd <path> && git ...` shell-state
 tracking remains a known, accepted limitation.
 

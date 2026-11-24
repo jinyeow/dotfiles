@@ -30,22 +30,19 @@
 # `-C "C:/Work Repo"` — so a flag WITH an argument can't slip between `git` and `commit`
 # and evade the check.
 #
-# Scoped to work Azure DevOps repos only, mirroring git/templates/hooks/pre-commit's own
-# scoping: `git remote get-url origin`, run against the command's actual git target, must
-# succeed AND be a dev.azure.com URL whose organisation segment is the work organisation
-# (case-insensitive). The
-# organisation is never named in this public repo: it is the last path segment of
-# `git config work.adoOrgUrl` (e.g. https://dev.azure.com/ExampleOrg, set in the untracked
-# ~/.gitconfig.local), read from the same git target. If that key is unset or empty, the hook
-# fails open and allows everything. If the
-# repo has no origin, isn't a repo at all, or the origin is a GitHub URL (dotfiles, wiki, brain
-# — repos that legitimately say "Claude"/"Codex" in their own subject matter), every check below
-# is skipped: the wordlist scan, the --no-verify/-n denies, and the SKIP_*-env-var denies alike.
+# Scoped to work repos only, mirroring git/templates/hooks/pre-commit's own scoping:
+# `git config --type=bool --get work.aiReferenceScan`, run against the command's actual git
+# target, must print `true`. git/gitconfig-work sets that key, and the [includeIf] blocks in
+# the untracked ~/.gitconfig.local load that file for the work repos, with or without a remote.
+# If the key is unset, false or not a boolean, or the target isn't a repo at all (GitHub repos
+# such as dotfiles, wiki and brain legitimately say "Claude"/"Codex" in their own subject
+# matter), every check below is skipped: the wordlist scan, the --no-verify/-n denies, and the
+# SKIP_*-env-var denies alike.
 #
 # The command's actual git target is not always this hook's inherited cwd: `git -C <path> ...`
-# retargets git at a different repo, so the origin check must follow it there rather than
-# checking cwd's origin. If the command carries a `-C <path>` in git's leading global-flag run,
-# that path's origin is checked instead of cwd's; otherwise cwd's origin is used as before.
+# retargets git at a different repo, so the key lookup must follow it there rather than
+# reading cwd's config. If the command carries a `-C <path>` in git's leading global-flag run,
+# that path's config is read instead of cwd's; otherwise cwd's config is used.
 # `cd <path> && git ...` shell-state tracking is a known, separate, accepted limitation — not
 # attempted here.
 cmd=$(jq -r '.tool_input.command // ""')
@@ -57,7 +54,7 @@ c_path=$(printf '%s' "$cmd" | grep -oP -- "$c_path_re" | head -1)
 
 # `git -C <path>` accepts a shell-quoted path (e.g. `-C "."`), but the token captured above still
 # carries its literal surrounding quotes — strip exactly one matching layer of double or single
-# quotes the way a shell would for a simple quoted token, so the origin lookup below targets the
+# quotes the way a shell would for a simple quoted token, so the key lookup below targets the
 # real path instead of a literal `".\"`-shaped string that always fails and (via the `|| exit 0`
 # fallback) lets the whole guarded command through. Mirrors codex/ai-reference-guard.sh's
 # equivalent CGIT_PATH unquoting; no nested-quote/escape handling beyond one matching pair, same
@@ -67,23 +64,11 @@ if [[ "$c_path" == \"*\" && "$c_path" == *\" ]] || [[ "$c_path" == \'*\' && "$c_
 fi
 
 if [[ -n "$c_path" ]]; then
-  origin_url=$(git -C "$c_path" remote get-url origin 2>/dev/null) || exit 0
-  work_org_url=$(git -C "$c_path" config --get work.adoOrgUrl 2>/dev/null) || exit 0
+  ai_reference_scan=$(git -C "$c_path" config --type=bool --get work.aiReferenceScan 2>/dev/null) || exit 0
 else
-  origin_url=$(git remote get-url origin 2>/dev/null) || exit 0
-  work_org_url=$(git config --get work.adoOrgUrl 2>/dev/null) || exit 0
+  ai_reference_scan=$(git config --type=bool --get work.aiReferenceScan 2>/dev/null) || exit 0
 fi
-work_org=${work_org_url%/}
-work_org=${work_org##*/}
-[[ -n "$work_org" ]] || exit 0
-# Compare the organisation segment of an Azure DevOps origin (HTTPS, with an optional
-# user name, or SSH v3), so a repo or org name that only contains the work org is out.
-origin_org=$(printf '%s' "$origin_url" | tr '[:upper:]' '[:lower:]' |
-  sed -nE 's#^(https://([^@/]+@)?dev\.azure\.com/|git@ssh\.dev\.azure\.com:v3/)([^/]+)(/.*)?$#\3#p')
-work_org=$(printf '%s' "$work_org" | tr '[:upper:]' '[:lower:]')
-if [[ -z "$origin_org" || "$origin_org" != "$work_org" ]]; then
-  exit 0
-fi
+[[ "$ai_reference_scan" == "true" ]] || exit 0
 
 script_dir=$(cd -- "$(dirname -- "$0")" &>/dev/null && pwd)
 wordlist="$script_dir/banned-ai-terms.txt"
