@@ -23,7 +23,7 @@ PowerShell 7 profile and prompt for Windows (and Linux where applicable).
 | `Microsoft.PowerShell_profile.ps1` | Shared profile — used on all machines |
 | `Profile/Set-Prompt.ps1` | Prompt definition (jj/git + Azure context) |
 | `Profile/AzCliAccount.ps1` | Azure CLI named-profile switch (`azs`) — defines functions only; the profile calls `Restore-AzActiveProfile` in Phase 1 |
-| `Profile/StagingNote.ps1` | `note` capture into the Staging Obsidian vault — defines functions only |
+| `Modules/StagingNote/` | `note` capture into the Staging Obsidian vault. A module that autoloads on first use; the profile does not load it |
 
 The installer generates a stub at `~/Documents/PowerShell/Microsoft.PowerShell_profile.ps1`
 that dot-sources the repo file — changes are live immediately without re-running setup.
@@ -87,7 +87,8 @@ Sets `RIPGREP_CONFIG_PATH` and `FZF_DEFAULT_OPTS_FILE` pointing at repo files
 theme), and `EZA_CONFIG_DIR` (eza theme dir) to catppuccin mocha or latte —
 mirrors nvim's theme detection.
 Sets `_ZO_RESOLVE_SYMLINKS=1` so zoxide stores resolved paths; prevents
-duplicate database entries when navigating through junctions.
+duplicate database entries when navigating through junctions. Prepends the repo's
+`powershell/Modules` to `PSModulePath` once, so personal modules there autoload on first use.
 
 **Phase 2a — first idle:**
 PSFzf, zoxide, upgrade to `PredictionSource HistoryAndPlugin`, the fd-backed
@@ -106,6 +107,23 @@ so the first keypress isn't blocked by their import cost.
 Azure context refresh on a 60-second timer. The timer is created in Phase 2a
 (`Initialize-AzTimer`); the refresh itself runs in a background runspace wired up
 in `Set-Prompt.ps1`.
+
+### Adding to the profile
+
+- Keep the profile small. It runs for every new shell. Measure the cost with
+  `Measure-Command { . $PROFILE }`, and move work that is not needed at once to Phase 2.
+- Put a command that is not needed at startup in a module under `powershell/Modules`,
+  with a manifest that lists its exports. PowerShell loads the module the first time
+  one of its commands runs. The profile does not name it, so a machine without the
+  module gets no error.
+- Dot-source a file from `Profile/` only when the shell needs it at startup (for example
+  the prompt, or `Restore-AzActiveProfile`). A missing essential file must fail loudly.
+- Put settings that apply to one machine only in an untracked file that the profile
+  loads with a `Test-Path` guard. That file is optional by design.
+- Keep a broken optional feature from stopping the shell. The prompt is fail-open for
+  this reason.
+- Use `$PROFILE.CurrentUserAllHosts` for settings that every host needs, and the
+  console profile for console-only settings such as PSReadLine.
 
 ## Key bindings
 
