@@ -190,6 +190,12 @@ Describe 'worktree-janitor skill' {
     It 'is registered in the root README skills table' {
         Get-Content (Join-Path $repo 'README.md') -Raw | Should -Match '`worktree-janitor`'
     }
+
+    It 'names both the work-item glob and the personal-work globs in the registry sync step' {
+        $content = Get-Content $skillPath -Raw
+        $content | Should -Match ([regex]::Escape('<scope>/*/<type>-<initiative-slug>'))
+        $content | Should -Match ([regex]::Escape('<scope>/*/<type>-<initiative-slug>/*'))
+    }
 }
 
 Describe 'project-brain initiative close' {

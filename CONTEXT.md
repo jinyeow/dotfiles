@@ -25,7 +25,7 @@ The `write` skill's second layer: its four Modes (Long-form Article, Release Not
 _Avoid_: prose polishing, structural pass (the skill already uses "polish" for a different, sentence-level meaning, and "structural" only describes one of the four Modes)
 
 **OKF bundle**:
-The Open Knowledge Format (Google, v0.2) unit a single `okf_version` declaration governs. Per `project-brain`'s adoption (#195), the whole brain repo (e.g. `E:\Personal Projects\brain\`) is one bundle — its root `index.md` declares `okf_version: "0.2"`; per-initiative directories (`initiatives/<id>/`) are not separate bundles and get no `index.md` of their own.
+The Open Knowledge Format (Google, v0.2) unit a single `okf_version` declaration governs. Per `project-brain`'s adoption (#195), the whole brain folder (for example the workspace `gateroom/brain/` folder) is one bundle — its root `index.md` declares `okf_version: "0.2"`; per-initiative directories (`initiatives/<id>/`) are not separate bundles and get no `index.md` of their own.
 _Avoid_: brain (ambiguous — could mean the repo, an initiative, or the concept generally); OKF instance
 
 **OKF concept**:

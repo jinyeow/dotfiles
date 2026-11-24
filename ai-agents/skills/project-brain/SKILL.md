@@ -14,7 +14,7 @@ A **workspace** is one `brains.json` scope (for example all work under `~/work/`
 Repo**. The Home Repo is named `gateroom` and is a git repo directly inside the scope folder (`<scope>/gateroom/`). A **brain** is the
 versioned knowledge base in the Home Repo's `brain/` folder. It holds per-initiative working
 knowledge and is the single source of truth for "where are we". It is distinct from the workspace
-**wiki** (`wiki/` in the Home Repo), which holds long-term knowledge and is regenerate-able; the
+**wiki** (`wiki/` in the Home Repo), which holds long-term knowledge. The
 brain's truth source is the work.
 
 The word "area" has one meaning left: a group of repos in a `repos/<area>.md` pointer file.
@@ -194,8 +194,8 @@ If no tracker is recorded, post nothing.
 **On session close:** (1) refresh `STATUS.md` to current state only, about 60 lines or under; move
 anything that is history into the initiative `log.md`; (2) append the session narrative to
 `initiatives/<id>/log.md` (a dated heading, what was done, evidence, links); (3) append 2-5 lines to
-the brain's root `log.md` (`## [date] <op> | <initiative> - <what moved>`); (4) `git -C <brain> add -A
-&& git commit` (conventional message); (5) delete anything this session duplicated outside the brain.
+the brain's root `log.md` (`## [date] <op> | <initiative> - <what moved>`); (4) `git -C <brain> add -A -- .`
+then `git -C <brain> commit` (conventional message); (5) delete anything this session duplicated outside the brain.
 
 **On landing** (initiative changes a durable fact the workspace wiki asserts): promote that fact into
 the Home Repo's `wiki/` via a wiki ingest and log it. Volatile status never goes to the wiki. The brain may link to
@@ -213,7 +213,7 @@ A repo outside any workspace keeps single-directory work in-repo under `.claude/
    with the user before scaffolding** (always, even when a scope matches). If none matches, run "new workspace".
 3. Key it `<item>-<slug>`, where `<item>` is the parent work item's id, or the standalone item's
    id (bare `<slug>` if there is no tracker item). Create `initiatives/<id>/` from `templates/`
-   (`core.md`, `STATUS.md`, `log.md`, `adr/`, `research/index.md`, `reports/index.md`). Record
+   (`core.md`, `STATUS.md`, `log.md`, `adr/`, `research/index.md`, `reports/index.md`, `specs/`). Record
    the tracker in `core.md`, under Work tracking. Record any ordering constraint there too.
 4. Add a `registry.json` entry: `"<id>": { "title", "status": "active", "dirs": ["<glob>", ...] }`.
    Globs use `-like` and forward slashes. In a workspace, register these:
@@ -226,13 +226,15 @@ A repo outside any workspace keeps single-directory work in-repo under `.claude/
    Each work item gets one branch and one worktree per repo it touches. The branch is
    `<type>/<item>-<slug>`. The worktree folder name replaces `/` with `-`, so it matches the
    work-item glob. Personal work with no tracker item uses `<type>/<initiative-slug>`, and its
-   glob is `<scope>/*/<type>-<initiative-slug>*`. Add each new item's glob when you create its
+   globs are `<scope>/*/<type>-<initiative-slug>` and `<scope>/*/<type>-<initiative-slug>/*`.
+   Add each new item's globs when you create its
    first worktree.
    If a later follow-up PBI continues this same initiative under a different ID, append
    `— aka PBI <id>, <short reason>` to `title` (both here and in `index.md`'s row) rather than
    leaving the original title as the only findable string. The loading fallback above greps
-   `title`, not just the registry key.
-5. Add a row to the brain's `index.md`; append to `log.md`; commit.
+   both `title` and the registry key.
+5. Add a row to the brain's `index.md`; append to `log.md`; stage with `git -C <brain> add -A -- .`
+   and commit.
 
 **New workspace** (a whole new Home Repo and brain, e.g. personal projects): run the `home-repo-init`
 skill. It is user-invoked, so ask the user to run it. It creates or adopts the Home Repo, scaffolds `brain/`
@@ -245,7 +247,7 @@ Archive trigger. Run the close steps only when all of these hold:
 - all children are done;
 - the final parent comment is posted;
 - no worktrees remain. `worktree-janitor` marks each removed worktree `merged` in the Repos
-  table and drops its registry glob, so a Repos table with no active row and no work-item glob
+  table and drops its registry glob, so a Repos table where every row is `merged` and no work-item glob
   in the registry means none remain.
 
 A standalone item has no children. Archive a standalone item when its PR is merged and the

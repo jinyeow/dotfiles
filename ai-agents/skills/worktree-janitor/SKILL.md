@@ -144,11 +144,14 @@ approves it.
         set its State to `merged`. Keep the row, so the table shows the whole spread. Bump
         `updated:` and recompute `stale_after`.
      2. In `registry.json`, remove the registry glob that matched the removed directory from the
-        initiative's `dirs`. That glob is the work-item glob (`<scope>/*/<type>-<item>-*`). One
-        glob covers the worktrees of one work item in every repo. Remove it only after the last
+        initiative's `dirs`. That glob has one of two forms. The work-item glob is
+        `<scope>/*/<type>-<item>-*`. The personal-work globs, for an item with no tracker id, are
+        `<scope>/*/<type>-<initiative-slug>` and `<scope>/*/<type>-<initiative-slug>/*`. Remove
+        both personal-work globs together, as one unit. One glob (or glob pair) covers the worktrees of one work item in
+        every repo. Remove it only after the last
         remaining worktree of that item is gone. Check with `git worktree list --porcelain` in
         each repo that the Repos table names for that item. Never remove the initiative folder
-        globs (`<scope>/gateroom/brain/initiatives/<id>` and `<id>/*`). Initiative close removes
+        globs (`<scope>/gateroom/brain/initiatives/<id>` and `<scope>/gateroom/brain/initiatives/<id>/*`). Initiative close removes
         them.
 
      Check that `git -C '<brain>' status --porcelain -- 'registry.json' 'initiatives/<id>/STATUS.md'`
