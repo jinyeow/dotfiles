@@ -92,8 +92,8 @@ COMMAND_FLAT=$(printf '%s' "$COMMAND" | tr '\n' ' ')
 # scope against THAT repo's origin, or a `-C`-qualified command against an in-scope repo
 # run from an unrelated cwd would silently bypass every check below. When no `-C <path>`
 # global flag is present, fall back to cwd's origin (the common case). If the origin
-# lookup fails (not a repo, no origin) or the URL isn't both dev.azure.com AND the work
-# organisation (case-insensitive), this is a GitHub repo (dotfiles, wiki,
+# lookup fails (not a repo, no origin) or the URL isn't a dev.azure.com URL whose
+# organisation segment is the work organisation (case-insensitive), this is a GitHub repo (dotfiles, wiki,
 # brain, ...) that legitimately says "Claude"/"Codex" in its own subject matter — ALLOW
 # everything, before any check, including the fail-closed missing-wordlist check below.
 # Deliberately does not track `cd <path> && ...` shell state — out of scope; only an
@@ -120,8 +120,12 @@ fi
 WORK_ORG=${WORK_ORG_URL%/}
 WORK_ORG=${WORK_ORG##*/}
 [[ -n "$WORK_ORG" ]] || exit 0
-if ! { printf '%s' "$origin_url" | grep -qi 'dev\.azure\.com' && \
-       printf '%s' "$origin_url" | grep -qiF -- "$WORK_ORG"; }; then
+# Compare the organisation segment of an Azure DevOps origin (HTTPS, with an optional
+# user name, or SSH v3), so a repo or org name that only contains the work org is out.
+ORIGIN_ORG=$(printf '%s' "$origin_url" | tr '[:upper:]' '[:lower:]' |
+  sed -nE 's#^(https://([^@/]+@)?dev\.azure\.com/|git@ssh\.dev\.azure\.com:v3/)([^/]+)(/.*)?$#\3#p')
+WORK_ORG=$(printf '%s' "$WORK_ORG" | tr '[:upper:]' '[:lower:]')
+if [[ -z "$ORIGIN_ORG" || "$ORIGIN_ORG" != "$WORK_ORG" ]]; then
   exit 0
 fi
 

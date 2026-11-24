@@ -31,8 +31,8 @@
 #     is still caught — scrubbing must not scrub away a real banned term in the message
 #     content itself
 #   - `isRepoScopedIn` (repo scoping, mirroring git/templates/hooks/pre-commit's own
-#     scoping) allows everything when there is no origin remote or the origin isn't both
-#     dev.azure.com AND the org named by `git config work.adoOrgUrl` (scoped out when that
+#     scoping) allows everything when there is no origin remote or the origin's dev.azure.com
+#     organisation segment isn't the org named by `git config work.adoOrgUrl` (scoped out when that
 #     key is unset), and only then does matchCommand's own
 #     wordlist/no-verify/SKIP-var logic apply — exercised against real throwaway repos
 #     (mirroring tests/git-templates-ai-reference-hook.Tests.ps1's New-TestRepo pattern),
@@ -580,6 +580,22 @@ Describe 'pi/extensions/ai-reference-guard.ts' {
 
         It 'is scoped out when there is no origin remote at all' {
             $repo = New-TestRepo -OriginUrl $null
+            Invoke-IsRepoScopedIn -Cwd $repo | Should -BeFalse
+        }
+
+        It 'is scoped in for a work HTTPS origin with a user name and different case' {
+            $repo = New-TestRepo -OriginUrl 'https://exampleorg@dev.azure.com/EXAMPLEORG/Proj/_git/Repo' -WorkOrgUrl $script:WorkOrgUrl
+            Invoke-IsRepoScopedIn -Cwd $repo | Should -BeTrue
+        }
+
+        It 'is scoped out when the work organisation is not the origin organisation: <OriginUrl>' -TestCases @(
+            @{ OriginUrl = 'https://dev.azure.com/OtherOrg/Proj/_git/ExampleOrg-tools' }
+            @{ OriginUrl = 'https://dev.azure.com/ExampleOrgTools/Proj/_git/Repo' }
+            @{ OriginUrl = 'https://example.com/dev.azure.com/ExampleOrg/Proj/_git/Repo' }
+            @{ OriginUrl = 'git@ssh.dev.azure.com:v3/OtherOrg/ExampleOrg/Repo' }
+        ) {
+            param($OriginUrl)
+            $repo = New-TestRepo -OriginUrl $OriginUrl -WorkOrgUrl $script:WorkOrgUrl
             Invoke-IsRepoScopedIn -Cwd $repo | Should -BeFalse
         }
 

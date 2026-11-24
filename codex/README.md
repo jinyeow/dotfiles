@@ -108,8 +108,8 @@ carry the same scan — and denies an exported `SKIP_AI_REFERENCE_SCAN`/`SKIP_GI
 bypassing those same hooks the same way.
 
 Scoped to work Azure DevOps repos only, mirroring `git/README.md`'s `commit-msg` scoping:
-`git remote get-url origin` must contain both `dev.azure.com` and the `<org>` name from the
-untracked `git config work.adoOrgUrl`. If that key is unset, the hook allows everything.
+`git remote get-url origin` must be a `dev.azure.com` URL whose organisation segment is the
+`<org>` name from the untracked `git config work.adoOrgUrl`. If that key is unset, the hook allows everything.
 The check runs against `git -C <path>`'s actual target repo when the command carries one
 (quoted or bare), not just the hook's inherited cwd; `cd <path> && git ...` shell-state
 tracking remains a known, accepted limitation.

@@ -343,6 +343,24 @@ Describe 'codex/ai-reference-guard.sh' {
             $result.ExitCode | Should -Be 0
         }
 
+        It 'allows a banned term when the work organisation is not the origin organisation: <OriginUrl>' -TestCases @(
+            @{ OriginUrl = 'https://dev.azure.com/OtherOrg/Proj/_git/ExampleOrg-tools' }
+            @{ OriginUrl = 'https://dev.azure.com/ExampleOrgTools/Proj/_git/Repo' }
+            @{ OriginUrl = 'https://example.com/dev.azure.com/ExampleOrg/Proj/_git/Repo' }
+        ) {
+            param($OriginUrl)
+            $repo = New-TestRepo -OriginUrl $OriginUrl -WorkOrgUrl $script:WorkOrgUrl
+            try
+            {
+                $result = Invoke-GuardrailHook -Command 'git commit -m "thanks Claude for the help"' -Repo $repo
+                $result.ExitCode | Should -Be 0
+            }
+            finally
+            {
+                Remove-Item -LiteralPath $repo -Recurse -Force
+            }
+        }
+
         It 'allows a banned term in a work-remote repo when work.adoOrgUrl is unset (fails open)' {
             # Isolate from the developer's global and system config, which may set the key.
             $repo = New-TestRepo -OriginUrl $script:WorkOriginUrl

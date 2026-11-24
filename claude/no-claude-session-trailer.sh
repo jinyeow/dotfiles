@@ -32,7 +32,8 @@
 #
 # Scoped to work Azure DevOps repos only, mirroring git/templates/hooks/pre-commit's own
 # scoping: `git remote get-url origin`, run against the command's actual git target, must
-# succeed AND contain both dev.azure.com and the work organisation name (case-insensitive). The
+# succeed AND be a dev.azure.com URL whose organisation segment is the work organisation
+# (case-insensitive). The
 # organisation is never named in this public repo: it is the last path segment of
 # `git config work.adoOrgUrl` (e.g. https://dev.azure.com/ExampleOrg, set in the untracked
 # ~/.gitconfig.local), read from the same git target. If that key is unset or empty, the hook
@@ -75,8 +76,12 @@ fi
 work_org=${work_org_url%/}
 work_org=${work_org##*/}
 [[ -n "$work_org" ]] || exit 0
-if ! { printf '%s' "$origin_url" | grep -qi 'dev\.azure\.com' &&
-       printf '%s' "$origin_url" | grep -qiF -- "$work_org"; }; then
+# Compare the organisation segment of an Azure DevOps origin (HTTPS, with an optional
+# user name, or SSH v3), so a repo or org name that only contains the work org is out.
+origin_org=$(printf '%s' "$origin_url" | tr '[:upper:]' '[:lower:]' |
+  sed -nE 's#^(https://([^@/]+@)?dev\.azure\.com/|git@ssh\.dev\.azure\.com:v3/)([^/]+)(/.*)?$#\3#p')
+work_org=$(printf '%s' "$work_org" | tr '[:upper:]' '[:lower:]')
+if [[ -z "$origin_org" || "$origin_org" != "$work_org" ]]; then
   exit 0
 fi
 

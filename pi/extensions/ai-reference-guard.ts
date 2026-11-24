@@ -99,8 +99,8 @@ function extractDashCPath(command: string): string | undefined {
 // target when the command carries one (e.g. `git -C <work-root>/<repo> commit ...`
 // run from an unscoped cwd) — otherwise against cwd (the extension's own inherited
 // working directory, same as the bash ports use their inherited cwd). If it throws (not
-// a repo, no origin) or the URL isn't both dev.azure.com AND the work organisation
-// (case-insensitive), the repo is out of scope — a GitHub repo like dotfiles/wiki/brain
+// a repo, no origin) or the URL isn't a dev.azure.com URL whose organisation segment is
+// the work organisation (case-insensitive), the repo is out of scope — a GitHub repo like dotfiles/wiki/brain
 // legitimately says "Claude"/"Codex" in its own subject matter and must stay unscanned.
 //
 // SECURITY: dashCPath comes straight out of the model-controlled command string this
@@ -135,7 +135,10 @@ function isRepoScopedIn(cwd: string, command: string): boolean {
 	if (!workOrg) {
 		return false;
 	}
-	return /dev\.azure\.com/i.test(originUrl) && originUrl.toLowerCase().includes(workOrg.toLowerCase());
+	// Compare the organisation segment of an Azure DevOps origin (HTTPS, with an optional
+	// user name, or SSH v3), so a repo or org name that only contains the work org is out.
+	const originOrg = /^(?:https:\/\/(?:[^@/]+@)?dev\.azure\.com\/|git@ssh\.dev\.azure\.com:v3\/)([^/]+)(?:\/|$)/i.exec(originUrl.trim());
+	return originOrg !== null && originOrg[1].toLowerCase() === workOrg.toLowerCase();
 }
 
 // Parses banned-ai-terms.txt's documented format (one case-insensitive ERE per line,

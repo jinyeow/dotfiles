@@ -367,6 +367,23 @@ Describe 'claude/no-claude-session-trailer.sh' -Skip:(-not $script:HasBash) {
             $out = Invoke-Hook -Command 'SKIP_GITLEAKS=1 git commit -m "clean message"' -RepoDir $script:GitHubRepo
             $out.Trim() | Should -BeNullOrEmpty
         }
+        It 'allows a banned commit term when the work organisation is not the origin organisation: <OriginUrl>' -TestCases @(
+            @{ OriginUrl = 'https://dev.azure.com/OtherOrg/Proj/_git/ExampleOrg-tools' }
+            @{ OriginUrl = 'https://dev.azure.com/ExampleOrgTools/Proj/_git/Repo' }
+            @{ OriginUrl = 'https://example.com/dev.azure.com/ExampleOrg/Proj/_git/Repo' }
+        ) {
+            param($OriginUrl)
+            $repo = New-TestRepo -OriginUrl $OriginUrl -WorkOrgUrl $script:WorkOrgUrl
+            try
+            {
+                $out = Invoke-Hook -Command 'git commit -m "Co-Authored-By: Claude"' -RepoDir $repo
+                $out.Trim() | Should -BeNullOrEmpty
+            }
+            finally
+            {
+                Remove-Item -LiteralPath $repo -Recurse -Force
+            }
+        }
         It 'allows a banned commit term in a work-remote repo when work.adoOrgUrl is unset (fails open)' {
             # Isolate from the developer's global and system config, which may set the key.
             $repo = New-TestRepo -OriginUrl $script:WorkHttps

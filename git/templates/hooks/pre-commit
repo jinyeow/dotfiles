@@ -39,7 +39,8 @@ fi
 # doesn't").
 #
 # Scoped to work Azure DevOps repos only, via the same signal the work identity uses:
-# origin URL contains both dev.azure.com and the work organisation, case-insensitive.
+# origin is a dev.azure.com URL whose organisation segment is the work organisation,
+# case-insensitive.
 # The organisation is the last path segment of `git config work.adoOrgUrl`, set in the
 # untracked ~/.gitconfig.local (see git/README.md). GitHub repos (dotfiles, wiki,
 # brain) legitimately say "Claude"/"Codex" in their own subject matter and must stay
@@ -65,8 +66,12 @@ work_org_url=$(git config --get work.adoOrgUrl 2>/dev/null) || exit 0
 work_org=${work_org_url%/}
 work_org=${work_org##*/}
 [ -n "$work_org" ] || exit 0
-if printf '%s' "$origin_url" | grep -qi 'dev\.azure\.com' && \
-   printf '%s' "$origin_url" | grep -qiF -- "$work_org"; then
+# Compare the organisation segment of an Azure DevOps origin (HTTPS, with an optional
+# user name, or SSH v3), so a repo or org name that only contains the work org is out.
+origin_org=$(printf '%s' "$origin_url" | tr '[:upper:]' '[:lower:]' |
+    sed -nE 's#^(https://([^@/]+@)?dev\.azure\.com/|git@ssh\.dev\.azure\.com:v3/)([^/]+)(/.*)?$#\3#p')
+work_org=$(printf '%s' "$work_org" | tr '[:upper:]' '[:lower:]')
+if [ -n "$origin_org" ] && [ "$origin_org" = "$work_org" ]; then
 
     if [ "$SKIP_AI_REFERENCE_SCAN" != "1" ]; then
         if [ ! -r "$WORDLIST" ]; then

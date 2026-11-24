@@ -48,7 +48,7 @@ short-flag token, e.g. `-nm`) and `git push --no-verify` unconditionally, plus a
 Scoped to work Azure DevOps repos only, mirroring the git hooks' own scoping: `git remote
 get-url origin` (run via `execFileSync` with an argv array, never a shell-interpolated
 string, so a crafted path can't be abused to run anything beyond a safely-failing `git`
-lookup) must contain both `dev.azure.com` and the `<org>` name from the untracked
+lookup) must be a `dev.azure.com` URL whose organisation segment is the `<org>` name from the untracked
 `git config work.adoOrgUrl`. If that key is unset, the extension allows everything. The check runs
 against `git -C <path>`'s actual target repo when the command carries one, not just the
 extension's inherited cwd; `cd <path> && git ...` shell-state tracking remains a known,

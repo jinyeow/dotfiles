@@ -179,8 +179,9 @@ Git invokes `commit-msg <path-to-commit-msg-file>`, so this sees the final
 message text regardless of `-m`, `-F`, an editor, `--amend`, or a merge.
 
 Scoped to work Azure DevOps repos only, via the same signal the work identity
-uses: `git remote get-url origin` contains both `dev.azure.com` and the
-organisation, case-insensitive (covers both the HTTPS and SSH remote forms). The
+uses: `git remote get-url origin` is a `dev.azure.com` URL whose organisation
+segment is the work organisation, case-insensitive. The HTTPS form (with or
+without a user name) and the SSH v3 form both count. The
 organisation is the last path segment of `git config work.adoOrgUrl`, set in
 `~/.gitconfig.local` (see above). GitHub repos (dotfiles, wiki, brain) legitimately
 say "Claude"/"Codex" in their own subject matter and are never scanned. If

@@ -237,6 +237,23 @@ Describe 'git/templates/hooks/commit-msg' -Skip:(-not $script:HasBash) {
         $r.ExitCode | Should -Be 0
     }
 
+    It 'allows a banned term when the work organisation is not the origin organisation: <OriginUrl>' -TestCases @(
+        @{ OriginUrl = 'https://dev.azure.com/OtherOrg/Proj/_git/ExampleOrg-tools' }
+        @{ OriginUrl = 'https://dev.azure.com/ExampleOrgTools/Proj/_git/Repo' }
+        @{ OriginUrl = 'https://example.com/dev.azure.com/ExampleOrg/Proj/_git/Repo' }
+    ) {
+        param($OriginUrl)
+        $script:Repo = New-TestRepo -OriginUrl $OriginUrl -WorkOrgUrl $script:WorkOrgUrl
+        $r = Invoke-CommitMsgHook -Repo $script:Repo -Message 'feat: written by Claude'
+        $r.ExitCode | Should -Be 0
+    }
+
+    It 'blocks a banned term in a work SSH-remote repo' {
+        $script:Repo = New-TestRepo -OriginUrl $script:WorkSsh -WorkOrgUrl $script:WorkOrgUrl
+        $r = Invoke-CommitMsgHook -Repo $script:Repo -Message 'feat: written by Claude'
+        $r.ExitCode | Should -Not -Be 0
+    }
+
     It 'allows a banned term in a work-remote repo when work.adoOrgUrl is unset (fails open)' {
         $script:Repo = New-TestRepo -OriginUrl $script:WorkHttps
         $r = Invoke-WithoutUserGitConfig { Invoke-CommitMsgHook -Repo $script:Repo -Message 'feat: written by Claude' }
@@ -430,6 +447,17 @@ Describe 'git/templates/hooks/pre-commit AI-reference section' -Skip:(-not $scri
 
     It 'allows a banned term in a GitHub repo (out of scope)' {
         $script:Repo = New-TestRepo -OriginUrl $script:GitHubUrl
+        $r = Invoke-PreCommitHook -Repo $script:Repo -FileContent '// written with Claude'
+        $r.ExitCode | Should -Be 0
+    }
+
+    It 'allows a banned term when the work organisation is not the origin organisation: <OriginUrl>' -TestCases @(
+        @{ OriginUrl = 'https://dev.azure.com/OtherOrg/Proj/_git/ExampleOrg-tools' }
+        @{ OriginUrl = 'https://dev.azure.com/ExampleOrgTools/Proj/_git/Repo' }
+        @{ OriginUrl = 'https://example.com/dev.azure.com/ExampleOrg/Proj/_git/Repo' }
+    ) {
+        param($OriginUrl)
+        $script:Repo = New-TestRepo -OriginUrl $OriginUrl -WorkOrgUrl $script:WorkOrgUrl
         $r = Invoke-PreCommitHook -Repo $script:Repo -FileContent '// written with Claude'
         $r.ExitCode | Should -Be 0
     }
