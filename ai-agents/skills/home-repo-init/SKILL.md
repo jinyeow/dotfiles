@@ -122,11 +122,13 @@ Run these actions in order. Stop at the first failure and report it. Do not skip
    the file does not exist, create it as `{ "version": 1, "brains": [] }` first. When you adopt
    a brain, first remove any existing entry for the same scope or the old brain path. The file
    then holds one entry for the scope.
-8. In each child repo that held a moved or duplicate copy, make the change on a new branch
-   `chore/home-repo-<slug>`: remove the copy with `git rm`, and commit. In a normal clone, run
-   `git switch -c chore/home-repo-<slug>` first. In a bare-worktree child repo, run `git
-   worktree add ../chore-home-repo-<slug> -b chore/home-repo-<slug>` and do the `git rm` in that
-   new worktree. Never switch the worktree of the default branch.
+8. In each child repo that held a moved or duplicate copy, make the change in a new worktree on a
+   new branch `chore/home-repo-<slug>`. Never switch an existing checkout or worktree. In a
+   bare-worktree child repo, run `git worktree add ../chore-home-repo-<slug> -b
+   chore/home-repo-<slug>` from a worktree of that repo. In a normal clone, run `git -C <repo>
+   worktree add ../<repo>-chore-home-repo-<slug> -b chore/home-repo-<slug>`, so the folder sits
+   next to the clone. Remove the copy with `git rm` and commit in the new worktree. After the
+   branch merges, remove the worktree with `git worktree remove`.
 9. In the Home Repo, run `git add -A` and commit with a conventional message. Do not push.
 
 Completion criterion, checked with these commands:
@@ -135,7 +137,8 @@ Completion criterion, checked with these commands:
 - `<scope>/gateroom/brain` holds `index.md`, `log.md`, `registry.json`, `templates/` and `adr/`;
 - `rg -n "<name of the installer repo>" <scope>/gateroom` finds nothing, where the name is the
   repo that installs the global rules and skills;
-- each child repo that changed is on its new local branch and its working tree is clean;
+- each child repo that changed has a new worktree on its `chore/home-repo-<slug>` branch, the
+  worktree is clean, and the original checkout is on its old branch;
 - `brains.json` parses and holds one entry for the scope.
 
 Report the commit SHAs, the branch names, and the actions that you skipped, with the reason for
