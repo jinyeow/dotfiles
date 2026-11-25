@@ -45,8 +45,8 @@ gateroom/
 - Wiki: ingests never overwrite the hand-written rules section.
 - Every work item in the workspace is an initiative, including a single-repo item. There is no
   per-item notes folder. In-repo `.claude/brain/` is only for a repo outside the workspace.
-- The Home Repo never names the repo that installs the global rules and skills. It names the
-  runtime folders (Claude, Codex, shared agent skills, Pi) when it refers to global material.
+- The Home Repo refers to global rules and skills by runtime folder (Claude, Codex, shared agent
+  skills, Pi). It never uses a path into the source repo that installs them.
 
 In every workspace, durable state never goes in gitignored scratch inside a worktree. Removing the
 worktree deletes that scratch. Put the state in the brain.
