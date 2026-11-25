@@ -14,8 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  powershell:
-    name: PSScriptAnalyzer + Pester (Windows)
+  psscriptanalyzer:
+    name: PSScriptAnalyzer (Windows)
     runs-on: windows-latest
     defaults:
       run:
@@ -23,20 +23,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install PSScriptAnalyzer and Pester
+      - name: Install PSScriptAnalyzer
         run: |
-          # windows-latest ships PSScriptAnalyzer and Pester >=5.5.0 preinstalled; skip the
-          # PSGallery round-trip (NuGet provider bootstrap + download) when the image already
-          # satisfies the requirement - this is the majority of this job's runtime otherwise.
+          # windows-latest ships PSScriptAnalyzer preinstalled; skip the PSGallery round-trip
+          # (NuGet provider bootstrap + download) when the image already has it.
           if (-not (Get-Module -ListAvailable PSScriptAnalyzer)) {
             Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
             Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
           }
-          if (-not (Get-Module -ListAvailable Pester | Where-Object Version -ge '5.5.0')) {
-            Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-            Install-Module -Name Pester -MinimumVersion 5.5.0 -Force -Scope CurrentUser -SkipPublisherCheck
-          }
-          Get-Module -ListAvailable PSScriptAnalyzer, Pester | Select-Object Name, Version
+          Get-Module -ListAvailable PSScriptAnalyzer | Select-Object Name, Version
 
       - name: PSScriptAnalyzer (whole tree, repo settings)
         run: |
@@ -52,6 +47,38 @@ jobs:
           }
           Write-Host "PSScriptAnalyzer: clean."
 
+  # Windows Pester is split across three parallel jobs, because the suite is dominated by
+  # per-test child processes (pwsh, git, bash, node), which are slow to start on Windows.
+  # Each job has a fixed name so that it can be a required check.
+  pester-windows:
+    name: ${{ matrix.name }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: 1
+            name: Pester (Windows 1/3)
+          - shard: 2
+            name: Pester (Windows 2/3)
+          - shard: 3
+            name: Pester (Windows 3/3)
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Pester
+        run: |
+          # windows-latest ships Pester >=5.5.0 preinstalled; skip the PSGallery round-trip
+          # when the image already satisfies the requirement.
+          if (-not (Get-Module -ListAvailable Pester | Where-Object Version -ge '5.5.0')) {
+            Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+            Install-Module -Name Pester -MinimumVersion 5.5.0 -Force -Scope CurrentUser -SkipPublisherCheck
+          }
+          Get-Module -ListAvailable Pester | Select-Object Name, Version
+
       # Neovim is not on the runner image, and tests/nvim-statusline.Tests.ps1 fails without it.
       # The pin matches the version the bars were developed on, because statusline and
       # vim.pack behaviour can change between releases.
@@ -60,10 +87,34 @@ jobs:
           neovim: true
           version: v0.12.6
 
-      - name: Pester (tests/)
+      - name: Pester (tests/, shard ${{ matrix.shard }} of 3)
+        env:
+          SHARD: ${{ matrix.shard }}
         run: |
+          # Shards 1 and 2 list their test files (names without .Tests.ps1). Shard 3 runs every
+          # other tests/*.Tests.ps1, so a new test file is always picked up. The lists are
+          # balanced on Windows run times; rebalance them when one shard grows much slower.
+          $listed = @(
+            @('setup-sh', 'pi-ai-reference-guard', 'project-brain-session-start'),
+            @('no-claude-session-trailer', 'setup', 'pi-project-brain-autoload',
+              'git-templates-ai-reference-hook', 'block-destructive-vcs', 'warn-legacy-files',
+              'prepare-commit-msg')
+          )
+          $all = Get-ChildItem -Path tests -Filter '*.Tests.ps1' -File |
+            ForEach-Object { $_.Name -replace '\.Tests\.ps1$', '' }
+          $missing = $listed | ForEach-Object { $_ } | Where-Object { $_ -cnotin $all }
+          if ($missing) {
+            throw "Shard lists name test files that do not exist: $($missing -join ', ')"
+          }
+          $index = [int]$env:SHARD - 1
+          $names = if ($index -lt $listed.Count) { $listed[$index] }
+          else { $all | Where-Object { $_ -cnotin ($listed | ForEach-Object { $_ }) } }
+          $paths = $names | ForEach-Object { Join-Path 'tests' "$_.Tests.ps1" }
+          Write-Host "Shard $env:SHARD runs $($paths.Count) file(s):"
+          $paths | ForEach-Object { Write-Host "  $_" }
+
           $config = New-PesterConfiguration
-          $config.Run.Path = 'tests'
+          $config.Run.Path = [string[]]$paths
           $config.Run.Exit = $true
           $config.Output.Verbosity = 'Detailed'
           Invoke-Pester -Configuration $config
