@@ -565,6 +565,119 @@ Describe 'codex/ai-reference-guard.sh' {
             $result = Invoke-GuardrailHook -Command "git -C $($script:UnscopedRepo) commit -m ""thanks Claude""" -Repo $script:ScopedRepo
             $result.ExitCode | Should -Be 0
         }
+
+        It 'blocks git --no-pager -C PATH commit (a global flag before -C) run from an unscoped cwd' {
+            $result = Invoke-GuardrailHook -Command "git --no-pager -C $($script:ScopedRepo) commit -m ""Generated with Claude""" -Repo $script:UnscopedRepo
+            $result.ExitCode | Should -Be 2
+        }
+
+        It 'blocks git -C PARENT -C child commit when only the nested child repo is scoped in' {
+            # git applies every -C in order, each relative to the previous one, so the target
+            # is <parent>/child. The parent sets the key to false; only the child sets it true.
+            $parent = New-TestRepo -AiReferenceScan 'false'
+            $child = Join-Path $parent 'child'
+            New-Item -ItemType Directory -Path $child -Force | Out-Null
+            & git -C $child init -q . 2>&1 | Out-Null
+            & git -C $child config work.aiReferenceScan true 2>&1 | Out-Null
+            try
+            {
+                $result = Invoke-GuardrailHook -Command "git -C $parent -C child commit -m ""Generated with Claude""" -Repo $script:UnscopedRepo
+                $result.ExitCode | Should -Be 2
+            }
+            finally
+            {
+                Remove-Item -LiteralPath $parent -Recurse -Force
+            }
+        }
+
+        It 'blocks <Name> run from a scoped cwd (an unrelated -C is ignored)' -TestCases @(
+            @{ Name = 'grep -C 3 before git commit'; Prefix = 'grep -C 3 x file' }
+            @{ Name = 'an earlier git -C UNSCOPED status'; Prefix = 'git -C {0} status' }
+        ) {
+            param($Name, $Prefix)
+            $command = ($Prefix -f $script:UnscopedRepo) + ' && git commit -m "Generated with Claude"'
+            $result = Invoke-GuardrailHook -Command $command -Repo $script:ScopedRepo
+            $result.ExitCode | Should -Be 2
+        }
+
+        It 'blocks <Name> run from an unscoped cwd' -TestCases @(
+            @{ Name = 'git status&&git -C SCOPED commit (operator touching words)'; Template = 'git status&&git -C {0} commit -m "Generated with Claude"' }
+            @{ Name = 'git status;git -C SCOPED commit (operator touching words)'; Template = 'git status;git -C {0} commit -m "Generated with Claude"' }
+            @{ Name = 'git --git-dir=SCOPED/.git commit'; Template = 'git --git-dir={0}/.git commit -m "Generated with Claude"' }
+            @{ Name = 'git --git-dir SCOPED/.git commit (separated value)'; Template = 'git --git-dir {0}/.git commit -m "Generated with Claude"' }
+            @{ Name = 'git --git-dir="SCOPED/.git" --work-tree="SCOPED" commit'; Template = 'git --git-dir="{0}/.git" --work-tree="{0}" commit -m "Generated with Claude"' }
+            @{ Name = 'git --git-dir "SCOPED/.git" --work-tree "SCOPED" commit (separated values)'; Template = 'git --git-dir "{0}/.git" --work-tree "{0}" commit -m "Generated with Claude"' }
+        ) {
+            param($Name, $Template)
+            $result = Invoke-GuardrailHook -Command ($Template -f $script:ScopedRepo) -Repo $script:UnscopedRepo
+            $result.ExitCode | Should -Be 2
+        }
+
+        It 'keeps -C and the retargeting options in order (git -C PARENT <Options> commit targets PARENT/child)' -TestCases @(
+            @{ Options = '--git-dir=child/.git' }
+            @{ Options = '--work-tree=child --git-dir=child/.git' }
+        ) {
+            param($Options)
+            $parent = New-TestRepo -AiReferenceScan 'false'
+            $child = Join-Path $parent 'child'
+            New-Item -ItemType Directory -Path $child -Force | Out-Null
+            & git -C $child init -q . 2>&1 | Out-Null
+            & git -C $child config work.aiReferenceScan true 2>&1 | Out-Null
+            try
+            {
+                $result = Invoke-GuardrailHook -Command "git -C $parent $Options commit -m ""Generated with Claude""" -Repo $script:UnscopedRepo
+                $result.ExitCode | Should -Be 2
+            }
+            finally
+            {
+                Remove-Item -LiteralPath $parent -Recurse -Force
+            }
+        }
+
+        It 'joins quoted and bare fragments of a target value: <Name>' -TestCases @(
+            @{ Name = 'git -C "PARENT/"child commit'; Template = 'git -C "{0}/"child commit -m "Generated with Claude"' }
+            @{ Name = 'git --git-dir="PARENT/child"/.git commit'; Template = 'git --git-dir="{0}/child"/.git commit -m "Generated with Claude"' }
+        ) {
+            param($Name, $Template)
+            # Only the nested child repo is scoped in, so the guard blocks only when the joined
+            # value (PARENT/child) is what reaches the lookup.
+            $parent = New-TestRepo -AiReferenceScan 'false'
+            $child = Join-Path $parent 'child'
+            New-Item -ItemType Directory -Path $child -Force | Out-Null
+            & git -C $child init -q . 2>&1 | Out-Null
+            & git -C $child config work.aiReferenceScan true 2>&1 | Out-Null
+            try
+            {
+                $result = Invoke-GuardrailHook -Command ($Template -f ($parent -replace '\\', '/')) -Repo $script:UnscopedRepo
+                $result.ExitCode | Should -Be 2
+            }
+            finally
+            {
+                Remove-Item -LiteralPath $parent -Recurse -Force
+            }
+        }
+
+        It 'still blocks git -C ''SCOPED WITH SPACE'' commit (a fully single-quoted path with a space)' {
+            $repo = Join-Path ([System.IO.Path]::GetTempPath()) ('codex-ai-ref space ' + [guid]::NewGuid())
+            New-Item -ItemType Directory -Path $repo -Force | Out-Null
+            & git -C $repo init -q . 2>&1 | Out-Null
+            & git -C $repo config work.aiReferenceScan true 2>&1 | Out-Null
+            try
+            {
+                $result = Invoke-GuardrailHook -Command "git -C '$($repo -replace '\\', '/')' commit -m ""Generated with Claude""" -Repo $script:UnscopedRepo
+                $result.ExitCode | Should -Be 2
+            }
+            finally
+            {
+                Remove-Item -LiteralPath $repo -Recurse -Force
+            }
+        }
+
+        It 'allows git --git-dir=UNSCOPED/.git --work-tree=UNSCOPED commit run from a scoped cwd (the forwarded target wins)' {
+            $command = "git --git-dir=$($script:UnscopedRepo)/.git --work-tree=$($script:UnscopedRepo) commit -m ""Generated with Claude"""
+            $result = Invoke-GuardrailHook -Command $command -Repo $script:ScopedRepo
+            $result.ExitCode | Should -Be 0
+        }
     }
 
     Context 'newline-chained commands (cycle-3 finding 3)' {
