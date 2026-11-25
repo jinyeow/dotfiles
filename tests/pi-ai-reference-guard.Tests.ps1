@@ -196,7 +196,7 @@ process.stdout.write(JSON.stringify(results));
         return $results
     }
 
-    # Second node harness: extracts the real isRepoScopedIn AND extractDashCPath function
+    # Second node harness: extracts the real isRepoScopedIn AND extractGitTargetArgs function
     # bodies verbatim and evaluates them against a real cwd, using node's own execSync
     # (not a mock) so `git remote get-url origin` (or `git -C <path> remote get-url
     # origin` when the command carries its own -C target) runs for real — mirrors
@@ -223,15 +223,15 @@ function extractBlock(pattern, label) {
     return found[1];
 }
 
-const dashCPathBody = extractBlock(/function extractDashCPath\(command: string\): string \| undefined \{([\s\S]*?)\n\}/, "extractDashCPath")
-    .replace(/:\s*string/g, "");
+const gitTargetArgsBody = extractBlock(/function extractGitTargetArgs\(command: string\): string\[\] \{([\s\S]*?)\n\}/, "extractGitTargetArgs")
+    .replace(/:\s*string(?:\[\])?/g, "");
 const isRepoScopedInBody = extractBlock(/function isRepoScopedIn\(cwd: string, command: string\): boolean \{([\s\S]*?)\n\}/, "isRepoScopedIn")
     .replace(/:\s*string/g, "");
 
-const extractDashCPath = new Function("command", dashCPathBody);
-const isRepoScopedIn = new Function("cwd", "command", "execFileSync", "extractDashCPath", isRepoScopedInBody);
+const extractGitTargetArgs = new Function("command", gitTargetArgsBody);
+const isRepoScopedIn = new Function("cwd", "command", "execFileSync", "extractGitTargetArgs", isRepoScopedInBody);
 
-process.stdout.write(JSON.stringify(isRepoScopedIn(cwd, command ?? "", execFileSync, extractDashCPath)));
+process.stdout.write(JSON.stringify(isRepoScopedIn(cwd, command ?? "", execFileSync, extractGitTargetArgs)));
 '@ | Set-Content -Path $script:RepoScopeHarness -NoNewline -Encoding utf8
 
     function Invoke-IsRepoScopedIn
@@ -691,6 +691,97 @@ Describe 'pi/extensions/ai-reference-guard.ts' {
             $workCwd = New-TestRepo -OriginUrl $script:WorkHttps -AiReferenceScan 'true'
             Invoke-IsRepoScopedIn -Cwd $workCwd -Command 'git commit -m "fix"' | Should -BeTrue
         }
+
+        It 'is scoped in via -C after another global flag (git --no-pager -C PATH commit)' {
+            $workRepo = New-TestRepo -OriginUrl $script:WorkHttps -AiReferenceScan 'true'
+            $unscopedCwd = New-TestRepo -OriginUrl $script:GitHubUrl -AiReferenceScan 'false'
+            $command = "git --no-pager -C ""$workRepo"" commit -m ""Generated with Claude"""
+            Invoke-IsRepoScopedIn -Cwd $unscopedCwd -Command $command | Should -BeTrue
+        }
+
+        It 'applies every -C in order (git -C PARENT -C child commit targets PARENT/child)' {
+            # The parent sets the key to false; only the nested child repo sets it true.
+            $parent = New-TestRepo -OriginUrl $script:GitHubUrl -AiReferenceScan 'false'
+            $child = Join-Path $parent 'child'
+            New-Item -ItemType Directory -Path $child -Force | Out-Null
+            & git -C $child init -q . 2>&1 | Out-Null
+            & git -C $child config work.aiReferenceScan true 2>&1 | Out-Null
+            $unscopedCwd = New-TestRepo -OriginUrl $script:GitHubUrl -AiReferenceScan 'false'
+            $command = "git -C ""$parent"" -C child commit -m ""Generated with Claude"""
+            Invoke-IsRepoScopedIn -Cwd $unscopedCwd -Command $command | Should -BeTrue
+        }
+
+        It 'ignores an unrelated -C before the git commit: <Name>' -TestCases @(
+            @{ Name = 'grep -C 3'; Prefix = 'grep -C 3 x file' }
+            @{ Name = 'an earlier git -C UNSCOPED status'; Prefix = 'git -C "{0}" status' }
+        ) {
+            param($Name, $Prefix)
+            $githubRepo = New-TestRepo -OriginUrl $script:GitHubUrl -AiReferenceScan 'false'
+            $workCwd = New-TestRepo -OriginUrl $script:WorkHttps -AiReferenceScan 'true'
+            $command = ($Prefix -f $githubRepo) + ' && git commit -m "Generated with Claude"'
+            Invoke-IsRepoScopedIn -Cwd $workCwd -Command $command | Should -BeTrue
+        }
+
+        It 'is scoped in via the retargeted commit from an unscoped cwd: <Name>' -TestCases @(
+            @{ Name = 'git status&&git -C SCOPED commit (operator touching words)'; Template = 'git status&&git -C "{0}" commit -m "Generated with Claude"' }
+            @{ Name = 'git status;git -C SCOPED commit (operator touching words)'; Template = 'git status;git -C "{0}" commit -m "Generated with Claude"' }
+            @{ Name = 'git --git-dir=SCOPED/.git commit'; Template = 'git --git-dir="{0}/.git" commit -m "Generated with Claude"' }
+            @{ Name = 'git --git-dir SCOPED/.git commit (separated value)'; Template = 'git --git-dir "{0}/.git" commit -m "Generated with Claude"' }
+            @{ Name = 'git --git-dir="SCOPED/.git" --work-tree="SCOPED" commit'; Template = 'git --git-dir="{0}/.git" --work-tree="{0}" commit -m "Generated with Claude"' }
+            @{ Name = 'git --git-dir "SCOPED/.git" --work-tree "SCOPED" commit (separated values)'; Template = 'git --git-dir "{0}/.git" --work-tree "{0}" commit -m "Generated with Claude"' }
+        ) {
+            param($Name, $Template)
+            $workRepo = New-TestRepo -OriginUrl $script:WorkHttps -AiReferenceScan 'true'
+            $unscopedCwd = New-TestRepo -OriginUrl $script:GitHubUrl -AiReferenceScan 'false'
+            Invoke-IsRepoScopedIn -Cwd $unscopedCwd -Command ($Template -f $workRepo) | Should -BeTrue
+        }
+
+        It 'joins quoted and bare fragments of a target value: <Name>' -TestCases @(
+            @{ Name = 'git -C "PARENT/"child commit'; Template = 'git -C "{0}/"child commit -m "Generated with Claude"' }
+            @{ Name = 'git --git-dir="PARENT/child"/.git commit'; Template = 'git --git-dir="{0}/child"/.git commit -m "Generated with Claude"' }
+        ) {
+            param($Name, $Template)
+            # Only the nested child repo is scoped in, so the result is true only when the joined
+            # value (PARENT/child) is what reaches the lookup.
+            $parent = New-TestRepo -OriginUrl $script:GitHubUrl -AiReferenceScan 'false'
+            $child = Join-Path $parent 'child'
+            New-Item -ItemType Directory -Path $child -Force | Out-Null
+            & git -C $child init -q . 2>&1 | Out-Null
+            & git -C $child config work.aiReferenceScan true 2>&1 | Out-Null
+            $unscopedCwd = New-TestRepo -OriginUrl $script:GitHubUrl -AiReferenceScan 'false'
+            Invoke-IsRepoScopedIn -Cwd $unscopedCwd -Command ($Template -f $parent) | Should -BeTrue
+        }
+
+        It 'is scoped in via a fully single-quoted -C path with a space' {
+            $repo = Join-Path $TestDrive ('ai-ref space ' + [guid]::NewGuid())
+            New-Item -ItemType Directory -Path $repo -Force | Out-Null
+            & git -C $repo init -q . 2>&1 | Out-Null
+            & git -C $repo config work.aiReferenceScan true 2>&1 | Out-Null
+            $unscopedCwd = New-TestRepo -OriginUrl $script:GitHubUrl -AiReferenceScan 'false'
+            Invoke-IsRepoScopedIn -Cwd $unscopedCwd -Command "git -C '$repo' commit -m ""Generated with Claude""" | Should -BeTrue
+        }
+
+        It 'is scoped out via --git-dir=UNSCOPED/.git --work-tree=UNSCOPED from a scoped cwd (the forwarded target wins)' {
+            $githubRepo = New-TestRepo -OriginUrl $script:GitHubUrl -AiReferenceScan 'false'
+            $workCwd = New-TestRepo -OriginUrl $script:WorkHttps -AiReferenceScan 'true'
+            $command = "git --git-dir=""$githubRepo/.git"" --work-tree=""$githubRepo"" commit -m ""Generated with Claude"""
+            Invoke-IsRepoScopedIn -Cwd $workCwd -Command $command | Should -BeFalse
+        }
+
+        It 'keeps -C and the retargeting options in order (git -C PARENT <Options> commit targets PARENT/child)' -TestCases @(
+            @{ Options = '--git-dir=child/.git' }
+            @{ Options = '--work-tree=child --git-dir=child/.git' }
+        ) {
+            param($Options)
+            $parent = New-TestRepo -OriginUrl $script:GitHubUrl -AiReferenceScan 'false'
+            $child = Join-Path $parent 'child'
+            New-Item -ItemType Directory -Path $child -Force | Out-Null
+            & git -C $child init -q . 2>&1 | Out-Null
+            & git -C $child config work.aiReferenceScan true 2>&1 | Out-Null
+            $unscopedCwd = New-TestRepo -OriginUrl $script:GitHubUrl -AiReferenceScan 'false'
+            $command = "git -C ""$parent"" $Options commit -m ""Generated with Claude"""
+            Invoke-IsRepoScopedIn -Cwd $unscopedCwd -Command $command | Should -BeTrue
+        }
     }
 
     Context 'isRepoScopedIn does not execute shell metacharacters in a malicious -C path (command injection)' {
@@ -701,7 +792,7 @@ Describe 'pi/extensions/ai-reference-guard.ts' {
             # the vulnerable code used to build: closes the quote, chains an `echo` that
             # writes a marker file via cmd.exe's `&` separator, then reopens/closes a dummy
             # quoted span so the rest of the injected command string still parses. Wrapped in
-            # single quotes in the SCANNED command so extractDashCPath's own regex (which
+            # single quotes in the SCANNED command so extractGitTargetArgs' own token walk (which
             # allows any non-single-quote content, including embedded double quotes and `&`,
             # inside a single-quoted -C value) extracts it whole.
             $malicious = "x`" & echo INJECTED > `"$marker`" & echo `""

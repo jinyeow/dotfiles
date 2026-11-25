@@ -422,6 +422,111 @@ Describe 'claude/no-claude-session-trailer.sh' -Skip:(-not $script:HasBash) {
             $out = Invoke-Hook -Command "git -C $githubPath commit -m `"Generated with Claude`"" -RepoDir $script:WorkRepo
             $out.Trim() | Should -BeNullOrEmpty
         }
+        It 'scopes via `git --no-pager -C PATH commit` (a global flag before -C)' {
+            $workPath = $script:WorkRepo -replace '\\', '/'
+            $out = Invoke-Hook -Command "git --no-pager -C $workPath commit -m `"Generated with Claude`"" -RepoDir $script:GitHubRepo
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+        It 'scopes via every -C in order: `git -C PARENT -C child commit` targets PARENT/child' {
+            # git applies every -C cumulatively, so the target is <parent>/child. The parent sets
+            # the key to false; only the nested child repo sets it true.
+            $parent = New-TestRepo -AiReferenceScan 'false'
+            $child = Join-Path $parent 'child'
+            New-Item -ItemType Directory -Path $child -Force | Out-Null
+            & git -C $child init -q . 2>&1 | Out-Null
+            & git -C $child config work.aiReferenceScan true 2>&1 | Out-Null
+            try
+            {
+                $parentPath = $parent -replace '\\', '/'
+                $out = Invoke-Hook -Command "git -C $parentPath -C child commit -m `"Generated with Claude`"" -RepoDir $script:GitHubRepo
+                $out | Should -Match '"permissionDecision":"deny"'
+            }
+            finally
+            {
+                Remove-Item -LiteralPath $parent -Recurse -Force
+            }
+        }
+        It 'ignores an unrelated -C before the git commit: <Name>' -TestCases @(
+            @{ Name = 'grep -C 3'; Prefix = 'grep -C 3 x file' }
+            @{ Name = 'an earlier git -C UNSCOPED status'; Prefix = 'git -C {0} status' }
+        ) {
+            param($Name, $Prefix)
+            $githubPath = $script:GitHubRepo -replace '\\', '/'
+            $command = ($Prefix -f $githubPath) + ' && git commit -m "Generated with Claude"'
+            $out = Invoke-Hook -Command $command -RepoDir $script:WorkRepo
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+        It 'scopes to the retargeted commit, out-of-scope cwd: <Name>' -TestCases @(
+            @{ Name = 'git status&&git -C SCOPED commit (operator touching words)'; Template = 'git status&&git -C {0} commit -m "Generated with Claude"' }
+            @{ Name = 'git status;git -C SCOPED commit (operator touching words)'; Template = 'git status;git -C {0} commit -m "Generated with Claude"' }
+            @{ Name = 'git --git-dir=SCOPED/.git commit'; Template = 'git --git-dir={0}/.git commit -m "Generated with Claude"' }
+            @{ Name = 'git --git-dir SCOPED/.git commit (separated value)'; Template = 'git --git-dir {0}/.git commit -m "Generated with Claude"' }
+            @{ Name = 'git --git-dir="SCOPED/.git" --work-tree="SCOPED" commit'; Template = 'git --git-dir="{0}/.git" --work-tree="{0}" commit -m "Generated with Claude"' }
+            @{ Name = 'git --git-dir "SCOPED/.git" --work-tree "SCOPED" commit (separated values)'; Template = 'git --git-dir "{0}/.git" --work-tree "{0}" commit -m "Generated with Claude"' }
+        ) {
+            param($Name, $Template)
+            $workPath = $script:WorkRepo -replace '\\', '/'
+            $out = Invoke-Hook -Command ($Template -f $workPath) -RepoDir $script:GitHubRepo
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+        It 'joins quoted and bare fragments of a target value: <Name>' -TestCases @(
+            @{ Name = 'git -C "PARENT/"child commit'; Template = 'git -C "{0}/"child commit -m "Generated with Claude"' }
+            @{ Name = 'git --git-dir="PARENT/child"/.git commit'; Template = 'git --git-dir="{0}/child"/.git commit -m "Generated with Claude"' }
+        ) {
+            param($Name, $Template)
+            # Only the nested child repo is scoped in, so the hook denies only when the joined
+            # value (PARENT/child) is what reaches the lookup.
+            $parent = New-TestRepo -AiReferenceScan 'false'
+            $child = Join-Path $parent 'child'
+            New-Item -ItemType Directory -Path $child -Force | Out-Null
+            & git -C $child init -q . 2>&1 | Out-Null
+            & git -C $child config work.aiReferenceScan true 2>&1 | Out-Null
+            try
+            {
+                $out = Invoke-Hook -Command ($Template -f ($parent -replace '\\', '/')) -RepoDir $script:GitHubRepo
+                $out | Should -Match '"permissionDecision":"deny"'
+            }
+            finally
+            {
+                Remove-Item -LiteralPath $parent -Recurse -Force
+            }
+        }
+        It 'still denies `git -C ''SCOPED WITH SPACE'' commit` (a fully single-quoted path with a space)' {
+            $workSpacePath = $script:WorkRepoWithSpace -replace '\\', '/'
+            $out = Invoke-Hook -Command "git -C '$workSpacePath' commit -m `"Generated with Claude`"" -RepoDir $script:GitHubRepo
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+        It 'allows `git --git-dir=UNSCOPED/.git --work-tree=UNSCOPED commit` from an in-scope cwd (the forwarded target wins)' {
+            $githubPath = $script:GitHubRepo -replace '\\', '/'
+            $out = Invoke-Hook -Command "git --git-dir=$githubPath/.git --work-tree=$githubPath commit -m `"Generated with Claude`"" -RepoDir $script:WorkRepo
+            $out.Trim() | Should -BeNullOrEmpty
+        }
+        It 'keeps -C and the retargeting options in order: `git -C PARENT <Options> commit` targets PARENT/child' -TestCases @(
+            @{ Options = '--git-dir=child/.git' }
+            @{ Options = '--work-tree=child --git-dir=child/.git' }
+        ) {
+            param($Options)
+            $parent = New-TestRepo -AiReferenceScan 'false'
+            $child = Join-Path $parent 'child'
+            New-Item -ItemType Directory -Path $child -Force | Out-Null
+            & git -C $child init -q . 2>&1 | Out-Null
+            & git -C $child config work.aiReferenceScan true 2>&1 | Out-Null
+            try
+            {
+                $parentPath = $parent -replace '\\', '/'
+                $out = Invoke-Hook -Command "git -C $parentPath $Options commit -m `"Generated with Claude`"" -RepoDir $script:GitHubRepo
+                $out | Should -Match '"permissionDecision":"deny"'
+            }
+            finally
+            {
+                Remove-Item -LiteralPath $parent -Recurse -Force
+            }
+        }
+        It 'still scopes a non-commit `git -C PATH merge --no-verify` to its -C target (regression guard)' {
+            $workPath = $script:WorkRepo -replace '\\', '/'
+            $out = Invoke-Hook -Command "git -C $workPath merge --no-verify feature" -RepoDir $script:GitHubRepo
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
     }
 
     Context 'clustered short-flag evasion of the -n (no-verify) deny' {
