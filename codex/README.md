@@ -110,8 +110,9 @@ bypassing those same hooks the same way.
 Scoped to work repos only, mirroring `git/README.md`'s `commit-msg` scoping:
 `git config --type=bool --get work.aiReferenceScan` must print `true`. `git/gitconfig-work` sets
 that key for the repos that get the work identity. If the key is unset or false, the hook allows
-everything. The check runs against `git -C <path>`'s actual target repo when the command carries one
-(quoted or bare), not just the hook's inherited cwd; `cd <path> && git ...` shell-state
+everything. The check runs against the actual target repo of the command's `git commit`/`git push` when it
+carries `-C <path>`, `--git-dir` or `--work-tree` (quoted or bare; all passed on in their
+original order, as git applies them), not just the hook's inherited cwd; `cd <path> && git ...` shell-state
 tracking remains a known, accepted limitation.
 
 Ported in structure from `block-dangerous-git.sh` (same stdin JSON extraction tiers, same

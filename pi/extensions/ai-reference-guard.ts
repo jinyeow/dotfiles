@@ -79,18 +79,82 @@ function resolveWordlistPath(): string | URL {
 	return DEFAULT_WORDLIST_CANDIDATES[0];
 }
 
-// Extracts a leading `git -C <path>` global flag's value from the raw command, if
-// present — quoted or bare. Deliberately does NOT track `cd <path> &&` shell state (out
-// of scope: this is a single regex over the command string, not a shell interpreter).
-function extractDashCPath(command: string): string | undefined {
-	const match = /(?:^|\s)-C(?:=|\s+)("(?:[^"\\]|\\.)*"|'[^']*'|\S+)/.exec(command);
-	if (!match) {
-		return undefined;
+// Extracts the git global options that retarget the repo (`-C <path>`, `--git-dir` and
+// `--work-tree`, in both the `--opt value` and `--opt=value` forms), unquoted and in their
+// original order, from the first `git` invocation whose subcommand is `commit` or `push`
+// (the only git subcommands this extension checks). Returned as git argv, so the lookup
+// below resolves them exactly as git does for the real command (each `-C` relative to the
+// previous one). Only that invocation's leading global options are walked, up to the
+// subcommand: `-C`, `-c`, `--git-dir`, `--work-tree` and `--namespace` consume the next
+// token as their value, and every other `-x`/`--x=y` option is one token. An unquoted
+// `&&`, `||`, `;`, `|` or `&` ends a token and the walk even with no surrounding spaces
+// (`git status&&git commit`); inside quotes it does not. Options that belong to another
+// command in the same line are ignored. Returns an empty array when there is no such
+// invocation or it has none of these options. Deliberately does NOT track `cd <path> &&`
+// shell state (out of scope: this is a token walk over the command string, not a shell
+// interpreter).
+function extractGitTargetArgs(command: string): string[] {
+	const valueOptions = ["-C", "-c", "--git-dir", "--work-tree", "--namespace"];
+	const targetOptions = ["-C", "--git-dir", "--work-tree"];
+	const gitPattern = /(?<![\w.-])git(?=\s)/g;
+	const tokenPattern = /^\s*((?:"(?:[^"\\]|\\.)*"|'[^']*'|[^\s;&|"'])+|[;&|]+)/;
+	const operatorPattern = /^[;&|]/;
+	// Removes shell quoting the way a shell would: a token can join several quoted and bare
+	// fragments (`"/tmp/scoped"repo` is `/tmp/scopedrepo` to git), so each fragment is
+	// unquoted and the results are concatenated. Inside double quotes `\"` and `\\` are
+	// escapes; inside single quotes nothing escapes; bare fragments stay as they are. An
+	// unbalanced quote is kept literally. `$VAR`, `~` and globs are not expanded.
+	const unquote = (raw: string): string => {
+		const fragmentPattern = /"((?:[^"\\]|\\.)*)"|'([^']*)'|([^"']+)/y;
+		let unquoted = "";
+		let position = 0;
+		let fragment = fragmentPattern.exec(raw);
+		while (fragment !== null) {
+			if (fragment[1] !== undefined) {
+				unquoted += fragment[1].replace(/\\(["\\])/g, "$1");
+			} else {
+				unquoted += fragment[2] ?? fragment[3];
+			}
+			position = fragmentPattern.lastIndex;
+			fragment = fragmentPattern.exec(raw);
+		}
+		return unquoted + raw.slice(position);
+	};
+	while (gitPattern.exec(command) !== null) {
+		let rest = command.slice(gitPattern.lastIndex);
+		const targetArgs: string[] = [];
+		let subcommand = "";
+		let token = tokenPattern.exec(rest);
+		while (token !== null) {
+			rest = rest.slice(token[0].length);
+			const option = token[1];
+			if (operatorPattern.test(option)) {
+				break;
+			}
+			if (valueOptions.includes(option)) {
+				const value = tokenPattern.exec(rest);
+				if (value === null || operatorPattern.test(value[1])) {
+					break;
+				}
+				rest = rest.slice(value[0].length);
+				if (targetOptions.includes(option)) {
+					targetArgs.push(option, unquote(value[1]));
+				}
+			} else if (/^--(?:git-dir|work-tree)=/.test(option)) {
+				const separator = option.indexOf("=");
+				targetArgs.push(option.slice(0, separator + 1) + unquote(option.slice(separator + 1)));
+			} else if (!option.startsWith("-")) {
+				subcommand = option;
+				break;
+			}
+			token = tokenPattern.exec(rest);
+		}
+		if (subcommand === "commit" || subcommand === "push") {
+			return targetArgs;
+		}
+		gitPattern.lastIndex = command.length - rest.length;
 	}
-	const raw = match[1];
-	const doubleQuoted = /^"(.*)"$/.exec(raw);
-	const singleQuoted = /^'(.*)'$/.exec(raw);
-	return doubleQuoted ? doubleQuoted[1] : singleQuoted ? singleQuoted[1] : raw;
+	return [];
 }
 
 // Repo scoping, mirroring git/templates/hooks/pre-commit's own scoping (see that file's
@@ -98,29 +162,30 @@ function extractDashCPath(command: string): string | undefined {
 // `git config --type=bool --get work.aiReferenceScan` prints `true`. git/gitconfig-work sets
 // that key, and the [includeIf] blocks in the untracked ~/.gitconfig.local load that file for
 // the work repos, with or without a remote. The key is read from the command's own
-// `-C <path>` target when the command carries one (e.g. `git -C <work-root>/<repo> commit ...`
-// run from an unscoped cwd) — otherwise from cwd (the extension's own inherited working
+// target when its git commit/push invocation carries `-C <path>`, `--git-dir` or
+// `--work-tree` (e.g. `git -C <work-root>/<repo> commit ...` run from an unscoped cwd),
+// passing all of them on in their original order — otherwise from cwd (the extension's own inherited working
 // directory, same as the bash ports use their inherited cwd). If git throws (not a repo, key
 // unset, value not a boolean) or prints anything else, the repo is out of scope — a GitHub
 // repo like dotfiles/wiki/brain legitimately says "Claude"/"Codex" in its own subject matter
 // and must stay unscanned.
 //
-// SECURITY: dashCPath comes straight out of the model-controlled command string this
+// SECURITY: each target arg comes straight out of the model-controlled command string this
 // whole extension exists to gate, so it must never be interpolated into a shell-
-// interpreting exec call — a crafted `-C` value containing shell metacharacters (`"`,
+// interpreting exec call — a crafted `-C`/`--git-dir`/`--work-tree` value containing shell metacharacters (`"`,
 // `&`, `;`, backticks, `$()`) would otherwise execute arbitrary commands BEFORE the tool
 // call this hook is supposed to authorize has even run. execFileSync with an argv array
-// never invokes a shell, so no metacharacter in dashCPath (or cwd) can be interpreted
-// specially, regardless of quoting — used for both branches, including the non -C path,
+// never invokes a shell, so no metacharacter in a target arg (or cwd) can be interpreted
+// specially, regardless of quoting — used for both branches, including the no-target path,
 // for consistency and defense-in-depth even though cwd isn't attacker-controlled the
 // same way.
 function isRepoScopedIn(cwd: string, command: string): boolean {
-	const dashCPath = extractDashCPath(command);
+	const targetArgs = extractGitTargetArgs(command);
 	const configArgs = ["config", "--type=bool", "--get", "work.aiReferenceScan"];
 	let aiReferenceScan: string;
 	try {
-		aiReferenceScan = dashCPath
-			? execFileSync("git", ["-C", dashCPath, ...configArgs], { cwd, encoding: "utf8" })
+		aiReferenceScan = targetArgs.length > 0
+			? execFileSync("git", [...targetArgs, ...configArgs], { cwd, encoding: "utf8" })
 			: execFileSync("git", configArgs, { cwd, encoding: "utf8" });
 	} catch {
 		return false;
