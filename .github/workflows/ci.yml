@@ -49,8 +49,10 @@ jobs:
           }
           Write-Host "PSScriptAnalyzer: clean."
 
-  # Windows Pester is split across three parallel jobs, because the suite is dominated by
-  # per-test child processes (pwsh, git, bash, node), which are slow to start on Windows.
+  # Pester is split across parallel jobs on each OS. The suite is dominated by per-test child
+  # processes (pwsh, git, bash, node), which are slow to start, on Windows above all. The
+  # shard lists live in .github/scripts/Invoke-PesterShard.ps1; its last shard runs every
+  # file not listed, and it fails if its shard count does not match the matrix here.
   # Each job has a fixed name so that it can be a required check.
   pester-windows:
     name: ${{ matrix.name }}
@@ -60,17 +62,13 @@ jobs:
       matrix:
         include:
           - shard: 1
-            name: Pester (Windows 1/3)
+            name: Pester (Windows 1/4)
           - shard: 2
-            name: Pester (Windows 2/3)
+            name: Pester (Windows 2/4)
           - shard: 3
-            name: Pester (Windows 3/3)
-    env:
-      # Make Git Bash's `ln -s` create real Windows symlinks. By default it copies the target
-      # instead, which makes setup.sh's real-run tests copy whole skill trees and makes the
-      # symlink-dependent tests skip. The runner can create symlinks, so use the strict mode:
-      # a symlink that cannot be created fails instead of silently becoming a copy.
-      MSYS: winsymlinks:nativestrict
+            name: Pester (Windows 3/4)
+          - shard: 4
+            name: Pester (Windows 4/4)
     defaults:
       run:
         shell: pwsh
@@ -79,7 +77,7 @@ jobs:
 
       - name: Install Pester
         run: |
-          # windows-latest ships Pester >=5.5.0 preinstalled; skip the PSGallery round-trip
+          # The runner images ship Pester >=5.5.0 preinstalled; skip the PSGallery round-trip
           # when the image already satisfies the requirement.
           if (-not (Get-Module -ListAvailable Pester | Where-Object Version -ge '5.5.0')) {
             Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
@@ -87,49 +85,30 @@ jobs:
           }
           Get-Module -ListAvailable Pester | Select-Object Name, Version
 
-      # Neovim is not on the runner image, and tests/nvim-statusline.Tests.ps1 fails without it.
-      # The pin matches the version the bars were developed on, because statusline and
+      # Neovim is not on the runner images, and tests/nvim-statusline.Tests.ps1 fails without
+      # it. The pin matches the version the bars were developed on, because statusline and
       # vim.pack behaviour can change between releases.
       - uses: rhysd/action-setup-vim@v1.6.1
         with:
           neovim: true
           version: v0.12.6
 
-      - name: Pester (tests/, shard ${{ matrix.shard }} of 3)
-        env:
-          SHARD: ${{ matrix.shard }}
-        run: |
-          # Shards 1 and 2 list their test files (names without .Tests.ps1). Shard 3 runs every
-          # other tests/*.Tests.ps1, so a new test file is always picked up. The lists are
-          # balanced on Windows run times; rebalance them when one shard grows much slower.
-          $listed = @(
-            @('setup-sh', 'pi-ai-reference-guard', 'project-brain-session-start'),
-            @('no-claude-session-trailer', 'setup', 'pi-project-brain-autoload',
-              'git-templates-ai-reference-hook', 'block-destructive-vcs', 'warn-legacy-files',
-              'prepare-commit-msg')
-          )
-          $all = Get-ChildItem -Path tests -Filter '*.Tests.ps1' -File |
-            ForEach-Object { $_.Name -replace '\.Tests\.ps1$', '' }
-          $missing = $listed | ForEach-Object { $_ } | Where-Object { $_ -cnotin $all }
-          if ($missing) {
-            throw "Shard lists name test files that do not exist: $($missing -join ', ')"
-          }
-          $index = [int]$env:SHARD - 1
-          $names = if ($index -lt $listed.Count) { $listed[$index] }
-          else { $all | Where-Object { $_ -cnotin ($listed | ForEach-Object { $_ }) } }
-          $paths = $names | ForEach-Object { Join-Path 'tests' "$_.Tests.ps1" }
-          Write-Host "Shard $env:SHARD runs $($paths.Count) file(s):"
-          $paths | ForEach-Object { Write-Host "  $_" }
+      - name: Pester (tests/, shard ${{ matrix.shard }} of 4)
+        run: ./.github/scripts/Invoke-PesterShard.ps1 -Platform Windows -Shard ${{ matrix.shard }} -Count 4
 
-          $config = New-PesterConfiguration
-          $config.Run.Path = [string[]]$paths
-          $config.Run.Exit = $true
-          $config.Output.Verbosity = 'Detailed'
-          Invoke-Pester -Configuration $config
-
-  linux:
-    name: Pester (Ubuntu) + setup.sh smoke
+  # setup.ps1's Windows-only suites (e.g. the -Module all smoke) self-skip on Linux
+  # (-Skip:(-not $IsWindows)) rather than failing, so these runs still need to exit 0.
+  pester-linux:
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: 1
+            name: Pester (Ubuntu 1/2)
+          - shard: 2
+            name: Pester (Ubuntu 2/2)
     defaults:
       run:
         shell: pwsh
@@ -138,7 +117,7 @@ jobs:
 
       - name: Install Pester
         run: |
-          # ubuntu-latest ships Pester >=5.5.0 preinstalled; skip the PSGallery round-trip
+          # The runner images ship Pester >=5.5.0 preinstalled; skip the PSGallery round-trip
           # when the image already satisfies the requirement.
           if (-not (Get-Module -ListAvailable Pester | Where-Object Version -ge '5.5.0')) {
             Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
@@ -146,21 +125,28 @@ jobs:
           }
           Get-Module -ListAvailable Pester | Select-Object Name, Version
 
-      # Same pinned Neovim as the Windows job (see the comment there).
+      # Same pinned Neovim as the Windows jobs (see the comment there).
       - uses: rhysd/action-setup-vim@v1.6.1
         with:
           neovim: true
           version: v0.12.6
 
-      - name: Pester (tests/, platform-agnostic suites)
-        run: |
-          $config = New-PesterConfiguration
-          $config.Run.Path = 'tests'
-          $config.Run.Exit = $true
-          $config.Output.Verbosity = 'Detailed'
-          Invoke-Pester -Configuration $config
+      - name: Pester (tests/, shard ${{ matrix.shard }} of 2)
+        run: ./.github/scripts/Invoke-PesterShard.ps1 -Platform Linux -Shard ${{ matrix.shard }} -Count 2
 
-      # Startup smoke test. It runs in this job and uses the Neovim installed above. The minimal
+  smoke-linux:
+    name: setup.sh + Neovim smoke (Ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Same pinned Neovim as the Pester jobs.
+      - uses: rhysd/action-setup-vim@v1.6.1
+        with:
+          neovim: true
+          version: v0.12.6
+
+      # Startup smoke test. It uses the Neovim installed above. The minimal
       # profile loads no plugins, so it needs no network. XDG dirs are isolated so nothing from
       # the runner leaks in, and the repo's nvim/ is symlinked in as the config. Any startup
       # error sets v:errmsg and fails the step.
@@ -180,11 +166,10 @@ jobs:
               -c 'if v:errmsg != "" | echoerr v:errmsg | cquit 1 | endif' \
               -c 'qa'
 
-      # setup.ps1's Windows-only suites (e.g. the -Module all smoke) self-skip on this OS
-      # (-Skip:(-not $IsWindows)) rather than failing, so the run above still needs to exit 0.
-      # setup.sh (the actual Linux/WSL installer) has no Pester coverage of its own beyond
-      # tests/setup-sh.Tests.ps1 (already included above) - these two steps add a real end-to-end
-      # smoke on top of that: a full -m all --dry-run, and a --clean-backups detection pass.
+      # setup.sh (the Linux/WSL installer) has no Pester coverage of its own beyond
+      # tests/setup-sh.Tests.ps1, which runs in the Ubuntu Pester jobs. These two steps add a
+      # real end-to-end smoke on top of that: a full -m all --dry-run, and a --clean-backups
+      # detection pass.
 
       - name: setup.sh -m all --dry-run smoke
         shell: bash
