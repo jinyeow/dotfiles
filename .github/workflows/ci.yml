@@ -14,8 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  powershell:
-    name: PSScriptAnalyzer + Pester (Windows)
+  psscriptanalyzer:
+    name: PSScriptAnalyzer (Windows)
     runs-on: windows-latest
     defaults:
       run:
@@ -23,20 +23,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install PSScriptAnalyzer and Pester
+      - name: Install PSScriptAnalyzer
         run: |
-          # windows-latest ships PSScriptAnalyzer and Pester >=5.5.0 preinstalled; skip the
-          # PSGallery round-trip (NuGet provider bootstrap + download) when the image already
-          # satisfies the requirement - this is the majority of this job's runtime otherwise.
+          # windows-latest ships PSScriptAnalyzer preinstalled; skip the PSGallery round-trip
+          # (NuGet provider bootstrap + download) when the image already has it.
           if (-not (Get-Module -ListAvailable PSScriptAnalyzer)) {
             Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
             Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
           }
-          if (-not (Get-Module -ListAvailable Pester | Where-Object Version -ge '5.5.0')) {
-            Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-            Install-Module -Name Pester -MinimumVersion 5.5.0 -Force -Scope CurrentUser -SkipPublisherCheck
-          }
-          Get-Module -ListAvailable PSScriptAnalyzer, Pester | Select-Object Name, Version
+          Get-Module -ListAvailable PSScriptAnalyzer | Select-Object Name, Version
 
       - name: PSScriptAnalyzer (whole tree, repo settings)
         run: |
@@ -46,31 +41,34 @@ jobs:
           # payload), not ours to lint - do not gate on it.
           $legacy = '[\\/](psmux[\\/]plugins|ai-agents[\\/]skills[\\/]azure-prepare)[\\/]'
           $gated = $results | Where-Object { $_.ScriptPath -notmatch $legacy }
+          $vendored = @($results).Count - @($gated).Count
+          Write-Host "PSScriptAnalyzer: $(@($results).Count) result(s), $vendored in vendored paths (not gated)."
           if ($gated) {
             $gated | Format-Table RuleName, Severity, ScriptName, Line, Message -AutoSize | Out-String -Width 200 | Write-Host
             throw "PSScriptAnalyzer found $($gated.Count) issue(s)."
           }
           Write-Host "PSScriptAnalyzer: clean."
 
-      # Neovim is not on the runner image, and tests/nvim-statusline.Tests.ps1 fails without it.
-      # The pin matches the version the bars were developed on, because statusline and
-      # vim.pack behaviour can change between releases.
-      - uses: rhysd/action-setup-vim@v1.6.1
-        with:
-          neovim: true
-          version: v0.12.6
-
-      - name: Pester (tests/)
-        run: |
-          $config = New-PesterConfiguration
-          $config.Run.Path = 'tests'
-          $config.Run.Exit = $true
-          $config.Output.Verbosity = 'Detailed'
-          Invoke-Pester -Configuration $config
-
-  linux:
-    name: Pester (Ubuntu) + setup.sh smoke
-    runs-on: ubuntu-latest
+  # Pester is split across parallel jobs on each OS. The suite is dominated by per-test child
+  # processes (pwsh, git, bash, node), which are slow to start, on Windows above all. The
+  # shard lists live in .github/scripts/Invoke-PesterShard.ps1; its last shard runs every
+  # file not listed, and it fails if its shard count does not match the matrix here.
+  # Each job has a fixed name so that it can be a required check.
+  pester-windows:
+    name: ${{ matrix.name }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: 1
+            name: Pester (Windows 1/4)
+          - shard: 2
+            name: Pester (Windows 2/4)
+          - shard: 3
+            name: Pester (Windows 3/4)
+          - shard: 4
+            name: Pester (Windows 4/4)
     defaults:
       run:
         shell: pwsh
@@ -79,7 +77,7 @@ jobs:
 
       - name: Install Pester
         run: |
-          # ubuntu-latest ships Pester >=5.5.0 preinstalled; skip the PSGallery round-trip
+          # The runner images ship Pester >=5.5.0 preinstalled; skip the PSGallery round-trip
           # when the image already satisfies the requirement.
           if (-not (Get-Module -ListAvailable Pester | Where-Object Version -ge '5.5.0')) {
             Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
@@ -87,21 +85,68 @@ jobs:
           }
           Get-Module -ListAvailable Pester | Select-Object Name, Version
 
-      # Same pinned Neovim as the Windows job (see the comment there).
+      # Neovim is not on the runner images, and tests/nvim-statusline.Tests.ps1 fails without
+      # it. The pin matches the version the bars were developed on, because statusline and
+      # vim.pack behaviour can change between releases.
       - uses: rhysd/action-setup-vim@v1.6.1
         with:
           neovim: true
           version: v0.12.6
 
-      - name: Pester (tests/, platform-agnostic suites)
-        run: |
-          $config = New-PesterConfiguration
-          $config.Run.Path = 'tests'
-          $config.Run.Exit = $true
-          $config.Output.Verbosity = 'Detailed'
-          Invoke-Pester -Configuration $config
+      - name: Pester (tests/, shard ${{ matrix.shard }} of 4)
+        run: ./.github/scripts/Invoke-PesterShard.ps1 -Platform Windows -Shard ${{ matrix.shard }} -Count 4
 
-      # Startup smoke test. It runs in this job and uses the Neovim installed above. The minimal
+  # setup.ps1's Windows-only suites (e.g. the -Module all smoke) self-skip on Linux
+  # (-Skip:(-not $IsWindows)) rather than failing, so these runs still need to exit 0.
+  pester-linux:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: 1
+            name: Pester (Ubuntu 1/2)
+          - shard: 2
+            name: Pester (Ubuntu 2/2)
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Pester
+        run: |
+          # The runner images ship Pester >=5.5.0 preinstalled; skip the PSGallery round-trip
+          # when the image already satisfies the requirement.
+          if (-not (Get-Module -ListAvailable Pester | Where-Object Version -ge '5.5.0')) {
+            Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+            Install-Module -Name Pester -MinimumVersion 5.5.0 -Force -Scope CurrentUser -SkipPublisherCheck
+          }
+          Get-Module -ListAvailable Pester | Select-Object Name, Version
+
+      # Same pinned Neovim as the Windows jobs (see the comment there).
+      - uses: rhysd/action-setup-vim@v1.6.1
+        with:
+          neovim: true
+          version: v0.12.6
+
+      - name: Pester (tests/, shard ${{ matrix.shard }} of 2)
+        run: ./.github/scripts/Invoke-PesterShard.ps1 -Platform Linux -Shard ${{ matrix.shard }} -Count 2
+
+  smoke-linux:
+    name: setup.sh + Neovim smoke (Ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Same pinned Neovim as the Pester jobs.
+      - uses: rhysd/action-setup-vim@v1.6.1
+        with:
+          neovim: true
+          version: v0.12.6
+
+      # Startup smoke test. It uses the Neovim installed above. The minimal
       # profile loads no plugins, so it needs no network. XDG dirs are isolated so nothing from
       # the runner leaks in, and the repo's nvim/ is symlinked in as the config. Any startup
       # error sets v:errmsg and fails the step.
@@ -121,11 +166,10 @@ jobs:
               -c 'if v:errmsg != "" | echoerr v:errmsg | cquit 1 | endif' \
               -c 'qa'
 
-      # setup.ps1's Windows-only suites (e.g. the -Module all smoke) self-skip on this OS
-      # (-Skip:(-not $IsWindows)) rather than failing, so the run above still needs to exit 0.
-      # setup.sh (the actual Linux/WSL installer) has no Pester coverage of its own beyond
-      # tests/setup-sh.Tests.ps1 (already included above) - these two steps add a real end-to-end
-      # smoke on top of that: a full -m all --dry-run, and a --clean-backups detection pass.
+      # setup.sh (the Linux/WSL installer) has no Pester coverage of its own beyond
+      # tests/setup-sh.Tests.ps1, which runs in the Ubuntu Pester jobs. These two steps add a
+      # real end-to-end smoke on top of that: a full -m all --dry-run, and a --clean-backups
+      # detection pass.
 
       - name: setup.sh -m all --dry-run smoke
         shell: bash
@@ -134,7 +178,9 @@ jobs:
           scratch_home="$(mktemp -d)"
           # Invoked via `bash`, not `./setup.sh`: the file is tracked non-executable (100644)
           # in git, so a fresh checkout would hit "Permission denied" on a direct exec.
-          HOME="$scratch_home" bash setup.sh -m all --dry-run
+          # The runner sets XDG_CONFIG_HOME, which setup.sh prefers over $HOME/.config, so
+          # point it into the scratch home too.
+          HOME="$scratch_home" XDG_CONFIG_HOME="$scratch_home/.config" bash setup.sh -m all --dry-run
           echo "setup.sh -m all --dry-run: exit 0, no changes made to $scratch_home"
 
       - name: setup.sh --clean-backups smoke
@@ -198,6 +244,10 @@ jobs:
             setup.sh \
             claude/no-claude-session-trailer.sh \
             claude/statusline-command.sh \
+            claude/skills/git-guardrails-claude-code/scripts/block-dangerous-git.sh \
+            codex/ai-reference-guard.sh \
+            codex/block-dangerous-git.sh \
+            git/templates/hooks/commit-msg \
             git/templates/hooks/pre-commit \
             git/templates/hooks/prepare-commit-msg \
             git/templates/hooks/prepare-commit-msg.sh

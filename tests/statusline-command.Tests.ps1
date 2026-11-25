@@ -73,15 +73,17 @@ Describe 'claude/statusline-command.sh git file counts' -Skip:(-not $script:HasD
     It 'counts a staged type-change as a staged change (dirty, not clean)' {
         # `T  a.txt`: x=T, y=space. The old staged class [MADRC] omitted T, so a staged
         # type-change rendered clean. Now x in [MADRCT] -> counted -> red branch + `+1`.
-        if (-not (Get-Command ln -ErrorAction SilentlyContinue)) { Set-ItResult -Skipped -Because 'ln unavailable'; return }
+        # The symlink is staged straight into the index, so no filesystem symlink is needed.
+        # Do not use `ln -s` here: without native symlinks, Git for Windows' ln copies the
+        # target instead, and copying a Temp folder into itself took over 8 minutes in CI.
+        # The worktree still holds the regular file, so y is T or M; only x matters here.
         $repo = New-GitRepo
         try
         {
-            Remove-Item -LiteralPath (Join-Path $repo 'a.txt')
-            & ln -s /tmp (Join-Path $repo 'a.txt')
-            & git -C $repo add a.txt
+            $blob = 'target' | & git -C $repo hash-object -w --stdin
+            & git -C $repo update-index --cacheinfo "120000,$blob,a.txt"
             $porcelain = (& git -C $repo status --porcelain) -join "`n"
-            if ($porcelain -notmatch '^T') { Set-ItResult -Skipped -Because 'filesystem did not produce a type-change'; return }
+            $porcelain | Should -Match '^T'
 
             $out = Invoke-Statusline -Repo $repo
             $out | Should -Match ([regex]::Escape($script:RED) + '.*master')

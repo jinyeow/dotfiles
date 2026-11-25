@@ -157,10 +157,13 @@ process.stdout.write(JSON.stringify(results));
         $commandsPath = Join-Path $TestDrive ([System.IO.Path]::GetRandomFileName())
         $Command | ConvertTo-Json -Compress -AsArray | Set-Content -Path $commandsPath -NoNewline -Encoding utf8
 
-        $output = & node $script:NodeHarness $script:ExtensionFile $WordlistPath $commandsPath
+        # stderr goes to a file so a failure message names the real error, which a test can
+        # assert on, and so an expected failure does not print a stack trace into the log.
+        $stderrPath = Join-Path $TestDrive ([System.IO.Path]::GetRandomFileName())
+        $output = & node $script:NodeHarness $script:ExtensionFile $WordlistPath $commandsPath 2>$stderrPath
         if ($LASTEXITCODE -ne 0)
         {
-            throw "node harness failed: $output"
+            throw "node harness failed: $output $(Get-Content -LiteralPath $stderrPath -Raw)"
         }
 
         $results = @{}
@@ -556,7 +559,8 @@ Describe 'pi/extensions/ai-reference-guard.ts' {
     Context 'missing wordlist fails closed' {
         It 'throws when parseWordlist is fed a nonexistent file (fail-closed path)' {
             $missingPath = Join-Path $TestDrive 'does-not-exist.txt'
-            { Invoke-AiReferenceGuard -Command 'git commit -m "fix"' -WordlistPath $missingPath } | Should -Throw
+            { Invoke-AiReferenceGuard -Command 'git commit -m "fix"' -WordlistPath $missingPath } |
+                Should -Throw -ExpectedMessage '*ENOENT*does-not-exist.txt*'
         }
     }
 

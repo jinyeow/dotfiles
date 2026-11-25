@@ -1,9 +1,16 @@
 #Requires -Version 7
 # Pester tests for setup.sh (the Linux/WSL installer), run from pwsh via a child bash process.
 # Complements tests/setup.Tests.ps1 (setup.ps1) and tests/setup-git.Tests.ps1 (git module).
+#
+# Skipped on Windows: setup.sh does not support Git Bash, the only bash these tests can use
+# there (WSL's bash cannot open the Windows paths they pass). CI runs them on Ubuntu.
 
 BeforeAll {
     . (Join-Path $PSScriptRoot 'TestSafety.ps1')
+    if ($IsWindows)
+    {
+        return
+    }
     . (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
 
     $script:Repo = Split-Path $PSScriptRoot -Parent
@@ -29,7 +36,7 @@ BeforeAll {
     }
 }
 
-Describe 'setup.sh --clean-backups' {
+Describe 'setup.sh --clean-backups' -Skip:$IsWindows {
     BeforeEach {
         $script:TmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-clean-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $script:TmpHome -Force | Out-Null
@@ -107,7 +114,7 @@ Describe 'setup.sh --clean-backups' {
     }
 }
 
-Describe 'setup.sh --dry-run' {
+Describe 'setup.sh --dry-run' -Skip:$IsWindows {
     It 'links ~/.gitattributes and the hook script directory in the git module' {
         # core.attributesfile in git/gitconfig points at ~/.gitattributes, and the config-based
         # hooks run scripts under ~/.git_templates/hooks.
@@ -274,7 +281,7 @@ INSTALL
     }
 }
 
-Describe 'setup.sh Codex bootstrap boundary' {
+Describe 'setup.sh Codex bootstrap boundary' -Skip:$IsWindows {
     It 'previews the native bootstrap without mutating Codex state in dry-run' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-codex-bootstrap-dryrun-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
@@ -373,7 +380,7 @@ INSTALL
     }
 }
 
-Describe 'setup.sh Codex MCP registration gating' {
+Describe 'setup.sh Codex MCP registration gating' -Skip:$IsWindows {
     BeforeAll {
         $script:CodexMcpShim = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-codex-mcp-shim-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $script:CodexMcpShim -Force | Out-Null
@@ -443,7 +450,7 @@ Describe 'setup.sh Codex MCP registration gating' {
     }
 }
 
-Describe 'setup.sh Codex skill projection' {
+Describe 'setup.sh Codex skill projection' -Skip:$IsWindows {
     It 'projects portable and Codex-native skills, excluding Claude-only skills' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-codex-skills-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
@@ -471,7 +478,7 @@ Describe 'setup.sh Codex skill projection' {
     }
 }
 
-Describe 'setup.sh module list — codex' {
+Describe 'setup.sh module list — codex' -Skip:$IsWindows {
     It 'runs codex via the ai-agents composite in the "all" expansion (not listed individually)' {
         # codex, claude, and pi are no longer listed individually in the all-expansion: they run
         # once each through the ai-agents composite (see 'setup.sh -m ai-agents (composite)').
@@ -485,7 +492,7 @@ Describe 'setup.sh module list — codex' {
     }
 }
 
-Describe 'setup.sh -m ai-agents (composite)' {
+Describe 'setup.sh -m ai-agents (composite)' -Skip:$IsWindows {
     It 'runs the Claude, Codex, and Pi modules in sequence without duplicating any of them' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-ai-agents-composite-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
@@ -625,7 +632,7 @@ Describe 'setup.sh -m ai-agents (composite)' {
 # invoking Pi's real package installer or mutating a runtime home. Non-dry-run Pi bootstrap and
 # package behavior remains outside this suite; it requires an installed/authenticated runtime.
 # Hosts that cannot create POSIX symlinks skip these fixtures rather than testing copy emulation.
-Describe 'setup.sh relative-link migration safety' {
+Describe 'setup.sh relative-link migration safety' -Skip:$IsWindows {
     # Same privilege probe as 'setup.sh make_symlink backup behavior', run directly in the
     # Describe body (not BeforeAll) so it executes during Pester's discovery phase — the same
     # phase that evaluates the -Skip parameter below. A probe set inside BeforeAll would run only
@@ -640,7 +647,7 @@ Describe 'setup.sh relative-link migration safety' {
     . (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
     $discoveryBash = Resolve-TestBash
     $script:CanCreateSymlink = $false
-    if ($discoveryBash)
+    if ($discoveryBash -and -not $IsWindows)
     {
         $probeDir = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-link-probe-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $probeDir -Force | Out-Null
@@ -1007,7 +1014,7 @@ Describe 'setup.sh relative-link migration safety' {
     }
 }
 
-Describe 'setup.sh Claude agent directory migration' {
+Describe 'setup.sh Claude agent directory migration' -Skip:$IsWindows {
     It 'preserves a user-owned agents directory' {
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-agents-owned-' + [guid]::NewGuid())
         $agents = Join-Path $tmpHome '.claude/agents'
@@ -1107,7 +1114,7 @@ Describe 'setup.sh Claude agent directory migration' {
     }
 }
 
-Describe 'setup.sh module list' {
+Describe 'setup.sh module list' -Skip:$IsWindows {
     It 'advertises lazygit and windowsterminal in the header comment and usage text' {
         # Regression: the dispatcher (case statement) supports lazygit/windowsterminal, but the
         # header comment and usage() text never mentioned them.
@@ -1141,7 +1148,7 @@ Describe 'setup.sh module list' {
 
 }
 
-Describe 'setup.sh make_symlink backup behavior' {
+Describe 'setup.sh make_symlink backup behavior' -Skip:$IsWindows {
     # Same privilege probe as 'setup.sh relative-link migration safety', run directly in the
     # Describe body (not BeforeAll) so it executes during Pester's discovery phase — the same
     # phase that evaluates the -Skip parameter below. A probe set inside BeforeAll would run only
@@ -1156,7 +1163,7 @@ Describe 'setup.sh make_symlink backup behavior' {
     . (Join-Path $PSScriptRoot 'Resolve-TestBash.ps1')
     $discoveryBash = Resolve-TestBash
     $script:CanCreateSymlink = $false
-    if ($discoveryBash)
+    if ($discoveryBash -and -not $IsWindows)
     {
         $probeDir = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-make-symlink-probe-' + [guid]::NewGuid())
         New-Item -ItemType Directory -Path $probeDir -Force | Out-Null
