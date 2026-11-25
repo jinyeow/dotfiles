@@ -84,6 +84,7 @@ own `SKILL.md` frontmatter, trimmed to one line. Claude-native skills live in `.
 - **`review-me`** — Interrogate the user on the current diff as an adversarial reviewer and withhold the PR until they pass.
 - **`rfc`** — Draft and create an Azure DevOps "Request for Change RFC" work item in the configured work project.
 - **`setup-agent-skills`** — Configure the agent-skill workflow for this repo: where specs/designs/tickets land, whether an issue tracker is used and its label vocabulary, the domain-doc layout, and how the tracker expresses wayfinding operations.
+- **`setup-home-repo`**: Set up or adopt a Home Repo (`gateroom`) for a workspace on any machine, in four steps with an approval gate before any change.
 - **`spec-review`** — Review a diff for conformance to its originating spec or ticket: missing requirements, scope creep, and requirements implemented wrong.
 - **`storm-research`** — Runs a 4-phase pipeline over a topic: five expert lenses (Practitioner, Academic, Skeptic, Economist, Historian), a contradiction map, a synthesized HTML report, and adversarial peer review plus primary-source verification.
 - **`tdd`** — Test-driven development with red-green-refactor loop.
@@ -120,9 +121,10 @@ auto-update by default. To get new commits, run `claude plugin marketplace updat
 `claude plugin update project-brain@dotfiles`.
 
 The hook needs PowerShell 7 (`pwsh`) on `PATH`. The plugin does not create
-`~/.claude/project-brain/brains.json`. Until a brain area exists, the hook loads nothing. To start
-a brain, ask Claude in a session to set up a new project-brain area. The skill's "New area" flow
-creates the brain repo from the bundled `templates/` and writes `brains.json`.
+`~/.claude/project-brain/brains.json`. Until a brain workspace exists, the hook loads nothing. To start
+a brain, follow the `project-brain` skill's "New workspace" step. It creates the brain repo from the
+skill's `templates/` and writes `brains.json`. The plugin does not include the separate
+`setup-home-repo` skill, which sets up an optional Home Repo.
 
 Do not install the plugin on a machine where `setup.ps1 -Module claude` has run. That setup
 already links the skill into `~/.claude/skills/` and registers the same hook in `settings.json`,

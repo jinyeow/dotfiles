@@ -42,8 +42,8 @@ Read the learner profile — both grains, whichever exist:
 - **Global** — `learner-profile.md` under the runtime's own config home (`~/.claude/`,
   `~/.codex/`, or `~/.pi/agent/`): general-skill observations that follow me across repos
   (languages, tools, patterns I've shown fluency or gaps in).
-- **Area** — `learner.md` in the resolved brain: domain-specific knowledge for this codebase's
-  area. Resolve per `project-brain`: an ancestor `.claude/brain/` is self-contained; otherwise the
+- **Workspace**: `learner.md` in the resolved brain: domain-specific knowledge for this codebase's
+  workspace. Resolve per `project-brain`: an ancestor `.claude/brain/` is self-contained; otherwise the
   `~/.claude/project-brain/brains.json` entry whose scope covers the cwd. No brain → skip silently.
 
 Use the profile to pitch the opening depth — skim what it says I already hold, slow down where it

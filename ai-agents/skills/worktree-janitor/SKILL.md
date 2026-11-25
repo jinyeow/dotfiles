@@ -135,6 +135,32 @@ approves it.
      `git -C '<dir>' rev-parse --absolute-git-dir` (`.bare/worktrees/<name>/modules`) and run
      `git worktree remove '<dir>'` again. If any submodule has changes, stashes or a moved
      HEAD, stop and report it.
+   - **Sync the initiative registry in the same step.** Run this right after each successful
+     `git worktree remove`, before the next worktree. It also applies to the step 6 removals.
+     Resolve the initiative for the removed directory with the `project-brain` resolve-and-read
+     procedure. The glob match works on the path text, so the directory need not exist. If no
+     initiative matches, do nothing here. Otherwise make two edits in the brain:
+     1. In the initiative's `STATUS.md`, find the Repos table row for the removed worktree and
+        set its State to `merged`. Keep the row, so the table shows the whole spread. Bump
+        `updated:` and recompute `stale_after`.
+     2. In `registry.json`, remove the registry glob that matched the removed directory from the
+        initiative's `dirs`. That glob has one of two forms. The work-item glob is
+        `<scope>/*/<type>-<item>-*`. The personal-work globs, for an item with no tracker id, are
+        `<scope>/*/<type>-<initiative-slug>` and `<scope>/*/<type>-<initiative-slug>/*`. Remove
+        both personal-work globs together, as one unit. One glob (or glob pair) covers the worktrees of one work item in
+        every repo. Remove it only after the last
+        remaining worktree of that item is gone. Check with `git worktree list --porcelain` in
+        each repo that the Repos table names for that item. Never remove the initiative folder
+        globs (`<brain>/initiatives/<id>` and `<brain>/initiatives/<id>/*`). Initiative close removes
+        them.
+
+     Check that `git -C '<brain>' status --porcelain -- 'registry.json' 'initiatives/<id>/STATUS.md'`
+     prints nothing. Both files must be clean before you edit them. If either has uncommitted
+     changes, stop and report it, because a commit would include edits that are not yours.
+     Then stage only those two files and run `git -C '<brain>' commit`. Use the message
+     `chore(<id>): mark '<dir>' merged and drop its glob` when the glob went too. Use
+     `chore(<id>): mark '<dir>' merged` if the glob stays because another worktree of the item
+     remains. Add the row and the glob you removed, if any, to the final report.
    - `git branch -d '<branch>'` (non-force). This succeeds for a normal/fast-forward merge and
      is itself fully automated — no confirmation needed once step 2–4 already established
      safety and the ancestor check above passed.

@@ -17,6 +17,11 @@ generated:
 ## Now
 <where we are / what was just done. 5 lines max.>
 
+## Repos
+| Repo | Worktree | Branch | Item | PR | State |
+|---|---|---|---|---|---|
+| <repo> | <worktree folder> | <type>/<item>-<slug> | <work item id> | <PR link or "none"> | <active / in review / merged> |
+
 ## Blocked on
 <what's stopping the next action, or "nothing".>
 

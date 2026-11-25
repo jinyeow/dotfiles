@@ -18,6 +18,14 @@ generated:
 ## Where the work lives
 <the repos/worktrees/spikes this spans — the same set registered in registry.json.>
 
+## Work tracking
+<the tracker for this initiative and how to reach it (CLI or REST API), plus the parent work item
+and its children. A repo with a different tracker points at its own workflow config.>
+
+Ordering constraints:
+<steps that must happen in a fixed order across repos, for example a submodule change before its
+pointer bump. One per line, or "none".>
+
 ## Durable facts & gotchas
 <conventions, contracts, "X looks safe but does Y" — the things a fresh session must know and can't
 re-derive from the code. Not status.>
@@ -30,4 +38,5 @@ re-derive from the code. Not status.>
 - Research: `research/index.md`
 - ADRs: `adr/`
 - Reports: `reports/index.md`
-- Codebase knowledge: `../../wiki/` (link specific pages; do not duplicate them here)
+- Codebase knowledge: `../../../wiki/` when the workspace has a Home Repo wiki (link specific
+  pages; do not duplicate them here). Delete this line when there is no wiki.

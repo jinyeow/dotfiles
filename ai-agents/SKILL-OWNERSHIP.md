@@ -62,7 +62,10 @@ convention. `domain-modeling` is portable too, split out of `grill-with-docs` to
 [mattpocock/skills](https://github.com/mattpocock/skills)' current design: the CONTEXT.md/ADR
 discipline stands on its own, independently model-invocable, while `grilling` (also
 mattpocock/skills) carries the interview mechanics and `grill-with-docs` is now a thin pointer
-skill invoking both. No runtime-specific mechanism involved.
+skill invoking both. No runtime-specific mechanism involved. `setup-home-repo` is portable too: it
+is user-invoked (`disable-model-invocation: true`) and uses only git and file operations, so it
+has no runtime-specific mechanism. `project-brain`'s "New workspace" section names it as the
+optional way to set up a Home Repo.
 
 ## Portable support (`ai-agents/skills/_shared/`)
 

@@ -149,7 +149,7 @@ resolved absolute installed script path at merge time.
 Check `core.md` + `STATUS.md` size for a given initiative against the roughly 2,500-token
 `additionalContext` budget the Codex hook-output docs note — this repo does not solve
 token-budgeting for oversized initiatives; keep those files lean. Measured against this
-repo's own dotfiles brain (`E:\Personal Projects\brain\initiatives\dotfiles\`), the combined
+repo's own dotfiles brain (`E:\Personal Projects\gateroom\brain\initiatives\dotfiles\`), the combined
 `core.md` + `STATUS.md` payload is ~55.6K characters (~13.9K tokens at a 4-chars/token
 estimate) — well over budget; expect Codex to truncate or drop the excess for initiatives
 this large.

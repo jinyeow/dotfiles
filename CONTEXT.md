@@ -25,9 +25,21 @@ The `write` skill's second layer: its four Modes (Long-form Article, Release Not
 _Avoid_: prose polishing, structural pass (the skill already uses "polish" for a different, sentence-level meaning, and "structural" only describes one of the four Modes)
 
 **OKF bundle**:
-The Open Knowledge Format (Google, v0.2) unit a single `okf_version` declaration governs. Per `project-brain`'s adoption (#195), the whole brain repo (e.g. `E:\Personal Projects\brain\`) is one bundle — its root `index.md` declares `okf_version: "0.2"`; per-initiative directories (`initiatives/<id>/`) are not separate bundles and get no `index.md` of their own.
-_Avoid_: brain (ambiguous — could mean the repo, an initiative, or the concept generally); OKF instance
+The Open Knowledge Format (Google, v0.2) unit a single `okf_version` declaration governs. Per `project-brain`'s adoption (#195), the whole brain (a brain repo such as `<scope>/brain/`, or the Home Repo's `gateroom/brain/` folder) is one bundle. Its root `index.md` declares `okf_version: "0.2"`; per-initiative directories (`initiatives/<id>/`) are not separate bundles and get no `index.md` of their own.
+_Avoid_: brain (ambiguous: could mean the repo, an initiative, or the concept generally); OKF instance
 
 **OKF concept**:
 A single Markdown file with a `type:` frontmatter field, per the Open Knowledge Format. Every non-reserved `.md` file under a brain (`core.md`, `STATUS.md`, `adr/*.md`, `research/*.md`, `reports/*.md`) is a concept; `index.md` and `log.md` are reserved filenames and are not concepts.
 _Avoid_: document, page (too generic — "concept" is OKF's own term and is what a consumer routes on via `type:`)
+
+**Workspace**:
+One `brains.json` scope plus its brain, such as all work under `~/work/`. A workspace may also have a Home Repo. In a workspace with a Home Repo, every work item is an initiative. Without one, single-directory work keeps its brain in-repo under `.claude/brain/`.
+_Avoid_: area, brain area (the word "area" keeps one meaning: a group of repos in a `repos/<area>.md` pointer file)
+
+**Home Repo**:
+An optional git repo directly inside a workspace's scope folder that holds `AGENTS.md`, a `CLAUDE.md` pointer, `repos/` pointer files, a `wiki/`, workspace-only `skills/`, and the `brain/` folder. The `AGENTS.md` carries the workspace default tracker under Work tracking. See `docs/adr/home-repo-is-workspace-brain.md`.
+_Avoid_: hub repo, meta repo, brain repo (the brain is only the `brain/` folder inside it)
+
+**gateroom**:
+The fixed name of the Home Repo in every workspace, so skills and docs describe one layout.
+_Avoid_: other Home Repo names such as `home` or `hub`
