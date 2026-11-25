@@ -151,7 +151,7 @@ approves it.
         every repo. Remove it only after the last
         remaining worktree of that item is gone. Check with `git worktree list --porcelain` in
         each repo that the Repos table names for that item. Never remove the initiative folder
-        globs (`<scope>/gateroom/brain/initiatives/<id>` and `<scope>/gateroom/brain/initiatives/<id>/*`). Initiative close removes
+        globs (`<brain>/initiatives/<id>` and `<brain>/initiatives/<id>/*`). Initiative close removes
         them.
 
      Check that `git -C '<brain>' status --porcelain -- 'registry.json' 'initiatives/<id>/STATUS.md'`

@@ -17,8 +17,11 @@ slowly.
 
 ## Decision
 
-Each workspace gets one Home Repo named `gateroom`, directly inside the scope folder. A workspace is one
-`brains.json` scope plus its Home Repo. The layout is:
+A workspace is one `brains.json` scope plus its brain. The brain can be its own git repo, for
+example `<scope>/brain/`. The `project-brain` skill works with that alone.
+
+A workspace can opt in to one Home Repo named `gateroom`, directly inside the scope folder. The
+Home Repo is optional. The rules below apply only to a workspace that has one. The layout is:
 
 - `AGENTS.md`: intro, Work tracking, Other Repos pointers, a rule against `.claude/handoff.md`,
   and a line saying global rules and skills load from the runtime folders. `CLAUDE.md` is a
@@ -30,9 +33,14 @@ Each workspace gets one Home Repo named `gateroom`, directly inside the scope fo
 - `brain/`: the OKF bundle, and the path `brains.json` points at. The schema is unchanged, and
   each initiative gains a `specs/` folder.
 
-Every work item in a workspace is an initiative, including a single-repo item. In-repo
-`.claude/brain/` stays only for a repo outside any workspace. Durable state never goes in
-gitignored scratch inside a worktree, because removing the worktree deletes it.
+In a workspace with a Home Repo, every work item is an initiative, including a single-repo item.
+In-repo `.claude/brain/` stays only for a repo outside that workspace. In a workspace without a
+Home Repo, an initiative spans more than one directory, and single-directory work stays in-repo
+under `.claude/brain/`. In every workspace, durable state never goes in gitignored scratch inside
+a worktree, because removing the worktree deletes it.
+
+The Home Repo is opt-in because the `project-brain` skill must work on its own. The skill also
+ships as a standalone plugin, and a machine with only that plugin has no `home-repo-init` skill.
 
 The workspace default tracker goes in the Home Repo's `AGENTS.md` under Work tracking. A repo
 with a different tracker gets a hint on its pointer line that points at the repo's own workflow

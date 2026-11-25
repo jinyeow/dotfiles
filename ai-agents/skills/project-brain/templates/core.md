@@ -38,4 +38,5 @@ re-derive from the code. Not status.>
 - Research: `research/index.md`
 - ADRs: `adr/`
 - Reports: `reports/index.md`
-- Codebase knowledge: `../../../wiki/` (link specific pages; do not duplicate them here)
+- Codebase knowledge: `../../../wiki/` when the workspace has a Home Repo wiki (link specific
+  pages; do not duplicate them here). Delete this line when there is no wiki.

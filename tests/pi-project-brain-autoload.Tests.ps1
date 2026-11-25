@@ -451,5 +451,60 @@ stale status content
                 Invoke-HomeRepoPiSession -CwdRelative 'gateroom' | Should -BeNullOrEmpty
             }
         }
+
+        Context 'plain brain workspace (no Home Repo): initiative folder and work-item worktrees' {
+            # A workspace without a Home Repo: the brain is its own git repo at <scope>/brain.
+            BeforeAll {
+                function Invoke-PlainBrainPiSession
+                {
+                    param([string] $CwdRelative)
+
+                    $scope = Join-Path $TestDrive ('plain-' + [guid]::NewGuid())
+                    $fixtureHome = Join-Path $TestDrive ('home-' + [guid]::NewGuid())
+                    $brainPath = Join-Path $scope 'brain'
+                    $dotBrain = Join-Path $fixtureHome '.claude/project-brain'
+                    New-Item -ItemType Directory -Path $dotBrain -Force | Out-Null
+                    New-Item -ItemType Directory -Path (Join-Path $brainPath 'initiatives/PBI-42-demo') -Force | Out-Null
+
+                    $scopeNorm = ($scope -replace '\\', '/')
+                    $brainNorm = ($brainPath -replace '\\', '/')
+                    @{ brains = @(@{ scope = $scopeNorm; path = $brainNorm }) } |
+                        ConvertTo-Json -Depth 5 | Set-Content -Path (Join-Path $dotBrain 'brains.json') -Encoding utf8
+                    @{
+                        initiatives = @{
+                            'PBI-42-demo' = @{
+                                title = 'Demo initiative'
+                                dirs = @(
+                                    "$scopeNorm/brain/initiatives/PBI-42-demo"
+                                    "$scopeNorm/brain/initiatives/PBI-42-demo/*"
+                                    "$scopeNorm/*/feat-42-*"
+                                )
+                            }
+                        }
+                    } | ConvertTo-Json -Depth 6 | Set-Content -Path (Join-Path $brainPath 'registry.json') -Encoding utf8
+                    '# demo core' | Set-Content -Path (Join-Path $brainPath 'initiatives/PBI-42-demo/core.md') -Encoding utf8
+                    'demo status' | Set-Content -Path (Join-Path $brainPath 'initiatives/PBI-42-demo/STATUS.md') -Encoding utf8
+
+                    $cwd = Join-Path $scope $CwdRelative
+                    New-Item -ItemType Directory -Path $cwd -Force | Out-Null
+                    return Invoke-ResolveBrainContextWithHome -Cwd ($cwd -replace '\\', '/') -ScriptPath $script:RealSessionStartScript -HomeDir $fixtureHome
+                }
+            }
+
+            It 'injects the initiative when cwd is the initiative folder' {
+                $result = Invoke-PlainBrainPiSession -CwdRelative 'brain/initiatives/PBI-42-demo'
+                $result | Should -Match ([regex]::Escape('[project-brain] Active initiative: PBI-42-demo - Demo initiative.'))
+                $result | Should -Match '# demo core'
+            }
+
+            It 'injects the initiative when cwd is a work-item worktree' {
+                $result = Invoke-PlainBrainPiSession -CwdRelative 'some-repo/feat-42-add-thing'
+                $result | Should -Match ([regex]::Escape('[project-brain] Active initiative: PBI-42-demo - Demo initiative.'))
+            }
+
+            It 'injects nothing when cwd is the brain root' {
+                Invoke-PlainBrainPiSession -CwdRelative 'brain' | Should -BeNullOrEmpty
+            }
+        }
     }
 }

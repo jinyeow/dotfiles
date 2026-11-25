@@ -122,8 +122,9 @@ auto-update by default. To get new commits, run `claude plugin marketplace updat
 
 The hook needs PowerShell 7 (`pwsh`) on `PATH`. The plugin does not create
 `~/.claude/project-brain/brains.json`. Until a brain workspace exists, the hook loads nothing. To start
-a brain, run the user-invoked `home-repo-init` skill. It creates the Home Repo and its brain from the
-`project-brain` skill's `templates/` and writes `brains.json`.
+a brain, follow the `project-brain` skill's "New workspace" step. It creates the brain repo from the
+skill's `templates/` and writes `brains.json`. The plugin does not include the separate
+`home-repo-init` skill, which sets up an optional Home Repo.
 
 Do not install the plugin on a machine where `setup.ps1 -Module claude` has run. That setup
 already links the skill into `~/.claude/skills/` and registers the same hook in `settings.json`,
