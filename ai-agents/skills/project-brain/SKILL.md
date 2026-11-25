@@ -254,7 +254,7 @@ does not exist yet, create it as `{ "version": 1, "brains": [] }` before appendi
 `log.md`). The scaffolded `index.md` must include an empty `## Archived` section, so the first
 initiative close has somewhere to move a row into.
 
-To set up a Home Repo instead, the user runs the separate, user-invoked `home-repo-init` skill.
+To set up a Home Repo instead, the user runs the separate, user-invoked `setup-home-repo` skill.
 The standalone project-brain plugin does not include it.
 
 **Initiative close:**

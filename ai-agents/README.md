@@ -61,7 +61,6 @@ own `SKILL.md` frontmatter, trimmed to one line. Claude-native skills live in `.
 - **`grilling`** — Interview the user relentlessly about a plan or design until reaching shared understanding, resolving each branch of the decision tree in batched frontier rounds.
 - **`grill-with-docs`** — Thin pointer invoking `grilling` and `domain-modeling` together for a grilling session that also updates documentation (CONTEXT.md, ADRs) inline as decisions crystallise.
 - **`health`** — Manual engineering health audit of your agent setup: Claude/Codex config drift, hooks, MCP, skills, memory and skill supply-chain security, and AI-maintainability drift.
-- **`home-repo-init`**: Set up or adopt a Home Repo (`gateroom`) for a workspace on any machine, in four steps with an approval gate before any change.
 - **`i-have-adhd`** — Shape output for a reader with ADHD: lead with the next action, number multi-step work, restate state across turns, suppress tangents, give specific time estimates, make wins visible. `disable-model-invocation: true` — invoke explicitly with `/i-have-adhd`; stays on until "stop adhd mode". Adapted from [ayghri/i-have-adhd](https://github.com/ayghri/i-have-adhd) (MIT).
 - **`implement`** — Implement a piece of work from a spec or set of tickets: TDD at agreed seams, review, then commit.
 - **`implement-spec`** — Implement a whole spec as one pull request, working the ticket frontier with concurrent implementer subagents until every ticket lands, then review and open the PR.
@@ -85,6 +84,7 @@ own `SKILL.md` frontmatter, trimmed to one line. Claude-native skills live in `.
 - **`review-me`** — Interrogate the user on the current diff as an adversarial reviewer and withhold the PR until they pass.
 - **`rfc`** — Draft and create an Azure DevOps "Request for Change RFC" work item in the configured work project.
 - **`setup-agent-skills`** — Configure the agent-skill workflow for this repo: where specs/designs/tickets land, whether an issue tracker is used and its label vocabulary, the domain-doc layout, and how the tracker expresses wayfinding operations.
+- **`setup-home-repo`**: Set up or adopt a Home Repo (`gateroom`) for a workspace on any machine, in four steps with an approval gate before any change.
 - **`spec-review`** — Review a diff for conformance to its originating spec or ticket: missing requirements, scope creep, and requirements implemented wrong.
 - **`storm-research`** — Runs a 4-phase pipeline over a topic: five expert lenses (Practitioner, Academic, Skeptic, Economist, Historian), a contradiction map, a synthesized HTML report, and adversarial peer review plus primary-source verification.
 - **`tdd`** — Test-driven development with red-green-refactor loop.
@@ -124,7 +124,7 @@ The hook needs PowerShell 7 (`pwsh`) on `PATH`. The plugin does not create
 `~/.claude/project-brain/brains.json`. Until a brain workspace exists, the hook loads nothing. To start
 a brain, follow the `project-brain` skill's "New workspace" step. It creates the brain repo from the
 skill's `templates/` and writes `brains.json`. The plugin does not include the separate
-`home-repo-init` skill, which sets up an optional Home Repo.
+`setup-home-repo` skill, which sets up an optional Home Repo.
 
 Do not install the plugin on a machine where `setup.ps1 -Module claude` has run. That setup
 already links the skill into `~/.claude/skills/` and registers the same hook in `settings.json`,

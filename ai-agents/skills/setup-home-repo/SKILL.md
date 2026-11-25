@@ -1,5 +1,5 @@
 ---
-name: home-repo-init
+name: setup-home-repo
 description: Set up or adopt a Home Repo (`gateroom`) for a workspace on any machine, in four steps with an approval gate before any change.
 disable-model-invocation: true
 ---

@@ -40,7 +40,7 @@ under `.claude/brain/`. In every workspace, durable state never goes in gitignor
 a worktree, because removing the worktree deletes it.
 
 The Home Repo is opt-in because the `project-brain` skill must work on its own. The skill also
-ships as a standalone plugin, and a machine with only that plugin has no `home-repo-init` skill.
+ships as a standalone plugin, and a machine with only that plugin has no `setup-home-repo` skill.
 
 The workspace default tracker goes in the Home Repo's `AGENTS.md` under Work tracking. A repo
 with a different tracker gets a hint on its pointer line that points at the repo's own workflow
