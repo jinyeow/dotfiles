@@ -50,7 +50,9 @@ Scoped to work repos only, mirroring the git hooks' own scoping:
 never a shell-interpolated string, so a crafted path can't be abused to run anything beyond a
 safely-failing `git` lookup) must print `true`. `git/gitconfig-work` sets that key for the repos
 that get the work identity. If the key is unset or false, the extension allows everything. The check runs
-against `git -C <path>`'s actual target repo when the command carries one, not just the
+against the actual target repo of the command's `git commit`/`git push` when it carries
+`-C <path>`, `--git-dir` or `--work-tree` (all passed on in their original order, as git
+applies them), not just the
 extension's inherited cwd; `cd <path> && git ...` shell-state tracking remains a known,
 accepted limitation.
 

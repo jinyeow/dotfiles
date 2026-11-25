@@ -39,32 +39,101 @@
 # matter), every check below is skipped: the wordlist scan, the --no-verify/-n denies, and the
 # SKIP_*-env-var denies alike.
 #
-# The command's actual git target is not always this hook's inherited cwd: `git -C <path> ...`
-# retargets git at a different repo, so the key lookup must follow it there rather than
-# reading cwd's config. If the command carries a `-C <path>` in git's leading global-flag run,
-# that path's config is read instead of cwd's; otherwise cwd's config is used.
+# The command's actual git target is not always this hook's inherited cwd: `git -C <path> ...`,
+# `--git-dir` and `--work-tree` retarget git at a different repo, so the key lookup must follow
+# them there rather than reading cwd's config. The target comes from the first `git` invocation
+# whose subcommand is `commit` or `push`; with neither present, from the first `git` invocation
+# whose own shell segment carries `--no-verify` (denied below for any git subcommand). That
+# invocation's leading global options are walked up to the subcommand: `-C`, `-c`, `--git-dir`,
+# `--work-tree` and `--namespace` consume the next token as their value, and every other
+# `-x`/`--x=y` option is one token. An unquoted `&&`, `||`, `;`, `|` or `&` ends a token and the
+# walk even with no surrounding spaces (`git status&&git commit`); inside quotes it does not.
+# Every `-C`, `--git-dir` and `--work-tree` in that run (both the `--opt value` and
+# `--opt=value` forms) is passed on to the lookup in its original order, so git resolves them
+# exactly as for the real command (each `-C` relative to the previous one). Options that belong
+# to another command in the same line are ignored. With none of them on that invocation, or no
+# such invocation, cwd's config is used.
 # `cd <path> && git ...` shell-state tracking is a known, separate, accepted limitation — not
 # attempted here.
 cmd=$(jq -r '.tool_input.command // ""')
 
-git_global_flag_group='(?:[[:space:]]+-[^[:space:]]+(?:[[:space:]]+[^-][^[:space:]]*)?)*?'
-c_path_token_re='(?:"[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)'
-c_path_re="\\bgit\\b${git_global_flag_group}[[:space:]]+-C[[:space:]]+\\K${c_path_token_re}"
-c_path=$(printf '%s' "$cmd" | grep -oP -- "$c_path_re" | head -1)
+c_path_token_re='(("([^"\\]|\\.)*"|'"'"'[^'"'"']*'"'"'|[^[:space:];&|"'"'"'])+|[;&|]+)'
+no_verify_segment_re=$'^[^;&|\n]*--no-verify'
 
-# `git -C <path>` accepts a shell-quoted path (e.g. `-C "."`), but the token captured above still
-# carries its literal surrounding quotes — strip exactly one matching layer of double or single
-# quotes the way a shell would for a simple quoted token, so the key lookup below targets the
-# real path instead of a literal `".\"`-shaped string that always fails and (via the `|| exit 0`
-# fallback) lets the whole guarded command through. Mirrors codex/ai-reference-guard.sh's
-# equivalent CGIT_PATH unquoting; no nested-quote/escape handling beyond one matching pair, same
-# already-accepted limitation as the `cd <path> &&` shell-expansion case noted above.
-if [[ "$c_path" == \"*\" && "$c_path" == *\" ]] || [[ "$c_path" == \'*\' && "$c_path" == *\' ]]; then
-  c_path="${c_path:1:${#c_path}-2}"
-fi
+# `git -C <path>` accepts a shell-quoted path (e.g. `-C "."`), but the captured token still
+# carries its literal quotes — remove them the way a shell would, so the key lookup below
+# targets the real path instead of a literal `".\"`-shaped string that always fails and (via
+# the `|| exit 0` fallback) lets the whole guarded command through. The token can join several
+# quoted and bare fragments (`"/tmp/scoped"repo` is `/tmp/scopedrepo` to git), so each fragment
+# is unquoted and the results are concatenated. Inside double quotes `\"` and `\\` are escapes;
+# inside single quotes nothing escapes; bare fragments stay as they are. An unbalanced quote is
+# kept literally. `$VAR`, `~` and globs are not expanded, the same accepted limitation as the
+# `cd <path> &&` case noted above. Mirrors codex/ai-reference-guard.sh's equivalent unquoting.
+c_unquote() {
+  local rest="$1" out="" fragment
+  local dq_re='^"(([^"\\]|\\.)*)"(.*)$' sq_re="^'([^']*)'(.*)$" bare_re='^([^"'"'"']+)(.*)$'
+  while [[ -n "$rest" ]]; do
+    if [[ "$rest" =~ $dq_re ]]; then
+      fragment="${BASH_REMATCH[1]}"
+      rest="${BASH_REMATCH[3]}"
+      fragment="${fragment//\\\\/$'\x01'}"
+      fragment="${fragment//\\\"/\"}"
+      out+="${fragment//$'\x01'/\\}"
+    elif [[ "$rest" =~ $sq_re ]]; then
+      out+="${BASH_REMATCH[1]}"
+      rest="${BASH_REMATCH[2]}"
+    elif [[ "$rest" =~ $bare_re ]]; then
+      out+="${BASH_REMATCH[1]}"
+      rest="${BASH_REMATCH[2]}"
+    else
+      out+="$rest"
+      break
+    fi
+  done
+  printf '%s' "$out"
+}
 
-if [[ -n "$c_path" ]]; then
-  ai_reference_scan=$(git -C "$c_path" config --type=bool --get work.aiReferenceScan 2>/dev/null) || exit 0
+c_args=()
+c_have_fallback=false
+c_rest="$cmd"
+while [[ "$c_rest" =~ (^|[^[:alnum:]_.-])git([[:space:]].*)$ ]]; do
+  c_rest="${BASH_REMATCH[2]}"
+  c_run_args=()
+  c_subcommand=""
+  while [[ "$c_rest" =~ ^[[:space:]]*${c_path_token_re}(.*)$ ]]; do
+    c_option="${BASH_REMATCH[1]}"
+    c_rest="${BASH_REMATCH[4]}"
+    case "$c_option" in
+      [\;\&\|]*) break ;;
+      -C|-c|--git-dir|--work-tree|--namespace)
+        [[ "$c_rest" =~ ^[[:space:]]*${c_path_token_re}(.*)$ ]] || break
+        c_value="${BASH_REMATCH[1]}"
+        c_rest="${BASH_REMATCH[4]}"
+        [[ "$c_value" == [\;\&\|]* ]] && break
+        case "$c_option" in
+          -C|--git-dir|--work-tree) c_run_args+=("$c_option" "$(c_unquote "$c_value")") ;;
+        esac
+        ;;
+      --git-dir=*|--work-tree=*) c_run_args+=("${c_option%%=*}=$(c_unquote "${c_option#*=}")") ;;
+      -*) ;;
+      *)
+        c_subcommand="$c_option"
+        break
+        ;;
+    esac
+  done
+  if [[ "$c_subcommand" == "commit" || "$c_subcommand" == "push" ]]; then
+    c_args=("${c_run_args[@]}")
+    break
+  fi
+  if ! $c_have_fallback && [[ -n "$c_subcommand" && "$c_rest" =~ $no_verify_segment_re ]]; then
+    c_args=("${c_run_args[@]}")
+    c_have_fallback=true
+  fi
+done
+
+if (( ${#c_args[@]} )); then
+  ai_reference_scan=$(git "${c_args[@]}" config --type=bool --get work.aiReferenceScan 2>/dev/null) || exit 0
 else
   ai_reference_scan=$(git config --type=bool --get work.aiReferenceScan 2>/dev/null) || exit 0
 fi
@@ -85,7 +154,7 @@ fi
 wordlist_pattern=$(grep -Ev '^[[:space:]]*(#|$)' "$wordlist" | paste -sd'|' -)
 
 # A leading global flag's optional argument token: a double- or single-quoted (possibly
-# multi-word) value, or a bare non-flag token — mirrors c_path_token_re/git_global_flag_group
+# multi-word) value, or a bare non-flag token — mirrors c_path_token_re
 # above so `git -C "C:/Work Repo" commit ...` doesn't stop matching mid-quote (a quoted
 # multi-word -C value used to break commit_re/commit_dashn_re/skip_commit_re entirely, since
 # the old `[^-][^[:space:]]*` alternative only consumed one non-whitespace token).
@@ -97,7 +166,11 @@ wordlist_pattern=$(grep -Ev '^[[:space:]]*(#|$)' "$wordlist" | paste -sd'|' -)
 # not a real `git commit`. Excluding the quote characters forces such a token through one of the
 # two full-quoted alternatives instead; if the quote is genuinely unbalanced, the match attempt
 # simply fails there — never allowed to match, which is the safe direction.
-flag_arg_token_re='("[^"]*"|'"'"'[^'"'"']*'"'"'|[^-"'"'"'][^[:space:]]*)'
+#
+# The token can also join quoted and bare fragments (`-C "/tmp/scoped"repo`, one word to the
+# shell), so the first fragment may be followed by more quoted or bare fragments. A bare
+# fragment never contains a quote character, which keeps the unbalanced-quote rule above.
+flag_arg_token_re='(("[^"]*"|'"'"'[^'"'"']*'"'"'|[^-"'"'"'[:space:]][^[:space:]"'"'"']*)("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]"'"'"']+)*)'
 flag_group="([[:space:]]+-[^[:space:]]+([[:space:]]+${flag_arg_token_re})?)*"
 commit_re="\\bgit\\b${flag_group}[[:space:]]+commit\\b"
 pr_re='\bgh\b[[:space:]]+pr[[:space:]]+(create|edit)\b|\baz\b[[:space:]]+repos[[:space:]]+pr[[:space:]]+(create|update)\b'

@@ -90,25 +90,92 @@ COMMAND_FLAT=$(printf '%s' "$COMMAND" | tr '\n' ' ')
 # `git config --type=bool --get work.aiReferenceScan` prints `true`. git/gitconfig-work sets
 # that key, and the [includeIf] blocks in the untracked ~/.gitconfig.local load that file for
 # the work repos, with or without a remote. The key is read from the git command's own
-# target, not just the hook's inherited cwd — `git -C <path> ...` retargets git at a
-# different repo than cwd, and the hook must scope against THAT repo, or a `-C`-qualified
-# command against an in-scope repo run from an unrelated cwd would silently bypass every
-# check below. When no `-C <path>` global flag is present, fall back to cwd (the common
-# case). If the key is unset, false or not a boolean, or the target is not a repo (GitHub
-# repos such as dotfiles, wiki and brain legitimately say "Claude"/"Codex" in their own
-# subject matter), ALLOW everything, before any check, including the fail-closed
-# missing-wordlist check below. Deliberately does not track `cd <path> && ...` shell
-# state — out of scope; only an explicit `-C <path>` global flag on the git invocation
-# itself is honored.
-CGIT_TOKEN='(?:"[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)'
-CGIT_RAW=$(printf '%s' "$COMMAND_FLAT" | grep -oP -- 'git[[:space:]]+-C[[:space:]]+\K'"$CGIT_TOKEN" | head -1 || echo "")
-CGIT_PATH="$CGIT_RAW"
-if [[ "$CGIT_PATH" == \"*\" && "$CGIT_PATH" == *\" ]] || [[ "$CGIT_PATH" == \'*\' && "$CGIT_PATH" == *\' ]]; then
-  CGIT_PATH="${CGIT_PATH:1:${#CGIT_PATH}-2}"
-fi
+# target, not just the hook's inherited cwd — `git -C <path> ...`, `--git-dir` and
+# `--work-tree` retarget git at a different repo than cwd, and the hook must scope against
+# THAT repo, or a retargeted command against an in-scope repo run from an unrelated cwd
+# would silently bypass every check below. The target comes from the first `git` invocation
+# whose subcommand is `commit` or `push` (the only git subcommands checked below). Its
+# leading global options are walked up to the subcommand: `-C`, `-c`, `--git-dir`,
+# `--work-tree` and `--namespace` consume the next token as their value, and every other
+# `-x`/`--x=y` option is one token. An unquoted `&&`, `||`, `;`, `|` or `&` ends a token
+# and the walk even with no surrounding spaces (`git status&&git commit`); inside quotes it
+# does not. Every `-C`, `--git-dir` and `--work-tree` in that run (both the `--opt value`
+# and `--opt=value` forms) is passed on to the lookup in its original order, so git
+# resolves them exactly as for the real command (each `-C` relative to the previous one).
+# Options that belong to another command in the same line are ignored. With none of them on
+# that invocation, or no such invocation, fall back to cwd (the common case). If the key is
+# unset, false or not a boolean, or the target is not a repo (GitHub repos such as
+# dotfiles, wiki and brain legitimately say "Claude"/"Codex" in their own subject matter),
+# ALLOW everything, before any check, including the fail-closed missing-wordlist check
+# below. Deliberately does not track `cd <path> && ...` shell state — out of scope; only
+# explicit retargeting global options on the git invocation itself are honored.
+CGIT_TOKEN='(("([^"\\]|\\.)*"|'"'"'[^'"'"']*'"'"'|[^[:space:];&|"'"'"'])+|[;&|]+)'
+# Removes shell quoting from a token value the way a shell would: the token can join
+# several quoted and bare fragments (`"/tmp/scoped"repo` is `/tmp/scopedrepo` to git), so
+# each fragment is unquoted and the results are concatenated. Inside double quotes `\"` and
+# `\\` are escapes; inside single quotes nothing escapes; bare fragments stay as they are.
+# An unbalanced quote is kept literally. `$VAR`, `~` and globs are not expanded.
+cgit_unquote() {
+  local rest="$1" out="" fragment
+  local dq_re='^"(([^"\\]|\\.)*)"(.*)$' sq_re="^'([^']*)'(.*)$" bare_re='^([^"'"'"']+)(.*)$'
+  while [[ -n "$rest" ]]; do
+    if [[ "$rest" =~ $dq_re ]]; then
+      fragment="${BASH_REMATCH[1]}"
+      rest="${BASH_REMATCH[3]}"
+      fragment="${fragment//\\\\/$'\x01'}"
+      fragment="${fragment//\\\"/\"}"
+      out+="${fragment//$'\x01'/\\}"
+    elif [[ "$rest" =~ $sq_re ]]; then
+      out+="${BASH_REMATCH[1]}"
+      rest="${BASH_REMATCH[2]}"
+    elif [[ "$rest" =~ $bare_re ]]; then
+      out+="${BASH_REMATCH[1]}"
+      rest="${BASH_REMATCH[2]}"
+    else
+      out+="$rest"
+      break
+    fi
+  done
+  printf '%s' "$out"
+}
+CGIT_ARGS=()
+CGIT_REST="$COMMAND_FLAT"
+while [[ "$CGIT_REST" =~ (^|[^[:alnum:]_.-])git([[:space:]].*)$ ]]; do
+  CGIT_REST="${BASH_REMATCH[2]}"
+  CGIT_RUN_ARGS=()
+  CGIT_SUBCOMMAND=""
+  while [[ "$CGIT_REST" =~ ^[[:space:]]*${CGIT_TOKEN}(.*)$ ]]; do
+    CGIT_OPTION="${BASH_REMATCH[1]}"
+    CGIT_REST="${BASH_REMATCH[4]}"
+    case "$CGIT_OPTION" in
+      [\;\&\|]*) break ;;
+      -C|-c|--git-dir|--work-tree|--namespace)
+        [[ "$CGIT_REST" =~ ^[[:space:]]*${CGIT_TOKEN}(.*)$ ]] || break
+        CGIT_VALUE="${BASH_REMATCH[1]}"
+        CGIT_REST="${BASH_REMATCH[4]}"
+        [[ "$CGIT_VALUE" == [\;\&\|]* ]] && break
+        case "$CGIT_OPTION" in
+          -C|--git-dir|--work-tree) CGIT_RUN_ARGS+=("$CGIT_OPTION" "$(cgit_unquote "$CGIT_VALUE")") ;;
+        esac
+        ;;
+      --git-dir=*|--work-tree=*) CGIT_RUN_ARGS+=("${CGIT_OPTION%%=*}=$(cgit_unquote "${CGIT_OPTION#*=}")") ;;
+      -*) ;;
+      *)
+        CGIT_SUBCOMMAND="$CGIT_OPTION"
+        break
+        ;;
+    esac
+  done
+  if [[ "$CGIT_SUBCOMMAND" == "commit" || "$CGIT_SUBCOMMAND" == "push" ]]; then
+    if (( ${#CGIT_RUN_ARGS[@]} )); then
+      CGIT_ARGS=("${CGIT_RUN_ARGS[@]}")
+    fi
+    break
+  fi
+done
 
-if [[ -n "$CGIT_PATH" ]]; then
-  AI_REFERENCE_SCAN=$(git -C "$CGIT_PATH" config --type=bool --get work.aiReferenceScan 2>/dev/null) || exit 0
+if (( ${#CGIT_ARGS[@]} )); then
+  AI_REFERENCE_SCAN=$(git "${CGIT_ARGS[@]}" config --type=bool --get work.aiReferenceScan 2>/dev/null) || exit 0
 else
   AI_REFERENCE_SCAN=$(git config --type=bool --get work.aiReferenceScan 2>/dev/null) || exit 0
 fi
