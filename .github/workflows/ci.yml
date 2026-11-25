@@ -41,6 +41,8 @@ jobs:
           # payload), not ours to lint - do not gate on it.
           $legacy = '[\\/](psmux[\\/]plugins|ai-agents[\\/]skills[\\/]azure-prepare)[\\/]'
           $gated = $results | Where-Object { $_.ScriptPath -notmatch $legacy }
+          $vendored = @($results).Count - @($gated).Count
+          Write-Host "PSScriptAnalyzer: $(@($results).Count) result(s), $vendored in vendored paths (not gated)."
           if ($gated) {
             $gated | Format-Table RuleName, Severity, ScriptName, Line, Message -AutoSize | Out-String -Width 200 | Write-Host
             throw "PSScriptAnalyzer found $($gated.Count) issue(s)."
@@ -63,6 +65,12 @@ jobs:
             name: Pester (Windows 2/3)
           - shard: 3
             name: Pester (Windows 3/3)
+    env:
+      # Make Git Bash's `ln -s` create real Windows symlinks. By default it copies the target
+      # instead, which makes setup.sh's real-run tests copy whole skill trees and makes the
+      # symlink-dependent tests skip. The runner can create symlinks, so use the strict mode:
+      # a symlink that cannot be created fails instead of silently becoming a copy.
+      MSYS: winsymlinks:nativestrict
     defaults:
       run:
         shell: pwsh
@@ -185,7 +193,9 @@ jobs:
           scratch_home="$(mktemp -d)"
           # Invoked via `bash`, not `./setup.sh`: the file is tracked non-executable (100644)
           # in git, so a fresh checkout would hit "Permission denied" on a direct exec.
-          HOME="$scratch_home" bash setup.sh -m all --dry-run
+          # The runner sets XDG_CONFIG_HOME, which setup.sh prefers over $HOME/.config, so
+          # point it into the scratch home too.
+          HOME="$scratch_home" XDG_CONFIG_HOME="$scratch_home/.config" bash setup.sh -m all --dry-run
           echo "setup.sh -m all --dry-run: exit 0, no changes made to $scratch_home"
 
       - name: setup.sh --clean-backups smoke
@@ -249,6 +259,10 @@ jobs:
             setup.sh \
             claude/no-claude-session-trailer.sh \
             claude/statusline-command.sh \
+            claude/skills/git-guardrails-claude-code/scripts/block-dangerous-git.sh \
+            codex/ai-reference-guard.sh \
+            codex/block-dangerous-git.sh \
+            git/templates/hooks/commit-msg \
             git/templates/hooks/pre-commit \
             git/templates/hooks/prepare-commit-msg \
             git/templates/hooks/prepare-commit-msg.sh

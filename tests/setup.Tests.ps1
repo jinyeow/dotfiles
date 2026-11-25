@@ -1875,24 +1875,22 @@ Describe 'New-FileSymlink failure recovery' {
     #
     # New-FileSymlink itself swallows the privilege error and rolls back, so a failed backup
     # count on an unprivileged host would otherwise look like a regression rather than a skip.
+    # The probe runs on every OS, so the backup test below also runs on Linux.
     $script:CanCreateSymlink = $false
-    if ($IsWindows)
+    $probeDir = Join-Path ([IO.Path]::GetTempPath()) ('setup-symlink-probe-' + [guid]::NewGuid())
+    New-Item -ItemType Directory -Path $probeDir -Force | Out-Null
+    try
     {
-        $probeDir = Join-Path ([IO.Path]::GetTempPath()) ('setup-symlink-probe-' + [guid]::NewGuid())
-        New-Item -ItemType Directory -Path $probeDir -Force | Out-Null
-        try
-        {
-            New-Item -ItemType SymbolicLink -Path (Join-Path $probeDir 'link') -Target $probeDir -ErrorAction Stop | Out-Null
-            $script:CanCreateSymlink = $true
-        }
-        catch
-        {
-            $script:CanCreateSymlink = $false
-        }
-        finally
-        {
-            Remove-Item -Path $probeDir -Recurse -Force -ErrorAction SilentlyContinue
-        }
+        New-Item -ItemType SymbolicLink -Path (Join-Path $probeDir 'link') -Target $probeDir -ErrorAction Stop | Out-Null
+        $script:CanCreateSymlink = $true
+    }
+    catch
+    {
+        $script:CanCreateSymlink = $false
+    }
+    finally
+    {
+        Remove-Item -Path $probeDir -Recurse -Force -ErrorAction SilentlyContinue
     }
 
     BeforeAll {
