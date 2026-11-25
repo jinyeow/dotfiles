@@ -46,8 +46,13 @@ The workspace default tracker goes in the Home Repo's `AGENTS.md` under Work tra
 with a different tracker gets a hint on its pointer line that points at the repo's own workflow
 config.
 
-The Home Repo never names the repo that installs the global rules and skills. It names the
-runtime folders (Claude, Codex, shared agent skills, Pi) when it refers to global material.
+The Home Repo refers to global rules and skills by their runtime folders (Claude, Codex, shared
+agent skills, Pi). It does not use a path into the source repo that installs them. A machine can
+get the same rules and skills from the installer, from the standalone `project-brain` plugin, or
+by hand. The runtime folder path is the same on every machine. A source path exists only on a
+machine that has that source repo at that path, so an instruction that uses it breaks elsewhere.
+The Home Repo can still list the source repo as a workspace repo, and the brain can hold an
+initiative about it. Those are project content and break nothing on another machine.
 
 `STATUS.md` is the source of truth for status. The tracker only receives team updates.
 
