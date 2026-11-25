@@ -37,7 +37,10 @@
         "strict_required_status_checks_policy": true,
         "do_not_enforce_on_create": false,
         "required_status_checks": [
-          { "context": "PSScriptAnalyzer + Pester (Windows)" },
+          { "context": "PSScriptAnalyzer (Windows)" },
+          { "context": "Pester (Windows 1/3)" },
+          { "context": "Pester (Windows 2/3)" },
+          { "context": "Pester (Windows 3/3)" },
           { "context": "gitleaks (secret scan)" },
           { "context": "stylua --check (nvim)", "integration_id": 15368 },
           { "context": "shellcheck (active shell)" },
