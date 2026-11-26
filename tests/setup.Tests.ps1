@@ -688,7 +688,7 @@ Describe 'setup.ps1 pi module' {
             $output | Should -Match '=== Pi ==='
             $output | Should -Match '(would install Pi via npm|pi is already installed)'
             $output | Should -Match 'pi[\\/]agent[\\/]settings\.json'
-            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc', 'codex-review'))
+            foreach ($name in @('council', 'codex-review'))
             {
                 $output | Should -Match "pi[\\/]agent[\\/]skills[\\/]$name -> .*ai-agents[\\/]skills[\\/]$name"
             }
@@ -1248,7 +1248,7 @@ Describe 'setup.ps1 codex module shared skills' {
             # Patterns anchor on the "link -> target" separator so `tdd` can't false-match a
             # future `tdd-something` skill (`\b` treats the hyphen as a word boundary).
             $output | Should -Match '\[DRY RUN\] junction .*\.codex\\skills\\tdd ->'
-            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc', 'quick-review', 'deep-review', 'review-fix-loop', 'fix-findings', '_shared'))
+            foreach ($name in @('council', 'quick-review', 'deep-review', 'review-fix-loop', 'fix-findings', '_shared'))
             {
                 $output | Should -Match "\\.codex\\skills\\$name -> .*ai-agents\\skills\\$name"
             }
@@ -1257,7 +1257,6 @@ Describe 'setup.ps1 codex module shared skills' {
             $output | Should -Not -Match '\.codex\\skills\\codex-review ->'
             # Claude-only skills are not sourced into Codex.
             $output | Should -Not -Match '\.codex\\skills\\handoff ->'
-            $output | Should -Not -Match '\.codex\\skills\\git-guardrails-claude-code ->'
         }
         finally
         {

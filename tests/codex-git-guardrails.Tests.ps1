@@ -1,7 +1,6 @@
 #Requires -Version 7
 # Behavioural tests for codex/block-dangerous-git.sh — the Codex CLI PreToolUse hook
-# ported from claude/skills/git-guardrails-claude-code/scripts/block-dangerous-git.sh
-# (issue #170). Drives the script directly with the hook's stdin JSON payload shape
+# ported from the git-guardrails-claude-code skill in mattpocock/skills (issue #170). Drives the script directly with the hook's stdin JSON payload shape
 # ({"tool_input":{"command":"..."}}), the same way ctags-hook.Tests.ps1 drives a bash
 # hook script — no live Codex CLI dependency, so this covers the script's own logic.
 

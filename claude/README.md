@@ -51,7 +51,7 @@ not download or change the machine.
 | `warn-reasoning-extraction.ps1` | `~/.claude/warn-reasoning-extraction.ps1` | UserPromptSubmit + PreToolUse(Edit\|Write) hook that flags reasoning-extraction phrasing that trips Fable-5's `reasoning_extraction` → Opus fallback |
 | `ai-agents/skills/<name>/` | `~/.claude/skills/<name>/` | Portable custom skills (also projected to Codex and Pi) |
 | `claude/skills/<name>/` | `~/.claude/skills/<name>/` | Claude-native skills and projected Claude support content |
-| `ai-agents/_shared/` | — | Portable support content; source-only, not projected as a skill (its `banned-ai-terms.txt` is the one exception — symlinked individually, see above) |
+| `ai-agents/_shared/` | — | Holds only `banned-ai-terms.txt`, symlinked individually (see above); not projected as a skill |
 | `ai-agents/agents/<name>.md` | `~/.claude/agents/<name>.md` | User-scope subagents (whole dir junctioned/symlinked) |
 | `output-styles/<name>.md` | `~/.claude/output-styles/<name>.md` | Output styles (whole dir junctioned); active style pinned by `outputStyle` in `settings.json` |
 
@@ -99,7 +99,7 @@ self-skips if absent). All allow silently and only emit JSON when they act.
 | `SessionStart` | `inject-handoff.ps1` | On a fresh session (`startup`/`clear`), injects the workspace's `.claude/handoff.md` (written by the `handoff` skill) via `additionalContext` so the next agent reads it first, then archives it to `handoff-<timestamp>.consumed.md` so it is delivered once (not replayed into every later session). No-ops if the file is absent or the session was resumed/compacted |
 | `SessionStart` | `skills/project-brain/scripts/session-start.ps1` | Resolves the session cwd to a project-brain initiative and injects its `core.md` + `STATUS.md` via `additionalContext`. Lives inside the `project-brain` skill directory (junctioned with the skill, not a top-level symlink); fails safe — any error or no match exits 0 with no output |
 | `PreToolUse` (Bash\|PowerShell) | `no-claude-session-trailer.sh` | Hard-blocks AI/Claude/Codex/Copilot/co-authored-by references (`ai-agents/_shared/banned-ai-terms.txt`) from a `git commit`, PR create/update (`gh pr`/`az repos pr`), or Azure Boards update (`az boards`/`az devops invoke`) — the wordlist is matched only against recognized message-bearing flag values (`-m`/`--title`/`--body`/`--fields`/etc., plus `gh pr create\|edit`'s own `-t`/`-b`), not the whole raw command line, so a path segment like `claude/settings.json` can't self-block; denies `git … commit`/`push` using `--no-verify` outright, and `-n` clustered anywhere in a short-flag token (e.g. `-nm`) as `--no-verify`'s short form (`git push -n` means `--dry-run`, not `--no-verify`, and stays allowed), since that bypasses the global git hooks carrying the same scan (see `git/README.md`); an exported `SKIP_AI_REFERENCE_SCAN`/`SKIP_GITLEAKS=1` bypassing those same hooks is denied too. Scoped to work repos only (`git config --type=bool work.aiReferenceScan` must be `true`; `git/gitconfig-work` sets it, and unset or false means no scan), mirroring `git/README.md`'s `commit-msg` scoping — the check runs against the actual target repo of the command's `git commit`/`git push` (or, failing that, its `git … --no-verify`) when it carries `-C <path>`, `--git-dir` or `--work-tree` (quoted or bare, single- or multi-word; all passed on in their original order, as git applies them), not just the hook's inherited cwd, so `git -C "<work-repo>" commit --no-verify -m "..."` from an unrelated cwd is still caught; `cd <path> && git ...` shell-state tracking remains a known, accepted limitation. Fails closed only when the wordlist itself is missing/unreadable — the installed sibling path resolves it, but a run straight from this repo (no wordlist sibling under `claude/`) fails closed the same way (issue #219) |
-| `PreToolUse` (Bash\|PowerShell) | `block-destructive-vcs.ps1` | Denies destructive **git** — `push --force` (allows `--force-with-lease`), `reset --hard`, `clean -f`, `branch -D`. jj is left ungated (its op-log makes rewrites recoverable). The git-guardrails *skill* only advises; this hook is non-bypassable. Strips quoted substrings before matching (escape-aware, so an escaped quote in a message doesn't mangle the match), except flag-shaped quoted content (`"--force"`) which is unquoted in place rather than deleted, so a quoted flag is still denied |
+| `PreToolUse` (Bash\|PowerShell) | `block-destructive-vcs.ps1` | Denies destructive **git** — `push --force` (allows `--force-with-lease`), `reset --hard`, `clean -f`, `branch -D`, `checkout .`/`restore .` (allows `restore --staged .`). jj is left ungated (its op-log makes rewrites recoverable). Strips quoted substrings before matching (escape-aware, so an escaped quote in a message doesn't mangle the match), except flag-shaped quoted content (`"--force"`) which is unquoted in place rather than deleted, so a quoted flag is still denied |
 | `PreToolUse` (Bash) | `block-pwsh-in-bash.ps1` | Denies PowerShell sent to the Bash tool (a segment that *starts* with `pwsh`/`powershell`, `$env:`, or a `Verb-Noun` cmdlet), pointing at the PowerShell tool. Command-position only, so a cmdlet quoted as a search string is allowed. Splits on a lone `&` as well as `&&`/`\|`/`;` (so a backgrounded cmdlet isn't hidden in the second segment) against an extended verb list beyond the common `Get`/`Set`/`New` |
 | `PreToolUse` (Edit\|Write) | `warn-legacy-files.ps1` | Emits an `ask` decision (pause-and-confirm) before editing a legacy/do-not-touch dotfile (`vim/`, `i3/`, `mpd/`, `ncmpcpp/`, `postgres/`, `ruby/`, `Xresources.d/`, `urxvt/`, `etc/`, `scripts/`, `config/` subdirs `bspwm`, `rofi`, `sxhkd`, `direnv`, `ranger`, and the files `ctags` and `wgetrc`). `bash/` and `tmux/` stay unguarded. Scoped to `$env:DOTFILES` so it never fires on same-named files in other repos; no-ops if `$env:DOTFILES` is unset |
 | `PostToolUse` (Edit\|Write) | `lint-powershell.ps1` | Runs PSScriptAnalyzer on an edited `.ps1/.psm1/.psd1` (using the nearest ruleset — `.vscode/PSScriptAnalyzerSettings.psd1` or the project root's, whichever it hits first walking up; the walk stops at the project boundary `.git`/`.jj`, so a stray ruleset in `$HOME` can't govern every repo) and feeds findings back via `additionalContext`. Fails open silently — no output — even when `Invoke-ScriptAnalyzer` itself throws (e.g. a malformed ruleset file), same as the PSSA-absent no-op |
@@ -209,8 +209,8 @@ ai-agents/skills/
 The installer junctions (Windows) or symlinks (Linux) each skill directory into
 `~/.claude/skills/`, making it available in every project. To add a portable skill, create its subdirectory under `ai-agents/skills/`; for a
 Claude-native skill, use `claude/skills/`. The review-support contract lives at the portable
-`ai-agents/skills/_shared/` and is projected alongside every other portable skill; the
-independent `ai-agents/_shared/` copy is source-only and may diverge — see `../ai-agents/README.md`.
+`ai-agents/skills/_shared/` and is projected alongside every other portable skill — see
+`../ai-agents/README.md`.
 Re-run `setup.ps1 -Module claude` afterward.
 
 The codex module projects only portable skill directories into `~/.codex/skills/`,
@@ -228,8 +228,6 @@ Claude-native skills:
   server when connected and falls back to PowerShell-native `az boards` CLI.
 - **`fastmail`** — Pull a live Fastmail digest: unread emails, upcoming calendar events,
   and other inbox signals.
-- **`git-guardrails-claude-code`** — Set up Claude Code hooks to block dangerous git
-  commands (push, reset --hard, clean, branch -D, etc.) before they execute.
 - **`handoff`** — Compact the current conversation into a handoff document for another
   agent to pick up, saved to `.claude/handoff.md` and picked up by the `inject-handoff.ps1`
   SessionStart hook (see Hooks below). This repo's own skill, not a harness built-in.
@@ -241,8 +239,7 @@ of a **non-diff artifact**. Claude's native isolated workers receive portable cr
 contracts; there are no named council custom agents. `/council ...` defaults to quick
 (three critics + chair); add `--debate` for four critics plus rebuttals, and `--codex` only
 when an external Codex seat is explicitly wanted. Charter seats are limited to 2–5 and
-normal calls to 12. The four `/council-code`, `/council-business`, `/council-plan`, and
-`/council-doc` aliases pin their panel. Reports use `.agents/council/reports/`. For branch
+normal calls to 12. A positional panel (`/council code <target>`) pins it. Reports use `.agents/council/reports/`. For branch
 diffs/PRs use `quick-review` (or `deep-review`), not council.
 
 The portable `dispatch-implement` skill is a thin wrapper around `implement`: given one or more
@@ -288,7 +285,7 @@ primitive, not per-role scoping).
 Codex CLI itself — a Codex-on-Codex review has no target.
 
 `ai-agents/skills/_shared/` is **not a skill** — see `../ai-agents/README.md` for what it
-holds and how it differs from the independent, source-only `ai-agents/_shared/` copy. It has
+holds. It has
 no `SKILL.md`, so the harness ignores it as a skill; `ai-agents/skills/codex-review/SKILL.md`
 still reaches it via `../_shared/<file>`, resolved at the installed destination. On Codex CLI
 itself, `--reviewers` is unsupported, so the orchestrating skill refuses it with an actionable

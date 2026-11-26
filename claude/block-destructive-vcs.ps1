@@ -1,11 +1,11 @@
 #Requires -Version 7
 # PreToolUse(Bash|PowerShell) hook: deterministically block destructive git commands that
-# the advisory git-guardrails skill only *discourages*. Covers history/working-tree loss
-# that git cannot trivially undo:
+# git cannot trivially undo. Covers history/working-tree loss:
 #   - git push --force            (clobbers a remote; --force-with-lease is allowed)
 #   - git reset --hard            (discards uncommitted work)
 #   - git clean -f / -fd / -fdx   (deletes untracked files)
 #   - git branch -D               (force-deletes an unmerged branch)
+#   - git checkout . / restore .  (discards every unstaged change; restore --staged is allowed)
 # Scoped to git only: jj's operation log makes jj history-rewrites recoverable, so they are
 # intentionally not gated here. Reads the tool-call JSON on stdin; allows silently (exit 0,
 # no output) unless a destructive pattern matches, in which case it emits a deny decision.
@@ -50,6 +50,8 @@ $rules = [ordered]@{
     'Blocked `git clean -f` - it permanently deletes untracked files. Run `git clean -n` to preview first.'
     '\bgit\b[^\n;|&]*\bbranch\b[^\n;|&]*((?<![\w-])-[a-z]*D|--delete\b[^\n;|&]*--force\b|--force\b[^\n;|&]*--delete\b)' =
     'Blocked `git branch -D` - it force-deletes an unmerged branch. Use `-d` (safe) or confirm the branch is merged.'
+    '\bgit\b[^\n;|&]*\b(?:checkout|restore)\b(?![^\n;|&]*--staged\b)[^\n;|&]*\s\.(?=\s|$|[;|&])' =
+    'Blocked `git checkout .` / `git restore .` - it discards every unstaged change. Stash first, or name the files to restore.'
 }
 
 foreach ($pattern in $rules.Keys)

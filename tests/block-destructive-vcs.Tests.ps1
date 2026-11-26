@@ -4,8 +4,10 @@
 # JSON on stdin (exactly as Claude Code does) and asserts on the emitted decision.
 #
 # The hook's documented properties this suite pins:
-#   - canonical destructive forms are denied (push --force, reset --hard, clean -f/-fd, branch -D)
-#   - safe siblings are allowed (--force-with-lease, --force-if-includes, branch -d)
+#   - canonical destructive forms are denied (push --force, reset --hard, clean -f/-fd, branch -D,
+#     checkout ., restore .)
+#   - safe siblings are allowed (--force-with-lease, --force-if-includes, branch -d,
+#     restore --staged ., checkout of a named path or branch)
 #   - a destructive phrase QUOTED in a commit message must not false-deny (quoted-substring scrub)
 #   - an escaped-quote message must not get mangled into a false deny
 #   - a quoted flag (git push "--force") must NOT bypass the deny — the shell expands it identically
@@ -43,6 +45,10 @@ Describe 'claude/block-destructive-vcs.ps1' {
             @{ Command = 'git clean -f' }
             @{ Command = 'git clean -fd' }
             @{ Command = 'git branch -D feature' }
+            @{ Command = 'git checkout .' }
+            @{ Command = 'git checkout -- .' }
+            @{ Command = 'git restore .' }
+            @{ Command = 'git restore --source=HEAD . && git status' }
         ) {
             param($Command)
             $out = Invoke-HookCmd -Command $Command
@@ -55,6 +61,9 @@ Describe 'claude/block-destructive-vcs.ps1' {
             @{ Command = 'git push --force-with-lease' }
             @{ Command = 'git push --force-with-lease --force-if-includes' }
             @{ Command = 'git branch -d feature' }
+            @{ Command = 'git restore --staged .' }
+            @{ Command = 'git checkout ./src/file.ps1' }
+            @{ Command = 'git add . && git checkout main' }
             @{ Command = 'git status' }
             @{ Command = 'ls -la' }
             @{ Command = 'grep -R "reset --hard" .' }

@@ -8,9 +8,9 @@ modules, and ownership is expressed by the directory rather than inferred from s
   `findings-schema.md`, `review-rubric.md`, `reviewer-models.md`) shared by `quick-review`,
   `deep-review`, `review-fix-loop`, and `fix-findings`, all four of which are portable skills
   under `skills/` too.
-- `_shared/` — a separate, source-only portable review-support copy; not a standalone skill and
-  not projected. Independently owned from `skills/_shared/` and may diverge — do not confuse
-  the two: `skills/_shared/` is live and reachable by installed skills, this one is not.
+- `_shared/` — holds only `banned-ai-terms.txt`, the wordlist the AI-reference hooks read
+  (symlinked individually by the installers). Not a skill and not projected; unrelated to
+  `skills/_shared/`.
 - `agents/` — the source of truth for current user-scope agent definitions, projected to
   Claude Code.
 
@@ -38,9 +38,7 @@ own `SKILL.md` frontmatter, trimmed to one line. Claude-native skills live in `.
 `../pi/skills/` respectively, both currently empty.
 
 - **`azure-compliance`** — Run Azure compliance and security audits with azqr plus Key Vault expiration checks.
-- **`azure-devops`** — Expert knowledge for Azure DevOps development including troubleshooting, best practices, decision making, architecture & design patterns, limits & quotas, security, configuration, integrations & coding patterns, and deployment.
 - **`azure-enterprise-infra-planner`** — Architect and provision enterprise Azure infrastructure from workload descriptions.
-- **`azure-pipelines`** — Expert knowledge for Azure Pipelines development including troubleshooting, best practices, decision making, architecture & design patterns, limits & quotas, security, configuration, integrations & coding patterns, and deployment.
 - **`azure-prepare`** — Prepare Azure apps for deployment (infra Bicep/Terraform, azure.yaml, Dockerfiles).
 - **`azure-resource-manager`** — Expert knowledge for Azure Resource Manager development including troubleshooting, best practices, decision making, architecture & design patterns, limits & quotas, security, configuration, integrations & coding patterns, and deployment.
 - **`azure-validate`** — Pre-deployment validation for Azure readiness.
@@ -48,10 +46,6 @@ own `SKILL.md` frontmatter, trimmed to one line. Claude-native skills live in `.
 - **`codebase-design`** — Shared vocabulary for designing deep modules: module, interface, depth, seam, adapter, leverage, locality.
 - **`codex-review`** — Get a read-only Codex (OpenAI) second opinion on the current code changes, as a cross-model review.
 - **`council`** — Cost-bounded adversarial review of a non-diff artifact.
-- **`council-business`** — Thin council alias for ideas, products, and business cases.
-- **`council-code`** — Thin council alias for technical designs, ADRs, APIs, and approach documents.
-- **`council-doc`** — Thin council alias for presentations, proposals, and important documents.
-- **`council-plan`** — Thin council alias for project plans, roadmaps, and migrations.
 - **`critique-plan`** *(trial)* — Stress-test a drafted plan against the project's domain model before any code is written: terminology drift, wrong bounded context, ADR contradictions, bad dependency edges, reinvented concepts. Adapted from [ayoubben18/ab-method](https://github.com/ayoubben18/ab-method) (MIT).
 - **`deep-review`** — Heavy multi-dimension cross-model code review of a branch diff or PR, the opt-in deep pass, not the default.
 - **`diagnosing-bugs`** — Diagnosis loop for hard bugs and performance regressions.
@@ -77,7 +71,6 @@ own `SKILL.md` frontmatter, trimmed to one line. Claude-native skills live in `.
 - **`quick-review`** — The default review pass over a branch diff or PR.
 - **`redraft`** — Scrap the current fix and redo it properly, using everything learned while building the mediocre version.
 - **`refactor-agents-md`** — Refactor an AGENTS.md file to follow progressive disclosure: split it into a minimal root file plus linked category files.
-- **`resolving-merge-conflicts`** — Use when you need to resolve an in-progress git merge/rebase conflict.
 - **`retro`** — Conduct a retrospective on a coding session, surfacing improvements to the agent's environment (docs, checks, conventions) rather than to the code itself.
 - **`review-ado-pr`** — Review an Azure DevOps pull request locally, end-to-end.
 - **`review-fix-loop`** — Iterative review-fix cycle for a branch or PR.
@@ -102,7 +95,6 @@ own `SKILL.md` frontmatter, trimmed to one line. Claude-native skills live in `.
 - **`wrapup`** — Two-question self-review before ending a session, run before /clear, /compact, or quitting so the agent reflects while it still has the turn.
 - **`write`** — Remove AI-sounding wording from any text another human will read (commit messages, code comments, config comments, CHANGELOG and README entries, in-repo docs, drafts, long-form articles, PR and ticket descriptions, acceptance criteria, and PR/ticket comments) while preserving the author's intent and voice.
 - **`writing-great-skills`** — Reference for writing and editing skills well: the vocabulary and principles that make a skill predictable.
-- **`zoom-out`** — Tell the agent to zoom out and give broader context or a higher-level perspective.
 
 ## Standalone project-brain plugin
 

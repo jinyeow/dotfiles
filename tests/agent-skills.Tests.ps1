@@ -53,49 +53,31 @@ Describe 'agent skill source layout' {
         $hits | Should -BeNullOrEmpty
     }
 
-    It 'owns council skills only in the portable source area' {
-        foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc'))
-        {
-            Test-Path (Join-Path $portable "$name/SKILL.md") | Should -BeTrue
-            Test-Path (Join-Path $claude $name) | Should -BeFalse
-            Test-Path (Join-Path $codex $name) | Should -BeFalse
-            Test-Path (Join-Path $pi $name) | Should -BeFalse
-        }
+    It 'owns the council skill only in the portable source area' {
+        Test-Path (Join-Path $portable 'council/SKILL.md') | Should -BeTrue
+        Test-Path (Join-Path $claude 'council') | Should -BeFalse
+        Test-Path (Join-Path $codex 'council') | Should -BeFalse
+        Test-Path (Join-Path $pi 'council') | Should -BeFalse
     }
 
-    It 'keeps the review-support contract portable-projected, plus a separate source-only copy' {
+    It 'keeps the review-support contract portable-projected only' {
         # #115: dimensions.md / findings-schema.md / review-rubric.md / reviewer-models.md live at
         # the portable ai-agents/skills/_shared/ (projected with the review skills below) — the
         # Claude-scoped claude/skills/_shared/ no longer exists. ai-agents/_shared/ (no `skills/`
-        # segment) is a separate, unrelated, source-only copy that predates the split and is not
-        # projected — the two must not be confused.
+        # segment) holds only the hooks' banned-ai-terms.txt wordlist; the stale review-contract
+        # copy that used to sit beside it is gone and must not come back.
         $portableSkillsShared = Join-Path $portable '_shared'
         foreach ($name in @('dimensions.md', 'findings-schema.md', 'review-rubric.md', 'reviewer-models.md'))
         {
             Test-Path (Join-Path $portableSkillsShared $name) | Should -BeTrue
         }
-        # ai-agents/_shared/ (source-only, unrelated) predates the #101 skill split and never
-        # picked up reviewer-models.md — only the three original files.
         foreach ($name in @('dimensions.md', 'findings-schema.md', 'review-rubric.md'))
         {
-            Test-Path (Join-Path $portableSupport $name) | Should -BeTrue
+            Test-Path (Join-Path $portableSupport $name) | Should -BeFalse
         }
         Test-Path (Join-Path $portableSkillsShared 'SKILL.md') | Should -BeFalse
         Test-Path (Join-Path $portableSupport 'SKILL.md') | Should -BeFalse
         Test-Path (Join-Path $claude '_shared') | Should -BeFalse
-    }
-
-    It 'keeps council aliases thin and linked to the portable contract' {
-        foreach ($name in @('council-code', 'council-business', 'council-plan', 'council-doc'))
-        {
-            $aliasPath = Join-Path $portable "$name/SKILL.md"
-            $content = Get-Content $aliasPath -Raw
-            $contractLink = [regex]::Match($content, '\]\((\.\./council/SKILL\.md)\)').Groups[1].Value
-            $contractLink | Should -Not -BeNullOrEmpty
-            Test-Path (Join-Path (Split-Path $aliasPath -Parent) $contractLink) | Should -BeTrue
-            $content | Should -Match 'Pass through'
-            $content | Should -Not -Match '(?s)NORMALIZE.*CAPABILITIES.*SELECT'
-        }
     }
 
     It 'defines runtime-neutral council contracts' {

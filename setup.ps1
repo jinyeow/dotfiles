@@ -1517,7 +1517,7 @@ function Install-Codex
 
     # 4. Git guardrails PreToolUse hook (issue #170) — blocks dangerous git commands (push,
     #    reset --hard, clean -f, branch -D, checkout/restore .) before Codex executes them,
-    #    ported from claude/skills/git-guardrails-claude-code/scripts/block-dangerous-git.sh.
+    #    ported from the git-guardrails-claude-code skill in mattpocock/skills.
     #    User-scope, matching this repo's Claude Code guardrail scope choice. The hook script
     #    copies like any other tracked file, but ~/.codex/hooks.json is not: herdr's own
     #    installer (`herdr integration install codex`) may already own a SessionStart entry

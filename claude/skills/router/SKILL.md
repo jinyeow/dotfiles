@@ -63,7 +63,7 @@ Pick by **what you're reviewing** and **how hard**. Each rung escalates.
 - **`/quick-review`** — the **default** findings pass over a diff/PR: one folded reviewer (correctness + conventions + tests) plus Codex, verified into the same findings store. Two participants, not eight.
 - **`/deep-review`** — the **opt-in** heavy version of the same pass: all seven dimensions (adds security, performance, structural, architecture) plus Codex. Reach for it when the diff's risk earns eight participants.
 - **`/review-fix-loop`** — the loop: chains a review pass (**`/quick-review`** by default, **`/deep-review`** under `--deep`) with **`/fix-findings`** (apply + commit, one fix-unit at a time), looping until clean at the severity floor. Reach here for "review and fix until clean"; reach for the review skill alone when you only want the findings. `--reviewers <model>[:<effort>]` picks the reviewer models on both.
-- **`/council`** — cost-bounded adversarial panel for **non-diff artifacts**. Quick mode is the default; `--debate` opts into rebuttals and `--codex` explicitly opts into an external seat. It auto-picks the panel; the four `/council-*` aliases pin it. **Not for diffs** — use `/quick-review`.
+- **`/council`** — cost-bounded adversarial panel for **non-diff artifacts**. Quick mode is the default; `--debate` opts into rebuttals and `--codex` explicitly opts into an external seat. It auto-picks the panel; `/council code|business|plan|doc <target>` pins it. **Not for diffs** — use `/quick-review`.
 - **`/security-review`** (built-in) — a security-focused pass over the pending changes. **`/verify`** (built-in) — drive the change end-to-end and observe behaviour, not just tests.
 
 *Not a rung: to have a diff **explained to you** rather than judged, use **`/walkthrough`** (see Writing & docs) — it tours the change like a senior pairing with a junior and emits no findings.*
@@ -82,8 +82,6 @@ Nine skills; the value is disambiguation. Match the task, not the keyword.
 | You're doing… | Skill |
 |---|---|
 | Boards work items — PBIs/Bugs/Tasks, sprint planning, standups | **`/azure-boards-organiser`** |
-| Azure DevOps knowledge — org/projects, repos, permissions, Analytics | **`/azure-devops`** |
-| Pipeline YAML, service connections, agents, Key Vault in pipelines | **`/azure-pipelines`** |
 | ARM/Bicep template & deployment-stack *knowledge* and patterns | **`/azure-resource-manager`** |
 | *Authoring* Bicep test-first — offline RED→GREEN, WAF policy, snapshot gate | **`/bicep-tdd`** |
 | Scaffolding an app to deploy — `azure.yaml`, Dockerfiles, infra | **`/azure-prepare`** |
@@ -97,8 +95,7 @@ Key forks: `azure-resource-manager` is *knowledge*, `bicep-tdd` is the *authorin
 
 - **`/write`** — de-AI and polish English prose: drafts, READMEs, release notes, long-form. Not code comments or commit messages.
 - **`/teach`** — learn a concept over multiple sessions, using the current directory as a stateful workspace.
-- **`/zoom-out`** — ask for broader context or a higher-level perspective when you're unfamiliar with a section of code or how it fits the whole.
-- **`/walkthrough`** — have a **diff** explained to you like a senior pairing with a junior: checkpoint tour, overview, or socratic mode, framed against the driving spec/ticket. The diff-scoped sibling of `/zoom-out` (which maps static code) and the post-`/implement` stage of the main flow. Tracks what you know in a learner profile — general skills in `~/.claude/learner-profile.md`, domain knowledge in the project-brain's `learner.md`.
+- **`/walkthrough`** — have a **diff** explained to you like a senior pairing with a junior: checkpoint tour, overview, or socratic mode, framed against the driving spec/ticket. The post-`/implement` stage of the main flow. Tracks what you know in a learner profile — general skills in `~/.claude/learner-profile.md`, domain knowledge in the project-brain's `learner.md`.
 
 ## Research
 
@@ -113,8 +110,6 @@ Research feeds the main flow — take its output *into* `/grill-with-docs`; it d
 ## Version control
 
 - **`/jj`** — working in a **Jujutsu** repo: making/describing changes, syncing, rewriting history, bookmarks, op-log recovery. Windows/pwsh-native. Doesn't fire in pure-git repos.
-- **`/resolving-merge-conflicts`** — an in-progress git merge/rebase conflict to resolve.
-- **`/git-guardrails-claude-code`** — install Claude Code hooks that block destructive git (push, `reset --hard`, `clean`, `branch -D`) before they run.
 
 ## Crossing sessions & durable memory
 

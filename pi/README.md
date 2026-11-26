@@ -21,7 +21,7 @@ resources: `setup.ps1`/`setup.sh` junction `pi/extensions/`, `pi/prompts/`, and 
 wholesale into `~/.pi/agent/`, so a single-file extension needs no `settings.json` entry —
 `settings.json`'s `packages` array is only for `npm:<name>@<version>` pins installed via
 `pi install`, not local files. `pi/extensions/git-guardrails.ts` blocks the same destructive
-git commands as `claude/skills/git-guardrails-claude-code` (`git push`, `git reset --hard`,
+git commands as `codex/block-dangerous-git.sh` (`git push`, `git reset --hard`,
 `git clean -f`/`-fd`, `git branch -D`, `git checkout .`/`git restore .`), via Pi's
 `tool_call` extension event (`pi.on("tool_call", ...)`, narrowed to the bash tool with
 `isToolCallEventType("bash", event)`, blocking by returning `{ block: true, reason }`).

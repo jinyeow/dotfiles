@@ -146,7 +146,7 @@ Describe 'setup.sh --dry-run' -Skip:$IsWindows {
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m pi --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
-            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc', 'codex-review'))
+            foreach ($name in @('council', 'codex-review'))
             {
                 $out | Should -Match "\.pi/agent/skills/$name -> .*ai-agents/skills/$name"
             }
@@ -460,7 +460,7 @@ Describe 'setup.sh Codex skill projection' -Skip:$IsWindows {
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m codex --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
-            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc', 'quick-review', 'deep-review', 'review-fix-loop', 'fix-findings', '_shared'))
+            foreach ($name in @('council', 'quick-review', 'deep-review', 'review-fix-loop', 'fix-findings', '_shared'))
             {
                 $out | Should -Match "\.codex/skills/$name -> .*ai-agents/skills/$name"
             }
@@ -468,7 +468,6 @@ Describe 'setup.sh Codex skill projection' -Skip:$IsWindows {
             # it is a self-review with no target, since Codex would be reviewing itself.
             $out | Should -Not -Match '\.codex/skills/codex-review ->'
             $out | Should -Not -Match '\.codex/skills/handoff ->'
-            $out | Should -Not -Match '\.codex/skills/git-guardrails-claude-code ->'
         }
         finally
         {

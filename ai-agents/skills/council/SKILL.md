@@ -31,8 +31,8 @@ council [code|business|plan|doc] [target]
 `--mode` is canonical. `--quick` aliases `--mode quick`; `--debate` aliases
 `--mode debate`. The default mode is **quick**. Debate and external Codex participation
 are always opt-in. Before dispatch, reject conflicting modes, unknown options/panels/seats,
-seat counts outside **2–5**, or including and excluding the same seat. Aliases pin their
-panel; a conflicting positional panel is an error. For generic `council`, infer the panel
+seat counts outside **2–5**, or including and excluding the same seat. A positional panel
+(`council code <target>`) pins it. Without one, infer the panel
 once from the artifact's primary purpose, in this precedence order when multiple labels
 apply: **plan** for a project plan, roadmap, rollout, or migration; **code** for a technical
 design, ADR, API, or implementation approach; **business** for an idea, product, business

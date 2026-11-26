@@ -1,8 +1,8 @@
 #!/bin/bash
 # block-dangerous-git.sh
 # Codex CLI PreToolUse hook — blocks dangerous git commands before execution.
-# Ported from claude/skills/git-guardrails-claude-code/scripts/block-dangerous-git.sh;
-# the blocklist/matching logic is unchanged, only the install/wiring comments differ.
+# Ported from the git-guardrails-claude-code skill in mattpocock/skills; the blocklist
+# and matching logic are unchanged, only the install/wiring comments differ.
 #
 # Install:
 #   Copied to ~/.codex/block-dangerous-git.sh by `setup.ps1 -Module codex`.

@@ -63,8 +63,8 @@ projected to Claude Code. Portable skills live under [`ai-agents/skills/`](ai-ag
 runtime-native skills live under [`claude/skills/`](claude/skills/),
 [`codex/skills/`](codex/skills/), and [`pi/skills/`](pi/skills/).
 `ai-agents/skills/_shared/` is the projected review-support contract shared by `quick-review`,
-`deep-review`, `review-fix-loop`, and `fix-findings`; the separate `ai-agents/_shared/` is
-source-only and may diverge. Derive projections from these sources; do not create a second
+`deep-review`, `review-fix-loop`, and `fix-findings`; the separate `ai-agents/_shared/` holds
+only the hooks' `banned-ai-terms.txt` wordlist. Derive projections from these sources; do not create a second
 source tree under a runtime module. See [`ai-agents/README.md`](ai-agents/README.md).
 
 ## Editing conventions

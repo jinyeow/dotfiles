@@ -8,7 +8,7 @@ or orchestration surface. PR #63 changes only source layout, not skill classific
 
 This is the canonical home for runtime-neutral Agent Skills. It is projected to Claude Code,
 Codex CLI, and Pi where each runtime is configured to load it. This includes `council`,
-`council-code`, `council-business`, `council-plan`, `council-doc`, `project-brain` (the
+`project-brain` (the
 `SessionStart` auto-injection hook is Claude-specific and stays a `claude/settings.json`
 entry; the skill's resolve-and-read procedure itself is tool-agnostic), and, since #115,
 `quick-review`, `deep-review`, `review-fix-loop`, and `fix-findings` — the review→fix skill
@@ -75,10 +75,8 @@ skills directory (`quick-review` and friends reach it via `../_shared/<file>`, r
 installed destination). Not a standalone skill (no `SKILL.md`). `reviewer-models.md` documents
 only the Claude Code / Codex-MCP dispatch surfaces today — see its own scope note.
 
-A separate, unrelated `ai-agents/_shared/` (no `skills/` in the path) holds an older,
-independently-owned, source-only copy of the same three filenames, predating the #101 split
-of `deep-review` into `quick-review` + `deep-review` — not projected, and not kept in sync.
-No ticket currently tracks consolidating or removing it; do not confuse the two paths.
+A separate, unrelated `ai-agents/_shared/` (no `skills/` in the path) holds only
+`banned-ai-terms.txt`, the AI-reference hooks' wordlist. It is not projected as a skill.
 
 ## Claude-native (`claude/skills/`)
 
@@ -105,9 +103,6 @@ migration ticket is even writable:
   themselves portable in concept — an earlier pass in this audit missed the `commands/`
   directory and wrongly called this one portable before catching the mistake.) Research
   spike: #94.
-- `git-guardrails-claude-code` — installs a Claude Code `PreToolUse` hook; needs an
-  equivalent pre-execution interception mechanism in Codex/Pi, not yet confirmed to
-  exist. Research spike: #97.
 
 **Needs design work** — the skill's value depends on a Claude-only *convenience trigger*
 (not a missing primitive), so portability needs a designed equivalent, not a spike:

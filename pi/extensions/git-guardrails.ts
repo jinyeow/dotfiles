@@ -1,8 +1,8 @@
 // git-guardrails.ts
 // Pi tool_call extension — blocks dangerous git commands before the bash tool executes.
 //
-// Originally ported verbatim from claude/skills/git-guardrails-claude-code/scripts/
-// block-dangerous-git.sh's naive whole-command-string regex match. That inherited real
+// Originally ported verbatim from the git-guardrails-claude-code skill's
+// block-dangerous-git.sh (mattpocock/skills), with its naive whole-command-string regex match. That inherited real
 // false positives (#177): a destructive phrase quoted inside e.g.
 // `git commit -m "reset --hard"` still matched, and "git stash push" tripped the push
 // pattern via bare substring match. Fixed by porting the quote-scrubbing approach from

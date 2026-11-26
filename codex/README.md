@@ -52,10 +52,9 @@ codex` or `./setup.sh -m codex`) to push repo → live.
 ## Git guardrails
 
 `setup.ps1 -Module codex` installs a `PreToolUse` hook (matcher `Bash`) that blocks the same
-destructive git commands the Claude Code `git-guardrails-claude-code` skill blocks: `git push`
-(all variants), `git reset --hard`, `git clean -f`/`-fd`, `git branch -D`, and
-`git checkout .` / `git restore .`. The matching logic is ported close to verbatim from
-`claude/skills/git-guardrails-claude-code/scripts/block-dangerous-git.sh` — see
+destructive git commands: `git push` (all variants), `git reset --hard`, `git clean -f`/`-fd`,
+`git branch -D`, and `git checkout .` / `git restore .`. The matching logic is ported close to
+verbatim from the `git-guardrails-claude-code` skill in mattpocock/skills — see
 `codex/block-dangerous-git.sh`'s own comments for the one deliberate deviation (the
 `python3`/`python` command-extraction tier now checks the pipeline actually succeeds, not just
 that an executable exists on PATH — a bare `command -v python3` check is also true for

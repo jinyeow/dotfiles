@@ -103,7 +103,7 @@ See `fzf/`, `ripgrep/`, `lazygit/`, `tig/`, and `nvim/` for tool-specific `READM
 
 ## Claude Code skills
 
-Portable skills live in `ai-agents/skills/`; Claude-native skills live in `claude/skills/`, Codex-native variants in `codex/skills/`, and Pi-native variants in `pi/skills/`. Claude projects portable plus Claude-native skills, Codex (Windows and Linux) projects portable plus Codex-native skills, and Pi projects portable plus Pi-native skills. The portable review-support contract at `ai-agents/skills/_shared/` (`quick-review`, `deep-review`, `review-fix-loop`, `fix-findings`) is projected with every runtime; the independent `ai-agents/_shared/` copy is source-only and may diverge. User-scope agent definitions live under `ai-agents/agents/` and are projected to Claude Code. Installers safely migrate existing whole-directory links from the historical `ai-agents/shared/agents/` path without replacing user-owned entries.
+Portable skills live in `ai-agents/skills/`; Claude-native skills live in `claude/skills/`, Codex-native variants in `codex/skills/`, and Pi-native variants in `pi/skills/`. Claude projects portable plus Claude-native skills, Codex (Windows and Linux) projects portable plus Codex-native skills, and Pi projects portable plus Pi-native skills. The portable review-support contract at `ai-agents/skills/_shared/` (`quick-review`, `deep-review`, `review-fix-loop`, `fix-findings`) is projected with every runtime; `ai-agents/_shared/` holds only the hooks' `banned-ai-terms.txt` wordlist. User-scope agent definitions live under `ai-agents/agents/` and are projected to Claude Code. Installers safely migrate existing whole-directory links from the historical `ai-agents/shared/agents/` path without replacing user-owned entries.
 
 Not sure which one fits? Run `/router` — a manual index that maps these as flows and decision tables. Built-in Claude Code skills (`code-review`, `compact`, `deep-research`, `security-review`, `verify`) are provided by the harness and aren't listed here.
 
@@ -134,12 +134,9 @@ Not sure which one fits? Run `/router` — a manual index that maps these as flo
 | `fix-findings` | local | Apply review findings — partitioned, one commit per fix-unit |
 | `review-fix-loop` | local | Chain quick-review (or `--deep`) + fix-findings until the diff passes clean |
 | `council` | local | Adversarial panel for a non-diff artifact (idea/design/plan/doc) |
-| `council-{code,business,plan,doc}` | local | Thin aliases pinning `council`'s panel by artifact type |
 | `prompt-draft` | local | Draft a new prompt against the 12-lever checklist |
 | `prompt-lint` | local | Score, critique, and rewrite an existing prompt |
 | `azure-boards-organiser` | local | Azure Boards work items — PBIs/Bugs/Tasks, sprint planning |
-| `azure-devops` | MicrosoftDocs/Agent-Skills | ADO org/project management, Analytics/OData, permissions |
-| `azure-pipelines` | MicrosoftDocs/Agent-Skills | YAML pipelines, service connections, Key Vault secrets, agents |
 | `azure-resource-manager` | MicrosoftDocs/Agent-Skills | Bicep/ARM troubleshooting, deployment stacks, template specs |
 | `bicep-tdd` | local | Offline RED→GREEN loop for authoring Azure Bicep |
 | `azure-prepare` | microsoft/azure-skills | Prepare apps for Azure deployment — IaC, Dockerfiles, `azure.yaml` |
@@ -148,12 +145,9 @@ Not sure which one fits? Run `/router` — a manual index that maps these as flo
 | `azure-compliance` | microsoft/azure-skills | Compliance/security audits via `azqr`, Key Vault expiry checks |
 | `write` | tw93/Waza | De-AI and polish English prose (drafts, READMEs, release notes) |
 | `teach` | mattpocock/skills | Learn a concept over multiple sessions (stateful workspace) |
-| `zoom-out` | mattpocock/skills | Step back and assess the bigger picture |
 | `quick-research` | mattpocock/skills | Background-agent primary-source research → a cited Markdown file |
 | `storm-research` | local | Multi-perspective, citation-verified HTML research briefing |
 | `jj` | local | Jujutsu (jj) VCS workflow — Windows/pwsh-native (adapts HotThoughts/jj-skills) |
-| `resolving-merge-conflicts` | mattpocock/skills | Resolve an in-progress git merge/rebase conflict |
-| `git-guardrails-claude-code` | mattpocock/skills | Hook blocking dangerous git commands |
 | `handoff` | local | Compact the conversation into a handoff doc for a fresh session |
 | `project-brain` | local | Durable cross-repo initiative knowledge (core/STATUS/ADRs), auto-loaded by a SessionStart hook |
 | `health` | tw93/Waza | Audit the agent setup — config drift, hooks, MCP, skills, memory |
