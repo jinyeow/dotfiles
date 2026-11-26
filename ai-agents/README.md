@@ -48,6 +48,7 @@ them by copying the upstream folders again; do not edit them in place.
 - **`azure-resource-manager`** — Expert knowledge for Azure Resource Manager development including troubleshooting, best practices, decision making, architecture & design patterns, limits & quotas, security, configuration, integrations & coding patterns, and deployment.
 - **`bicep-tdd`** — Use when authoring or changing Azure Bicep and you want it validated test-first, a local RED→GREEN loop of `bicep build`/`lint`, PSRule for Azure (WAF policy-as-code), and a committed snapshot-compare regression gate, plus Pester golden-fixture tests over the compiled ARM. Needs the **Bicep CLI** on PATH and the **PSRule.Rules.Azure** module (`Install-Module PSRule.Rules.Azure -Scope CurrentUser`); stops at compiled ARM, never authenticates to a tenant.
 - **`codebase-design`** — Shared vocabulary for designing deep modules.
+- **`code-review`** — Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes: Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/spec asked for?).
 - **`codex-review`** — Get a read-only Codex (OpenAI) second opinion on the current code changes, as a cross-model review.
 - **`council`** — Cost-bounded adversarial review of a non-diff artifact.
 - **`critique-plan`** *(trial)* — Stress-test a drafted plan against the project's domain model before any code is written: terminology drift, wrong bounded context, ADR contradictions, bad dependency edges, reinvented concepts. Adapted from [ayoubben18/ab-method](https://github.com/ayoubben18/ab-method) (MIT).
@@ -83,7 +84,6 @@ them by copying the upstream folders again; do not edit them in place.
 - **`rfc`** — Draft and create an Azure DevOps "Request for Change RFC" work item in the configured work project.
 - **`setup-home-repo`**: Set up or adopt a Home Repo (`gateroom`) for a workspace on any machine, in four steps with an approval gate before any change.
 - **`setup-matt-pocock-skills`** — Configure this repo for the engineering skills: set up its issue tracker, triage label vocabulary, and domain doc layout.
-- **`spec-review`** — Review a diff for conformance to its originating spec or ticket: missing requirements, scope creep, and requirements implemented wrong.
 - **`storm-research`** — Runs a 4-phase pipeline over a topic: five expert lenses (Practitioner, Academic, Skeptic, Economist, Historian), a contradiction map, a synthesized HTML report, and adversarial peer review plus primary-source verification.
 - **`tdd`** — Test-driven development.
 - **`teach`** — Teach the user a new skill or concept, within this workspace.

@@ -18,7 +18,7 @@ Two routers split the work. **`/ask-matt`** owns the mattpocock skills, vendored
 
 1. **After `/to-spec`: `/to-hld`**, suggested, not automatic. When the change has architecture worth writing down (new components, infrastructure topology, data flow), propose it and ask. It derives a high-level design doc (decisions plus mermaid diagrams) for `docs/design/`.
 2. **After `/to-tickets`, before implementing: `/critique-plan`.** Always run it on the spec and tickets. One fresh-context critic checks them against `GLOSSARY.md` and the ADRs (terminology drift, wrong context, ADR contradictions, bad dependency edges, reinvented concepts, workarounds a reshape would remove) and stays silent when the plan is clean.
-3. **After implementing: `/spec-review`** checks the diff against what the spec or ticket asked for (missing requirements, scope creep, requirements built wrong). Then the review ladder below picks the code review. Not happy with how a fix came out? **`/redraft`** scraps it and redoes it properly.
+3. **After implementing:** `/implement` already runs `/code-review` (Standards and Spec). Reach for the review ladder below when you want more. Not happy with how a fix came out? **`/redraft`** scraps it and redoes it properly.
 4. **Understand what was built: `/walkthrough`** tours the diff like a senior pairing with a junior, framed against the driving spec or ticket, and remembers what you know through the learner profile.
 5. **Prove you own it, then ship:** **`/review-me`** grills you on the diff and holds the PR until you pass; **`/teach-back`** checks you can explain it to a junior and defend it to a senior. **`/to-pullrequest`** opens the PR on GitHub or Azure DevOps with a body run through `/write`.
 6. **Close the session: `/wrapup`** runs a two-question self-review before you clear or quit.
@@ -29,8 +29,7 @@ For upkeep beside `/improve-codebase-architecture`, **`/techdebt`** inventories 
 
 Pick by **what you're reviewing** and **how hard**. Each rung escalates.
 
-- **`/code-review`** (built-in) — the diff, quality axis. `/implement` and `/implement-spec` call it before committing. Upstream's own two-axis `code-review` is not installed, so in Claude Code the name resolves to the built-in.
-- **`/spec-review`** — the diff against its **spec or ticket**: missing requirements, scope creep, requirements built wrong. The conformance axis, not quality.
+- **`/code-review`** — the diff on two axes: Standards (repo standards plus the code-smell baseline) and Spec (does it do what the spec or ticket asked). Vendored from mattpocock/skills; it replaces the built-in `/code-review`, though `/review` still runs the built-in. `/implement` and `/implement-spec` call it before committing.
 - **`/codex-review`** — a read-only **cross-model** (Codex/OpenAI) second opinion on the current changes. Standing OK to run after implementing a feature or non-trivial fix, before commit; delegating debugging to Codex needs a go-ahead; findings are never auto-applied; `council` needs explicit `--codex`.
 - **`/quick-review`** — the **default** findings pass over a diff/PR: one folded reviewer (correctness + conventions + tests) plus Codex, verified into the same findings store. Two participants, not eight.
 - **`/deep-review`** — the **opt-in** heavy version of the same pass: all seven dimensions (adds security, performance, structural, architecture) plus Codex. Reach for it when the diff's risk earns eight participants.

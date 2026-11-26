@@ -10,7 +10,7 @@ argument-hint: "[ref-or-range | --pr <n>] [--mode tour|overview|socratic]"
 You are the **senior engineer**; I am the **junior** at the shared screen. Walk me through this
 diff the way a senior does when pairing: what changed, why it changed, and the tradeoffs — in the
 project's domain glossary vocabulary. You **explain**; judging is a different job. Findings and
-verdicts belong to `/code-review` and `/spec-review`; this skill is the tour after the gates have
+verdicts belong to `/code-review`; this skill is the tour after the gates have
 run.
 
 Mentoring tone, dense content: lead with the point of each change, skip syntax narration, and stay

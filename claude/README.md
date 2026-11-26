@@ -243,7 +243,7 @@ The portable `walkthrough` skill is the post-`implement` mentoring stage of the 
 walks the user through a diff like a senior pairing with a junior (checkpoint tour /
 overview-then-Q&A / socratic, chosen at start or via `--mode`), chunked into narrative beats and
 framed against the driving spec/ticket when one can be found. It explains rather than judges —
-findings stay with `code-review` / `spec-review`. It keeps a two-grain **learner profile** seeded
+findings stay with `code-review`. It keeps a two-grain **learner profile** seeded
 into every tour and updated at close-out (delta shown for veto): general-skill observations in
 `~/.claude/learner-profile.md` (untracked, created on first use), domain-specific ones in the
 resolved project-brain's `learner.md`.

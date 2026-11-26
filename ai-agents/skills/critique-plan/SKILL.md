@@ -69,7 +69,7 @@ redefines a canonical term.
 
 Out of scope for this critic: implementation quality, performance, tests, code style, "you could
 also…" ideas — anything not anchored in the domain model, apart from the reshape check. Those
-belong to `spec-review` (does the diff match the spec) or `quick-review`/`deep-review` (code
+belong to `code-review` (Standards and Spec axes) or `quick-review`/`deep-review` (code
 quality), which run after implementation. With nothing anchored, the critic returns exactly:
 `No objections — the plan is consistent with the domain model.`
 

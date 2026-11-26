@@ -1,3 +1,0 @@
-interface:
-  display_name: "Spec Review"
-  short_description: "Check a diff against its spec or ticket"
