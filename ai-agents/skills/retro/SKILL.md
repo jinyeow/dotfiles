@@ -25,13 +25,22 @@ This is not a code review of the session's diff; it is a review of the scaffoldi
   skill's own body make it easier? _Use when_ the session took a long time to find a piece
   of information.
 - **Automated checks**: are there automated checks that could catch errors the agent made?
-  Linting (`PSScriptAnalyzer`), typing, tests, filesystem linters? _Use when_ the agent made
-  a mistake that could have been caught by an automated check.
+  Linting (`PSScriptAnalyzer`), typing, tests, filesystem linters? Read the repo's own check
+  command first (its build-tool lint or check scripts, its CI workflow). A check that exists
+  but sits unwired or silently broken is the finding, ahead of a new one. A repo with no
+  guardrail at all (no pre-commit hook and no CI job running its lint, typecheck, or test
+  command) is itself a finding. _Use when_ the agent made a mistake that could have been
+  caught by an automated check, or the repo has no guardrail at all.
 - **Conventions and review rubric**: should `quick-review`/`deep-review` (via
   `ai-agents/skills/_shared/review-rubric.md`) be given a new rule to enforce, or the shared
   `ai-agents/AGENTS.md` conventions gain a new standing rule? Should an existing rule be
-  removed or clarified? _Use when_ review missed a mistake, or the same correction keeps
-  recurring across sessions.
+  removed or clarified? Classify the violation first. A mechanical one (a fixed syntactic
+  pattern, a banned API, an import shape, a file-location rule) gets a deterministic check:
+  a custom lint rule, a pre-commit hook, or a CI job, whichever the repo's language and
+  existing guardrail make cheapest. Default to building the check. Reserve the review rubric
+  and the `AGENTS.md`/`CLAUDE.md` files for judgement calls, such as cross-file consistency
+  or matching the surrounding style. _Use when_ review missed a mistake, or the same
+  correction keeps recurring across sessions.
 - **Root steering files**: are there instructions in the root `AGENTS.md`, `ai-agents/AGENTS.md`,
   or `claude/CLAUDE.md` that would serve better as a review-rubric rule or an automated check
   instead? _Use when_ one of these files is growing large relative to what every task needs.

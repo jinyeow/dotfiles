@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 You don't remember every skill, so ask.
 
-**How to use this map.** Invoked bare (`/router`), orient: read the flows below and point yourself at the right entry skill. Invoked with a situation (`/router something in the pipeline keeps failing`), dispatch: jump to the matching section, name the single best-fit skill, say in one line why it over its neighbours, and give the exact `/command` to run next. Either way the router only ever **recommends** — you invoke the skill it points to; it never does the work itself.
+**How to use this map.** Invoked bare (`/router`), orient: read the flows below and point yourself at the right entry skill. Invoked with a situation (`/router something in the pipeline keeps failing`), dispatch: jump to the matching section, name the single best-fit skill, say in one line why it over its neighbours, and give the exact `/command` to run next. Either way the router only ever **recommends** — you invoke the skill it points to; it never does the work itself. Before stating what a skill does or recommending a step be skipped, read that skill's SKILL.md. The one-line summaries here are for orientation only.
 
 A **flow** is a path through the skills. Most work runs along one **main flow**; a few **on-ramps** merge onto it. The rest are clusters you reach into directly — review, Azure, prompting, writing — each organised so you pick *which one when*, not just *what exists*. Skills tagged **(built-in)** ship with Claude Code, not this repo.
 

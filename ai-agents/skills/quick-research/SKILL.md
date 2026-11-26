@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Quick Research
 
-Spin up a **background agent** to do the reading, so you keep working while it investigates.
+Spin up a **background agent** to do the reading, so you keep working while it investigates. Start it with a fresh context window.
 
 Its job:
 

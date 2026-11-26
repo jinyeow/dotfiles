@@ -23,6 +23,8 @@ Default is **local markdown files** — no tracker needed. If this repo uses one
 - GitHub Issues / Azure Boards / Azure DevOps Wiki / other
 - For a real tracker, optionally treat external PRs as a triage surface (used by `triage`).
 
+A GitHub or GitLab tracker needs a reachable repo. When the user picks one and no `git remote` points at that host, get the repo URL from them and wire it up (`git init` if needed, `git remote add origin <url>`) before writing the config. Done when `gh repo view` or `glab repo view` prints the project from inside this directory. If it can't, stop and tell the user what's missing.
+
 ## 3. Label vocabulary (tracker path only — local files need no labels)
 
 Map the canonical states to the repo's actual label strings:
@@ -33,6 +35,8 @@ Map the canonical states to the repo's actual label strings:
 - `ready` — AFK ticket; an agent may grab & implement
 - `needs-info` — blocked awaiting clarification *(optional)*
 - `wontfix` — will not be actioned *(optional)*
+
+On a GitHub or GitLab tracker, create each confirmed label the tracker lacks (`gh label create` or `glab label create`).
 
 ## 4. Domain-doc layout
 
