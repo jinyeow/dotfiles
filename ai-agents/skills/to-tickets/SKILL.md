@@ -62,7 +62,7 @@ Iterate until the user approves the breakdown.
 Publish the approved tickets. **How** depends on the config — the tickets are the same either way, only the shape of the blocking edges changes:
 
 - **Local files (default)** → write `.agents/tickets.md` (or the legacy `.claude/tickets.md` if that already exists for this repo), all tickets in dependency order (blockers first), each with its "Blocked by" listing the titles it depends on. Use the file template below.
-- **A real issue tracker (GitHub, Azure Boards, …)** → publish one issue per ticket in dependency order (blockers first) so each ticket's blocking edges can reference real identifiers. Use the platform's native blocking / sub-issue relationship where it has one; otherwise set each ticket's "Blocked by" to the blocking issues. Apply the `triaged` label, plus `ready` for any ticket an agent may grab and implement autonomously.
+- **A real issue tracker (GitHub, Azure Boards, …)** → publish one issue per ticket in dependency order (blockers first) so each ticket's blocking edges can reference real identifiers. Use the platform's native blocking relationship where it has one; otherwise set each ticket's "Blocked by" to the blocking issues. If the source was an existing issue, make each ticket a sub-issue of it where the tracker supports sub-issues. Use the parent/child link the workflow config records for this tracker. Apply the `triaged` label, plus `ready` for any ticket an agent may grab and implement autonomously.
 
 Do NOT close or modify any parent issue.
 
@@ -108,7 +108,7 @@ The end-to-end behaviour this ticket makes work, from the user's perspective —
 
 ## Blocked by
 
-- A reference to each blocking ticket, or "None — can start immediately".
+- A reference to each blocking ticket, or "None — can start immediately". Omit this section when blockers were set as native edges.
 
 ## Likely files (optional)
 

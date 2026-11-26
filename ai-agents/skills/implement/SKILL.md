@@ -6,6 +6,8 @@ disable-model-invocation: true
 
 Implement the work described by the user in the spec or tickets.
 
+If the user passes a ticket reference, fetch it from the issue tracker and state its title before starting. If the reference is ambiguous, ask.
+
 **Before anything else, make sure this isn't landing on the default branch.** Determine the
 default branch (`git symbolic-ref --short refs/remotes/origin/HEAD`, stripped of the `origin/`
 prefix — don't assume `main`/`master`). If that's unset (e.g. a fresh or `--single-branch`

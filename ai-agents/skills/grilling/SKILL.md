@@ -22,9 +22,11 @@ Format a round like so:
 ➡️ <your recommended answer>
 ```
 
+Word each question so "yes" accepts your recommended answer.
+
 Each round my answers reshape the tree: settled decisions push the frontier outward and unblock questions that depended on them. Recompute the frontier and ask the next round. A question whose answer depends on another question still open in this round belongs to a later round, not this one.
 
-Finding *facts* is your job, never mine. When a frontier question needs a fact from the environment (filesystem, tools, etc.), dispatch a subagent to find it; don't ask me for anything you could look up yourself. Don't block the round on it — a running exploration is an unsettled prerequisite, so only the questions downstream of it wait; ask the rest of the frontier now. The *decisions* are mine — put each one to me and wait for my answer.
+Finding *facts* is your job, never mine. When a frontier question needs a fact from the environment (filesystem, tools, etc.), dispatch a subagent with a fresh context window to find it; don't ask me for anything you could look up yourself. Don't block the round on it — a running exploration is an unsettled prerequisite, so only the questions downstream of it wait; ask the rest of the frontier now. The *decisions* are mine — put each one to me and wait for my answer.
 
 ## Decision status
 
