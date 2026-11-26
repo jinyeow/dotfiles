@@ -36,6 +36,7 @@ Not sure which? **`/review`** routes for you: code goes to `/code-review`, docum
 - **`/fix-until-clean`** — the loop: chains a review pass (**`/quick-review`** by default, **`/deep-review`** under `--deep`) with **`/fix-findings`** (apply + commit, one fix-unit at a time), looping until clean at the severity floor. Reach here for "review and fix until clean"; reach for the review skill alone when you only want the findings. `--reviewers <model>[:<effort>]` picks the reviewer models on both.
 - **`/council`** — cost-bounded adversarial panel for **non-diff artifacts**. Quick mode is the default; `--debate` opts into rebuttals and `--codex` explicitly opts into an external seat. It auto-picks the panel; `/council code|business|plan|doc <target>` pins it. **Not for diffs** — use `/quick-review`.
 - **`/security-review`** (built-in) — a security-focused pass over the pending changes.
+- **`/verify`** (built-in) — build and run the app and look at the result, to confirm the change does what it should.
 - **`/prove-it`** — drive the change on the base branch and on yours and diff the observed behaviour, not just the tests.
 - **`/review-ado-pr`** — an **Azure DevOps** PR end-to-end: fetch it into the review worktree, run the Bicep gates, review across models, and post threads or a vote only on your go-ahead.
 
