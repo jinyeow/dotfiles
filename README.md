@@ -116,7 +116,7 @@ Not sure which one fits? Run `/router` — a manual index that maps these as flo
 | `to-spec` | mattpocock/skills | Turn the conversation into a spec |
 | `to-hld` | local | Turn the discussion into a high-level design doc — decisions + mermaid |
 | `to-tickets` | mattpocock/skills | Split a plan into tracer-bullet tickets with blocking edges |
-| `critique-plan` | ayoubben18/ab-method | Check a grilled plan against the domain model before `to-spec` (trial) |
+| `critique-plan` | ayoubben18/ab-method | Check the spec and tickets against the domain model before implementing (trial) |
 | `implement` | mattpocock/skills | Build from a spec/ticket — TDD at seams, review, commit |
 | `implement-spec` | mattpocock/skills | Implement a whole spec with implementer subagents on one integration branch |
 | `redraft` | local | Scrap a hacky fix and redo it properly with what the first attempt taught |

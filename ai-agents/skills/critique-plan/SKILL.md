@@ -1,6 +1,6 @@
 ---
 name: critique-plan
-description: Stress-test a drafted plan against the project's domain model before any code is written — terminology drift, wrong bounded context, ADR contradictions, bad dependency edges, reinvented concepts, workarounds a reshape would remove. Use after a grilling session and before to-spec, before implementing from a spec or ticket set, or when the user asks to critique, pressure-test, or sanity-check a plan against the domain model.
+description: Stress-test a drafted plan against the project's domain model before any code is written — terminology drift, wrong bounded context, ADR contradictions, bad dependency edges, reinvented concepts, workarounds a reshape would remove. Use after to-tickets and before implementing from a spec or ticket set, or when the user asks to critique, pressure-test, or sanity-check a plan against the domain model.
 metadata:
   status: trial
 ---
@@ -14,10 +14,9 @@ Silence is the expected outcome. A plan that speaks the canonical language and r
 documented decisions gets a one-line "No objections." Do not manufacture concerns to look
 thorough.
 
-"The plan" is the plan a `grill-with-docs` or `grilling` session settled (the main chain runs this
-skill between grilling and `to-spec`), whatever came out of `to-spec` or `to-tickets`, a set of
-tickets already on the tracker, or whatever the user pastes in standalone. For a grilled plan,
-hand the critic the decisions the session settled, written out in full.
+"The plan" is the spec and tickets that came out of `to-spec` and `to-tickets` (the main chain
+runs this skill between `to-tickets` and `implement`), a set of tickets already on the tracker,
+or whatever the user pastes in standalone.
 
 ## Process
 

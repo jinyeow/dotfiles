@@ -16,9 +16,9 @@ Two routers split the work. **`/ask-matt`** owns the mattpocock skills, vendored
 
 `/ask-matt` describes the flow. These steps are yours and slot into it:
 
-1. **After grilling, before `/to-spec`: `/critique-plan`.** Always run it on the plan the grilling settled. One fresh-context critic checks it against `GLOSSARY.md` and the ADRs (terminology drift, wrong context, ADR contradictions, reinvented concepts, workarounds a reshape would remove) and stays silent when the plan is clean.
-2. **After `/to-spec`: `/to-hld`** when the architecture is worth writing down. It derives a high-level design doc (decisions plus mermaid diagrams) for `docs/design/`.
-3. **After implementing:** `/spec-review` checks the diff against what was asked for, and the review ladder below picks the code review. Not happy with how a fix came out? **`/redraft`** scraps it and redoes it properly.
+1. **After `/to-spec`: `/to-hld`**, suggested, not automatic. When the change has architecture worth writing down (new components, infrastructure topology, data flow), propose it and ask. It derives a high-level design doc (decisions plus mermaid diagrams) for `docs/design/`.
+2. **After `/to-tickets`, before implementing: `/critique-plan`.** Always run it on the spec and tickets. One fresh-context critic checks them against `GLOSSARY.md` and the ADRs (terminology drift, wrong context, ADR contradictions, bad dependency edges, reinvented concepts, workarounds a reshape would remove) and stays silent when the plan is clean.
+3. **After implementing: `/spec-review`** checks the diff against what the spec or ticket asked for (missing requirements, scope creep, requirements built wrong). Then the review ladder below picks the code review. Not happy with how a fix came out? **`/redraft`** scraps it and redoes it properly.
 4. **Understand what was built: `/walkthrough`** tours the diff like a senior pairing with a junior, framed against the driving spec or ticket, and remembers what you know through the learner profile.
 5. **Prove you own it, then ship:** **`/review-me`** grills you on the diff and holds the PR until you pass; **`/teach-back`** checks you can explain it to a junior and defend it to a senior. **`/to-pullrequest`** opens the PR on GitHub or Azure DevOps with a body run through `/write`.
 6. **Close the session: `/wrapup`** runs a two-question self-review before you clear or quit.
