@@ -39,7 +39,9 @@ own `SKILL.md` frontmatter, trimmed to one line. Claude-native skills live in `.
 
 The skills taken from [mattpocock/skills](https://github.com/mattpocock/skills) are unedited copies of
 upstream commit `6f7f783` (2026-11-25), each with its `agents/openai.yaml` Codex metadata. Re-sync
-them by copying the upstream folders again; do not edit them in place.
+them by copying the upstream folders again; do not edit them in place. The one exception is
+`code-review`: its step 4 (a second opinion from another model) is local, so re-apply it after a
+re-sync.
 
 - **`agent-staging`** — Per-workspace drop and exchange zone where the developer and their agents leave files for each other across sessions, with an `agent-inputs\` lane and an `agent-outputs\` lane.
 - **`ask-matt`** — Ask which skill or flow fits your situation.

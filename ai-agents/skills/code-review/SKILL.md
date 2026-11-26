@@ -55,7 +55,13 @@ Each smell reads *what it is* → *how to fix*; match it against the diff:
 - **Middle Man**: a class or function that mostly just delegates onward. → cut it, call the real target direct.
 - **Refused Bequest**: a subclass or implementer that ignores or overrides most of what it inherits. → drop the inheritance, use composition.
 
-### 4. Spawn both sub-agents in parallel
+### 4. Offer a second opinion from another model
+
+Check whether a reviewer from another model family is available in this session: an MCP server for another coding agent (such as `codex`), or another agent's CLI on `PATH`. If none is found, skip this step and do not mention it.
+
+If one or more are found, ask the user once whether to add a second opinion, and name what you found. On yes, run it read-only, in parallel with the two sub-agents in step 5. Give it the diff command, the commit list, the spec, and both sub-agent briefs, and ask for findings under the same two headings. For the `codex` MCP server, use the read-only call shape in [`../_shared/reviewer-models.md`](../_shared/reviewer-models.md).
+
+### 5. Spawn both sub-agents in parallel
 
 Issue both sub-agent calls together, in the foreground, and aggregate the reports they return.
 
@@ -73,9 +79,11 @@ Issue both sub-agent calls together, in the foreground, and aggregate the report
 
 If the spec is missing, skip the Spec sub-agent and note this in the final report.
 
-### 5. Aggregate
+### 6. Aggregate
 
 Present the two reports under `## Standards` and `## Spec` headings, verbatim or lightly cleaned. Do **not** merge or rerank findings, because the two axes are deliberately separate (see _Why two axes_).
+
+If a second opinion ran, add its report under `## Second opinion (<model>)`, after the two axes and kept separate from them.
 
 End with a one-line summary: total findings per axis, and the worst issue _within each axis_ (if any). Don't pick a single winner across axes: that's the reranking the separation exists to prevent.
 
