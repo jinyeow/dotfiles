@@ -1,5 +1,5 @@
 ---
-name: defend-diff
+name: cross-examine
 description: Grill the user on the current diff until they can explain it to a junior engineer and defend it to the reviewer who must approve it, then offer to open the PR. Use when the user wants to prove they understand and can stand behind a change before it ships.
 disable-model-invocation: true
 ---

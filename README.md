@@ -124,7 +124,7 @@ Not sure which one fits? Run `/router` — a manual index that maps these as flo
 | `code-review` | mattpocock/skills (adapted) | Two-axis review of a diff: Standards (repo standards plus a code-smell baseline) and Spec, plus an optional second opinion from another model; replaces the built-in `/code-review` |
 | `review` | local | Route a review: code to `code-review`, documents and plans to `council`, spec-and-tickets fit to `critique-plan` |
 | `walk-me-through-it` | local | Walk me through a diff like a senior mentoring a junior — pair-programming style, chunk by chunk, concise, open to questions |
-| `defend-diff` | local | Explain each piece of a diff to a junior and defend it to its reviewer before the PR |
+| `cross-examine` | local | Explain each piece of a diff to a junior and defend it to its reviewer before the PR |
 | `to-pullrequest` | local | Open a GitHub or Azure DevOps PR with a body run through `write` |
 | `wrapup` | local | Two-question self-review before clearing or ending a session |
 | `retro` | mattpocock/skills | Session retrospective aimed at the agent's environment, not the code |

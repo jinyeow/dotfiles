@@ -55,7 +55,7 @@ re-sync.
 - **`council`** — Cost-bounded adversarial review of a non-diff artifact.
 - **`critique-plan`** *(trial)* — Stress-test a drafted plan against the project's domain model before any code is written: terminology drift, wrong bounded context, ADR contradictions, bad dependency edges, reinvented concepts. Adapted from [ayoubben18/ab-method](https://github.com/ayoubben18/ab-method) (MIT).
 - **`deep-review`** — Heavy multi-dimension cross-model code review of a branch diff or PR, the opt-in deep pass, not the default.
-- **`defend-diff`** — Grill the user on the current diff until they can explain it to a junior engineer and defend it to the reviewer who must approve it, then offer to open the PR.
+- **`cross-examine`** — Grill the user on the current diff until they can explain it to a junior engineer and defend it to the reviewer who must approve it, then offer to open the PR.
 - **`diagnosing-bugs`** — Diagnosis loop for hard bugs and performance regressions.
 - **`domain-modeling`** — Build and sharpen a project's domain model.
 - **`fix-findings`** — Apply fixes for findings produced by quick-review or deep-review.
