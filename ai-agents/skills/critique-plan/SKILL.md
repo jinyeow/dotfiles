@@ -1,6 +1,6 @@
 ---
 name: critique-plan
-description: Stress-test a drafted plan against the project's domain model before any code is written — terminology drift, wrong bounded context, ADR contradictions, bad dependency edges, reinvented concepts. Use before implementing from a spec or ticket set, or when the user asks to critique, pressure-test, or sanity-check a plan against the domain model.
+description: Stress-test a drafted plan against the project's domain model before any code is written — terminology drift, wrong bounded context, ADR contradictions, bad dependency edges, reinvented concepts, workarounds a reshape would remove. Use before implementing from a spec or ticket set, or when the user asks to critique, pressure-test, or sanity-check a plan against the domain model.
 metadata:
   status: trial
 ---
@@ -46,6 +46,12 @@ Fire only on a genuine conflict, one of:
   several tickets dressed as one).
 - **Reinvents a named concept** — introduces a new abstraction for something the domain model
   already names.
+- Fits around a design it should reshape: the plan adds a special case, flag, adapter or second
+  path to get past the current design. Or it cuts or stages a capability the spec asks for, or
+  defers part of it to "later" with no real boundary forcing the split. Cite the ticket and the
+  workaround, and sketch the reshape that removes it. Effort is no reason to keep the fit. An
+  ADR, an external contract or persisted data is, so don't fire when the plan or an ADR names
+  one. This is the one check not anchored in the domain model.
 
 For each, return: **What** (the ticket/decision in question), **Conflicts with** (the exact
 term / `CONTEXT.md` section / `ADR-NNNN`), **Why it matters** (concrete cost, not taste),
@@ -61,10 +67,14 @@ placeholder itself conflicts with the domain model: it contradicts an ADR, or it
 redefines a canonical term.
 
 Out of scope for this critic: implementation quality, performance, tests, code style, "you could
-also…" ideas — anything not anchored in the domain model. Those belong to `spec-review` (does the
-diff match the spec) or `quick-review`/`deep-review` (code quality), which run after
-implementation. With nothing anchored, the critic returns exactly:
+also…" ideas — anything not anchored in the domain model, apart from the reshape check. Those
+belong to `spec-review` (does the diff match the spec) or `quick-review`/`deep-review` (code
+quality), which run after implementation. With nothing anchored, the critic returns exactly:
 `No objections — the plan is consistent with the domain model.`
+
+Every return, clean or not, ends with one evidence line:
+`Checked: <the CONTEXT.md files and ADRs it actually read, and any other files it opened>`. A
+clean result with no evidence line is a pass that didn't happen. Re-run the critic.
 
 ### 3. Surface pushbacks — advisory, never blocking
 

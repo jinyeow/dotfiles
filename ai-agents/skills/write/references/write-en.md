@@ -10,13 +10,13 @@ Eliminate predictable AI writing patterns. Write like a human: varied, imperfect
 
 1. **Cut filler phrases.** Remove throat-clearing openers, emphasis crutches, and adverbs that only signal emphasis. Keep adverbs that carry real meaning.
 2. **Break formulaic structures.** Avoid binary contrasts, negative listings, dramatic fragmentation, rhetorical setups, false agency.
-3. **Use active voice.** Every sentence needs a human subject doing something. No inanimate objects performing human actions ("the complaint becomes a fix").
+3. **Use concrete subjects.** People, software and physical objects can all do things. Remove agency that obscures who acted or how something works; do not force a human subject into every technical sentence.
 4. **Short words over long ones, where a short one will do (Orwell's rule).** Use "use" not "utilize", "help" not "facilitate", "show" not "demonstrate". Never use a foreign phrase, scientific word, or jargon term when a plain English one exists.
 5. **Be specific.** No vague declaratives ("The reasons are structural"). Name the specific thing. No lazy extremes ("every," "always," "never") doing vague work.
-6. **Put the reader in the room.** No narrator-from-a-distance voice. "You" beats "People." Specifics beat abstractions.
-7. **Vary rhythm.** Mix sentence lengths. Two items beat three. End paragraphs differently. No em dashes.
-8. **Trust readers.** State facts directly. Skip softening, justification, hand-holding.
-9. **Cut quotables.** If it sounds like a pull-quote, rewrite it.
+6. **Preserve viewpoint.** An author's experience stays "I"; rewriting it as "you" can turn a personal account into unsolicited advice.
+7. **Keep natural rhythm.** Repair fragment-heavy or repetitive prose without quotas for sentence length, list size or paragraph endings. No em dashes.
+8. **Trust readers.** Cut hand-holding, but keep uncertainty, attribution and conditions that limit a claim.
+9. **Preserve emotional meaning.** A personal conviction or heartfelt ending can sound quotable and still belong. Keep its warmth and force. Cut stock morals that were added; the author's feelings stay.
 10. **Do not replace one formula with another.** “Human” does not mean slangy, quirky, or performatively casual.
 11. **No emoji.** Remove any emoji from the text being edited.
 
@@ -87,9 +87,9 @@ Examples, not exhaustive -- any construction that performs insight rather than d
 > NO: "He published this. Openly. In a book. As a priest."
 > OK: Complete sentences. Trust content over presentation.
 
-**False agency**: inanimate objects performing human verbs:
-> NO: "the complaint becomes a fix" / "the decision emerges" / "the data tells us"
-> OK: Name the human. "Someone fixed it." "The team decided."
+**False agency**: a metaphor substitutes for the actual mechanism:
+> NO: "The data wants a cleaner narrative."
+> OK: Name what the data supports or who made the decision. "The tool reads the file" is ordinary technical English and stays.
 
 ### Tone Patterns to Avoid
 
@@ -179,18 +179,18 @@ Examples, not exhaustive -- any construction that performs insight rather than d
 > OK: Go straight to the content: "Community data has a practical requirement: diversity has to cover..." or "Output action can mean different things..."
 
 **Re-anchoring after cutting recaps (long-form articles):**
-After removing table re-reads and structural repetition, scan the remaining prose for places where a general explanation can be tied back to the author's concrete project or experience already mentioned in the piece. This is one of the strongest ways to restore human voice in technical long-form writing.
+Keep concrete project details when cutting recaps, but do not add another callback to the same project at every section ending. A callback earns its place only when it adds a consequence or limitation not already explained.
 
 ### Quick Checks Before Delivering Prose
 
 - Any adverb only adding emphasis? Cut it. (Meaning-bearing adverbs stay.)
-- Any passive voice? Find the actor, make them the subject.
-- Inanimate thing doing a human verb? Name the person.
+- Passive voice hiding who acted? Name the actor.
+- A metaphor doing the work of the mechanism ("the data wants")? Say what happens or who decided.
 - Sentence starts with "Here's"? Cut to the point.
 - Sentence starts with a rhetorical "Why/What/How..." question? State the answer directly instead.
 - Any "not X, it's Y" contrasts? State Y directly.
-- Three consecutive sentences match length? Break one.
-- Paragraph ends with punchy one-liner? Vary it.
+- Fragment-heavy or repetitive rhythm? Repair it.
+- Paragraph ends with an added stock moral? Cut it. The author's own conviction stays.
 - Em-dash anywhere? Remove it.
 - Vague declarative ("The implications are significant")? Name the specific implication.
 - Meta-joiners ("The rest of this essay...")? Delete. Exception: a single TL;DR closing sentence that orients readers to the structure ahead is navigation, not filler. Keep it.
@@ -200,6 +200,6 @@ After removing table re-reads and structural repetition, scan the remaining pros
 
 ---
 
-Some of the Core Rules and Quick Checks above (filler-cutting, formulaic-structure bans, active voice, the "Wh-" question-start check) draw on Hardik Pandya's stop-slop checklist (MIT license): https://github.com/hardikpandya/stop-slop
+Some of the Core Rules and Quick Checks above (filler-cutting, formulaic-structure bans, concrete subjects, the "Wh-" question-start check) draw on Hardik Pandya's stop-slop checklist (MIT license): https://github.com/hardikpandya/stop-slop
 
 **Bottom line: varied, imperfect, specific. Any single trope used once may be fine. The problem is when multiple appear together or one repeats.**
