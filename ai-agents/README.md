@@ -39,9 +39,7 @@ own `SKILL.md` frontmatter, trimmed to one line. Claude-native skills live in `.
 
 - **`azure-compliance`** — Run Azure compliance and security audits with azqr plus Key Vault expiration checks.
 - **`azure-enterprise-infra-planner`** — Architect and provision enterprise Azure infrastructure from workload descriptions.
-- **`azure-prepare`** — Prepare Azure apps for deployment (infra Bicep/Terraform, azure.yaml, Dockerfiles).
 - **`azure-resource-manager`** — Expert knowledge for Azure Resource Manager development including troubleshooting, best practices, decision making, architecture & design patterns, limits & quotas, security, configuration, integrations & coding patterns, and deployment.
-- **`azure-validate`** — Pre-deployment validation for Azure readiness.
 - **`bicep-tdd`** — Use when authoring or changing Azure Bicep and you want it validated test-first, a local RED→GREEN loop of `bicep build`/`lint`, PSRule for Azure (WAF policy-as-code), and a committed snapshot-compare regression gate, plus Pester golden-fixture tests over the compiled ARM. Needs the **Bicep CLI** on PATH and the **PSRule.Rules.Azure** module (`Install-Module PSRule.Rules.Azure -Scope CurrentUser`); stops at compiled ARM, never authenticates to a tenant.
 - **`codebase-design`** — Shared vocabulary for designing deep modules: module, interface, depth, seam, adapter, leverage, locality.
 - **`codex-review`** — Get a read-only Codex (OpenAI) second opinion on the current code changes, as a cross-model review.

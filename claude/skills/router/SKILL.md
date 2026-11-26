@@ -77,19 +77,17 @@ Two halves of the 12-lever prompting checklist.
 
 ## Azure & cloud — which one when
 
-Nine skills; the value is disambiguation. Match the task, not the keyword.
+Five skills; the value is disambiguation. Match the task, not the keyword.
 
 | You're doing… | Skill |
 |---|---|
 | Boards work items — PBIs/Bugs/Tasks, sprint planning, standups | **`/azure-boards-organiser`** |
 | ARM/Bicep template & deployment-stack *knowledge* and patterns | **`/azure-resource-manager`** |
 | *Authoring* Bicep test-first — offline RED→GREEN, WAF policy, snapshot gate | **`/bicep-tdd`** |
-| Scaffolding an app to deploy — `azure.yaml`, Dockerfiles, infra | **`/azure-prepare`** |
 | Architecting enterprise topology — landing zone, hub-spoke, multi-region DR | **`/azure-enterprise-infra-planner`** |
-| Pre-deploy validation — config, RBAC, managed identity, what-if | **`/azure-validate`** |
 | Compliance / security audit — azqr, Key Vault expiry, orphaned resources | **`/azure-compliance`** |
 
-Key forks: `azure-resource-manager` is *knowledge*, `bicep-tdd` is the *authoring loop*; `azure-prepare` scaffolds a single app, `azure-enterprise-infra-planner` designs the whole topology; `azure-validate` gates one deploy, `azure-compliance` audits standing posture.
+Key forks: `azure-resource-manager` is *knowledge*, `bicep-tdd` is the *authoring loop*; `azure-enterprise-infra-planner` designs the whole topology; `azure-compliance` audits standing posture.
 
 ## Writing & docs
 

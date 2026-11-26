@@ -139,9 +139,7 @@ Not sure which one fits? Run `/router` — a manual index that maps these as flo
 | `azure-boards-organiser` | local | Azure Boards work items — PBIs/Bugs/Tasks, sprint planning |
 | `azure-resource-manager` | MicrosoftDocs/Agent-Skills | Bicep/ARM troubleshooting, deployment stacks, template specs |
 | `bicep-tdd` | local | Offline RED→GREEN loop for authoring Azure Bicep |
-| `azure-prepare` | microsoft/azure-skills | Prepare apps for Azure deployment — IaC, Dockerfiles, `azure.yaml` |
 | `azure-enterprise-infra-planner` | microsoft/azure-skills | Architect enterprise infra — landing zones, hub-spoke, Bicep/Terraform |
-| `azure-validate` | microsoft/azure-skills | Pre-deployment validation — Bicep/Terraform, RBAC, what-if |
 | `azure-compliance` | microsoft/azure-skills | Compliance/security audits via `azqr`, Key Vault expiry checks |
 | `write` | tw93/Waza | De-AI and polish English prose (drafts, READMEs, release notes) |
 | `teach` | mattpocock/skills | Learn a concept over multiple sessions (stateful workspace) |
