@@ -53,9 +53,10 @@ records open gaps. Missing profiles just mean starting mid-level.
 
 A senior narrates intent, so find the driving artifact before touring — look it up, don't ask me:
 
-1. `.agents/tickets.md` / `.agents/specs/*.md` (the `to-tickets` / `to-spec` outputs; a legacy
-   `.claude/tickets.md` / `.claude/specs/*.md` from before that convention moved is still
-   honored) — match by branch name or recency.
+1. The spec or ticket the work came from: an issue on the tracker in `docs/agents/issue-tracker.md`,
+   a `.scratch/` file from the local-markdown tracker, or a legacy `.agents/tickets.md` /
+   `.agents/specs/*.md` / `.claude/tickets.md` / `.claude/specs/*.md` from older setups. Match by
+   branch name or recency.
 2. The PR title and body, when `--pr` was given.
 3. `git log --oneline "$base..HEAD"` and the commit messages.
 

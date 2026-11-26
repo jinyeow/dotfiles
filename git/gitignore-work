@@ -48,13 +48,12 @@ terraform.rc
 # AI / LLM tooling
 .claude/
 .agents/*
-!.agents/workflow.md
 .serena/
 CLAUDE.md
 AGENTS.md
 GEMINI.md
-CONTEXT.md
-CONTEXT-MAP.md
+GLOSSARY.md
+GLOSSARY-MAP.md
 .cursor/
 .cursorrules
 .cursorignore

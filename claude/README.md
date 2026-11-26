@@ -42,7 +42,6 @@ not download or change the machine.
 | `statusline-command.sh` | `~/.claude/statusline-command.sh` | Token usage statusline script |
 | `no-claude-session-trailer.sh` | `~/.claude/no-claude-session-trailer.sh` | PreToolUse hook (wired in `settings.json`) that hard-blocks AI/Claude/Codex/Copilot/co-authored-by references from landing in a commit, PR, or Azure Boards item, and denies git's `--no-verify` outright (issue #219) |
 | `../ai-agents/_shared/banned-ai-terms.txt` | `~/.claude/banned-ai-terms.txt` | Wordlist `no-claude-session-trailer.sh` reads as a sibling file — shared with the same hook's Codex and Pi ports |
-| `inject-handoff.ps1` | `~/.claude/inject-handoff.ps1` | SessionStart hook that injects `.claude/handoff.md` (from the `handoff` skill) into a fresh session |
 | `block-destructive-vcs.ps1` | `~/.claude/block-destructive-vcs.ps1` | PreToolUse(Bash\|PowerShell) hook that denies destructive git (`push --force`, `reset --hard`, `clean -f`, `branch -D`) |
 | `block-pwsh-in-bash.ps1` | `~/.claude/block-pwsh-in-bash.ps1` | PreToolUse(Bash) hook that denies PowerShell mis-sent to the Bash tool, pointing at the PowerShell tool |
 | `lint-powershell.ps1` | `~/.claude/lint-powershell.ps1` | PostToolUse(Edit\|Write) hook that runs PSScriptAnalyzer on edited `.ps1/.psm1/.psd1` and feeds findings back |
@@ -56,8 +55,8 @@ not download or change the machine.
 | `output-styles/<name>.md` | `~/.claude/output-styles/<name>.md` | Output styles (whole dir junctioned); active style pinned by `outputStyle` in `settings.json` |
 
 **Install method.** `settings.json`, `CLAUDE.md`, `AGENTS.md`,
-`statusline-command.sh`, `no-claude-session-trailer.sh`, `banned-ai-terms.txt`, and the seven pwsh hook scripts
-(`inject-handoff.ps1`, `block-destructive-vcs.ps1`, `block-pwsh-in-bash.ps1`, `lint-powershell.ps1`,
+`statusline-command.sh`, `no-claude-session-trailer.sh`, `banned-ai-terms.txt`, and the six pwsh hook scripts
+(`block-destructive-vcs.ps1`, `block-pwsh-in-bash.ps1`, `lint-powershell.ps1`,
 `warn-legacy-files.ps1`, `warn-hardcoded-secrets.ps1`, `warn-reasoning-extraction.ps1`) are
 **symlinked** into `~/.claude`, and each skill directory is
 **junctioned** (Windows) / symlinked (Linux). Windows file symlinks require **Developer
@@ -82,13 +81,13 @@ old copy-based install + planned live→repo sync.)
 | `agentPushNotifEnabled` | `true` | Mobile push notifications (cloud/background agents — not local CLI) |
 | `teammateMode` | `in-process` | How spawned **teammates** execute (`auto`/`tmux`/`iterm2`/`in-process`). Pinned to `in-process` so agent teams run inline and spawn **no panes**. At `auto`, Claude's backend detection sees `$TMUX` (psmux sets it) and picks the tmux backend, which emits a hardcoded POSIX launch line (`cd . && env VAR=x 'path/to/claude' .`) that is invalid in a pwsh pane — panes open to a bare prompt and the fan-out silently does nothing ([#42848](https://github.com/anthropics/claude-code/issues/42848); psmux-as-a-backend [#34150](https://github.com/anthropics/claude-code/issues/34150) is closed/not-planned). Revisit if upstream ships a shell-aware launch formatter. Note: this pin is global, so it also disables *working* bash panes under real tmux on Linux. Claude Code has no user-scope `settings.local.json`, so a Linux override would need its own `~/.claude/settings.json` or a per-project `.claude/settings.local.json`. Ordinary **subagents** (Agent/Task tool) are unaffected — they always ran in-process |
 | `preferredNotifChannel` | `terminal_bell` | Built-in bell on the **needs-input** notification → marks the Zellij tab |
-| `hooks` | SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop, Notification | SessionStart: injects a pending `.claude/handoff.md`. UserPromptSubmit: warns on reasoning-extraction phrasing (Fable-5 fallback). PreToolUse: hard-blocks AI/Claude/Codex/Copilot/co-authored-by references from a commit, PR, or Azure Boards item (and denies git's `--no-verify`), denies destructive git, denies PowerShell mis-sent to the Bash tool, asks to confirm edits to legacy dotfiles, and asks before writing a reasoning-extraction phrase into config. PostToolUse: PSScriptAnalyzer lint-on-edit and hardcoded-secret warn. Stop: local completion alert. Notification: local completion alert — see Hooks and Notifications. For an end-of-session self-review, run the portable `wrapup` skill (`/wrapup`) before `/clear`/`/compact`/quitting — `SessionEnd`/`PreCompact` hooks can't force the model to answer (see Hooks) |
+| `hooks` | SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop, Notification | SessionStart: loads the project-brain context. UserPromptSubmit: warns on reasoning-extraction phrasing (Fable-5 fallback). PreToolUse: hard-blocks AI/Claude/Codex/Copilot/co-authored-by references from a commit, PR, or Azure Boards item (and denies git's `--no-verify`), denies destructive git, denies PowerShell mis-sent to the Bash tool, asks to confirm edits to legacy dotfiles, and asks before writing a reasoning-extraction phrase into config. PostToolUse: PSScriptAnalyzer lint-on-edit and hardcoded-secret warn. Stop: local completion alert. Notification: local completion alert — see Hooks and Notifications. For an end-of-session self-review, run the portable `wrapup` skill (`/wrapup`) before `/clear`/`/compact`/quitting — `SessionEnd`/`PreCompact` hooks can't force the model to answer (see Hooks) |
 | `statusLine` | command | Runs `statusline-command.sh` |
 
 ## Hooks
 
-Beyond the notification beeps, `settings.json` wires a handoff injector, deterministic
-guardrails, and a lint pass. The seven pwsh hooks read the hook
+Beyond the notification beeps, `settings.json` wires a project-brain loader, deterministic
+guardrails, and a lint pass. The six pwsh hooks read the hook
 JSON on stdin and are invoked through `bash` (so `~` expands) as
 `pwsh -NoProfile -File ~/.claude/<script>.ps1`; they need
 **pwsh** on PATH, and the lint hook additionally needs the **PSScriptAnalyzer** module (it
@@ -96,7 +95,6 @@ self-skips if absent). All allow silently and only emit JSON when they act.
 
 | Event / matcher | Script | Behaviour |
 |---|---|---|
-| `SessionStart` | `inject-handoff.ps1` | On a fresh session (`startup`/`clear`), injects the workspace's `.claude/handoff.md` (written by the `handoff` skill) via `additionalContext` so the next agent reads it first, then archives it to `handoff-<timestamp>.consumed.md` so it is delivered once (not replayed into every later session). No-ops if the file is absent or the session was resumed/compacted |
 | `SessionStart` | `skills/project-brain/scripts/session-start.ps1` | Resolves the session cwd to a project-brain initiative and injects its `core.md` + `STATUS.md` via `additionalContext`. Lives inside the `project-brain` skill directory (junctioned with the skill, not a top-level symlink); fails safe — any error or no match exits 0 with no output |
 | `PreToolUse` (Bash\|PowerShell) | `no-claude-session-trailer.sh` | Hard-blocks AI/Claude/Codex/Copilot/co-authored-by references (`ai-agents/_shared/banned-ai-terms.txt`) from a `git commit`, PR create/update (`gh pr`/`az repos pr`), or Azure Boards update (`az boards`/`az devops invoke`) — the wordlist is matched only against recognized message-bearing flag values (`-m`/`--title`/`--body`/`--fields`/etc., plus `gh pr create\|edit`'s own `-t`/`-b`), not the whole raw command line, so a path segment like `claude/settings.json` can't self-block; denies `git … commit`/`push` using `--no-verify` outright, and `-n` clustered anywhere in a short-flag token (e.g. `-nm`) as `--no-verify`'s short form (`git push -n` means `--dry-run`, not `--no-verify`, and stays allowed), since that bypasses the global git hooks carrying the same scan (see `git/README.md`); an exported `SKIP_AI_REFERENCE_SCAN`/`SKIP_GITLEAKS=1` bypassing those same hooks is denied too. Scoped to work repos only (`git config --type=bool work.aiReferenceScan` must be `true`; `git/gitconfig-work` sets it, and unset or false means no scan), mirroring `git/README.md`'s `commit-msg` scoping — the check runs against the actual target repo of the command's `git commit`/`git push` (or, failing that, its `git … --no-verify`) when it carries `-C <path>`, `--git-dir` or `--work-tree` (quoted or bare, single- or multi-word; all passed on in their original order, as git applies them), not just the hook's inherited cwd, so `git -C "<work-repo>" commit --no-verify -m "..."` from an unrelated cwd is still caught; `cd <path> && git ...` shell-state tracking remains a known, accepted limitation. Fails closed only when the wordlist itself is missing/unreadable — the installed sibling path resolves it, but a run straight from this repo (no wordlist sibling under `claude/`) fails closed the same way (issue #219) |
 | `PreToolUse` (Bash\|PowerShell) | `block-destructive-vcs.ps1` | Denies destructive **git** — `push --force` (allows `--force-with-lease`), `reset --hard`, `clean -f`, `branch -D`, `checkout .`/`restore .` (allows `restore --staged .`). jj is left ungated (its op-log makes rewrites recoverable). Strips quoted substrings before matching (escape-aware, so an escaped quote in a message doesn't mangle the match), except flag-shaped quoted content (`"--force"`) which is unquoted in place rather than deleted, so a quoted flag is still denied |
@@ -230,11 +228,8 @@ Claude-native skills:
   server when connected and falls back to PowerShell-native `az boards` CLI.
 - **`fastmail`** — Pull a live Fastmail digest: unread emails, upcoming calendar events,
   and other inbox signals.
-- **`handoff`** — Compact the current conversation into a handoff document for another
-  agent to pick up, saved to `.claude/handoff.md` and picked up by the `inject-handoff.ps1`
-  SessionStart hook (see Hooks below). This repo's own skill, not a harness built-in.
-- **`router`** — Ask which skill or flow fits your situation: a router over the skills in
-  this repo.
+- **`router`** — Ask which of your own skills fits your situation. It defers the
+  mattpocock flow to the portable `ask-matt` skill.
 
 `council` is a shared, cost-bounded prompt orchestration contract for adversarial review
 of a **non-diff artifact**. Claude's native isolated workers receive portable critic/chair
@@ -243,15 +238,6 @@ contracts; there are no named council custom agents. `/council ...` defaults to 
 when an external Codex seat is explicitly wanted. Charter seats are limited to 2–5 and
 normal calls to 12. A positional panel (`/council code <target>`) pins it. Reports use `.agents/council/reports/`. For branch
 diffs/PRs use `quick-review` (or `deep-review`), not council.
-
-The portable `dispatch-implement` skill is a thin wrapper around `implement`: given one or more
-`#ticket` references, it dispatches one subagent per ticket to run `/implement` unmodified —
-`implement/SKILL.md` itself carries no dispatch logic
-(`docs/adr/implement-stays-minimal-dispatch-in-wrapper-skill.md`). It judges file/scope overlap
-pairwise and picks a model per ticket under the implement-stage pin (Opus or Sonnet, never
-Fable), but parallel dispatch is currently gated off in favor of sequential-only pending a trial
-(#213). Claude Code only for now — Codex CLI (#211) and Pi (#212) dispatch are tracked
-separately.
 
 The portable `walkthrough` skill is the post-`implement` mentoring stage of the main flow: it
 walks the user through a diff like a senior pairing with a junior (checkpoint tour /

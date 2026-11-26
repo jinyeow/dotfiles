@@ -10,58 +10,26 @@ You don't remember every skill, so ask.
 
 **How to use this map.** Invoked bare (`/router`), orient: read the flows below and point yourself at the right entry skill. Invoked with a situation (`/router something in the pipeline keeps failing`), dispatch: jump to the matching section, name the single best-fit skill, say in one line why it over its neighbours, and give the exact `/command` to run next. Either way the router only ever **recommends** — you invoke the skill it points to; it never does the work itself. Before stating what a skill does or recommending a step be skipped, read that skill's SKILL.md. The one-line summaries here are for orientation only.
 
-A **flow** is a path through the skills. Most work runs along one **main flow**; a few **on-ramps** merge onto it. The rest are clusters you reach into directly — review, Azure, prompting, writing — each organised so you pick *which one when*, not just *what exists*. Skills tagged **(built-in)** ship with Claude Code, not this repo.
+Two routers split the work. **`/ask-matt`** owns the mattpocock skills, vendored unedited from upstream: the main flow (grill, spec, tickets, implement, review), its on-ramps (`/triage`, `/diagnosing-bugs`, `/wayfinder`), codebase health (`/improve-codebase-architecture`, `/codebase-design`, `/domain-modeling`), phase boundaries (`/handoff`, compact, clear), and its standalone skills (`/prototype`, `/grill-me`, `/teach`, `/research`, `/retro`, `/wait-what`, `/to-questionnaire`, `/wizard`, `/writing-for-agents`, `/setup-matt-pocock-skills`). For any of those, run `/ask-matt <situation>`. This router covers the skills of your own and where they plug into that flow. Skills tagged **(built-in)** ship with Claude Code, not this repo.
 
-## The main flow: idea → ship
+## Your additions to the main flow
 
-The route most feature work travels. You have an idea and want it built.
+`/ask-matt` describes the flow. These steps are yours and slot into it:
 
-1. **`/grill-with-docs`** — sharpen the idea by interview. Start here when you **have a codebase**: it's stateful, challenging the plan against the project's language and retaining what it learns in `CONTEXT.md` and ADRs. (No codebase, or a plan that doesn't live in a repo? Use **`/grilling`** — the same relentless interview, stateless, saving nothing. `grill-with-docs` is the one that leaves a paper trail.)
-2. **Branch — can you settle every question in conversation?** If a question needs a runnable answer (a state model, business logic, a UI you have to see), detour through a prototype, bridged by **`/handoff`** in both directions (see Crossing sessions):
-   - **`/handoff`** out, then open a fresh session against that file,
-   - **`/prototype`** to answer the question with throwaway code,
-   - **`/handoff`** back what you learned, and reference it from the original thread.
-3. **Branch — is this a multi-session build?**
-   - **Yes** → **`/to-spec`** (turn the thread into a spec) first. Then, when the architecture is worth writing down, **`/to-hld`** derives a high-level design doc from that spec — decisions plus mermaid diagrams — for `docs/` or the wiki (the spec drives the build; the HLD documents the shape). Then **`/to-tickets`** splits the work into tracer-bullet tickets with **blocking edges** — an ordered `.agents/tickets.md` you work by hand, or native blocking links on a real tracker. Before building, **`/critique-plan`** can check the spec or tickets against the domain model (terminology drift, ADR contradictions, bad dependency edges). Kick off **`/implement`** per ticket, **clearing context between each one**, or hand the tickets out: **`/dispatch-implement`** runs `/implement` in one subagent per ticket, and **`/implement-spec`** works the whole spec's ticket frontier with subagents and ends in one PR.
-   - **No** → **`/implement`** right here, in the same context window.
+1. **After grilling, before `/to-spec`: `/critique-plan`.** Always run it on the plan the grilling settled. One fresh-context critic checks it against `GLOSSARY.md` and the ADRs (terminology drift, wrong context, ADR contradictions, reinvented concepts, workarounds a reshape would remove) and stays silent when the plan is clean.
+2. **After `/to-spec`: `/to-hld`** when the architecture is worth writing down. It derives a high-level design doc (decisions plus mermaid diagrams) for `docs/design/`.
+3. **After implementing:** `/spec-review` checks the diff against what was asked for, and the review ladder below picks the code review. Not happy with how a fix came out? **`/redraft`** scraps it and redoes it properly.
+4. **Understand what was built: `/walkthrough`** tours the diff like a senior pairing with a junior, framed against the driving spec or ticket, and remembers what you know through the learner profile.
+5. **Prove you own it, then ship:** **`/review-me`** grills you on the diff and holds the PR until you pass; **`/teach-back`** checks you can explain it to a junior and defend it to a senior. **`/to-pullrequest`** opens the PR on GitHub or Azure DevOps with a body run through `/write`.
+6. **Close the session: `/wrapup`** runs a two-question self-review before you clear or quit.
 
-   Either way, **`/implement`** builds each piece by driving **`/tdd`** internally — one red-green slice at a time — then closes out by running **`/code-review`** (built-in) on the diff before committing. Reach for **`/tdd`** on its own to build a concrete behaviour test-first without a full spec. After implementing from a spec or ticket, **`/spec-review`** checks the diff against what was *asked for* (missing requirements, scope creep) — the conformance axis that `/code-review`'s quality axis doesn't cover.
-
-   Not happy with how a fix came out? **`/redraft`** scraps it and redoes it properly, using what the first attempt taught you.
-
-4. **Understand what was built** — once the reviews have run, **`/walkthrough`** walks *you* through the diff like a senior pairing with a junior: chunked into narrative beats, framed against the driving spec/ticket, in your choice of checkpoint tour / overview / socratic mode. It explains rather than judges, and it remembers what you know across sessions via the learner profile (global + project-brain).
-5. **Prove you own it, then ship** — **`/review-me`** grills you on the diff as an adversarial reviewer and holds the PR until you pass; **`/teach-back`** checks you can explain it to a junior and defend it to a senior. **`/to-pullrequest`** opens the PR on GitHub or Azure DevOps with a body run through `/write`.
-6. **Close the session** — **`/wrapup`** runs a two-question self-review before you clear or quit; **`/retro`** looks back at the session for changes to the agent's environment (docs, checks, conventions) rather than the code.
-
-**Precondition — `/setup-agent-skills`.** Run once per repo before your first `to-spec` / `to-hld` / `to-tickets` / `triage`: it records in private repository-root `.agents/workflow.local.md` (default) or shared repository-root `.agents/workflow.md` where specs/designs/tickets land, whether a tracker is used and its labels, and the doc layout the flow assumes.
-
-### Context hygiene
-
-Keep steps 1–3 in **one unbroken context window** — don't compact or clear until after `/to-tickets` — so the grilling, spec, and tickets all build on the same thinking. Each `/implement` then starts fresh from its ticket. If a session grows too long before `/to-tickets`, don't push on degraded — `/handoff` and continue in a fresh thread.
-
-## On-ramps
-
-A starting situation that generates work, then merges onto the main flow.
-
-- **Bugs and requests piling up** → **`/triage`**. Moves issues and external PRs through triage roles and produces agent-ready briefs, which **`/implement`** later picks up. Only for issues **you didn't create** — tickets `/to-tickets` produced are already agent-ready, so don't triage them.
-- **Something's broken** → **`/diagnosing-bugs`**. For the hard ones: the bug that resists a first glance, the intermittent flake, the regression between two known-good states. It refuses to theorise until it has a **tight feedback loop** — one command already going red on *this* bug — then fixes with a regression test.
-- **A huge, foggy effort too big for one session** → **`/wayfinder`**. When the way to the destination isn't visible yet, it charts a **shared map** of investigation tickets on the tracker and resolves them one at a time — producing **decisions, not deliverables** — until the fog lifts. Then it merges onto the main flow at **`/to-spec`** (or, if the effort turned out small, straight to **`/implement`**). Where `/grill-with-docs` sharpens an idea you can hold in one session, wayfinder is for the one you can't.
-
-## Codebase health
-
-Not feature work — upkeep.
-
-- **`/improve-codebase-architecture`** — run in a spare moment to keep the codebase good for agents to operate in. It surfaces **deepening opportunities**; picking one *generates an idea* you take into the main flow at `/grill-with-docs`. The survey that finds candidates.
-- **`/techdebt`** — the non-architectural counterpart: inventories dependency health, dead code, stale TODOs, test debt, duplication, suppressed checks, toolchain drift, and doc/config drift from existing tool output, then hands approved findings to `/to-tickets`. Not for shallow modules or tight coupling — that's `/improve-codebase-architecture`.
-- **`/codebase-design`** — the deep-module vocabulary (module, interface, depth, seam, adapter, leverage, locality) for designing a module's *shape*. The bench you design a chosen candidate on. `/tdd` and `/improve-codebase-architecture` both speak it.
-
-*Domain modeling is its own skill, `/domain-modeling` — challenging terms, keeping `CONTEXT.md` a clean glossary, recording ADRs, with its own `CONTEXT-FORMAT.md` / `ADR-FORMAT.md`. `/grill-with-docs` is a thin pointer invoking it alongside `/grilling`. `/codebase-design` owns module shape. Between them the vocabulary is covered.*
+For upkeep beside `/improve-codebase-architecture`, **`/techdebt`** inventories non-architectural debt (dependency health, dead code, stale TODOs, test debt, suppressed checks, toolchain and doc drift) from existing tool output and hands approved findings to `/to-tickets`.
 
 ## Reviewing & verifying — a ladder by target
 
 Pick by **what you're reviewing** and **how hard**. Each rung escalates.
 
-- **`/code-review`** (built-in) — the diff, quality axis. Fast standards pass; `/implement` runs it internally before committing.
+- **`/code-review`** (built-in) — the diff, quality axis. `/implement` and `/implement-spec` call it before committing. Upstream's own two-axis `code-review` is not installed, so in Claude Code the name resolves to the built-in.
 - **`/spec-review`** — the diff against its **spec or ticket**: missing requirements, scope creep, requirements built wrong. The conformance axis, not quality.
 - **`/codex-review`** — a read-only **cross-model** (Codex/OpenAI) second opinion on the current changes. Standing OK to run after implementing a feature or non-trivial fix, before commit; delegating debugging to Codex needs a go-ahead; findings are never auto-applied; `council` needs explicit `--codex`.
 - **`/quick-review`** — the **default** findings pass over a diff/PR: one folded reviewer (correctness + conventions + tests) plus Codex, verified into the same findings store. Two participants, not eight.
@@ -99,14 +67,12 @@ Key forks: `azure-resource-manager` is *knowledge*, `bicep-tdd` is the *authorin
 ## Writing & docs
 
 - **`/write`** — de-AI and polish English prose: drafts, READMEs, release notes, long-form. Not code comments or commit messages.
-- **`/teach`** — learn a concept over multiple sessions, using the current directory as a stateful workspace.
 - **`/walkthrough`** — have a **diff** explained to you like a senior pairing with a junior: checkpoint tour, overview, or socratic mode, framed against the driving spec/ticket. The post-`/implement` stage of the main flow. Tracks what you know in a learner profile — general skills in `~/.claude/learner-profile.md`, domain knowledge in the project-brain's `learner.md`.
 
 ## Research
 
-Three weights, lightest first, plus one for reading your own wiki:
+Lightest first (the lightest, `/research`, is under `/ask-matt`):
 
-- **`/quick-research`** — delegate reading legwork to a **background agent**: it investigates a question against primary sources and leaves a short cited Markdown file in the repo, so you keep working while it reads.
 - **`/deep-research`** (built-in) — fan-out web searches, adversarially verify, synthesize a cited **Markdown** report. The general research harness.
 - **`/llmwiki-insights`** — read an LLM-maintained wiki you already keep and turn it into prioritized findings about its subject.
 - **`/storm-research`** — a multi-perspective, citation-verified **HTML briefing** (five expert lenses → contradiction map → synthesis → adversarial verification). For topics where viewpoints and fact-checking matter.
@@ -118,10 +84,10 @@ Research feeds the main flow — take its output *into* `/grill-with-docs`; it d
 - **`/worktree-janitor`** — post-merge cleanup for a bare-worktree layout: checks each worktree's merge status (GitHub, Azure DevOps, or the project-brain STATUS.md) and removes and branch-deletes only what is confirmed safe.
 - **`/jj`** — working in a **Jujutsu** repo: making/describing changes, syncing, rewriting history, bookmarks, op-log recovery. Windows/pwsh-native. Doesn't fire in pure-git repos.
 
-## Crossing sessions & durable memory
+## Durable memory
 
-- **`/handoff`** — compact the conversation into a markdown file, then open a **new session** and reference it. The bridge between context windows, in either direction. Use it when you want a fresh session but need the current thread preserved.
-- **`/compact`** (built-in) — stay in the **same** conversation, letting earlier turns be summarized. Use at intentional breaks between phases, not mid-phase. `/handoff` forks; `/compact` continues.
+When to hand off, clear or compact between phases is `/ask-matt`'s call (its Phase boundaries section). The durable stores are yours:
+
 - **`/project-brain`** — durable **cross-repo** initiative knowledge (core context, volatile STATUS, ADRs, research) in a git repo *outside* any code repo. Reach for it when an effort spans multiple repos/worktrees and must stay coherent between sessions.
 - **`/setup-home-repo`** — set up or adopt a workspace's Home Repo, the optional companion to `/project-brain`. One-time, with an approval gate before any change.
 - **`/agent-staging`** — the per-workspace drop zone where you and your agents leave files for each other across sessions (`agent-inputs\` and `agent-outputs\`).
@@ -129,7 +95,6 @@ Research feeds the main flow — take its output *into* `/grill-with-docs`; it d
 ## Config & upkeep
 
 - **`/health`** — audit your **agent setup**: Claude/Codex config drift, hooks, MCP, skills, memory, skill supply-chain security, AI-maintainability drift. Not for application code.
-- **`/setup-agent-skills`** — the per-repo precondition for the main flow (see above).
 - **`/refactor-agents-md`** — split an overgrown AGENTS.md into a minimal root file plus linked category files.
 
 ## Inbox & personal
@@ -141,7 +106,4 @@ Research feeds the main flow — take its output *into* `/grill-with-docs`; it d
 
 Off the flows entirely.
 
-- **`/prototype`** — a small throwaway program that answers one design question (does this state model feel right; what should this UI look like). Keep the answer, delete the code. The detour in step 2 of the main flow, but reach for it any time a design question is hard to settle on paper.
-- **`/grilling`** — the relentless interview primitive, stateless. The no-codebase path into the main flow, and reachable directly to stress-test any plan.
 - **`/i-have-adhd`** — shape every reply for a reader with ADHD (next action first, numbered steps, visible wins) until you say "stop adhd mode".
-- **`/writing-great-skills`** — reference for writing and editing skills well, so a new one is predictable.

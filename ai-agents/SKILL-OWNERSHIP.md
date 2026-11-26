@@ -40,29 +40,15 @@ so the move itself was the fix. It is projected to Claude Code and Pi but delibe
 from Codex CLI (`setup.ps1`/`setup.sh` filter it out of the Codex projection list) — asking
 Codex to review its own changes has no target. Pi's projection is not yet functional: the
 `codex` MCP server is only registered for Claude Code, so the skill's precondition fails on
-Pi until #208 wires up the registration. `dispatch-implement` is portable too, as of #210:
-its ticket parsing, parallel-vs-sequential overlap judgment, and per-ticket model selection are
-runtime-neutral, and it wraps the portable `implement` without changing it. It is projected to
-all three runtimes, but only Claude Code's dispatch is wired (the `Agent` tool, with
-`isolation: "worktree"` for parallel children so they do not race one shared `.git/index`); on
-Codex CLI (`[agents.implementer]` + `spawn_agent`, #211) and Pi (`pi-subagents`, #212) the skill
-stops and reports instead of dispatching until those tickets land. Parallel dispatch is gated off
-in favor of sequential-only until #213 confirms the base flow against real usage. `implement-spec`
-is portable too: it only orchestrates calls into `to-spec`, `to-tickets`, `dispatch-implement`,
-`review-fix-loop`, and `to-pullrequest` — all already portable or tracked as such — so it carries
-no runtime-specific mechanics of its own. It inherits `dispatch-implement`'s current Claude-Code-
-only dispatch and sequential-only gate at each frontier batch until that skill's own blockers
-clear. `critique-plan`
-is portable too, and new: it dispatches one isolated read-only subagent to critique a drafted
-plan against the domain model, reusing `domain-modeling`'s `CONTEXT.md`/`ADR-FORMAT.md`/
-`CONTEXT-FORMAT.md` conventions rather than a runtime-specific mechanism. Marked trial in
-`ai-agents/README.md` — adapted from
-[ayoubben18/ab-method](https://github.com/ayoubben18/ab-method) (MIT); not yet a settled
-convention. `domain-modeling` is portable too, split out of `grill-with-docs` to match
-[mattpocock/skills](https://github.com/mattpocock/skills)' current design: the CONTEXT.md/ADR
-discipline stands on its own, independently model-invocable, while `grilling` (also
-mattpocock/skills) carries the interview mechanics and `grill-with-docs` is now a thin pointer
-skill invoking both. No runtime-specific mechanism involved. `setup-home-repo` is portable too: it
+Pi until #208 wires up the registration. The skills vendored from
+[mattpocock/skills](https://github.com/mattpocock/skills) (`ask-matt`, `grill-with-docs`, `grilling`,
+`domain-modeling`, `implement`, `implement-spec`, `handoff` and the rest listed in `ai-agents/README.md`)
+are portable as shipped upstream: they are unedited copies with upstream's `agents/openai.yaml` Codex
+metadata, and their config lives in the repository's `docs/agents/`. `critique-plan` is portable
+too: it dispatches one isolated read-only subagent to critique a plan against `GLOSSARY.md` and the
+ADRs, using `domain-modeling`'s `GLOSSARY-FORMAT.md`/`ADR-FORMAT.md` conventions. Marked trial in
+`ai-agents/README.md`; adapted from [ayoubben18/ab-method](https://github.com/ayoubben18/ab-method)
+(MIT). `setup-home-repo` is portable too: it
 is user-invoked (`disable-model-invocation: true`) and uses only git and file operations, so it
 has no runtime-specific mechanism. `project-brain`'s "New workspace" section names it as the
 optional way to set up a Home Repo.
@@ -107,11 +93,8 @@ migration ticket is even writable:
 **Needs design work** — the skill's value depends on a Claude-only *convenience trigger*
 (not a missing primitive), so portability needs a designed equivalent, not a spike:
 
-- `handoff` — the value is the *next Claude Code session's* `SessionStart` hook
-  auto-picking up `.claude/handoff.md`. Design ticket: #99.
-- `router` — hardcodes references to skill names/built-ins that are themselves still
-  being migrated; its map can't be rebuilt until those land. Design ticket: #100,
-  explicitly blocked on #91/#92/#93/#94/#95/#97/#98/#99.
+- `router` — maps your own skills and defers the mattpocock flow to the portable `ask-matt`;
+  it names Claude Code built-ins. Design ticket: #100.
 
 **Portable candidates — migration ticket filed, not yet moved:**
 

@@ -1100,8 +1100,6 @@ function Install-Claude
     New-FileSymlink -Link (Join-Path $claudeDir 'warn-hardcoded-secrets.ps1') -Target (Join-Path $Dotfiles 'claude\warn-hardcoded-secrets.ps1')
     # UserPromptSubmit advisory + PreToolUse ask on reasoning-extraction phrasing (Fable fallback risk).
     New-FileSymlink -Link (Join-Path $claudeDir 'warn-reasoning-extraction.ps1') -Target (Join-Path $Dotfiles 'claude\warn-reasoning-extraction.ps1')
-    # SessionStart hook: inject a pending .claude/handoff.md (from the handoff skill) into a fresh session.
-    New-FileSymlink -Link (Join-Path $claudeDir 'inject-handoff.ps1') -Target (Join-Path $Dotfiles 'claude\inject-handoff.ps1')
 
     # Skills — project portable and Claude-native resources into ~/.claude/skills/.
     # Native names win collisions so each destination receives exactly one link.

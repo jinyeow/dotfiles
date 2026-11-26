@@ -1,6 +1,6 @@
 ---
 name: critique-plan
-description: Stress-test a drafted plan against the project's domain model before any code is written — terminology drift, wrong bounded context, ADR contradictions, bad dependency edges, reinvented concepts, workarounds a reshape would remove. Use before implementing from a spec or ticket set, or when the user asks to critique, pressure-test, or sanity-check a plan against the domain model.
+description: Stress-test a drafted plan against the project's domain model before any code is written — terminology drift, wrong bounded context, ADR contradictions, bad dependency edges, reinvented concepts, workarounds a reshape would remove. Use after a grilling session and before to-spec, before implementing from a spec or ticket set, or when the user asks to critique, pressure-test, or sanity-check a plan against the domain model.
 metadata:
   status: trial
 ---
@@ -14,15 +14,17 @@ Silence is the expected outcome. A plan that speaks the canonical language and r
 documented decisions gets a one-line "No objections." Do not manufacture concerns to look
 thorough.
 
-"The plan" is whatever came out of `to-spec` or `to-tickets`, a set of tickets already on the
-tracker, or whatever the user pastes in standalone.
+"The plan" is the plan a `grill-with-docs` or `grilling` session settled (the main chain runs this
+skill between grilling and `to-spec`), whatever came out of `to-spec` or `to-tickets`, a set of
+tickets already on the tracker, or whatever the user pastes in standalone. For a grilled plan,
+hand the critic the decisions the session settled, written out in full.
 
 ## Process
 
 ### 1. Load the domain model
 
 Read only what exists; skip missing files silently — don't flag them or offer to create them.
-Look for `CONTEXT.md` (or `CONTEXT-MAP.md` plus each context's own `CONTEXT.md`, per
+Look for `GLOSSARY.md` (or `GLOSSARY-MAP.md` plus each context's own `GLOSSARY.md`, per
 [domain-modeling](../domain-modeling/SKILL.md#file-structure)) and `docs/adr/`.
 
 If neither exists, say so in one line and stop — there is no domain model to critique against.
@@ -35,7 +37,7 @@ planning session's context. Its brief:
 
 Fire only on a genuine conflict, one of:
 
-- **Terminology drift** — the plan names a concept differently from the glossary/`CONTEXT.md`, or
+- **Terminology drift** — the plan names a concept differently from the glossary/`GLOSSARY.md`, or
   reuses a canonical term for a new meaning.
 - **Wrong bounded context** — work placed in the wrong context, or a unit that straddles a
   documented boundary.
@@ -54,7 +56,7 @@ Fire only on a genuine conflict, one of:
   one. This is the one check not anchored in the domain model.
 
 For each, return: **What** (the ticket/decision in question), **Conflicts with** (the exact
-term / `CONTEXT.md` section / `ADR-NNNN`), **Why it matters** (concrete cost, not taste),
+term / `GLOSSARY.md` section / `ADR-NNNN`), **Why it matters** (concrete cost, not taste),
 **Suggested resolution**.
 
 Example pushback: "Ticket 3 calls it `archiveOrder`, but the glossary defines archiving as
@@ -73,7 +75,7 @@ quality), which run after implementation. With nothing anchored, the critic retu
 `No objections — the plan is consistent with the domain model.`
 
 Every return, clean or not, ends with one evidence line:
-`Checked: <the CONTEXT.md files and ADRs it actually read, and any other files it opened>`. A
+`Checked: <the GLOSSARY.md files and ADRs it actually read, and any other files it opened>`. A
 clean result with no evidence line is a pass that didn't happen. Re-run the critic.
 
 ### 3. Surface pushbacks — advisory, never blocking
@@ -86,8 +88,8 @@ Bring the pushbacks back into the planning session. The user resolves each their
   [domain-modeling's ADR-FORMAT.md](../domain-modeling/ADR-FORMAT.md). Skip ephemeral ("not now")
   and self-evident reasons.
 
-When a resolution sharpens a term, update `CONTEXT.md` inline using
-[domain-modeling's CONTEXT-FORMAT.md](../domain-modeling/CONTEXT-FORMAT.md).
+When a resolution sharpens a term, update `GLOSSARY.md` inline using
+[domain-modeling's GLOSSARY-FORMAT.md](../domain-modeling/GLOSSARY-FORMAT.md).
 
 If the critic returned "No objections," say so in one line and move on. Don't pad it.
 

@@ -10,7 +10,7 @@ metadata:
 
 Creates a new pull request on GitHub or Azure DevOps with a title and body that have gone
 through the `write` skill before the PR is opened — closing the generation-time gap where
-"open a PR" routes straight to a raw CLI call with no prose-quality step. See `CONTEXT.md`'s
+"open a PR" routes straight to a raw CLI call with no prose-quality step. See `GLOSSARY.md`'s
 "Generation-time gap" entry for why widening `write`'s own trigger alone doesn't fix this.
 
 ## When to use

@@ -45,7 +45,7 @@ These are repository paths, so this routing works without runtime-specific impor
 | Windows Terminal | [`windowsterminal/README.md`](windowsterminal/README.md); [`windowsterminal/settings.json`](windowsterminal/settings.json). Copied, since Windows Terminal writes the live file back |
 | winget packages | [`winget/README.md`](winget/README.md); [`winget/packages.json`](winget/packages.json); [`winget/packages.ps1`](winget/packages.ps1). The Windows package list; the `winget` module only prints the bootstrap command |
 | Setup and installers | [`setup.ps1`](setup.ps1); [`setup.sh`](setup.sh); [`tests/setup.Tests.ps1`](tests/setup.Tests.ps1); [`tests/setup-sh.Tests.ps1`](tests/setup-sh.Tests.ps1) |
-| Agent workflow configuration | [`.agents/workflow.md`](.agents/workflow.md); [`ai-agents/skills/setup-agent-skills/SKILL.md`](ai-agents/skills/setup-agent-skills/SKILL.md) |
+| Agent workflow configuration | [`docs/agents/`](docs/agents/); [`ai-agents/skills/setup-matt-pocock-skills/SKILL.md`](ai-agents/skills/setup-matt-pocock-skills/SKILL.md) |
 | Claude Code hooks and agents | [`claude/README.md`](claude/README.md); [`ai-agents/AGENTS.md`](ai-agents/AGENTS.md); [`claude/settings.json`](claude/settings.json); [`ai-agents/agents/`](ai-agents/agents/) |
 | Codex CLI | [`codex/README.md`](codex/README.md); [`codex/config.toml`](codex/config.toml); [`codex/templates/`](codex/templates/) |
 | Pi | [`pi/README.md`](pi/README.md); [`pi/settings.json`](pi/settings.json); [`pi/extensions/`](pi/extensions/); [`pi/skills/`](pi/skills/) |
@@ -74,3 +74,17 @@ indentation for PowerShell and shell files). Match surrounding style and make th
 smallest correct change. The relevant README, source, and tests are the operational
 source of truth; [`docs/adr/`](docs/adr/) holds historical rationale, rejected
 alternatives, and architectural decisions only.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live in this repo's GitHub Issues (`jinyeow/dotfiles`). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default triage labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: root `GLOSSARY.md` and `docs/adr/`. See `docs/agents/domain.md`.

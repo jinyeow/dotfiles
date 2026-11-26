@@ -467,7 +467,7 @@ Describe 'setup.sh Codex skill projection' -Skip:$IsWindows {
             # codex-review is portable (ai-agents/skills/) but excluded from Codex on purpose:
             # it is a self-review with no target, since Codex would be reviewing itself.
             $out | Should -Not -Match '\.codex/skills/codex-review ->'
-            $out | Should -Not -Match '\.codex/skills/handoff ->'
+            $out | Should -Not -Match '\.codex/skills/router ->'
         }
         finally
         {
@@ -932,13 +932,13 @@ Describe 'setup.sh relative-link migration safety' -Skip:$IsWindows {
         # introduced in 57b243d) and has only ever symlinked from ai-agents/skills and
         # codex/skills. It never wrote into claude/skills, so a link that happens to resolve
         # under that root must stay untouched by Codex's cleanup, not be silently removed as
-        # "obsolete managed". Uses an existing claude/skills entry (handoff) as the fixture
+        # "obsolete managed". Uses an existing claude/skills entry (router) as the fixture
         # source so the test mutates no repo state.
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-codex-claudeskillsroot-' + [guid]::NewGuid())
         $skillsDir = Join-Path $tmpHome '.codex/skills'
-        $claudeOnlySkill = Join-Path $script:Repo 'claude/skills/handoff'
+        $claudeOnlySkill = Join-Path $script:Repo 'claude/skills/router'
         New-Item -ItemType Directory -Path $skillsDir -Force | Out-Null
-        $link = Join-Path $skillsDir 'handoff'
+        $link = Join-Path $skillsDir 'router'
         $origHome = $env:HOME
         try
         {
@@ -948,7 +948,7 @@ Describe 'setup.sh relative-link migration safety' -Skip:$IsWindows {
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m codex --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
-            $out | Should -Not -Match 'remove obsolete Codex skill link.*handoff'
+            $out | Should -Not -Match 'remove obsolete Codex skill link.*router'
             Test-Path -LiteralPath $link | Should -BeTrue
         }
         finally

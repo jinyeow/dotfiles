@@ -20,9 +20,9 @@ Use whatever fixed point the user supplies — a commit SHA, branch, tag, `main`
 
 Locate the originating spec/ticket, in this order:
 
-1. Issue references in the commit messages (`#123`, `Closes #45`, Azure Boards `AB#123`) — fetch via the tracker in repository-root `.agents/workflow.local.md` when present, otherwise repository-root `.agents/workflow.md` (`/setup-agent-skills` if neither exists).
+1. Issue references in the commit messages (`#123`, `Closes #45`, Azure Boards `AB#123`) — fetch via the tracker described in `docs/agents/issue-tracker.md` (`/setup-matt-pocock-skills` if it does not exist).
 2. A path the user passed as an argument.
-3. A spec/ticket file under `.agents/specs/`, `.agents/tickets.md`, `docs/design/`, or `docs/` — or their legacy `.claude/specs/` / `.claude/tickets.md` locations for repos set up before this convention moved.
+3. A spec/ticket file under `.scratch/` (the local-markdown tracker), `docs/design/`, or `docs/` — or the legacy `.agents/specs/`, `.agents/tickets.md`, `.claude/specs/` and `.claude/tickets.md` locations from older setups.
 4. If nothing is found, ask the user where the spec is. If they say there isn't one, report "no spec available" and stop — there is nothing to conform to.
 
 ### 3. Review for conformance

@@ -627,8 +627,6 @@ install_claude() {
     make_symlink "$DOTFILES/claude/warn-hardcoded-secrets.ps1" "$HOME/.claude/warn-hardcoded-secrets.ps1"
     # UserPromptSubmit advisory + PreToolUse ask on reasoning-extraction phrasing (Fable fallback risk).
     make_symlink "$DOTFILES/claude/warn-reasoning-extraction.ps1" "$HOME/.claude/warn-reasoning-extraction.ps1"
-    # SessionStart hook: inject a pending .claude/handoff.md (from the handoff skill) into a fresh session.
-    make_symlink "$DOTFILES/claude/inject-handoff.ps1" "$HOME/.claude/inject-handoff.ps1"
 
     # Skills — project portable and Claude-native resources into ~/.claude/skills/.
     # Native names win collisions; ai-agents/_shared is source-only and is not enumerated.

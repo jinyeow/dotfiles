@@ -1256,7 +1256,7 @@ Describe 'setup.ps1 codex module shared skills' {
             # it is a self-review with no target, since Codex would be reviewing itself.
             $output | Should -Not -Match '\.codex\\skills\\codex-review ->'
             # Claude-only skills are not sourced into Codex.
-            $output | Should -Not -Match '\.codex\\skills\\handoff ->'
+            $output | Should -Not -Match '\.codex\\skills\\router ->'
         }
         finally
         {
