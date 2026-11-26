@@ -1,0 +1,3 @@
+interface:
+  display_name: "Write"
+  short_description: "Remove AI-sounding wording from prose"

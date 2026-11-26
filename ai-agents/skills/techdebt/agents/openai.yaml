@@ -1,0 +1,3 @@
+interface:
+  display_name: "Tech Debt"
+  short_description: "Inventory non-architectural tech debt"

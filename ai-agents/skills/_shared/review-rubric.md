@@ -88,7 +88,8 @@ direct. Prefer deleting complexity over rearranging it.
 
 A supplement to the code-judo moves above — named smells to match against the diff. Two rules bind
 them: a **documented repo standard always overrides**, and each is a **judgement call** ("possible
-Feature Envy"), never a hard violation. **Skip anything tooling already enforces.**
+Feature Envy"), never a hard violation. **Skip anything tooling already enforces.** *(Owned by the
+`conventions` dimension in `dimensions.md`, so `quick-review`'s folded reviewer applies it too.)*
 
 - **Mysterious Name** — a name that doesn't reveal what it does or holds → rename; if no honest name comes, the design's murky.
 - **Duplicated Code** — the same logic shape in more than one hunk or file → extract it, call from both.

@@ -77,8 +77,11 @@ this skill — they belong to a separate skill if one is wanted later.
      repo root, `.azuredevops/`, or `docs/` — ADO checks all three by default — or a path
      configured in project settings if none of those are present. If found, fill it in the
      same way.
-   - No template found in either case: draft a freeform body (what changed, why, how to
-     verify).
+   - No template found in either case: draft the body from [BODY-TEMPLATE.md](BODY-TEMPLATE.md).
+     It has three sections: a Summary that shows the change with the smallest visual that makes
+     it clear (pseudocode, a call tree, a file tree, Mermaid, or a diff sketch), before-and-after
+     Evidence that it works, and a Merge Danger call (one-way or two-way door, plus blast
+     radius).
 
 6. **Draft the body, then run it through `write`.** Compose the full title + body from steps
    3–5, then invoke the `write` skill on that draft before it goes anywhere near `gh`/`az`.
@@ -150,5 +153,6 @@ this skill — they belong to a separate skill if one is wanted later.
 ## Related
 
 - `write` — the prose-quality pass this skill routes every drafted title/body through (step 6).
+- [BODY-TEMPLATE.md](BODY-TEMPLATE.md) — the default body when the repository has no PR template, adapted from mattpocock/skills' `pr`.
 - `review-ado-pr` — reviews an *existing* Azure DevOps PR; this skill only creates new ones.
 - `AGENTS.md` → "Git worktrees" — the branch-guard convention referenced in step 1.

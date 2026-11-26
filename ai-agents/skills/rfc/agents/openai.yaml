@@ -1,0 +1,5 @@
+interface:
+  display_name: "RFC"
+  short_description: "Create an Azure DevOps Request for Change"
+policy:
+  allow_implicit_invocation: false

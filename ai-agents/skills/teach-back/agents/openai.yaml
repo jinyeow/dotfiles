@@ -1,0 +1,5 @@
+interface:
+  display_name: "Teach Back"
+  short_description: "Prove you can explain and defend the diff"
+policy:
+  allow_implicit_invocation: false

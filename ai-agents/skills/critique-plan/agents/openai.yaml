@@ -1,0 +1,3 @@
+interface:
+  display_name: "Critique Plan"
+  short_description: "Check a plan against the glossary and ADRs"

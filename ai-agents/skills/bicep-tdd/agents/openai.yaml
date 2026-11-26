@@ -1,0 +1,3 @@
+interface:
+  display_name: "Bicep TDD"
+  short_description: "Test-first Bicep: build, lint, PSRule, snapshot"

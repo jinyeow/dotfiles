@@ -19,7 +19,7 @@ reviewers.
 | 3 | `performance` | no | `manual-static` | Layer 2 #7 |
 | 4 | `structural` | no (diff-local) | `manual-static` | Layer 2 #1–#5 |
 | 5 | `architecture` | yes (cross-system) | `manual-static` | Layer 2 #6 (canonical layer + reuse) |
-| 6 | `conventions` | no | `lint` / `manual-static` | Layer 1 (AGENTS.md conformance) |
+| 6 | `conventions` | no | `lint` / `manual-static` | Layer 1 (AGENTS.md conformance); named smell baseline |
 | 7 | `tests` | no | `test` | Layer 1 testing / TDD |
 
 **`codex`** (conditional 8th) — a cross-model reviewer over the **full** rubric, included
@@ -70,7 +70,10 @@ Conformance to the runtime's installed conventions file (per-runtime mapping:
 [`review-rubric.md`](review-rubric.md), Layer 1) — rubric Layer 1: surgical-changes, strict
 typing, imports at top, DRY, no silent flag/mode params, doc-with-change, commit style. Includes
 the PowerShell `foreach ($singular in $plural)` semantic residue the deterministic lint gate can't
-decide.
+decide. Also owns the rubric's named smell baseline (Fowler's 12 smells): report each as a
+judgement call ("possible Feature Envy"), never a hard violation, and suppress it where a
+documented repo standard endorses the pattern. `structural` does not report these, to avoid
+double-counting.
 
 ### tests
 Reports **missing or weak tests only** (coverage ROI, behavioural-vs-brittle — mock-invocation

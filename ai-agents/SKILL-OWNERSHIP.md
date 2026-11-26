@@ -30,10 +30,9 @@ per-child tool scoping. At the pinned `pi-subagents@0.60.0` this is `subagent({ 
 `tasks: [...]` call shape this note previously named was removed upstream at 0.41.0; see
 `ai-agents/skills/storm-research/DISPATCH.md`. `walkthrough`
 is portable too, as of #91: its `~/.claude/learner-profile.md` path now resolves to the
-runtime's own config home (`~/.claude/`, `~/.codex/`, `~/.pi/agent/`); its stale
-`.claude/tickets.md`/`.claude/specs/*.md` reference was corrected to the current
-`.agents/tickets.md`/`.agents/specs/*.md` convention, and its project-brain resolution was
-already portable. `codex-review` is portable too, as of #98: its only Claude coupling was its
+runtime's own config home (`~/.claude/`, `~/.codex/`, `~/.pi/agent/`); its spec
+lookup follows `docs/agents/issue-tracker.md`, and its project-brain resolution was already
+portable. `codex-review` is portable too, as of #98: its only Claude coupling was its
 own directory living under `claude/skills/` — its `../_shared/review-rubric.md` link already
 resolved to the portable `ai-agents/skills/_shared/` copy at the installed destination (#115),
 so the move itself was the fix. It is projected to Claude Code and Pi but deliberately excluded

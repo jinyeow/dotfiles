@@ -1,0 +1,5 @@
+interface:
+  display_name: "Redraft"
+  short_description: "Scrap a hacky fix and redo it properly"
+policy:
+  allow_implicit_invocation: false

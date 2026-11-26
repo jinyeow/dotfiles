@@ -1,0 +1,3 @@
+interface:
+  display_name: "Agent Staging"
+  short_description: "Drop zone for files between you and your agents"

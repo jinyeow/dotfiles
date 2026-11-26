@@ -135,6 +135,16 @@ Describe 'review skill split' {
         $quickReview | Should -Not -Match "dimension``?: ``?quick"
     }
 
+    It 'gives the named smell baseline to the conventions charter so the folded reviewer applies it' {
+        $dimensions = Get-Content (Join-Path $portableSkills '_shared/dimensions.md') -Raw
+        $rubric = Get-Content (Join-Path $portableSkills '_shared/review-rubric.md') -Raw
+        $conventionsCharter = [regex]::Match($dimensions, '(?s)### conventions\s*\n(.*?)\n### ').Groups[1].Value
+        $conventionsCharter | Should -Match 'smell baseline'
+        $conventionsCharter | Should -Match 'judgement call'
+        $rubric | Should -Match 'Named smell baseline'
+        $rubric | Should -Match 'Refused Bequest'
+    }
+
     It 'defaults review-fix-loop to quick-review with an opt-in deep flag' {
         $loop | Should -Match 'quick-review'
         $loop | Should -Match ([regex]::Escape('--deep'))
@@ -317,6 +327,16 @@ Describe 'to-pullrequest skill' {
         $toPullrequest | Should -Match 'Fixes #N'
         $toPullrequest | Should -Match 'Closes #N'
         $toPullrequest | Should -Match ([regex]::Escape('--work-items'))
+    }
+
+    It 'drafts a body from BODY-TEMPLATE.md when the repository has no PR template' {
+        $toPullrequest | Should -Match ([regex]::Escape('[BODY-TEMPLATE.md](BODY-TEMPLATE.md)'))
+        $template = Get-Content (Join-Path (Split-Path $skillPath -Parent) 'BODY-TEMPLATE.md') -Raw
+        foreach ($section in @('## Summary', '## Evidence', '## Merge Danger'))
+        {
+            $template | Should -Match ([regex]::Escape($section))
+        }
+        $template | Should -Match 'Dex Horthy'
     }
 
     It 'declares CI/merge-gate readiness, review-thread resolution, and auto-complete out of scope' {

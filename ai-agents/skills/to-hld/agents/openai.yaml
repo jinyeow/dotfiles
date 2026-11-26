@@ -1,0 +1,5 @@
+interface:
+  display_name: "To HLD"
+  short_description: "Turn the discussion into a high-level design"
+policy:
+  allow_implicit_invocation: false

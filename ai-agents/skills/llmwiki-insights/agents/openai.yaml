@@ -1,0 +1,3 @@
+interface:
+  display_name: "LLM Wiki Insights"
+  short_description: "Prioritized findings from an LLM-maintained wiki"

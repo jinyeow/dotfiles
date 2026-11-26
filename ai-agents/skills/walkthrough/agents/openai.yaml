@@ -1,0 +1,5 @@
+interface:
+  display_name: "Walkthrough"
+  short_description: "Walk through a diff like a mentoring senior"
+policy:
+  allow_implicit_invocation: false

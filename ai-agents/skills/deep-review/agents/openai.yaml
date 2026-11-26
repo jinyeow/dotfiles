@@ -1,0 +1,3 @@
+interface:
+  display_name: "Deep Review"
+  short_description: "Seven-dimension cross-model review of a diff"

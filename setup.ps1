@@ -2130,7 +2130,7 @@ function Install-BicepTools
     # Microsoft publishes the Bicep language server as a .NET global tool (learn.microsoft.com/
     # azure/azure-resource-manager/bicep/install), documented for AI coding tools and other LSP
     # clients — this is binary-only: it installs bicep-ls and nothing else. Agent registration
-    # (Claude/Codex/Pi) is a separate, later slice; see .agents/specs/bicep-code-intelligence.md.
+    # is separate: Codex registers the Bicep MCP server in codex/config.toml.
     $package = 'Azure.Bicep.LangServer'
 
     if ($Backup)

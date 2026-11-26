@@ -1,0 +1,3 @@
+interface:
+  display_name: "Worktree Janitor"
+  short_description: "Clean up merged worktrees and branches"

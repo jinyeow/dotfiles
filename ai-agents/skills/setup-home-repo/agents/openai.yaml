@@ -1,0 +1,5 @@
+interface:
+  display_name: "Setup Home Repo"
+  short_description: "Set up or adopt a workspace Home Repo"
+policy:
+  allow_implicit_invocation: false

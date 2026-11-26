@@ -1,0 +1,3 @@
+interface:
+  display_name: "LinkedIn Jobs"
+  short_description: "Turn LinkedIn job emails into role cards"

@@ -1,0 +1,3 @@
+interface:
+  display_name: "Prompt Draft"
+  short_description: "Draft a new prompt against the 12 levers"

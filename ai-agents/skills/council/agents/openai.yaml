@@ -1,0 +1,3 @@
+interface:
+  display_name: "Council"
+  short_description: "Adversarial panel review of a non-diff artifact"

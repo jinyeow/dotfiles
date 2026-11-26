@@ -1,0 +1,5 @@
+interface:
+  display_name: "Health"
+  short_description: "Audit the agent setup for drift and risk"
+policy:
+  allow_implicit_invocation: false
