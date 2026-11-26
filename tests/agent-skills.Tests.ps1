@@ -104,7 +104,7 @@ Describe 'review skill split' {
         $portableSkills = Join-Path $repo 'ai-agents/skills'
         $quickReview = Get-Content (Join-Path $portableSkills 'quick-review/SKILL.md') -Raw -ErrorAction SilentlyContinue
         $deepReview = Get-Content (Join-Path $portableSkills 'deep-review/SKILL.md') -Raw
-        $loop = Get-Content (Join-Path $portableSkills 'review-fix-loop/SKILL.md') -Raw
+        $loop = Get-Content (Join-Path $portableSkills 'fix-until-clean/SKILL.md') -Raw
         $fixFindings = Get-Content (Join-Path $portableSkills 'fix-findings/SKILL.md') -Raw
         $reviewerModels = Get-Content (Join-Path $portableSkills '_shared/reviewer-models.md') -Raw -ErrorAction SilentlyContinue
         $deepReviewReference = Get-Content (Join-Path $portableSkills 'deep-review/REFERENCE.md') -Raw
@@ -117,8 +117,8 @@ Describe 'review skill split' {
         Get-Content (Join-Path $repo 'ai-agents/SKILL-OWNERSHIP.md') -Raw | Should -Match '`quick-review`'
     }
 
-    It 'owns deep-review, review-fix-loop, and fix-findings as portable skills (#115)' {
-        foreach ($name in @('deep-review', 'review-fix-loop', 'fix-findings'))
+    It 'owns deep-review, fix-until-clean, and fix-findings as portable skills (#115)' {
+        foreach ($name in @('deep-review', 'fix-until-clean', 'fix-findings'))
         {
             Test-Path (Join-Path $portableSkills "$name/SKILL.md") | Should -BeTrue
             Test-Path (Join-Path $claudeSkills $name) | Should -BeFalse
@@ -145,7 +145,7 @@ Describe 'review skill split' {
         $rubric | Should -Match 'Refused Bequest'
     }
 
-    It 'defaults review-fix-loop to quick-review with an opt-in deep flag' {
+    It 'defaults fix-until-clean to quick-review with an opt-in deep flag' {
         $loop | Should -Match 'quick-review'
         $loop | Should -Match ([regex]::Escape('--deep'))
         $loop | Should -Match ([regex]::Escape('quick-review → fix-findings'))

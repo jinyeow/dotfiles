@@ -1,5 +1,5 @@
 interface:
-  display_name: "Walkthrough"
+  display_name: "Walk Me Through It"
   short_description: "Walk through a diff like a mentoring senior"
 policy:
   allow_implicit_invocation: false

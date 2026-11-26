@@ -177,7 +177,7 @@ Describe 'setup.sh --dry-run' -Skip:$IsWindows {
             $out | Should -Not -Match '\.claude/skills/_shared -> .*ai-agents/_shared'
             $out | Should -Match '\.claude/skills/quick-review -> .*ai-agents/skills/quick-review'
             $out | Should -Match '\.claude/skills/deep-review -> .*ai-agents/skills/deep-review'
-            $out | Should -Match '\.claude/skills/review-fix-loop -> .*ai-agents/skills/review-fix-loop'
+            $out | Should -Match '\.claude/skills/fix-until-clean -> .*ai-agents/skills/fix-until-clean'
             $out | Should -Match '\.claude/skills/fix-findings -> .*ai-agents/skills/fix-findings'
         }
         finally
@@ -460,7 +460,7 @@ Describe 'setup.sh Codex skill projection' -Skip:$IsWindows {
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m codex --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
-            foreach ($name in @('council', 'quick-review', 'deep-review', 'review-fix-loop', 'fix-findings', '_shared'))
+            foreach ($name in @('council', 'quick-review', 'deep-review', 'fix-until-clean', 'fix-findings', '_shared'))
             {
                 $out | Should -Match "\.codex/skills/$name -> .*ai-agents/skills/$name"
             }

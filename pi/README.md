@@ -135,7 +135,7 @@ usage-limit block, not a credentials problem. Retry the smoke test (call `subage
 `workflowScript` containing 2+ distinct-prompt `runs.all` entries) once the limit clears before
 relying on this skill for a real run.
 
-`quick-review`, `deep-review`, `review-fix-loop`, and `fix-findings` (the review→fix skill set)
+`quick-review`, `deep-review`, `fix-until-clean`, and `fix-findings` (the review→fix skill set)
 are portable too, projected here from `ai-agents/skills/` alongside `council`. `deep-review`'s
 seven reviewer dimensions need something `council`'s symmetric critics don't: a distinct
 read-only tool allowlist per dimension. On Pi this is expressed as each spawned child's `tools:`

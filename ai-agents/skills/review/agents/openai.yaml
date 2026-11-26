@@ -1,0 +1,5 @@
+interface:
+  display_name: "Review"
+  short_description: "Route a review to code-review, council or critique-plan"
+policy:
+  allow_implicit_invocation: false

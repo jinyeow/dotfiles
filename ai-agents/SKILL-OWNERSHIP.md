@@ -11,7 +11,7 @@ Codex CLI, and Pi where each runtime is configured to load it. This includes `co
 `project-brain` (the
 `SessionStart` auto-injection hook is Claude-specific and stays a `claude/settings.json`
 entry; the skill's resolve-and-read procedure itself is tool-agnostic), and, since #115,
-`quick-review`, `deep-review`, `review-fix-loop`, and `fix-findings` — the review→fix skill
+`quick-review`, `deep-review`, `fix-until-clean`, and `fix-findings` — the review→fix skill
 set. `deep-review`'s per-dimension subagent fan-out (previously the blocker below) is proven
 out on Pi via `pi-subagents`' `tools:` frontmatter allowlist (same grain as Claude's named-tool
 allowlist); see `ai-agents/skills/deep-review/DISPATCH.md`. Codex-native porting of these four
@@ -28,7 +28,7 @@ citation-verifier fan-out need only parallel dispatch with distinct per-child pr
 per-child tool scoping. At the pinned `pi-subagents@0.60.0` this is `subagent({ workflowScript:
 "return runs.all([...])" })` reusing the builtin `researcher` agent — the top-level
 `tasks: [...]` call shape this note previously named was removed upstream at 0.41.0; see
-`ai-agents/skills/storm-research/DISPATCH.md`. `walkthrough`
+`ai-agents/skills/storm-research/DISPATCH.md`. `walk-me-through-it`
 is portable too, as of #91: its `~/.claude/learner-profile.md` path now resolves to the
 runtime's own config home (`~/.claude/`, `~/.codex/`, `~/.pi/agent/`); its spec
 lookup follows `docs/agents/issue-tracker.md`, and its project-brain resolution was already

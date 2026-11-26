@@ -45,7 +45,7 @@ command = "dnx"
 args = ["-y", "Azure.Bicep.McpServer"]
 
 # Per-dimension custom agents for the portable review skills (quick-review / deep-review /
-# review-fix-loop / fix-findings, ai-agents/skills/). Dispatched via the `multi_agent`
+# fix-until-clean / fix-findings, ai-agents/skills/). Dispatched via the `multi_agent`
 # feature's `spawn_agent` tool with `agent_type: "review_<dimension>"`. See
 # ai-agents/skills/deep-review/DISPATCH.md (Codex CLI section) for the dispatch shape.
 #

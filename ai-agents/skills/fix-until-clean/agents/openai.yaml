@@ -1,3 +1,3 @@
 interface:
-  display_name: "Review Fix Loop"
+  display_name: "Fix Until Clean"
   short_description: "Review and fix a diff until it passes"

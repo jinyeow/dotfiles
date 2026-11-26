@@ -24,7 +24,7 @@ reviewers.
 
 **`codex`** (conditional 8th) — a cross-model reviewer over the **full** rubric, included
 automatically when an external Codex adapter is available (on Claude Code, the `codex` MCP being
-present follows the Codex standing-OK rule in `claude/CLAUDE.md` — Claude Code only;
+present follows the second-opinion rule in `ai-agents/AGENTS.md` — Claude Code only;
 other runtimes resolve this per [`../deep-review/DISPATCH.md`](../deep-review/DISPATCH.md), and
 Codex CLI itself has no external Codex adapter to call). Not a fixed dimension: a parallel second
 opinion emitting the same schema, deduped with the rest. Recorded in the snapshot's

@@ -1,7 +1,7 @@
 # Review Rubric — AGENTS.md conformance + thermo-nuclear structural quality
 
 The shared **quality bar** for the review skills (`codex-review`, `deep-review`, and via the loop,
-`review-fix-loop`). Companion contracts: the dimension registry + charters live in
+`fix-until-clean`). Companion contracts: the dimension registry + charters live in
 [`dimensions.md`](dimensions.md); the finding record schema, fingerprint, origin/`fix_verification`
 metadata, and store discipline live in [`findings-schema.md`](findings-schema.md). This file is the
 bar; those map it onto dimensions and a store.

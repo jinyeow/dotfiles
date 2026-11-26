@@ -103,7 +103,7 @@ See `fzf/`, `ripgrep/`, `lazygit/`, `tig/`, and `nvim/` for tool-specific `READM
 
 ## Claude Code skills
 
-Portable skills live in `ai-agents/skills/`; Claude-native skills live in `claude/skills/`, Codex-native variants in `codex/skills/`, and Pi-native variants in `pi/skills/`. Claude projects portable plus Claude-native skills, Codex (Windows and Linux) projects portable plus Codex-native skills, and Pi projects portable plus Pi-native skills. The portable review-support contract at `ai-agents/skills/_shared/` (`quick-review`, `deep-review`, `review-fix-loop`, `fix-findings`) is projected with every runtime; `ai-agents/_shared/` holds only the hooks' `banned-ai-terms.txt` wordlist. User-scope agent definitions live under `ai-agents/agents/` and are projected to Claude Code. Installers safely migrate existing whole-directory links from the historical `ai-agents/shared/agents/` path without replacing user-owned entries.
+Portable skills live in `ai-agents/skills/`; Claude-native skills live in `claude/skills/`, Codex-native variants in `codex/skills/`, and Pi-native variants in `pi/skills/`. Claude projects portable plus Claude-native skills, Codex (Windows and Linux) projects portable plus Codex-native skills, and Pi projects portable plus Pi-native skills. The portable review-support contract at `ai-agents/skills/_shared/` (`quick-review`, `deep-review`, `fix-until-clean`, `fix-findings`) is projected with every runtime; `ai-agents/_shared/` holds only the hooks' `banned-ai-terms.txt` wordlist. User-scope agent definitions live under `ai-agents/agents/` and are projected to Claude Code. Installers safely migrate existing whole-directory links from the historical `ai-agents/shared/agents/` path without replacing user-owned entries.
 
 Not sure which one fits? Run `/router` — a manual index that maps these as flows and decision tables. Built-in Claude Code skills (`compact`, `deep-research`, `security-review`) are provided by the harness and aren't listed here. The `code-review` skill below replaces the built-in `/code-review`; the built-in's `/review` alias still runs Claude Code's own review. The `mattpocock/skills` rows are unedited copies of upstream at commit `6f7f783` (2026-11-25), apart from `code-review`, which adds a second-opinion step, including each skill's `agents/openai.yaml` Codex metadata; re-sync by copying the folders again. The customized versions they replaced are at commit `c7a774c`.
 
@@ -122,9 +122,9 @@ Not sure which one fits? Run `/router` — a manual index that maps these as flo
 | `redraft` | local | Scrap a hacky fix and redo it properly with what the first attempt taught |
 | `tdd` | mattpocock/skills | Red-green-refactor TDD loop |
 | `code-review` | mattpocock/skills (adapted) | Two-axis review of a diff: Standards (repo standards plus a code-smell baseline) and Spec, plus an optional second opinion from another model; replaces the built-in `/code-review` |
-| `walkthrough` | local | Walk me through a diff like a senior mentoring a junior — pair-programming style, chunk by chunk, concise, open to questions |
-| `review-me` | local | Grill the user on their diff as an adversarial reviewer before the PR |
-| `teach-back` | local | Check the user can explain the diff to a junior and defend it to a senior |
+| `review` | local | Route a review: code to `code-review`, documents and plans to `council`, spec-and-tickets fit to `critique-plan` |
+| `walk-me-through-it` | local | Walk me through a diff like a senior mentoring a junior — pair-programming style, chunk by chunk, concise, open to questions |
+| `defend-diff` | local | Explain each piece of a diff to a junior and defend it to its reviewer before the PR |
 | `to-pullrequest` | local | Open a GitHub or Azure DevOps PR with a body run through `write` |
 | `wrapup` | local | Two-question self-review before clearing or ending a session |
 | `retro` | mattpocock/skills | Session retrospective aimed at the agent's environment, not the code |
@@ -142,7 +142,7 @@ Not sure which one fits? Run `/router` — a manual index that maps these as flo
 | `quick-review` | local | Default review of a diff/PR — one folded reviewer + Codex → findings store |
 | `deep-review` | local | Opt-in heavy review — all seven dimensions + Codex → findings store |
 | `fix-findings` | local | Apply review findings — partitioned, one commit per fix-unit |
-| `review-fix-loop` | local | Chain quick-review (or `--deep`) + fix-findings until the diff passes clean |
+| `fix-until-clean` | local | Chain quick-review (or `--deep`) + fix-findings until the diff passes clean |
 | `council` | local | Adversarial panel for a non-diff artifact (idea/design/plan/doc) |
 | `prompt-draft` | local | Draft a new prompt against the 12-lever checklist |
 | `prompt-lint` | local | Score, critique, and rewrite an existing prompt |

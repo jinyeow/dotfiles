@@ -1,5 +1,0 @@
-interface:
-  display_name: "Review Me"
-  short_description: "Get grilled on your diff before the PR"
-policy:
-  allow_implicit_invocation: false

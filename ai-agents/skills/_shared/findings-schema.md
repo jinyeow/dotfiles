@@ -1,7 +1,7 @@
 # Findings Store — schema, fingerprint, store discipline
 
 Shared contract for the review→fix skills: **`deep-review` emits**, **`fix-findings` consumes**,
-**`review-fix-loop` owns the loop-level cycle + rail decisions**. Each invoked skill's orchestrator
+**`fix-until-clean` owns the loop-level cycle + rail decisions**. Each invoked skill's orchestrator
 owns its own status writes (deep-review: `candidate`→`confirmed`/`not_reproduced`; fix-findings:
 `fixing`→`fixed`); the loop does not reach in to set them. The store is the composition seam — each
 skill's I/O is explicit; no skill reaches into another's internals.

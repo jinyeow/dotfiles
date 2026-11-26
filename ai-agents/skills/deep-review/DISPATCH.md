@@ -130,7 +130,7 @@ See `codex/README.md`'s "Skills" section for the full command, JSON-event eviden
 version record — not restated here. Result in short: the primary thread's `--json` event
 stream resolves each child as a `collab_tool_call` (`tool: "wait"`) item, then a single
 `item.completed` `agent_message` carries the combined result; no child output reaches
-stdout directly. Not exercised: the full `quick-review`/`deep-review`/`review-fix-loop`/
+stdout directly. Not exercised: the full `quick-review`/`deep-review`/`fix-until-clean`/
 `fix-findings` skill bodies end-to-end (this smoke test proves the dispatch primitive, not
 the skills' complete pipelines).
 

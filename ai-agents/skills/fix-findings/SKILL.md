@@ -1,13 +1,13 @@
 ---
 name: fix-findings
-description: Apply fixes for findings produced by quick-review or deep-review. Reads the findings store, fixes the introduced findings in parallel (partitioned so no two fixers touch the same file), runs tests and linter, and commits one fix-unit at a time. Use when asked to "fix the findings", "apply the review fixes", "fix the introduced issues", or after a review pass. Reach for it from review-fix-loop.
+description: Apply fixes for findings produced by quick-review or deep-review. Reads the findings store, fixes the introduced findings in parallel (partitioned so no two fixers touch the same file), runs tests and linter, and commits one fix-unit at a time. Use when asked to "fix the findings", "apply the review fixes", "fix the introduced issues", or after a review pass. Reach for it from fix-until-clean.
 ---
 
 # Fix Findings
 
 Consume the findings store, fix the `introduced` findings, commit. This skill **consumes** a snapshot
 that a review skill emitted — `quick-review` (the default) or `deep-review` — and behaves identically
-either way, since both write the same schema. It does not review or loop (that's `review-fix-loop`).
+either way, since both write the same schema. It does not review or loop (that's `fix-until-clean`).
 It is independently invocable.
 
 Contracts: the record schema + store discipline are

@@ -1,5 +1,5 @@
 ---
-name: review-fix-loop
+name: fix-until-clean
 description: Iterative review-fix cycle for a branch or PR. Chains quick-review by default (or deep-review under --deep) with fix-findings (apply + commit fixes) each cycle, then loops until the review passes clean at the severity floor or a safety rail trips. Use when asked to "review and fix", "fix all issues", "clean up the branch", "iterative review loop", "review until no issues", or "keep fixing until clean".
 ---
 
@@ -18,7 +18,7 @@ half and the rails are identical either way. Shared store + fingerprint + rail d
 ## Quick start
 
 ```
-/review-fix-loop [ref-or-range | --pr <n>] [--floor MEDIUM] [--cap 8] [--deep] [--reviewers <model>[,<model>][:<effort>]]
+/fix-until-clean [ref-or-range | --pr <n>] [--floor MEDIUM] [--cap 8] [--deep] [--reviewers <model>[,<model>][:<effort>]]
 ```
 
 ---

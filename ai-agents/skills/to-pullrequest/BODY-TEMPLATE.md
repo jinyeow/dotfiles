@@ -148,7 +148,7 @@ You may use one of these, you may use several, it is unlikely you will use all o
 
 ### Evidence
 
-Concrete evidence that the change works. Show a before and after.
+Concrete evidence that the change works. Show a before and after. When `prove-it` ran on this branch, use its base-versus-branch output here.
 
 Screenshots are S-tier - when the environment is set up for it and the change is visual.
 

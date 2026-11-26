@@ -1,5 +1,5 @@
 ---
-name: walkthrough
+name: walk-me-through-it
 description: Walk me through a diff like a senior mentoring a junior — pair-programming style, chunk by chunk, concise, open to questions.
 disable-model-invocation: true
 argument-hint: "[ref-or-range | --pr <n>] [--mode tour|overview|socratic]"

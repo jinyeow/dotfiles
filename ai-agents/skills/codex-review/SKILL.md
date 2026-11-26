@@ -17,7 +17,7 @@ Codex only returns findings.
 ## When to use
 
 - The user asks for a Codex review / second opinion, or accepts an offer to run a change past Codex.
-- After implementing a feature or non-trivial fix, before committing (standing OK: run without asking).
+- After implementing a feature or non-trivial fix, before committing, once the user accepts the offer (see `AGENTS.md` → "Second opinions from another model").
 - As a tie-breaker when stuck on a bug after a couple of attempts, only with the user's go-ahead.
 
 ## Preconditions

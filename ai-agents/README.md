@@ -6,7 +6,7 @@ modules, and ownership is expressed by the directory rather than inferred from s
 - `skills/` — portable (agent-agnostic) skills projected to supported runtimes, including
   `skills/_shared/` — the projected review-support contract (`dimensions.md`,
   `findings-schema.md`, `review-rubric.md`, `reviewer-models.md`) shared by `quick-review`,
-  `deep-review`, `review-fix-loop`, and `fix-findings`, all four of which are portable skills
+  `deep-review`, `fix-until-clean`, and `fix-findings`, all four of which are portable skills
   under `skills/` too.
 - `_shared/` — holds only `banned-ai-terms.txt`, the wordlist the AI-reference hooks read
   (symlinked individually by the installers). Not a skill and not projected; unrelated to
@@ -55,6 +55,7 @@ re-sync.
 - **`council`** — Cost-bounded adversarial review of a non-diff artifact.
 - **`critique-plan`** *(trial)* — Stress-test a drafted plan against the project's domain model before any code is written: terminology drift, wrong bounded context, ADR contradictions, bad dependency edges, reinvented concepts. Adapted from [ayoubben18/ab-method](https://github.com/ayoubben18/ab-method) (MIT).
 - **`deep-review`** — Heavy multi-dimension cross-model code review of a branch diff or PR, the opt-in deep pass, not the default.
+- **`defend-diff`** — Grill the user on the current diff until they can explain it to a junior engineer and defend it to the reviewer who must approve it, then offer to open the PR.
 - **`diagnosing-bugs`** — Diagnosis loop for hard bugs and performance regressions.
 - **`domain-modeling`** — Build and sharpen a project's domain model.
 - **`fix-findings`** — Apply fixes for findings produced by quick-review or deep-review.
@@ -80,16 +81,15 @@ re-sync.
 - **`refactor-agents-md`** — Refactor an AGENTS.md file to follow progressive disclosure: split it into a minimal root file plus linked category files.
 - **`research`** — Investigate a question against high-trust primary sources and capture the findings as a Markdown file in the repo.
 - **`retro`** — Conduct a retrospective on a coding session.
+- **`review`** — Review whatever the user points at by routing it to the right reviewer.
 - **`review-ado-pr`** — Review an Azure DevOps pull request locally, end-to-end.
-- **`review-fix-loop`** — Iterative review-fix cycle for a branch or PR.
-- **`review-me`** — Interrogate the user on the current diff as an adversarial reviewer and withhold the PR until they pass.
+- **`fix-until-clean`** — Iterative review-fix cycle for a branch or PR.
 - **`rfc`** — Draft and create an Azure DevOps "Request for Change RFC" work item in the configured work project.
 - **`setup-home-repo`**: Set up or adopt a Home Repo (`gateroom`) for a workspace on any machine, in four steps with an approval gate before any change.
 - **`setup-matt-pocock-skills`** — Configure this repo for the engineering skills: set up its issue tracker, triage label vocabulary, and domain doc layout.
 - **`storm-research`** — Runs a 4-phase pipeline over a topic: five expert lenses (Practitioner, Academic, Skeptic, Economist, Historian), a contradiction map, a synthesized HTML report, and adversarial peer review plus primary-source verification.
 - **`tdd`** — Test-driven development.
 - **`teach`** — Teach the user a new skill or concept, within this workspace.
-- **`teach-back`** — Grill the user until they can explain the current diff clearly to a junior engineer and defend it to a senior engineer.
 - **`techdebt`** — Inventory non-architectural tech debt and hand approved findings to to-tickets.
 - **`to-hld`** — Turn the current conversation and codebase understanding into a high-level design document: decisions plus logical mermaid diagrams, no interview.
 - **`to-pullrequest`** — Create a pull request on GitHub (`gh pr create`) or Azure DevOps (`az repos pr create`) with a drafted title/body that has been run through the `write` skill first, so AI-sounding prose never ships in a PR description.
@@ -98,7 +98,7 @@ re-sync.
 - **`to-tickets`** — Break a plan, spec, or the current conversation into a set of tracer-bullet tickets, each declaring its blocking edges, published to the configured tracker (edges as text in one file per ticket locally, or native blocking links on a real tracker).
 - **`triage`** — Move issues and external PRs through a state machine of triage roles, categorise, verify, grill if needed, and write agent-ready briefs.
 - **`wait-what`** — Stop.
-- **`walkthrough`** — Walk me through a diff like a senior mentoring a junior: pair-programming style, chunk by chunk, concise, open to questions.
+- **`walk-me-through-it`** — Walk me through a diff like a senior mentoring a junior: pair-programming style, chunk by chunk, concise, open to questions.
 - **`wayfinder`** — Plan a huge chunk of work (more than one agent session can hold) as a shared map of decision tickets on your issue tracker, and resolve them one at a time until the way to the destination is clear.
 - **`wizard`** — Generate an interactive bash wizard that walks a human through steps only they can perform.
 - **`worktree-janitor`** — Automate the post-merge worktree cleanup ritual for a bare-worktree repo layout: scan every worktree, check merge/completion status (GitHub or Azure DevOps) or the project-brain STATUS.md for local-only work, then remove and branch-delete what is confirmed safe.

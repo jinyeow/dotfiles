@@ -196,7 +196,7 @@ per skill), so the installer projects skills into `~/.codex/skills/` from two so
 Claude-native skills and Claude support content under `claude/skills/` are never projected to Codex.
 
 The shared `council` skill, its four aliases, and the review→fix skills (`quick-review`,
-`deep-review`, `review-fix-loop`, `fix-findings`) are available after setup. They are prompt
+`deep-review`, `fix-until-clean`, `fix-findings`) are available after setup. They are prompt
 orchestration contracts, not installed custom agents: the host must use a Codex version
 whose native delegation can isolate at least two workers, or report
 `unsupported-capability`. Quick mode is the default; debate and external Codex are opt-in.

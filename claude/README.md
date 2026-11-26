@@ -239,7 +239,7 @@ when an external Codex seat is explicitly wanted. Charter seats are limited to 2
 normal calls to 12. A positional panel (`/council code <target>`) pins it. Reports use `.agents/council/reports/`. For branch
 diffs/PRs use `quick-review` (or `deep-review`), not council.
 
-The portable `walkthrough` skill is the post-`implement` mentoring stage of the main flow: it
+The portable `walk-me-through-it` skill is the post-`implement` mentoring stage of the main flow: it
 walks the user through a diff like a senior pairing with a junior (checkpoint tour /
 overview-then-Q&A / socratic, chosen at start or via `--mode`), chunked into narrative beats and
 framed against the driving spec/ticket when one can be found. It explains rather than judges —
@@ -254,7 +254,7 @@ conventions + tests) plus Codex, two participants; **`deep-review`** is the opt-
 of the same pipeline, fanning out all seven per-dimension reviewers + Codex. Both adversarially
 verify their findings and emit them to the same findings store. **`fix-findings`** consumes that
 store and applies fixes (parallel, partitioned by conflict-set, one commit per fix-unit);
-**`review-fix-loop`** is the thin orchestrator that chains a review pass with the fix pass each
+**`fix-until-clean`** is the thin orchestrator that chains a review pass with the fix pass each
 cycle and loops to a deterministic clean gate — `quick-review` by default, `deep-review` under
 `--deep`. `--reviewers <model>[,<model>][:<effort>]` picks the reviewer models (reviewer-only;
 fixers stay pinned). On Claude Code the fan-out dispatches one `Agent` tool call per reviewer

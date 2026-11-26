@@ -8,7 +8,7 @@ description: The default review pass over a branch diff or PR. Use when asked to
 The **default** review pass: two participants instead of eight. One folded reviewer worker covering
 `correctness` + `conventions` + `tests`, plus Codex as a cross-model second opinion. This skill
 **emits** findings; it does not fix them (that's `fix-findings`). It is the default review half of
-`review-fix-loop` and is independently invocable.
+`fix-until-clean` and is independently invocable.
 
 Same store, same schema, same dedupe/verify/emit pipeline as [`deep-review`](../deep-review/SKILL.md) —
 **only the fan-out width differs**. Reach for `deep-review` when security, performance, structural, or
@@ -119,10 +119,10 @@ run on), not logic switches.
 
 ## Notes
 
-- **Emit, don't fix.** Applying fixes is `fix-findings`. Running both in a loop is `review-fix-loop`,
+- **Emit, don't fix.** Applying fixes is `fix-findings`. Running both in a loop is `fix-until-clean`,
   which invokes this skill by default.
 - **Model.** On Claude Code, standalone the folded reviewer may run on Fable for a light pass;
-  invoked from `review-fix-loop`, it inherits that loop's reviewer constraint. Other runtimes select
+  invoked from `fix-until-clean`, it inherits that loop's reviewer constraint. Other runtimes select
   through their own defaults — no equivalent pin is defined yet. `--reviewers` overrides the default
   on any runtime with a wired resolution (see [`../_shared/reviewer-models.md`](../_shared/reviewer-models.md);
   unsupported on Codex CLI — if the host runtime is Codex CLI and `--reviewers` was passed, stop and

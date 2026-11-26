@@ -1,6 +1,6 @@
 # Reviewer models — the `--reviewers` contract
 
-Shared by the review skills (`quick-review`, `deep-review`, and via the loop, `review-fix-loop`).
+Shared by the review skills (`quick-review`, `deep-review`, and via the loop, `fix-until-clean`).
 It defines one thing: how the `--reviewers` argument resolves to real dispatch parameters.
 
 **Scope note:** this file's alias table and call shapes describe Claude Code's subagent model
@@ -56,7 +56,7 @@ model the user did not ask for.
 ## Fixer pin
 
 This is the single home for fixer-subagent model selection. It applies to `fix-findings` and
-`review-fix-loop`'s fixer children, and to any other seat whose child applies and commits code
+`fix-until-clean`'s fixer children, and to any other seat whose child applies and commits code
 rather than just reviewing (for example a council seat asked to implement, not just critique).
 
 - Default: `sonnet`. `haiku` is fine for a fully specified single-hunk edit. `opus` for a hard

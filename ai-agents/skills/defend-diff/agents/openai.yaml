@@ -1,0 +1,5 @@
+interface:
+  display_name: "Defend Diff"
+  short_description: "Explain and defend your diff before the PR"
+policy:
+  allow_implicit_invocation: false

@@ -1,13 +1,13 @@
 ---
 name: deep-review
-description: Heavy multi-dimension cross-model code review of a branch diff or PR — the opt-in deep pass, not the default. Fans out seven parallel reviewers (correctness, security, performance, structural, architecture, conventions, tests) plus Codex, adversarially verifies the findings, and writes them to a findings store for fixing. Use only when asked to "deep review", "review thoroughly", "multi-dimension review", "find all the issues", or from review-fix-loop --deep. A routine "review the diff" is quick-review, the default. NOT for non-diff artifacts (ideas, designs-as-docs, plans, presentations) — use the council skill for those.
+description: Heavy multi-dimension cross-model code review of a branch diff or PR — the opt-in deep pass, not the default. Fans out seven parallel reviewers (correctness, security, performance, structural, architecture, conventions, tests) plus Codex, adversarially verifies the findings, and writes them to a findings store for fixing. Use only when asked to "deep review", "review thoroughly", "multi-dimension review", "find all the issues", or from fix-until-clean --deep. A routine "review the diff" is quick-review, the default. NOT for non-diff artifacts (ideas, designs-as-docs, plans, presentations) — use the council skill for those.
 ---
 
 # Deep Review
 
 Fan out parallel reviewers over a diff, verify what they find, write survivors to the store. This
 skill **emits** findings; it does not fix them (that's `fix-findings`). It is the **opt-in** heavy
-review half of `review-fix-loop` (reached via `--deep`; the default is
+review half of `fix-until-clean` (reached via `--deep`; the default is
 [`quick-review`](../quick-review/SKILL.md)) and is independently invocable.
 
 Contracts: the quality bar is [`../_shared/review-rubric.md`](../_shared/review-rubric.md), the seven
@@ -136,10 +136,10 @@ and the summary is printed.
 
 ## Notes
 
-- **Emit, don't fix.** Applying fixes is `fix-findings`. Running both in a loop is `review-fix-loop`,
+- **Emit, don't fix.** Applying fixes is `fix-findings`. Running both in a loop is `fix-until-clean`,
   which reaches this skill only under `--deep`.
 - **Model.** On Claude Code, standalone reviewers may run on Fable for a light pass; invoked from
-  `review-fix-loop`, they inherit its reviewer constraint — **Opus or Sonnet, never Fable** unless
+  `fix-until-clean`, they inherit its reviewer constraint — **Opus or Sonnet, never Fable** unless
   the user explicitly asks. Other runtimes select reviewer models through their own defaults —
   no equivalent pin is defined yet. `--reviewers` overrides the default on any runtime with a wired
   resolution ([`../_shared/reviewer-models.md`](../_shared/reviewer-models.md) documents the
