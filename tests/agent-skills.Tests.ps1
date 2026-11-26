@@ -190,9 +190,9 @@ Describe 'review skill split' {
     It 'centralizes the fixer model pin at _shared/reviewer-models.md and points every dispatching doc at it' {
         # Canonical home carries the literal policy.
         $reviewerModels | Should -Match 'Fixer pin'
-        $reviewerModels | Should -Match 'Opus 4\.8'
-        $reviewerModels | Should -Match 'Sonnet 5'
-        $reviewerModels | Should -Match 'never Opus 5'
+        $reviewerModels | Should -Match 'Default: `sonnet`'
+        $reviewerModels | Should -Match '`opus` for a hard'
+        $reviewerModels | Should -Not -Match 'Opus 4\.8'
         $reviewerModels | Should -Match 'Never `fable`|never `fable`'
 
         # Every dispatching doc points at the canonical home instead of restating the pin.

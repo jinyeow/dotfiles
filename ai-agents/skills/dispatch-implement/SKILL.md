@@ -52,9 +52,8 @@ checks, review, commit.
    writes to shared files without a merge step").
 4. **Pick a model per ticket** — judged from that ticket's size and difficulty, not fixed. On Claude
    Code the implement stage follows the same pin as fixers
-   ([`../_shared/reviewer-models.md`](../_shared/reviewer-models.md) § Fixer pin): Sonnet 5 by
-   default, Haiku 4.5 for a fully specified single-hunk ticket, never Opus 5, never Fable, so a
-   trivial ticket goes to Sonnet and a hard one is flagged for a versioned Opus per that section. An
+   ([`../_shared/reviewer-models.md`](../_shared/reviewer-models.md) § Fixer pin): Sonnet by
+   default, Haiku for a fully specified single-hunk ticket, Opus for a hard one, never Fable. An
    explicit override replaces the judgment (see Override below).
 5. **Dispatch**, one subagent per ticket, each prompted to run `/implement` on that ticket and
    nothing else. Parallel units go out in a single message so they actually run concurrently;
@@ -107,13 +106,7 @@ Use the `Agent` tool, one call per ticket:
 The `Agent` tool's model aliases are `opus`, `sonnet`, `haiku`, `fable`. Anything else is an error —
 say which aliases exist and stop, never substitute a model the user did not ask for.
 
-- **`sonnet`** is honored directly; it satisfies the implement-stage pin.
-- **Bare `opus`** does **not** satisfy the pin: the alias resolves to the current default Opus
-  (Opus 5 today), which the pin excludes
-  ([`../_shared/reviewer-models.md`](../_shared/reviewer-models.md) § Fixer pin). A step-1
-  natural-language "using Opus" override hits the same problem — it names no version, so as given
-  it does not satisfy the pin either. Stop and ask which versioned Opus (4.8) is meant rather than
-  silently substituting the bare alias.
+- **`sonnet`**, **`opus`** and **`haiku`** are honored directly; each satisfies the implement-stage pin.
 - **`fable`** collides with the pin. Stop and ask rather than honoring or refusing it silently.
 - **Effort** has no `Agent` tool parameter — dispatch takes `model` only. Record the requested effort
   and say once that it was not applied; do not invent a field. Same gap as

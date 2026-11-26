@@ -7,7 +7,7 @@ Produce a LinkedIn jobs digest from the inbox. Default window: last 14 days, unr
 
 ## Step 1 — Fetch emails
 
-Run these three searches in parallel via `mcp__fastmail__search_email`:
+Run these three searches in parallel with the Fastmail MCP server's `search_email` tool (`mcp__fastmail__search_email` when registered by `setup.ps1 -Module fastmail`, `mcp__Fastmail__search_email` for the claude.ai connector):
 1. `from:jobalerts-noreply@linkedin.com is:unread after:14d` (limit 30)
 2. `from:inmail-hit-reply@linkedin.com is:unread after:14d` (limit 30)
 3. `from:jobs-listings@linkedin.com is:unread after:14d` (limit 30)
@@ -18,7 +18,7 @@ Discard anything that is clearly not a job posting or recruiter outreach (connec
 
 ## Step 3 — Read full bodies
 
-For each email that passes the filter, call `mcp__fastmail__read_email` to get the full body. Run in parallel.
+For each email that passes the filter, call the same server's `read_email` tool to get the full body. Run in parallel.
 
 ## Step 4 — Extract and categorise
 

@@ -202,7 +202,7 @@ mishandles escape sequences (see `docs/zellij-windows-terminal-colors.md`).
 ai-agents/skills/
   my-skill/
     SKILL.md            ← skill definition (frontmatter: name + description)
-    commands/           ← optional: slash-command prompt files
+    commands/           ← optional: sub-workflow files that SKILL.md tells the agent to read
     references/         ← optional: progressive-disclosure docs loaded on demand
 ```
 
@@ -224,7 +224,9 @@ Claude-native skills:
   process: read and write PBIs, Bugs, and Tasks; run sprint and backlog WIQL queries;
   enrich, decompose, prioritise, and report. Needs a one-time local setup: copy its
   `config.example.json` to `config.json` (gitignored) and fill in your ADO project / team /
-  iteration root; the org is read from `az devops configure`. Prefers the Azure DevOps MCP
+  iteration root. The org also comes from `config.json` and is passed on every `az` call; the
+  `az devops configure` default is not used. Its sub-workflows live in `commands/` and are read
+  on request, not registered as slash commands. Prefers the Azure DevOps MCP
   server when connected and falls back to PowerShell-native `az boards` CLI.
 - **`fastmail`** — Pull a live Fastmail digest: unread emails, upcoming calendar events,
   and other inbox signals.

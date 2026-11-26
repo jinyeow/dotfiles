@@ -37,6 +37,7 @@ own `SKILL.md` frontmatter, trimmed to one line. Claude-native skills live in `.
 (see `../claude/README.md`); Codex-native and Pi-native skills would live in `../codex/skills/` and
 `../pi/skills/` respectively, both currently empty.
 
+- **`agent-staging`** — Per-workspace drop and exchange zone where the developer and their agents leave files for each other across sessions, with an `agent-inputs\` lane and an `agent-outputs\` lane.
 - **`azure-compliance`** — Run Azure compliance and security audits with azqr plus Key Vault expiration checks.
 - **`azure-enterprise-infra-planner`** — Architect and provision enterprise Azure infrastructure from workload descriptions.
 - **`azure-resource-manager`** — Expert knowledge for Azure Resource Manager development including troubleshooting, best practices, decision making, architecture & design patterns, limits & quotas, security, configuration, integrations & coding patterns, and deployment.

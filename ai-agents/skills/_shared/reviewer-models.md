@@ -59,17 +59,10 @@ This is the single home for fixer-subagent model selection. It applies to `fix-f
 `review-fix-loop`'s fixer children, and to any other seat whose child applies and commits code
 rather than just reviewing (for example a council seat asked to implement, not just critique).
 
-- Default: **Sonnet 5** (`sonnet`). **Haiku 4.5** (`haiku`) is fine for a fully specified
-  single-hunk edit. Never `fable`.
-- The intended Opus tier is **Opus 4.8**, never Opus 5, for now. No per-call mechanism dispatches
-  that specific build today: the `Agent` tool's `model` param takes only the aliases in the table
-  above, and the bare `opus` alias resolves to the current default Opus, Opus 5 today, which this
-  pin excludes. Do not dispatch a fixer on `opus`. Use Sonnet 5, or ask which Opus build is meant
-  before dispatching one.
-- The same alias limit applies to any other seat that wants Opus 4.8 by name, including a council
-  reviewer seat: `opus` names whichever Opus build Claude Code currently defaults to, and that
-  default moves between releases without guaranteeing a specific point build. Treat any "Opus 4.8"
-  reference for such a seat as this same constraint rather than a separate capability.
+- Default: `sonnet`. `haiku` is fine for a fully specified single-hunk edit. `opus` for a hard
+  fix or one that needs more judgement than Sonnet gives. Never `fable`.
+- The pin names tiers, not builds. Each alias resolves to whatever build Claude Code currently
+  ships under that name, so do not ask for or record a point version.
 
 ## Effort
 

@@ -1,6 +1,6 @@
 ---
 name: review-ado-pr
-description: "Review an Azure DevOps pull request locally, end-to-end. Use when the user says 'review this ADO PR', 'review PR <dev.azure.com url>', 'review azure devops PR <id>', 'review my pending ADO PRs' (no id needed — it discovers), or asks to look over an ADO pull request. Fetches the PR into the dedicated review worktree, runs IaC gates (Bicep), reads the diff, does a cross-model review, and — only on approval — posts inline threads / a vote back. Read-only by default. NOT for GitHub PRs (use the review skill) or the local working diff (use /code-review)."
+description: "Review an Azure DevOps pull request locally, end-to-end. Use when the user says 'review this ADO PR', 'review PR <dev.azure.com url>', 'review azure devops PR <id>', 'review my pending ADO PRs' (no id needed — it discovers), or asks to look over an ADO pull request. Fetches the PR into the dedicated review worktree, runs IaC gates (Bicep), reads the diff, does a cross-model review, and — only on approval — posts inline threads / a vote back. Read-only by default. NOT for GitHub PRs (use quick-review) or the local working diff (use /code-review)."
 metadata:
   author: justin
   version: "1.0.0"
@@ -17,7 +17,7 @@ read it, review it across models, and report. Posting anything back to the PR (t
 - The user gives an ADO PR URL or id and wants it reviewed.
 - Trigger phrases: "review this ADO PR", "review PR <url>", "review azure devops PR <id>",
   "review my pending ADO PRs" (no id — discover via step 1).
-- NOT GitHub (use the `review` skill), NOT the uncommitted working diff (use `/code-review`).
+- NOT GitHub (use the `quick-review` skill), NOT the uncommitted working diff (use `/code-review`).
 
 ## Preconditions
 
