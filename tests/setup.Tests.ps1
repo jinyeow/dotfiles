@@ -254,6 +254,11 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
             $command | Should -Match '(?i)"[^"]*[\\/]bin[\\/]bash\.exe"'
             $command | Should -Not -Match '(?i)System32|WindowsApps'
             $command | Should -Match '(?i)"[^"]*block-dangerous-git\.sh"'
+            # The hook fails closed (denies every git command) without its rules file beside it.
+            $rulesSource = Join-Path (Split-Path $script:SetupScript -Parent) 'ai-agents\_shared\destructive-git-rules.json'
+            $rulesDest = Join-Path $tmpHome '.codex\destructive-git-rules.json'
+            Test-Path -LiteralPath $rulesDest | Should -BeTrue
+            (Get-FileHash -LiteralPath $rulesDest).Hash | Should -Be (Get-FileHash -LiteralPath $rulesSource).Hash
         }
         finally
         {
@@ -510,6 +515,35 @@ Describe 'setup.ps1 Codex hooks.json guardrail bash resolution (Windows)' -Skip:
             $hooks = Get-Content -LiteralPath $hooksPath -Raw | ConvertFrom-Json
             $hooks.hooks.SessionStart[0].hooks[0].command | Should -Match 'session-start\.ps1'
             $hooks.hooks.PSObject.Properties.Name | Should -Not -Contain 'PreToolUse'
+        }
+        finally
+        {
+            $env:USERPROFILE = $origUP
+            Remove-Item -Path $tmpHome -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'skips only the git guardrail PreToolUse merge when destructive-git-rules.json is missing' {
+        # block-dangerous-git.sh denies every git command without its rules file, so merging it
+        # anyway would block all git use in Codex. The ai-reference-guard merge must still run.
+        $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-codex-hooks-norules-' + [guid]::NewGuid())
+        New-Item -ItemType Directory -Path $tmpHome -Force | Out-Null
+        $repoRoot = Split-Path $script:SetupScript -Parent
+        $rulesSource = Join-Path $repoRoot 'ai-agents\_shared\destructive-git-rules.json'
+        $origUP = $env:USERPROFILE
+        try
+        {
+            $env:USERPROFILE = $tmpHome
+            # Pester 6 throws when no filtered mock matches, so other Test-Path calls pass through.
+            Mock Test-Path { & (Get-Command Test-Path -CommandType Cmdlet) @PesterBoundParameters }
+            Mock Test-Path -ParameterFilter { $LiteralPath -eq $rulesSource } { $false }
+            $output = Install-Codex *>&1 | Out-String
+            $output | Should -Match 'destructive-git-rules\.json not found'
+            $hooksPath = Join-Path $tmpHome '.codex\hooks.json'
+            $hooks = Get-Content -LiteralPath $hooksPath -Raw | ConvertFrom-Json
+            $entries = @($hooks.hooks.PreToolUse)
+            ($entries | Where-Object { $_.hooks[0].command -match 'block-dangerous-git\.sh' }) | Should -BeNullOrEmpty
+            ($entries | Where-Object { $_.hooks[0].command -match 'ai-reference-guard\.sh' }) | Should -Not -BeNullOrEmpty
         }
         finally
         {

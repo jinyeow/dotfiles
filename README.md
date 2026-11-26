@@ -153,7 +153,6 @@ Not sure which one fits? Run `/router` — a manual index that maps these as flo
 | `storm-research` | local | Multi-perspective, citation-verified HTML research briefing |
 | `jj` | local | Jujutsu (jj) VCS workflow — Windows/pwsh-native (adapts HotThoughts/jj-skills) |
 | `resolving-merge-conflicts` | mattpocock/skills | Resolve an in-progress git merge/rebase conflict |
-| `git-guardrails-claude-code` | mattpocock/skills | Hook blocking dangerous git commands |
 | `handoff` | local | Compact the conversation into a handoff doc for a fresh session |
 | `project-brain` | local | Durable cross-repo initiative knowledge (core/STATUS/ADRs), auto-loaded by a SessionStart hook |
 | `health` | tw93/Waza | Audit the agent setup — config drift, hooks, MCP, skills, memory |

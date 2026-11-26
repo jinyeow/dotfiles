@@ -114,7 +114,6 @@ Research feeds the main flow — take its output *into* `/grill-with-docs`; it d
 
 - **`/jj`** — working in a **Jujutsu** repo: making/describing changes, syncing, rewriting history, bookmarks, op-log recovery. Windows/pwsh-native. Doesn't fire in pure-git repos.
 - **`/resolving-merge-conflicts`** — an in-progress git merge/rebase conflict to resolve.
-- **`/git-guardrails-claude-code`** — install Claude Code hooks that block destructive git (push, `reset --hard`, `clean`, `branch -D`) before they run.
 
 ## Crossing sessions & durable memory
 
