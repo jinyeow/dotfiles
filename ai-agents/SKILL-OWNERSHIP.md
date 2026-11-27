@@ -105,9 +105,6 @@ migration ticket is even writable:
   themselves portable in concept — an earlier pass in this audit missed the `commands/`
   directory and wrongly called this one portable before catching the mistake.) Research
   spike: #94.
-- `git-guardrails-claude-code` — installs a Claude Code `PreToolUse` hook; needs an
-  equivalent pre-execution interception mechanism in Codex/Pi, not yet confirmed to
-  exist. Research spike: #97.
 
 **Needs design work** — the skill's value depends on a Claude-only *convenience trigger*
 (not a missing primitive), so portability needs a designed equivalent, not a spike:
