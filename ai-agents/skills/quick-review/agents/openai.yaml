@@ -1,3 +1,0 @@
-interface:
-  display_name: "Quick Review"
-  short_description: "Default review of a diff or PR"

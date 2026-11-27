@@ -26,7 +26,7 @@ fix is responsible for violations its edits introduced; pre-existing violations 
 Severity that blocks the gate is **deferred to the project's linter config** (e.g. a PSSA settings
 file's configured severities, an eslint `error` vs `warn`). When a project has no config, **fall back
 to error-only**: `lint_clean = no Error-severity diagnostics`. Warning/Info diagnostics are surfaced
-as LOW/CLEANUP findings (reported, not gated) so the loop doesn't churn on advisory rules.
+as LOW findings (reported, not gated) so the loop doesn't churn on advisory rules.
 
 ---
 

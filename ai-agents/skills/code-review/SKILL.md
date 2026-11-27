@@ -1,97 +1,112 @@
 ---
 name: code-review
-description: "Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes: Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/spec asked for?). Runs both reviews in parallel sub-agents and reports them side by side. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to \"review since X\"."
+description: "Review the diff since a fixed point on Standards, Spec and Bugs, plus Security, Performance, Tests and Architecture lenses picked by what the diff touches. Validates every finding against the code, rates it likelihood × impact, labels it blocking or non-blocking, and ends with a merge verdict. Replaces the built-in /code-review. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to \"review since X\"."
 ---
 
-Two-axis review of the diff between `HEAD` and a fixed point the user supplies:
+Adapted from mattpocock/skills `code-review` at commit `6f7f783`; steps 1–3 and the two-axis rule come from there.
 
-- **Standards**: does the code conform to this repo's documented coding standards?
-- **Spec**: does the code faithfully implement the originating issue / spec?
+Review the diff between `HEAD` and a fixed point. Find real defects, check each one against the code, and say whether the change can merge. This skill reports findings and writes them to the findings store. `fix-findings` fixes them, and `review-to-green` runs the two in a loop.
 
-Both axes run as **parallel sub-agents** so they don't pollute each other's context, then this skill aggregates their findings. Start every sub-agent with a fresh context window.
+Read these contracts before you start:
+
+- [`../_shared/review-rubric.md`](../_shared/review-rubric.md) has the quality bar, the likelihood × impact matrix and the "Do not flag" list.
+- [`../_shared/lenses.md`](../_shared/lenses.md) has each lens charter and its trigger.
+- [`../_shared/findings-schema.md`](../_shared/findings-schema.md) has the record schema and the store rules.
+- [`../_shared/reviewer-models.md`](../_shared/reviewer-models.md) has the reviewer models and the read-only Codex call shape.
 
 The issue tracker should have been provided to you. If not, tell the user to run `/setup-matt-pocock-skills`.
+
+```
+/code-review [ref-or-range | --pr <n>]
+```
+
+The process is fixed. The user can ask in plain words to "include nits" (report LOW findings in full) or to "run all lenses" (run every conditional lens).
 
 ## Process
 
 ### 1. Pin the fixed point
 
-Whatever the user said is the fixed point (a commit SHA, branch name, tag, `main`, `HEAD~5`, etc.). If they didn't specify one, ask for it.
+Whatever the user said is the fixed point: a commit SHA, branch name, tag, `main`, `HEAD~5`, a range, or `--pr <n>`. If they gave none, use the merge-base with the default branch.
 
-Capture the diff command once: `git diff <fixed-point>...HEAD` (three-dot, so the comparison is against the merge-base). Also note the list of commits via `git log <fixed-point>..HEAD --oneline`.
+- A ref or range goes to git as given. For a range, its merge-base is the fixed point.
+- For `--pr <n>` on GitHub, `gh pr view <n> --json baseRefName,headRefName` gives the refs and `gh pr diff <n>` gives the diff.
+- For `--pr <n>` on Azure DevOps, `az repos pr show --id <n>` gives `sourceRefName` and `targetRefName`. Diff with `git diff <target>...<source>`.
+- If the CLI for the PR is missing or not signed in, stop and say which one. Do not guess the diff.
 
-Before going further, confirm the fixed point resolves (`git rev-parse <fixed-point>`) and the diff is non-empty. A bad ref or empty diff should fail here, not inside two parallel sub-agents.
+Capture the diff command once: `git diff <fixed-point>...HEAD` (three-dot, so the comparison is against the merge-base). Also note the list of commits via `git log <fixed-point>..HEAD --oneline`. Record the merge-base SHA as `base_sha` for the store.
+
+Before going further, confirm the fixed point resolves (`git rev-parse <fixed-point>`) and the diff is non-empty. A bad ref or empty diff should fail here, not inside parallel sub-agents.
+
+If the diff is trivial (only whitespace, generated files, lockfiles, or typo fixes in docs), say so and stop.
 
 ### 2. Identify the spec source
 
 Look for the originating spec, in this order:
 
-1. Issue references in the commit messages (`#123`, `Closes #45`, GitLab `!67`, etc.), fetched via the workflow in the tracker doc.
+1. Issue references in the commit messages (`#123`, `Closes #45`, GitLab `!67`, etc.), fetched via the workflow in `docs/agents/issue-tracker.md`.
 2. A path the user passed as an argument.
 3. A spec file under `docs/`, `specs/`, or `.scratch/` matching the branch name or feature.
-4. If nothing is found, ask the user where the spec is. If they say there isn't one, the **Spec** sub-agent will skip and report "no spec available".
+4. If nothing is found, ask the user where the spec is. If they say there isn't one, skip the Spec lens and list "no spec" under Not covered.
 
 ### 3. Identify the standards sources
 
-Search the repo for every file that documents how code should be written. When `CODING_STANDARDS.md` or `CONTRIBUTING.md` exists, it must be on the list.
+Search the repo for every file that documents how code should be written: `CODING_STANDARDS.md`, `CONTRIBUTING.md`, `AGENTS.md`, `CLAUDE.md`, and linter configs. When `CODING_STANDARDS.md` or `CONTRIBUTING.md` exists, it must be on the list.
 
-On top of whatever the repo documents, the Standards axis always carries the **smell baseline** below: a fixed set of Fowler code smells (_Refactoring_, ch.3) that applies even when a repo documents nothing. Two rules bind it:
+On top of these, the Standards lens applies the rubric: Layer 1, Layer 2, the named smell baseline and the "Do not flag" list. A documented repo standard always overrides the smell baseline.
 
-- **The repo overrides.** A documented repo standard always wins; where it endorses something the baseline would flag, suppress the smell.
-- **Always a judgement call.** Each smell is a labelled heuristic ("possible Feature Envy"), never a hard violation. Like any standard here, skip anything tooling already enforces.
+### 4. Facts first
 
-Each smell reads *what it is* → *how to fix*; match it against the diff:
+Run the repo's own lint, type-check and test commands that apply to the changed files. Detect them as [`../fix-findings/REFERENCE.md`](../fix-findings/REFERENCE.md) does, and add the type-checker the repo configures. Give the output to every lens as facts. A lens does not report again what a tool already reports. A failing test or type-check goes in the summary, and the change is not ready while it fails. A command that cannot run goes under Not covered.
 
-- **Mysterious Name**: a function, variable, or type whose name doesn't reveal what it does or holds. → rename it; if no honest name comes, the design's murky.
-- **Duplicated Code**: the same logic shape appears in more than one hunk or file in the change. → extract the shared shape, call it from both.
-- **Feature Envy**: a method that reaches into another object's data more than its own. → move the method onto the data it envies.
-- **Data Clumps**: the same few fields or params keep travelling together (a type wanting to be born). → bundle them into one type, pass that.
-- **Primitive Obsession**: a primitive or string standing in for a domain concept that deserves its own type. → give the concept its own small type.
-- **Repeated Switches**: the same `switch`/`if`-cascade on the same type recurs across the change. → replace with polymorphism, or one map both sites share.
-- **Shotgun Surgery**: one logical change forces scattered edits across many files in the diff. → gather what changes together into one module.
-- **Divergent Change**: one file or module is edited for several unrelated reasons. → split so each module changes for one reason.
-- **Speculative Generality**: abstraction, parameters, or hooks added for needs the spec doesn't have. → delete it; inline back until a real need shows.
-- **Message Chains**: long `a.b().c().d()` navigation the caller shouldn't depend on. → hide the walk behind one method on the first object.
-- **Middle Man**: a class or function that mostly just delegates onward. → cut it, call the real target direct.
-- **Refused Bequest**: a subclass or implementer that ignores or overrides most of what it inherits. → drop the inheritance, use composition.
+### 5. Run the lenses in parallel
 
-### 4. Offer a second opinion from another model
+Standards, Spec and Bugs always run. Security, Performance, Tests and Architecture run when the diff matches their trigger in `lenses.md`, or when the user asks to run all lenses.
+
+Start each lens as a fresh-context, read-only subagent, all in one message. On Codex, use `agent_type: "reviewer"`. Give each lens a curated brief:
+
+- the diff command and the commit list;
+- the spec, for the Spec lens;
+- the standards files from step 3;
+- the tool output from step 4;
+- its charter from `lenses.md`, and the rubric.
+
+Each lens returns its findings, at most 400 words. Each finding has `file:line`, quoted evidence, likelihood and impact (HIGH, MED or LOW, as the rubric defines them), a suggested minimal fix, and origin (`introduced` or `pre-existing`). A lens that errors or returns nothing is recorded as "not covered". It never counts as clean.
+
+### 6. Second opinion
 
 Check whether a reviewer from another model family is available in this session: an MCP server for another coding agent (such as `codex`), or another agent's CLI on `PATH`. If none is found, skip this step and do not mention it.
 
-If one or more are found, ask the user once whether to add a second opinion, and name what you found. On yes, run it read-only, in parallel with the two sub-agents in step 5. Give it the diff command, the commit list, the spec, and both sub-agent briefs, and ask for findings under the same two headings. For the `codex` MCP server, use the read-only call shape in [`../_shared/reviewer-models.md`](../_shared/reviewer-models.md).
+If one is found, ask the user once before step 5 whether to add a second opinion, as AGENTS.md "Second opinions from another model" says, and name what you found. On yes, run it read-only, in parallel with the lenses. Give it the diff command, the commit list, the spec and the lens briefs. For the `codex` MCP server, use the read-only call shape in `reviewer-models.md`. Its findings go through the same validation as the lenses' findings.
 
-### 5. Spawn both sub-agents in parallel
+### 7. Dedup, then validate
 
-Issue both sub-agent calls together, in the foreground, and aggregate the reports they return.
+Fingerprint each finding as `findings-schema.md` defines it. Merge findings that share a fingerprint and keep every member's evidence. A finding that several lenses report appears once, under its primary lens.
 
-**Standards sub-agent prompt** should include:
+Then give each merged finding to a separate validation subagent: fresh context, read-only, and on Codex `agent_type: "reviewer"`. Brief it to refute the finding against the actual code. It reads the cited lines and what calls them, and returns `confirmed` or `not reproduced` with a one-line reason. When it is unsure, it returns `not reproduced`. Validators run in parallel. Keep the confirmed findings only, with `validated: true`, and record the rest in the store as `not_reproduced`.
 
-- The full diff command and commit list.
-- The list of standards-source files you found in step 3, **plus the smell baseline from step 3** pasted in full (the sub-agent has no other access to it).
-- The brief: "Report, per file/hunk where relevant, (a) every place the diff violates a documented standard: cite the standard (file + the rule); and (b) any baseline smell you spot: name it and quote the hunk. Distinguish hard violations from judgement calls: documented-standard breaches can be hard, but baseline smells are always judgement calls, and a documented repo standard overrides the baseline. Skip anything tooling enforces. Under 400 words."
+### 8. Rate severity
 
-**Spec sub-agent prompt** should include:
+Rate each confirmed finding with the likelihood × impact matrix in the rubric. An introduced finding rated HIGH or MED is blocking. A LOW finding is non-blocking. A pre-existing finding never blocks, so report it separately. When the user explicitly accepts a blocking finding as a documented trade-off, it stops blocking: record it as `wontfix` with their reason.
 
-- The diff command and commit list.
-- The path or fetched contents of the spec.
-- The brief: "Report: (a) requirements the spec asked for that are missing or partial; (b) behaviour in the diff that wasn't asked for (scope creep); (c) requirements that look implemented but where the implementation looks wrong. Quote the spec line for each finding. Under 400 words."
+### 9. Report
 
-If the spec is missing, skip the Spec sub-agent and note this in the final report.
+Write the report in this order:
 
-### 6. Aggregate
+1. A summary paragraph: what the change does, which lenses ran, and any failing tool from step 4.
+2. Blocking findings, HIGH then MED, under `## Standards`, `## Spec`, `## Bugs` and one heading for each other lens that ran. Do not merge or rerank findings across headings (see "Why separate axes"). Give each finding its `file:line`, likelihood × impact, the quoted evidence and the suggested fix, and label it blocking.
+3. Non-blocking findings (LOW) as a short list, one line each. Give them in full only when the user asked to include nits.
+4. Pre-existing findings, one line each.
+5. Findings that only the second opinion raised, under `## Second opinion (<model>)`, labelled the same way. They count toward the verdict like any other finding.
+6. Not covered: lenses skipped or failed, tools that could not run, and "no spec" when there was none.
+7. The verdict line: `Ready to merge` or `Not ready: N blocking findings`.
 
-Present the two reports under `## Standards` and `## Spec` headings, verbatim or lightly cleaned. Do **not** merge or rerank findings, because the two axes are deliberately separate (see _Why two axes_).
+Write every confirmed and every `not_reproduced` finding to the findings store, as `findings-schema.md` describes. You are the only writer. Subagents return text and never write the store. `review-to-green` and `fix-findings` read the store.
 
-If a second opinion ran, add its report under `## Second opinion (<model>)`, after the two axes and kept separate from them.
+## Why separate axes
 
-End with a one-line summary: total findings per axis, and the worst issue _within each axis_ (if any). Don't pick a single winner across axes: that's the reranking the separation exists to prevent.
+A change can pass one axis and fail another:
 
-## Why two axes
+- Code that follows every standard but implements the wrong thing passes Standards and fails Spec.
+- Code that does exactly what the issue asked but breaks the project's conventions passes Spec and fails Standards.
 
-A change can pass one axis and fail the other:
-
-- Code that follows every standard but implements the wrong thing → **Standards pass, Spec fail.**
-- Code that does exactly what the issue asked but breaks the project's conventions → **Spec pass, Standards fail.**
-
-Reporting them separately stops one axis from masking the other.
+Reporting them separately stops one axis from masking the other. The same holds for Bugs and for each conditional lens.

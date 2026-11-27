@@ -1,66 +1,78 @@
 # Findings Store — schema, fingerprint, store discipline
 
-Shared contract for the review→fix skills: **`deep-review` emits**, **`fix-findings` consumes**,
-**`fix-until-clean` owns the loop-level cycle + rail decisions**. Each invoked skill's orchestrator
-owns its own status writes (deep-review: `candidate`→`confirmed`/`not_reproduced`; fix-findings:
-`fixing`→`fixed`); the loop does not reach in to set them. The store is the composition seam — each
-skill's I/O is explicit; no skill reaches into another's internals.
+Shared contract for the review and fix skills. `code-review` emits findings, `fix-findings`
+consumes them, and `review-to-green` owns the loop's cycles and rail decisions. Each skill's
+orchestrator owns its own status writes: `code-review` sets `candidate`, `confirmed` and
+`not_reproduced`; `fix-findings` sets `fixing`, `fixed` and `rejected`; `review-to-green` sets
+`parked`. Whichever skill is talking to the user records `wontfix`. The store is the seam between
+the skills: each skill's input and output is explicit, and no skill reaches into another's
+internals.
 
-Quality bar + severity scale: [`review-rubric.md`](review-rubric.md). Dimensions:
-[`dimensions.md`](dimensions.md).
+Quality bar and severity matrix: [`review-rubric.md`](review-rubric.md). Lenses:
+[`lenses.md`](lenses.md).
 
 ---
 
-## Record schema (JSONL — one finding per line)
+## Record schema (JSONL, one finding per line)
 
 | Field | Type | Notes |
 |---|---|---|
 | `id` | string | unique within a run |
-| `fingerprint` | string | **semantic** identity — see below; drives dedup / reappearance / no-progress |
+| `fingerprint` | string | semantic identity (see below); drives dedup, reappearance and the other rails |
 | `repo` | string | canonical repo id: normalized origin remote URL (stable across machines); root-path hash only as fallback |
 | `base_sha` | string | frozen merge-base SHA captured at run start |
 | `head_sha` | string | branch head SHA at review time (SHA, not branch name) |
 | `file` | string | path relative to repo root |
 | `scope` | string | enclosing symbol (function/class/block); fallback `module` / `top-level` / config-key-path / test-name / md-heading |
-| `lines` | string | **display-only** (e.g. `120-134`); never part of identity |
-| `dimension` | enum | primary dimension (display only): highest-severity contributor, ties broken alphabetically — deterministic. One of `correctness` \| `security` \| `performance` \| `structural` \| `architecture` \| `conventions` \| `tests` \| `codex` |
-| `contributing_dimensions` | string[] | every dimension that reported this defect (sorted) |
-| `severity` | enum | `CRITICAL` \| `HIGH` \| `MEDIUM` \| `LOW` \| `CLEANUP` (see review-rubric.md) |
+| `lines` | string | display only (e.g. `120-134`); never part of identity |
+| `lens` | enum | primary lens (display only): the highest-severity contributor, ties broken alphabetically. One of `standards` \| `spec` \| `bugs` \| `security` \| `performance` \| `tests` \| `architecture` \| `second-opinion` |
+| `contributing_lenses` | string[] | every lens that reported this defect (sorted) |
+| `likelihood` | enum | `HIGH` \| `MED` \| `LOW` (see review-rubric.md) |
+| `impact` | enum | `HIGH` \| `MED` \| `LOW` (see review-rubric.md) |
+| `severity` | enum | `HIGH` \| `MED` \| `LOW`, derived from `likelihood` × `impact` with the rubric's matrix |
+| `blocking` | bool | derived: true when `severity` is `HIGH` or `MED` and `origin` is `introduced` |
 | `origin` | enum | `introduced` \| `pre-existing` |
 | `origin_reason` | enum | `changed_hunk` \| `new_call_path` \| `new_config_exposure` \| `new_dependency` (required when `origin=introduced`) |
-| `fix_verification` | enum | `test` \| `lint` \| `manual-static` \| `not-applicable` — how the FIX is validated; `test` ⇒ TDD |
-| `confidence` | enum | reviewer self-rating `high` \| `low` (feeds selective verify) |
-| `adversarial_verified` | bool | true once a verifier subagent has confirmed the finding |
+| `fix_verification` | enum | `test` \| `lint` \| `manual-static` \| `not-applicable`: how the fix is validated; `test` means TDD |
+| `validated` | bool | true once the validation pass confirmed the finding against the code |
 | `intended_files` | string[] \| null | files the fix will touch; may be null at review time, resolved before fix-scheduling |
-| `status` | enum | `candidate` \| `confirmed` \| `fixing` \| `fixed` \| `not_reproduced` \| `wontfix` |
+| `status` | enum | `candidate` \| `confirmed` \| `not_reproduced` \| `fixing` \| `fixed` \| `rejected` \| `parked` \| `wontfix` |
+| `status_reason` | string \| null | one line; required for `rejected`, `parked` and `wontfix` |
 | `summary` | string | one-line problem statement |
 | `fix_approach` | string | concrete remedy (prefer "delete X" over "rename Y") |
-| `evidence` | object | `{ hunk, snippet_hash, rationale }` — why it's real; for `introduced`, why the diff caused it |
+| `evidence` | object | `{ hunk, snippet_hash, rationale }`: why it is real; for `introduced`, why the diff caused it |
 
-Validate every record against this schema before writing. An invalid record fails that subagent's
-result — it does not enter the store.
+Validate every record against this schema before writing. An invalid record fails that
+subagent's result and does not enter the store.
 
 ### Status lifecycle
 
 ```
-candidate ──(selected & verifier confirms)──▶ confirmed ──▶ fixing ──▶ fixed
-    │       ├─(not selected for verify)──────▶ confirmed (adversarial_verified=false)
-    │       └─(verifier refutes)─────────────▶ not_reproduced
-    └─(user declines a confirmed finding)────▶ wontfix
+candidate ──(validation confirms)──▶ confirmed ──▶ fixing ──▶ fixed
+    │                                    │            │
+    │                                    ├────────────┴──(fixer disputes, with reason)──▶ rejected
+    │                                    ├────────────┬──(loop stops with it open)──────▶ parked
+    │                                    └──(user declines or accepts the trade-off)────▶ wontfix
+    └──(validation refutes)──▶ not_reproduced
 ```
 
-- `candidate` — emitted by a reviewer; not yet resolved. **No finding stays here** after verify.
-- `confirmed` — a real finding to act on. `adversarial_verified=true` if it passed adversarial verify;
-  `false` if it was below the verify selection (still real, just not independently checked).
-- `fixing` / `fixed` — `fixed` is set only **after** the fix's `fix_verification` passes (test green /
-  lint clean / static check) **and** the commit lands.
-- `not_reproduced` — verifier refuted it (false positive); kept as a record, not deleted.
-- `wontfix` — a confirmed finding the **user** explicitly declined. Reserved for that — it is NOT how
-  pre-existing findings are represented.
+- `candidate`: emitted by a lens or the second opinion and not yet validated. No finding stays
+  here after validation.
+- `confirmed`: the validation pass confirmed it against the code (`validated=true`).
+- `not_reproduced`: the validation pass refuted it. Kept as a record, not deleted.
+- `fixing` / `fixed`: `fixed` is set only after the fix's `fix_verification` passes (test green,
+  lint clean or static check) and the commit lands.
+- `rejected`: `fix-findings` checked the finding before or while fixing it and disputed it. The
+  finding is wrong, already fixed, not worth fixing, or needs a redesign beyond the change's
+  scope. `status_reason` says which.
+- `parked`: `review-to-green` stopped on a rail with this finding still open. `status_reason`
+  names the rail.
+- `wontfix`: the user explicitly declined the finding, or accepted it as a documented trade-off.
+  Reserved for a user decision. Pre-existing findings do not use it.
 
-**Pre-existing vs introduced is `origin`, not `status`.** A `pre-existing` finding stays `confirmed`
-(it's real and reported); downstream `fix-findings` filters on `origin: introduced`, so pre-existing
-is reported but never auto-fixed without ever needing a special status.
+Pre-existing versus introduced is `origin`, not `status`. A `pre-existing` finding stays
+`confirmed`. `fix-findings` selects only `blocking` findings, and `blocking` requires `origin:
+introduced`, so a pre-existing finding is reported but never auto-fixed.
 
 ---
 
@@ -70,22 +82,22 @@ is reported but never auto-fixed without ever needing a special status.
 fingerprint = hash(file + scope + issue_kind + subject)
 ```
 
-- **`dimension` is deliberately NOT in the fingerprint.** One defect seen by several dimensions
-  (`structural` + `architecture` + `codex` all flag the same wrapper) is one finding — identity must
-  not depend on which reviewer reported it or at what severity, or reappearance/no-progress would flip
-  between cycles. Dimensions are recorded as metadata (`contributing_dimensions`), not identity.
-- `issue_kind` — normalized category of the problem (e.g. `missing-error-handling`,
+- `lens` is deliberately not in the fingerprint. One defect that several lenses see (Standards,
+  Architecture and the second opinion all flag the same wrapper) is one finding. Identity must
+  not depend on which lens reported it or at what severity, or reappearance and oscillation would
+  flip between cycles. Lenses are metadata (`contributing_lenses`).
+- `issue_kind` is a normalized category of the problem (e.g. `missing-error-handling`,
   `nplus1-query`, `loop-var-naming`), not the free-text summary.
-- `subject` — the stable thing the finding is about (symbol/identifier/contract), not its line.
-- **`snippet_hash` is NOT part of identity** — it lives in `evidence` only. A failed fix changes the
-  snippet but leaves the bug, so a code-text identity would miss the reappearance; a successful fix
-  removes the bug, so the semantic key stops matching. That is exactly the behaviour the rails need.
-- `scope` falls back (module / top-level / config-key / test-name / md-heading) when there is no
+- `subject` is the stable thing the finding is about (symbol, identifier or contract), not its
+  line.
+- `snippet_hash` is not part of identity. It lives in `evidence` only. A failed fix changes the
+  snippet but leaves the bug, so a code-text identity would miss the reappearance. A successful
+  fix removes the bug, so the semantic key stops matching. The rails need exactly that.
+- `scope` falls back (module, top-level, config key, test name, md heading) when there is no
   enclosing symbol, so script and config findings still get a stable key.
-- **Normalize before hashing.** The orchestrator (sole writer) derives `issue_kind` (a kebab-case
-  category, e.g. `missing-error-handling`, `nplus1-query`, `loop-var-naming`) and `subject` (the bare
-  symbol/identifier) from the reviewer's record — it does not trust each reviewer to invent them
-  consistently — so the same defect from two reviewers hashes to one fingerprint.
+- Normalize before hashing. The orchestrator (sole writer) derives `issue_kind` (kebab-case) and
+  `subject` (the bare symbol or identifier) from the lens's record. It does not trust each lens
+  to invent them consistently, so the same defect from two lenses hashes to one fingerprint.
 
 ---
 
@@ -93,94 +105,102 @@ fingerprint = hash(file + scope + issue_kind + subject)
 
 - Central dir under the runtime's own config home (`~/.claude/`, `~/.codex/`, or `~/.pi/`;
   machine-local; persists across sessions).
-- **One snapshot per review session**, keyed by a stable
-  `review_session_id = repo + base_sha + initial_head_sha + worktree-path`. The id is **frozen at
-  cycle 1** and does NOT change as the loop's commits advance HEAD — this is what lets later cycles
-  dedupe + detect reappearance against prior findings (keying on the moving `head_sha` would spawn a
-  new snapshot every cycle and lose history).
-- Each finding still records the `head_sha` of the cycle that observed it (the moving head), separate
-  from the frozen `initial_head_sha` in the session id.
-- A **current-session pointer** per repo records the active snapshot so a later session (fix tomorrow)
-  resolves the right one.
-- The snapshot records **`reviewers_enabled`**: the participant set that ran (the dimensions, plus
-  `codex` when its MCP was present) and, when `--reviewers` was given, the resolved model per
-  participant ([`reviewer-models.md`](reviewer-models.md)). A resumed run therefore reproduces the same
-  reviewers on the same models rather than silently reverting to the defaults.
+- One snapshot per review session, keyed by a stable
+  `review_session_id = repo + base_sha + initial_head_sha + worktree-path`. The id is frozen at
+  cycle 1 and does not change as the loop's commits advance HEAD. This lets later cycles dedup
+  and detect reappearance against earlier findings. Keying on the moving `head_sha` would start
+  a new snapshot every cycle and lose the history.
+- Each finding still records the `head_sha` of the cycle that observed it (the moving head),
+  separate from the frozen `initial_head_sha` in the session id.
+- A current-session pointer per repo records the active snapshot, so a later session (fix
+  tomorrow) resolves the right one.
 
 ### Per-cycle ledger
 
-The snapshot holds an append-only ledger, one entry per loop cycle, so the rails are determinable:
+The snapshot holds an append-only ledger, one entry per cycle, so the rails can be computed.
+A standalone `code-review` writes one entry.
 
 | Field | Notes |
 |---|---|
 | `cycle_id` | incrementing cycle number |
 | `head_sha` | HEAD at the start of this cycle (moves as fixes commit) |
+| `reviewed_range` | the range reviewed this cycle: `<base_sha>...<head>` on cycle 1, then `<previous head>..<head>` |
+| `lenses_run` | lenses that ran this cycle, plus the second-opinion model when one ran |
+| `not_covered` | lenses skipped or failed, tools that could not run, and `no spec` when there was none |
 | `observed_fingerprints` | every fingerprint this cycle's review surfaced |
-| `confirmed_introduced` | fingerprints confirmed + introduced + above floor this cycle |
-| `fixed_this_cycle` | fingerprints fix-findings marked `fixed` this cycle |
-| `verified_absent` | fingerprints fixed in a prior cycle that this cycle's review did NOT surface |
+| `confirmed_introduced` | the open set after this cycle's review: fingerprints at `confirmed`, `introduced` and `blocking` |
+| `fixed_this_cycle` | fingerprints `fix-findings` marked `fixed` this cycle |
+| `rejected_this_cycle` | fingerprints `fix-findings` marked `rejected` this cycle |
+| `verified_absent` | fingerprints fixed in an earlier cycle that this cycle's check found still absent |
+| `fix_lines_added` | cumulative changed lines (added plus removed) from fix commits, across all cycles so far |
 
 ### Cross-session resume
 
-On resume, compare current `HEAD` to the latest ledger entry's `head_sha`. If it advanced **outside**
-the loop (someone else committed), do not silently continue — surface the drift and require an explicit
-choice: resume the session, or start a fresh one. HEAD advancing *because of the loop's own commits* is
-expected and not drift.
+On resume, compare the current `HEAD` to the latest ledger entry's `head_sha`. If it advanced
+outside the loop (someone else committed), do not continue silently. Surface the drift and ask
+the user to choose: resume the session, or start a fresh one. HEAD advancing because of the
+loop's own commits is expected and is not drift.
 
-## Run metadata — failed reviewers
+## Run metadata: not covered
 
-A reviewer that errors or returns nothing is recorded as run metadata (`reviewer`, `error`,
-`cycle_id`), **not** as a finding. An empty reviewer is a fact about the reviewer, never proof of clean
-code — never silently drop it.
+A lens that errors or returns nothing is recorded in the ledger's `not_covered`, not as a
+finding. An empty lens result is a fact about the lens, never proof of clean code. Never drop it
+silently.
 
 ---
 
 ## Write discipline — the orchestrator is the sole writer
 
-- Reviewer / fixer / verifier subagents **return** structured results to the orchestrator; they
-  **never** write the store. The single-threaded orchestrator serializes all writes — **no locks, no
-  event-sourcing** needed.
-- `deep-review`: orchestrator writes `candidate`s, then promotes survivors to `confirmed` /
-  `not_reproduced` after verify.
-- `fix-findings`: fixer subagents return results; the orchestrator updates `status` and writes commits.
-- One writer ⇒ single source of truth, no partial-record corruption.
+- Lens, validation and fixer subagents return structured results to the orchestrator. They never
+  write the store. The single-threaded orchestrator serializes all writes, so no locks and no
+  event-sourcing are needed.
+- `code-review`: the orchestrator writes `candidate`s, then sets each to `confirmed` or
+  `not_reproduced` after validation.
+- `fix-findings`: fixer subagents return results; the orchestrator updates `status` and makes the
+  commits.
+- `review-to-green`: the orchestrator writes the ledger's loop fields and sets `parked`.
+- One writer gives a single source of truth and no partial-record corruption.
 
 ---
 
 ## Origin (introduced vs pre-existing)
 
-- Capture the merge-base **once at run start** (`base_sha`); compute origin and re-review against that
-  **frozen** base every cycle — never the moving per-cycle diff (else the loop's own fixes flip a
-  finding's origin).
-- `introduced` requires an `origin_reason` from the enum + supporting `evidence` — not merely "a line
-  was added".
-- The loop **auto-fixes `introduced` only**; `pre-existing` are stored + reported, remain `confirmed`
-  (NOT `wontfix` — that is reserved for explicit user decline), and are filtered out by `fix-findings`'
-  `origin: introduced` selection, so they are never auto-fixed (honours surgical-changes).
+- Capture the merge-base once at run start (`base_sha`). Compute origin against that frozen base
+  every cycle, never against the moving per-cycle range, or the loop's own fixes would flip a
+  finding's origin.
+- `introduced` requires an `origin_reason` from the enum and supporting `evidence`. A line merely
+  being added is not enough.
+- The loop auto-fixes `introduced` blocking findings only. `pre-existing` findings are stored and
+  reported, stay `confirmed` (`wontfix` is reserved for a user decision), and never block, so
+  `fix-findings` never selects them. This honours surgical changes.
 
 ---
 
 ## Dedup
 
-A single pass **before** verify, since the fingerprint already excludes `dimension`: cluster every
-candidate by fingerprint (`file + scope + issue_kind + subject`), keeping all members' `evidence`. A
-defect seen through several lenses (a pass-through wrapper flagged by `structural` + `architecture` +
-`codex`) lands in one cluster automatically. For the merged finding, set `severity` to the **highest**
-among members, `contributing_dimensions` to the sorted set, and the display `dimension` to the
-highest-severity contributor (ties alphabetical — deterministic).
+A single pass before validation, since the fingerprint already excludes `lens`: cluster every
+candidate by fingerprint (`file + scope + issue_kind + subject`) and keep all members'
+`evidence`. A defect seen through several lenses lands in one cluster. The merged finding takes
+`likelihood` and `impact` from its highest-severity member (ties: the higher impact), sets
+`contributing_lenses` to the sorted set, and sets the display `lens` to the highest-severity
+contributor (ties alphabetical).
 
-Verify the **merged cluster**, not a lone representative. Genuinely distinct issues differ in
-`issue_kind` or `subject`, so they keep separate fingerprints — don't force-collapse them to save tokens.
+Validate the merged cluster, not a lone member. Genuinely distinct issues differ in `issue_kind`
+or `subject`, so they keep separate fingerprints. Do not force-collapse them to save tokens.
 
 ---
 
-## Reappearance + no-progress (loop rails)
+## Loop rails
 
-Both are computed from the **per-cycle ledger**, on **fingerprints**, never line numbers.
+`review-to-green` computes every rail from the per-cycle ledger and the store, on fingerprints,
+never on line numbers. When one trips, it stops, sets each open blocking finding to `parked` with
+the rail as `status_reason`, and hands back to the user.
 
-- **Reappearance** — a fingerprint in this cycle's `confirmed_introduced` that appears in any prior
-  cycle's `fixed_this_cycle` (i.e. it was fixed, the next review found it absent, and now it's back) →
-  the fix didn't hold → stop + escalate.
-- **No-progress** — this cycle resolved no above-floor fingerprint (`fixed_this_cycle` empty) AND
-  reduced no above-floor severity, excluding fingerprints newly observed this cycle that are
-  `pre-existing` → stop + escalate.
+| Rail | Trips when |
+|---|---|
+| cap | the cycle count reaches `--cap` (default 5) |
+| scope | a fix-unit touched a file outside its findings' `intended_files`; `fix-findings` reports this instead of committing the unit |
+| size budget | `fix_lines_added` exceeds 50% of the changed lines in the original diff (`<base_sha>...<initial_head_sha>`) |
+| reappearance | a fingerprint in this cycle's `confirmed_introduced` appears in an earlier cycle's `fixed_this_cycle`: the fix did not hold |
+| oscillation | this cycle's `confirmed_introduced` equals an earlier cycle's set, for example A open, then B, then A again |
+| no progress | this cycle's `fixed_this_cycle` and `rejected_this_cycle` are both empty while blocking findings are open |

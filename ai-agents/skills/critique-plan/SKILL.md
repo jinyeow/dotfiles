@@ -69,8 +69,8 @@ redefines a canonical term.
 
 Out of scope for this critic: implementation quality, performance, tests, code style, "you could
 also…" ideas — anything not anchored in the domain model, apart from the reshape check. Those
-belong to `code-review` (Standards and Spec axes) or `quick-review`/`deep-review` (code
-quality), which run after implementation. With nothing anchored, the critic returns exactly:
+belong to `code-review`, which runs after implementation. With nothing anchored, the critic
+returns exactly:
 `No objections — the plan is consistent with the domain model.`
 
 Every return, clean or not, ends with one evidence line:

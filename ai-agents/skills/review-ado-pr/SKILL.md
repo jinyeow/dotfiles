@@ -1,6 +1,6 @@
 ---
 name: review-ado-pr
-description: "Review an Azure DevOps pull request locally, end-to-end. Use when the user says 'review this ADO PR', 'review PR <dev.azure.com url>', 'review azure devops PR <id>', 'review my pending ADO PRs' (no id needed — it discovers), or asks to look over an ADO pull request. Fetches the PR into the dedicated review worktree, runs IaC gates (Bicep), reads the diff, does a cross-model review, and — only on approval — posts inline threads / a vote back. Read-only by default. NOT for GitHub PRs (use quick-review) or the local working diff (use /code-review)."
+description: "Review an Azure DevOps pull request locally, end-to-end. Use when the user says 'review this ADO PR', 'review PR <dev.azure.com url>', 'review azure devops PR <id>', 'review my pending ADO PRs' (no id needed — it discovers), or asks to look over an ADO pull request. Fetches the PR into the dedicated review worktree, runs IaC gates (Bicep), reads the diff, does a cross-model review, and — only on approval — posts inline threads / a vote back. Read-only by default. NOT for GitHub PRs or the local working diff (use code-review for both)."
 metadata:
   author: justin
   version: "1.0.0"
@@ -17,7 +17,7 @@ read it, review it across models, and report. Posting anything back to the PR (t
 - The user gives an ADO PR URL or id and wants it reviewed.
 - Trigger phrases: "review this ADO PR", "review PR <url>", "review azure devops PR <id>",
   "review my pending ADO PRs" (no id — discover via step 1).
-- NOT GitHub (use the `quick-review` skill), NOT the uncommitted working diff (use `/code-review`).
+- NOT GitHub and NOT the uncommitted working diff: use the `code-review` skill for both.
 
 ## Preconditions
 
@@ -64,11 +64,10 @@ read it, review it across models, and report. Posting anything back to the PR (t
    If you cannot run a real gate, say so — never imply a compile/lint happened when it didn't.
 
 5. **Review across models.**
-   - Do a multi-dimension pass (correctness, security, IaC-config, conventions) — reach for the
-     `quick-review` skill for anything non-trivial, or `deep-review` when the PR's risk earns the
-     full seven-dimension fan-out.
-   - Run a **Codex** second opinion (`codex-review` skill). On ADO the branch may be behind the PR
-     head, so write the true PR diff to a file and hand Codex that file plus any context it needs.
+   - Run the `code-review` skill on the PR range (`origin/<target>...<prHead>`). It picks its
+     lenses by what the diff touches (Security for IaC and pipelines) and offers a second opinion
+     from another model when one is available. On ADO the branch may be behind the PR head, so
+     hand the second-opinion model the true PR diff as a file plus any context it needs.
    - **Verify every claim against the source file or vendor docs before asserting it.** An API/property
      "looks removed" is not a finding until the versioned schema doc confirms it.
    - Review order: tests, then source, then pipelines, then everything else. For PowerShell modules, stage the module under test in a versioned `PSModulePath` layout and stub missing `Az.*` cmdlets so Pester mocks bind. Run PSScriptAnalyzer as CI does (`-Recurse`, the repo settings file).
@@ -103,7 +102,7 @@ read it, review it across models, and report. Posting anything back to the PR (t
 
 ## Related
 
-- `bicep-tdd` — the IaC gate for step 4.  ·  `quick-review` / `deep-review` / `codex-review` — the review passes in step 5.
+- `bicep-tdd` — the IaC gate for step 4.  ·  `code-review` — the review pass in step 5.
 - `prr` (PowerShell profile helper) — collapses discovery + steps 2–3 from a shell: fzf PR picker →
   review worktree → `nvim "+AdoPrReview <id>"`.
 - The `local-pr-review` brain initiative and `ado-pr.nvim` (a Neovim ADO PR plugin folding steps 2–3

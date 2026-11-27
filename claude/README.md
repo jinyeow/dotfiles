@@ -237,7 +237,7 @@ contracts; there are no named council custom agents. `/council ...` defaults to 
 (three critics + chair); add `--debate` for four critics plus rebuttals, and `--codex` only
 when an external Codex seat is explicitly wanted. Charter seats are limited to 2–5 and
 normal calls to 12. A positional panel (`/council code <target>`) pins it. Reports use `.agents/council/reports/`. For branch
-diffs/PRs use `quick-review` (or `deep-review`), not council.
+diffs/PRs use `code-review`.
 
 The portable `walk-me-through-it` skill is the post-`implement` mentoring stage of the main flow: it
 walks the user through a diff like a senior pairing with a junior (checkpoint tour /
@@ -248,41 +248,27 @@ into every tour and updated at close-out (delta shown for veto): general-skill o
 `~/.claude/learner-profile.md` (untracked, created on first use), domain-specific ones in the
 resolved project-brain's `learner.md`.
 
-The review→fix skills are portable (`ai-agents/skills/`) and compose around the portable
-`_shared/` contract: **`quick-review`** is the default pass — one folded reviewer (correctness +
-conventions + tests) plus Codex, two participants; **`deep-review`** is the opt-in heavy version
-of the same pipeline, fanning out all seven per-dimension reviewers + Codex. Both adversarially
-verify their findings and emit them to the same findings store. **`fix-findings`** consumes that
-store and applies fixes (parallel, partitioned by conflict-set, one commit per fix-unit);
-**`fix-until-clean`** is the thin orchestrator that chains a review pass with the fix pass each
-cycle and loops to a deterministic clean gate — `quick-review` by default, `deep-review` under
-`--deep`. `--reviewers <model>[,<model>][:<effort>]` picks the reviewer models (reviewer-only;
-fixers stay pinned). On Claude Code the fan-out dispatches one `Agent` tool call per reviewer
-dimension, restricted to that dimension's read-only tool allowlist
-(`ai-agents/skills/deep-review/DISPATCH.md`); the same four skills also project to Codex CLI and
-Pi. Pi's per-dimension scoping is expressed via `pi-subagents`' `tools:` frontmatter; Codex's
-`[agents.<name>]` tables in `codex/config.toml` carry description-only spawn guidance —
-per-role `sandbox_mode`/`mcp_servers` are unsupported at codex-cli 0.147.0, so enforcement
-is the orchestrating session's own top-level `sandbox_mode` (which may itself be
-`workspace-write`, in which case nothing enforces a reviewer's read-only posture) —
-dispatched through Codex's native `spawn_agent` tool; see DISPATCH.md for the schema
-evidence and what the Codex smoke test actually confirmed (the `spawn_agent` dispatch
-primitive, not per-role scoping).
-`codex-review` is the standalone lightweight Codex second-opinion pass. It is portable
-(`ai-agents/skills/codex-review/`), projected to Claude Code and Pi, but excluded from
-Codex CLI itself — a Codex-on-Codex review has no target.
+The review and fix skills are portable (`ai-agents/skills/`) and compose around the portable
+`_shared/` contract. `code-review` runs the Standards, Spec and Bugs lenses on every diff, plus
+the Security, Performance, Tests and Architecture lenses when the diff touches their area. It
+validates every finding against the code, rates it likelihood × impact, and writes confirmed
+findings to the findings store. `fix-findings` consumes that store and applies minimal fixes
+(parallel, partitioned by conflict-set, one commit per fix-unit). `review-to-green` is the thin
+orchestrator that runs the two each cycle until nothing blocking is left or a rail stops it. On
+Claude Code each lens is an `Agent` tool call restricted to `Read`, `Grep` and `Glob`
+(`ai-agents/skills/_shared/lenses.md`). The same skills also project to Codex CLI and Pi. Pi
+expresses the read-only scoping through `pi-subagents`' `tools:` frontmatter. Codex dispatches
+the `reviewer` and `fixer` roles in `codex/config.toml` through its native `spawn_agent` tool;
+those roles carry description-only guidance, so enforcement is the session's own top-level
+`sandbox_mode` (see `codex/README.md`, "Skills").
 
 `ai-agents/skills/_shared/` is **not a skill** — see `../ai-agents/README.md` for what it
-holds. It has
-no `SKILL.md`, so the harness ignores it as a skill; `ai-agents/skills/codex-review/SKILL.md`
-still reaches it via `../_shared/<file>`, resolved at the installed destination. On Codex CLI
-itself, `--reviewers` is unsupported, so the orchestrating skill refuses it with an actionable
-error rather than falling back to defaults — see `reviewer-models.md`'s Scope note for the
-mechanism and `docs/adr/reviewers-flag-unsupported-on-codex-cli.md` for the decision; Pi still
-has no native equivalent.
+holds. It has no `SKILL.md`, so the harness ignores it as a skill; the review skills reach it
+via `../_shared/<file>`, resolved at the installed destination.
 
-Built-in Claude Code skills (`code-review`, `compact`, `deep-research`, `security-review`,
-`verify`, etc.) are provided by the harness and do not need to be installed.
+Built-in Claude Code skills (`compact`, `deep-research`, `security-review`, `verify`, etc.) are
+provided by the harness and do not need to be installed. The portable `code-review` skill
+replaces the built-in `/code-review`.
 
 ## Agents
 

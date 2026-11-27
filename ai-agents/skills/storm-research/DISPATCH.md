@@ -2,8 +2,7 @@
 
 How `storm-research` launches its two batches of parallel children — the five expert
 lenses in Phase 1, and the citation verifiers in Phase 4b — on whichever runtime is
-hosting the session. Unlike `deep-review` (`../deep-review/DISPATCH.md`), this skill needs
-no per-child tool scoping: every lens and every verifier shares the same job (real web
+hosting the session. This skill needs no per-child tool scoping: every lens and every verifier shares the same job (real web
 research plus a text reply), so the only requirement is a distinct `task`/prompt per
 child, dispatched together so they run concurrently.
 
@@ -45,8 +44,7 @@ an ordered array, not a key map, so read results by index or `.map(...)`, not by
 parallel and this skill wants each brief returned as text, not written to a shared file,
 override `output: false` on every `runs.all` item to disable that per-agent default and rely on
 `outputMode`'s `"inline"` default (`pi-subagents`' sole-writer invariant: children return
-text, the orchestrator is the only writer — same invariant `../deep-review/DISPATCH.md`
-documents for its own children). `output` is a recognized per-item execution param at this
+text, the orchestrator is the only writer). `output` is a recognized per-item execution param at this
 version (`src/workflows/scripted-workflow.ts`'s `AUTO_RESUME_PARAM_KEYS` lists it alongside
 `outputMode`), so the override still applies. Phase 4b's citation verifiers use the identical
 shape, one `runs.all` item per citation cluster.

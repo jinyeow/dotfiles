@@ -688,7 +688,7 @@ Describe 'setup.ps1 pi module' {
             $output | Should -Match '=== Pi ==='
             $output | Should -Match '(would install Pi via npm|pi is already installed)'
             $output | Should -Match 'pi[\\/]agent[\\/]settings\.json'
-            foreach ($name in @('council', 'codex-review'))
+            foreach ($name in @('council', 'code-review'))
             {
                 $output | Should -Match "pi[\\/]agent[\\/]skills[\\/]$name -> .*ai-agents[\\/]skills[\\/]$name"
             }
@@ -765,15 +765,13 @@ Describe 'setup.ps1 Claude skill projection safety' {
             $output = & pwsh -NoProfile -File $script:SetupScript -Module claude -DryRun 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $output | Should -Match '\.claude\\skills\\council -> .*ai-agents\\skills\\council'
-            $output | Should -Match '\.claude\\skills\\codex-review -> .*ai-agents\\skills\\codex-review'
+            $output | Should -Match '\.claude\\skills\\code-review -> .*ai-agents\\skills\\code-review'
             # _shared moved portable with the review skills (#115): now sourced from
             # ai-agents\skills\_shared, not the removed claude\skills\_shared, and not the
             # unrelated, still-source-only ai-agents\_shared (no `skills\` segment).
             $output | Should -Match '\.claude\\skills\\_shared -> .*ai-agents\\skills\\_shared'
             $output | Should -Not -Match '\.claude\\skills\\_shared -> .*ai-agents\\_shared'
-            $output | Should -Match '\.claude\\skills\\quick-review -> .*ai-agents\\skills\\quick-review'
-            $output | Should -Match '\.claude\\skills\\deep-review -> .*ai-agents\\skills\\deep-review'
-            $output | Should -Match '\.claude\\skills\\fix-until-clean -> .*ai-agents\\skills\\fix-until-clean'
+            $output | Should -Match '\.claude\\skills\\review-to-green -> .*ai-agents\\skills\\review-to-green'
             $output | Should -Match '\.claude\\skills\\fix-findings -> .*ai-agents\\skills\\fix-findings'
         }
         finally
@@ -1248,13 +1246,10 @@ Describe 'setup.ps1 codex module shared skills' {
             # Patterns anchor on the "link -> target" separator so `tdd` can't false-match a
             # future `tdd-something` skill (`\b` treats the hyphen as a word boundary).
             $output | Should -Match '\[DRY RUN\] junction .*\.codex\\skills\\tdd ->'
-            foreach ($name in @('council', 'quick-review', 'deep-review', 'fix-until-clean', 'fix-findings', '_shared'))
+            foreach ($name in @('council', 'code-review', 'review-to-green', 'fix-findings', '_shared'))
             {
                 $output | Should -Match "\\.codex\\skills\\$name -> .*ai-agents\\skills\\$name"
             }
-            # codex-review is portable (ai-agents/skills/) but excluded from Codex on purpose:
-            # it is a self-review with no target, since Codex would be reviewing itself.
-            $output | Should -Not -Match '\.codex\\skills\\codex-review ->'
             # Claude-only skills are not sourced into Codex.
             $output | Should -Not -Match '\.codex\\skills\\router ->'
         }
@@ -1312,10 +1307,7 @@ Describe 'codex/config.toml agents table' {
         $agentNames = [regex]::Matches($content, '(?m)^\[agents\.([a-zA-Z0-9_]+)\]\r?$') |
             ForEach-Object { $_.Groups[1].Value }
 
-        $expectedAgents = @(
-            'review_correctness', 'review_security', 'review_performance', 'review_structural',
-            'review_architecture', 'review_conventions', 'review_tests', 'review_folded', 'fixer'
-        )
+        $expectedAgents = @('reviewer', 'fixer')
 
         # Exact-multiset check: membership alone would still pass a duplicate
         # [agents.<name>] table (invalid TOML) or an unexpected extra role.
@@ -1325,7 +1317,7 @@ Describe 'codex/config.toml agents table' {
         foreach ($name in $expectedAgents)
         {
             # Case-sensitive: Should -Contain is case-insensitive, which would let a
-            # case-only rename (e.g. review_tests -> REVIEW_TESTS) pass here despite
+            # case-only rename (e.g. reviewer -> REVIEWER) pass here despite
             # breaking Codex's case-sensitive agent_type resolution.
             ($agentNames -ccontains $name) | Should -BeTrue -Because "agents.$name should exist with exact casing"
 

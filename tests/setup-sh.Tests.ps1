@@ -146,7 +146,7 @@ Describe 'setup.sh --dry-run' -Skip:$IsWindows {
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m pi --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
-            foreach ($name in @('council', 'codex-review'))
+            foreach ($name in @('council', 'code-review'))
             {
                 $out | Should -Match "\.pi/agent/skills/$name -> .*ai-agents/skills/$name"
             }
@@ -169,15 +169,13 @@ Describe 'setup.sh --dry-run' -Skip:$IsWindows {
             $out = & $script:Bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $out | Should -Match '\.claude/skills/council -> .*ai-agents/skills/council'
-            $out | Should -Match '\.claude/skills/codex-review -> .*ai-agents/skills/codex-review'
+            $out | Should -Match '\.claude/skills/code-review -> .*ai-agents/skills/code-review'
             # _shared moved portable with the review skills (#115): now sourced from
             # ai-agents/skills/_shared, not the removed claude/skills/_shared, and not the
             # unrelated, still-source-only ai-agents/_shared (no `skills/` segment).
             $out | Should -Match '\.claude/skills/_shared -> .*ai-agents/skills/_shared'
             $out | Should -Not -Match '\.claude/skills/_shared -> .*ai-agents/_shared'
-            $out | Should -Match '\.claude/skills/quick-review -> .*ai-agents/skills/quick-review'
-            $out | Should -Match '\.claude/skills/deep-review -> .*ai-agents/skills/deep-review'
-            $out | Should -Match '\.claude/skills/fix-until-clean -> .*ai-agents/skills/fix-until-clean'
+            $out | Should -Match '\.claude/skills/review-to-green -> .*ai-agents/skills/review-to-green'
             $out | Should -Match '\.claude/skills/fix-findings -> .*ai-agents/skills/fix-findings'
         }
         finally
@@ -460,13 +458,10 @@ Describe 'setup.sh Codex skill projection' -Skip:$IsWindows {
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m codex --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
-            foreach ($name in @('council', 'quick-review', 'deep-review', 'fix-until-clean', 'fix-findings', '_shared'))
+            foreach ($name in @('council', 'code-review', 'review-to-green', 'fix-findings', '_shared'))
             {
                 $out | Should -Match "\.codex/skills/$name -> .*ai-agents/skills/$name"
             }
-            # codex-review is portable (ai-agents/skills/) but excluded from Codex on purpose:
-            # it is a self-review with no target, since Codex would be reviewing itself.
-            $out | Should -Not -Match '\.codex/skills/codex-review ->'
             $out | Should -Not -Match '\.codex/skills/router ->'
         }
         finally

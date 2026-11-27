@@ -1,3 +1,0 @@
-interface:
-  display_name: "Fix Until Clean"
-  short_description: "Review and fix a diff until it passes"

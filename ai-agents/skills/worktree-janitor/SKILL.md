@@ -1,6 +1,6 @@
 ---
 name: worktree-janitor
-description: "Automate the post-merge worktree cleanup ritual for a bare-worktree repo layout: scan every worktree, check merge/completion status (GitHub or Azure DevOps) or the project-brain STATUS.md for local-only work, then remove and branch-delete what is confirmed safe. Use when the user says 'clean up my worktrees', 'clean up worktrees', 'prune merged worktrees', 'worktree janitor', or asks to remove worktrees for branches that have already merged. NOT for creating a new worktree (see `AGENTS.md` → 'Git worktrees'), NOT for reviewing a PR (`review-ado-pr`, `quick-review`/`deep-review`), and NOT for repos that are a normal single-worktree clone — this skill only applies to the bare-worktree layout."
+description: "Automate the post-merge worktree cleanup ritual for a bare-worktree repo layout: scan every worktree, check merge/completion status (GitHub or Azure DevOps) or the project-brain STATUS.md for local-only work, then remove and branch-delete what is confirmed safe. Use when the user says 'clean up my worktrees', 'clean up worktrees', 'prune merged worktrees', 'worktree janitor', or asks to remove worktrees for branches that have already merged. NOT for creating a new worktree (see `AGENTS.md` → 'Git worktrees'), NOT for reviewing a PR (`review-ado-pr`, `code-review`), and NOT for repos that are a normal single-worktree clone — this skill only applies to the bare-worktree layout."
 metadata:
   author: justin
   version: "1.0.0"
@@ -21,7 +21,7 @@ approves it.
 - Trigger phrases: "clean up my worktrees", "clean up worktrees", "prune merged worktrees",
   "worktree janitor".
 - NOT for creating a new worktree (`AGENTS.md` → "Git worktrees" covers that).
-- NOT for reviewing an existing PR (`review-ado-pr`, `quick-review`/`deep-review`).
+- NOT for reviewing an existing PR (`review-ado-pr`, `code-review`).
 - NOT for a normal single-worktree clone — only applies to the bare-worktree layout (a sibling
   `.bare/` next to `main`, or confirm via `git worktree list`).
 

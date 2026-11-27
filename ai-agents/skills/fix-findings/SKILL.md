@@ -1,20 +1,19 @@
 ---
 name: fix-findings
-description: Apply fixes for findings produced by quick-review or deep-review. Reads the findings store, fixes the introduced findings in parallel (partitioned so no two fixers touch the same file), runs tests and linter, and commits one fix-unit at a time. Use when asked to "fix the findings", "apply the review fixes", "fix the introduced issues", or after a review pass. Reach for it from fix-until-clean.
+description: Apply fixes for blocking findings from code-review. Reads the findings store, re-checks each finding and rejects the wrong or not-worth-it ones with a reason, fixes the rest with minimal in-scope fixes in parallel (no two fixers on one file), runs tests and linter, and commits one fix-unit at a time. Use when asked to "fix the findings", "apply the review fixes", "fix the introduced issues", or after a code-review. review-to-green runs it each cycle.
 ---
 
 # Fix Findings
 
-Consume the findings store, fix the `introduced` findings, commit. This skill **consumes** a snapshot
-that a review skill emitted — `quick-review` (the default) or `deep-review` — and behaves identically
-either way, since both write the same schema. It does not review or loop (that's `fix-until-clean`).
-It is independently invocable.
+Consume the findings store, fix the blocking findings, commit. This skill consumes a snapshot
+that `code-review` wrote. It does not review or loop: `review-to-green` does that. It is
+independently invocable.
 
-Contracts: the record schema + store discipline are
+Contracts: the record schema and store discipline are
 [`../_shared/findings-schema.md`](../_shared/findings-schema.md); coding conventions are the
 runtime's own `AGENTS.md` (`~/.claude/AGENTS.md`, `~/.codex/AGENTS.md`, or — on Pi, which has no
 installed home-dir copy — the project's own root `AGENTS.md`, read directly). Read
-the schema first — the partition and TDD rules below key off its fields.
+the schema first — the selection, partition and TDD rules below key off its fields.
 
 ## Quick start
 
@@ -30,7 +29,7 @@ store location + keying.
 ## Pipeline
 
 ```
-LOAD → PARTITION → FIX (parallel) → TEST → COMMIT
+LOAD → CHECK → PARTITION → FIX (parallel) → TEST → COMMIT
 ```
 
 The **orchestrator** (you) is the sole writer of the store and the only one that commits. Fixer
@@ -38,17 +37,29 @@ workers **return** their results to you; they don't write the store or run git.
 
 ### Step 1 — Load
 
-Resolve the snapshot (arg or current-session pointer). Select findings at `status: confirmed` AND
-`origin: introduced` AND **at or above the floor** (default MEDIUM). Leave `pre-existing` findings
-alone (reported, not fixed — fixing them violates surgical-changes); leave below-floor findings
-reported but unfixed. Order the selected set **build-breakers first** (a parse/compile error fails the
-lint + test gate for the whole file, so it must be fixed before any test-verified fix can run), then by
-severity (CRITICAL → … → the floor).
+Resolve the snapshot (arg or current-session pointer). Select findings at `status: confirmed` with
+`blocking: true` (HIGH or MED, `origin: introduced`). Leave `pre-existing` findings alone: they are
+reported, and fixing them breaks surgical changes. Leave LOW findings reported but unfixed. Order
+the selected set build-breakers first (a parse or compile error fails the lint and test gate for
+the whole file, so fix it before any test-verified fix can run), then HIGH, then MED.
 
-**Done when:** the working set is the confirmed-introduced-above-floor findings, ordered build-breakers
-first then by severity.
+**Done when:** the working set is the confirmed blocking findings, ordered build-breakers first,
+then HIGH, then MED.
 
-### Step 2 — Build fix-units, partition by conflict-set
+### Step 2 — Check before fixing
+
+For each selected finding, re-read the code at its `file` and `lines`. Set it to `rejected`, with
+a one-line `status_reason`, and do not fix it when:
+
+- the finding is wrong;
+- the code already fixes it;
+- the fix is not worth it: YAGNI, or it needs a redesign beyond the change's scope.
+
+Record each rejected fingerprint in this cycle's ledger `rejected_this_cycle`.
+
+**Done when:** every selected finding is still `confirmed` or is `rejected` with a reason.
+
+### Step 3 — Build fix-units, partition by conflict-set
 
 1. Resolve each finding's `intended_files` (the files its fix will touch) if unset — inspect the
    finding + code.
@@ -61,47 +72,56 @@ first then by severity.
 **Done when:** every finding belongs to exactly one fix-unit, and units are assigned to parallel
 batches / the serial queue with no two concurrent fixers sharing a file.
 
-### Step 3 — Fix (parallel within a batch)
+### Step 4 — Fix (parallel within a batch)
 
 The orchestrator marks every fix-unit in the batch `fixing` in the store **before** launching fixers
-(so a crash mid-batch leaves visible state). Then dispatch one fixer worker per fix-unit in the
-batch, together when parallel dispatch is available. How workers are launched per runtime is
-[`../deep-review/DISPATCH.md`](../deep-review/DISPATCH.md) — on Codex, fix-unit fixers dispatch as
+(so a crash mid-batch leaves visible state). Then start one fixer per fix-unit in the batch, together
+when parallel dispatch is available. Start each fixer as a fresh-context subagent; on Codex,
 `agent_type: "fixer"`. Each fixer, for its unit:
 
 1. State a one-sentence "why" (the defect being fixed / invariant enforced) before editing.
-2. **TDD gate on `fix_verification`** (if a unit groups findings of mixed types, the strictest
+2. Apply the minimal fix rule below.
+3. **TDD gate on `fix_verification`** (if a unit groups findings of mixed types, the strictest
    applies — `test` wins):
    - `test` → write the failing test first, confirm RED, then the minimal fix to GREEN. (A
-     `tests`-dimension finding is itself test code — apply it and confirm the suite goes GREEN, no
+     `tests`-lens finding is itself test code — apply it and confirm the suite goes GREEN, no
      separate RED.)
    - `lint` / `manual-static` / `not-applicable` → apply the fix directly.
-3. Run the linter on touched files (see [REFERENCE.md](REFERENCE.md)); fix violations the edit
+4. Run the linter on touched files (see [REFERENCE.md](REFERENCE.md)); fix violations the edit
    introduced before returning.
-4. Return the result (files changed, test added, outcome) — do **not** commit or write the store.
+5. Return the result (files changed, test added, outcome, or `rejected` with a reason) — do **not**
+   commit or write the store.
 
-After the batch returns, the orchestrator updates the store from the returned results.
+#### Minimal fix
+
+Change only what the finding needs. Add no new abstractions, refactors, renames or extra features.
+Touch only the fix-unit's `intended_files`. If a proper fix needs more than that, return
+`rejected` with the reason "needs redesign" and change nothing.
+
+After the batch returns, the orchestrator updates the store from the returned results. It compares
+each unit's changed files with its `intended_files`. A unit that touched any other file is a scope
+breach: do not commit it, leave its findings at `fixing`, and report the breach to the caller.
 
 **Done when:** every fix-unit in the batch has a returned result; repeat for the next batch / serial
 item until all are done.
 
-### Step 4 — Test + lint (the gate signals)
+### Step 5 — Test + lint (the gate signals)
 
 After all fixers in this invocation return, run the **full** test suite once and the **full** project
 linter once over the source tree (see [REFERENCE.md](REFERENCE.md) — full-tree lint, not just touched
-files; the linter runs by changed-file type even when no settings file exists). Return explicit
-`suite_green` and `lint_clean` booleans to the caller (the loop reads these for its gate); `lint_clean`
-uses the project-config-or-error-only threshold in REFERENCE.md, surfacing sub-threshold diagnostics as
-LOW/CLEANUP findings. On failure: because fix-units touched disjoint files, attribute the break to a
-unit, diagnose, fix, re-run; keep an incomplete unit at `fixing` with a note rather than marking
-`fixed`.
+files; the linter runs by changed-file type even when no settings file exists). Run this step even
+when nothing was fixed, so a caller still gets the signals. Return explicit `suite_green` and
+`lint_clean` booleans to the caller (the loop reads these for its gate); `lint_clean` uses the
+project-config-or-error-only threshold in REFERENCE.md, surfacing sub-threshold diagnostics as LOW
+findings. On failure: because fix-units touched disjoint files, attribute the break to a unit,
+diagnose, fix, re-run; keep an incomplete unit at `fixing` with a note rather than marking `fixed`.
 
 **Done when:** the full suite is green, the full-tree lint is clean, and both signals are returned.
 
-### Step 5 — Commit
+### Step 6 — Commit
 
 Commit **one fix-unit at a time**, serialized by the orchestrator. A fix-unit is normally one finding;
-merge findings into one commit only when they share a root cause. Stage only that unit's files.
+it groups findings only when they share a root cause. Stage only that unit's files.
 
 ```
 fix(<Scope>): <imperative summary> [#<finding-id>]
@@ -109,22 +129,24 @@ fix(<Scope>): <imperative summary> [#<finding-id>]
 - <file>: <what changed and why>
 ```
 
-Set each committed finding to `status: fixed` (only after Step 4's gate passed and the commit landed),
-and record its fingerprint in this cycle's ledger `fixed_this_cycle`. Conventional commits; no
-`--no-verify`; no AI/Co-Authored-By attribution.
+Set each committed finding to `status: fixed` (only after Step 5's gate passed and the commit landed),
+and record its fingerprint in this cycle's ledger `fixed_this_cycle`. Add the commit's changed lines
+(added plus removed) to the ledger's `fix_lines_added`. Conventional commits; no `--no-verify`; no
+AI/Co-Authored-By attribution.
 
 **Done when:** every fixed finding is committed, at `status: fixed`, and in `fixed_this_cycle`; the
-store reflects reality.
+store reflects reality. Return to the caller: `suite_green`, `lint_clean`, the fixed and rejected
+fingerprints, and any scope breach.
 
 ---
 
 ## Notes
 
-- **Introduced only.** Pre-existing findings are reported by `deep-review`, never auto-fixed here.
+- **Blocking and introduced only.** `code-review` reports pre-existing and LOW findings; this skill
+  never auto-fixes them.
 - **Model.** Fixer model selection is centralized in
   [`../_shared/reviewer-models.md`](../_shared/reviewer-models.md) § Fixer pin — read it before
-  dispatching. The reviewer-side `--reviewers` argument does not apply here: it never selects a
-  fixer model. Other runtimes select through their own defaults — no equivalent pin is defined yet.
+  dispatching. Other runtimes select through their own defaults — no equivalent pin is defined yet.
 - **Sole writer + committer.** Fixers return results; you write the store and commit — this is what
   makes parallel fixers safe (findings-schema.md).
 - **Conflict-set, not raw file count** — a finding may span files; partition on what each fix touches.

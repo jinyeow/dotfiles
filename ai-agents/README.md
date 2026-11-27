@@ -4,10 +4,10 @@ This directory owns portable agent resources. Runtime-native skills live in thei
 modules, and ownership is expressed by the directory rather than inferred from skill prose:
 
 - `skills/` — portable (agent-agnostic) skills projected to supported runtimes, including
-  `skills/_shared/` — the projected review-support contract (`dimensions.md`,
-  `findings-schema.md`, `review-rubric.md`, `reviewer-models.md`) shared by `quick-review`,
-  `deep-review`, `fix-until-clean`, and `fix-findings`, all four of which are portable skills
-  under `skills/` too.
+  `skills/_shared/` — the projected review-support contract (`lenses.md`,
+  `findings-schema.md`, `review-rubric.md`, `reviewer-models.md`) shared by `code-review`,
+  `review-to-green`, and `fix-findings`, all three of which are portable skills under `skills/`
+  too.
 - `_shared/` — holds only `banned-ai-terms.txt`, the wordlist the AI-reference hooks read
   (symlinked individually by the installers). Not a skill and not projected; unrelated to
   `skills/_shared/`.
@@ -18,10 +18,10 @@ Claude-native skills and projected support content live in `../claude/skills/`; 
 variants belong in `../codex/skills/`; Pi-native variants remain in `../pi/skills/`.
 
 Codex has no separate top-level agent directory; Codex-specific agent metadata belongs in a
-skill's `agents/openai.yaml`. The review skills' per-dimension `multi_agent` custom agents
-(a different mechanism — `spawn_agent` role definitions, not skill-level identity) are
-declared as `[agents.<name>]` tables in `codex/config.toml` instead; see
-`ai-agents/skills/deep-review/DISPATCH.md`. Pi has no built-in custom-agent directory; use a
+skill's `agents/openai.yaml`. The review skills' `multi_agent` custom agents (`reviewer` and
+`fixer`, a different mechanism: `spawn_agent` role definitions, not skill-level identity) are
+declared as `[agents.<name>]` tables in `codex/config.toml` instead; see `codex/README.md`
+("Skills"). Pi has no built-in custom-agent directory; use a
 Pi package or extension when a custom agent needs runtime integration.
 
 Installer projections consume these current source areas. The released historical roots
@@ -39,9 +39,8 @@ own `SKILL.md` frontmatter, trimmed to one line. Claude-native skills live in `.
 
 The skills taken from [mattpocock/skills](https://github.com/mattpocock/skills) are unedited copies of
 upstream commit `6f7f783` (2026-11-25), each with its `agents/openai.yaml` Codex metadata. Re-sync
-them by copying the upstream folders again; do not edit them in place. The one exception is
-`code-review`: its step 4 (a second opinion from another model) is local, so re-apply it after a
-re-sync.
+them by copying the upstream folders again; do not edit them in place. `code-review` started
+from upstream's `code-review` at that commit but is now a local skill, so a re-sync skips it.
 
 - **`agent-staging`** — Per-workspace drop and exchange zone where the developer and their agents leave files for each other across sessions, with an `agent-inputs\` lane and an `agent-outputs\` lane.
 - **`ask-matt`** — Ask which skill or flow fits your situation.
@@ -50,15 +49,13 @@ re-sync.
 - **`azure-resource-manager`** — Expert knowledge for Azure Resource Manager development including troubleshooting, best practices, decision making, architecture & design patterns, limits & quotas, security, configuration, integrations & coding patterns, and deployment.
 - **`bicep-tdd`** — Use when authoring or changing Azure Bicep and you want it validated test-first, a local RED→GREEN loop of `bicep build`/`lint`, PSRule for Azure (WAF policy-as-code), and a committed snapshot-compare regression gate, plus Pester golden-fixture tests over the compiled ARM. Needs the **Bicep CLI** on PATH and the **PSRule.Rules.Azure** module (`Install-Module PSRule.Rules.Azure -Scope CurrentUser`); stops at compiled ARM, never authenticates to a tenant.
 - **`codebase-design`** — Shared vocabulary for designing deep modules.
-- **`code-review`** — Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes: Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/spec asked for?).
-- **`codex-review`** — Get a read-only Codex (OpenAI) second opinion on the current code changes, as a cross-model review.
+- **`code-review`** — Review the diff since a fixed point on Standards, Spec and Bugs, plus Security, Performance, Tests and Architecture lenses picked by what the diff touches.
 - **`council`** — Cost-bounded adversarial review of a non-diff artifact.
 - **`critique-plan`** *(trial)* — Stress-test a drafted plan against the project's domain model before any code is written: terminology drift, wrong bounded context, ADR contradictions, bad dependency edges, reinvented concepts. Adapted from [ayoubben18/ab-method](https://github.com/ayoubben18/ab-method) (MIT).
-- **`deep-review`** — Heavy multi-dimension cross-model code review of a branch diff or PR, the opt-in deep pass, not the default.
 - **`cross-examine`** — Grill the user on the current diff until they can explain it to a junior engineer and defend it to the reviewer who must approve it, then offer to open the PR.
 - **`diagnosing-bugs`** — Diagnosis loop for hard bugs and performance regressions.
 - **`domain-modeling`** — Build and sharpen a project's domain model.
-- **`fix-findings`** — Apply fixes for findings produced by quick-review or deep-review.
+- **`fix-findings`** — Apply fixes for blocking findings from code-review.
 - **`grill-me`** — A relentless interview to sharpen a plan or design.
 - **`grill-with-docs`** — A relentless interview to sharpen a plan or design, which also creates docs (ADR's and glossary) as we go.
 - **`grilling`** — Grill the user relentlessly about a plan, decision, or idea.
@@ -76,14 +73,13 @@ re-sync.
 - **`prompt-lint`** — Score, critique, and rewrite an existing prompt against the 12-lever prompting checklist: output format, acceptance criteria, scope, and reasoning-extraction risk.
 - **`prototype`** — Build a throwaway prototype to answer a design question.
 - **`prove-it`** — Empirically prove a fix or feature works by diffing observed behavior between the base branch and the current branch.
-- **`quick-review`** — The default review pass over a branch diff or PR.
 - **`redraft`** — Scrap the current fix and redo it properly, using everything learned while building the mediocre version.
 - **`refactor-agents-md`** — Refactor an AGENTS.md file to follow progressive disclosure: split it into a minimal root file plus linked category files.
 - **`research`** — Investigate a question against high-trust primary sources and capture the findings as a Markdown file in the repo.
 - **`retro`** — Conduct a retrospective on a coding session.
 - **`review`** — Review whatever the user points at by routing it to the right reviewer.
 - **`review-ado-pr`** — Review an Azure DevOps pull request locally, end-to-end.
-- **`fix-until-clean`** — Iterative review-fix cycle for a branch or PR.
+- **`review-to-green`** — Review a change and fix what blocks it, in small in-scope fixes, until nothing blocking is left.
 - **`rfc`** — Draft and create an Azure DevOps "Request for Change RFC" work item in the configured work project.
 - **`setup-home-repo`**: Set up or adopt a Home Repo (`gateroom`) for a workspace on any machine, in four steps with an approval gate before any change.
 - **`setup-matt-pocock-skills`** — Configure this repo for the engineering skills: set up its issue tracker, triage label vocabulary, and domain doc layout.

@@ -1,0 +1,3 @@
+interface:
+  display_name: "Review To Green"
+  short_description: "Review and fix a diff until nothing blocks"
