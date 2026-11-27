@@ -20,13 +20,13 @@ Extensions, prompt templates, and themes are projected as their existing whole-d
 resources: `setup.ps1`/`setup.sh` junction `pi/extensions/`, `pi/prompts/`, and `pi/themes/`
 wholesale into `~/.pi/agent/`, so a single-file extension needs no `settings.json` entry —
 `settings.json`'s `packages` array is only for `npm:<name>@<version>` pins installed via
-`pi install`, not local files. `pi/extensions/git-guardrails.ts` blocks the same destructive
-git commands as `codex/block-dangerous-git.sh` (`git push`, `git reset --hard`,
+`pi install`, not local files. `pi/extensions/git-guardrails.ts` blocks destructive git
+commands from the shared `ai-agents/_shared/destructive-git-rules.json` (`git push`, `git reset --hard`,
 `git clean -f`/`-fd`, `git branch -D`, `git checkout .`/`git restore .`), via Pi's
 `tool_call` extension event (`pi.on("tool_call", ...)`, narrowed to the bash tool with
 `isToolCallEventType("bash", event)`, blocking by returning `{ block: true, reason }`).
 Its matching now quote-scrubs the command string before matching (ported from the more
-refined `claude/block-destructive-vcs.ps1`, not that skill's naive `block-dangerous-git.sh`)
+refined `claude/block-destructive-vcs.ps1`)
 so a destructive phrase quoted inside e.g. a commit message doesn't false-block, and
 `git stash push` is excluded from the push pattern by name.
 

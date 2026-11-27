@@ -1,11 +1,13 @@
 #!/bin/bash
 # block-dangerous-git.sh
 # Codex CLI PreToolUse hook — blocks dangerous git commands before execution.
-# Ported from the git-guardrails-claude-code skill in mattpocock/skills; the blocklist
-# and matching logic are unchanged, only the install/wiring comments differ.
+# The rules now live in ai-agents/_shared/destructive-git-rules.json, shared with the Claude
+# (claude/block-destructive-vcs.ps1) and Pi (pi/extensions/git-guardrails.ts) guards so the
+# three runtimes cannot drift. Only rules whose `runtimes` list includes "codex" apply here.
 #
 # Install:
-#   Copied to ~/.codex/block-dangerous-git.sh by `setup.ps1 -Module codex`.
+#   Copied to ~/.codex/block-dangerous-git.sh by `setup.ps1 -Module codex`. The rules file
+#   must be copied alongside it as ~/.codex/destructive-git-rules.json.
 #
 # Wired up in ~/.codex/hooks.json:
 #   {
@@ -23,6 +25,12 @@
 #   { "tool_input": { "command": "<the bash command>" }, ... }
 # Exit 0  → allow the command through.
 # Exit 2  → block the command (Codex sees the stderr message).
+#
+# Failure modes: payload problems (unparseable, no command) fail open. A missing, unreadable
+# or invalid rules file, or no perl to evaluate it, fails CLOSED, but only for commands that
+# mention git, so a broken install cannot silently disable the guardrail. Perl is used for
+# matching because the shared rules use lookaround (outside POSIX ERE); it ships with Git for
+# Windows (the bash that runs this hook) and with standard Linux installs.
 
 set -euo pipefail
 
@@ -51,36 +59,84 @@ else
   COMMAND=$(echo "$INPUT" | grep -o '"command"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"command"[[:space:]]*:[[:space:]]*"\(.*\)"/\1/' || echo "")
 fi
 
-# ── Blocked patterns ──────────────────────────────────────────────────────────
-# Add or remove patterns here. Each pattern is a grep extended-regex fragment
-# matched against the full command string.
+if [ -z "$COMMAND" ]; then
+  exit 0
+fi
 
-BLOCKED_PATTERNS=(
-  # Push (all variants)
-  "git[[:space:]]+(.*[[:space:]]+)?push([[:space:]]|$)"
+block() {
+  echo "BLOCKED: Codex does not have authority to run: $COMMAND" >&2
+  echo "Reason: $1" >&2
+  echo "If you want to run this command, do it yourself in a terminal." >&2
+  exit 2
+}
 
-  # Hard reset
-  "git[[:space:]]+(.*[[:space:]]+)?reset[[:space:]].*--hard"
-
-  # Clean (force)
-  "git[[:space:]]+(.*[[:space:]]+)?clean[[:space:]].*-[a-zA-Z]*f"
-
-  # Delete branch (force)
-  "git[[:space:]]+(.*[[:space:]]+)?branch[[:space:]].*-D"
-
-  # Checkout / restore all (wipes working tree)
-  "git[[:space:]]+(.*[[:space:]]+)?checkout[[:space:]]+\."
-  "git[[:space:]]+(.*[[:space:]]+)?restore[[:space:]]+\."
-)
-
-for pattern in "${BLOCKED_PATTERNS[@]}"; do
-  if echo "$COMMAND" | grep -qE "$pattern"; then
-    echo "BLOCKED: Codex does not have authority to run: $COMMAND" >&2
-    echo "Reason: this command matches a dangerous-git-operations blocklist." >&2
-    echo "If you want to run this command, do it yourself in a terminal." >&2
-    exit 2
+# ── Rules file ────────────────────────────────────────────────────────────────
+# Installed sibling first, then the repository copy (running from the repo), then $DOTFILES.
+RULES_NAME="destructive-git-rules.json"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RULES_CANDIDATES=("$SCRIPT_DIR/$RULES_NAME" "$SCRIPT_DIR/../ai-agents/_shared/$RULES_NAME")
+if [ -n "${DOTFILES:-}" ]; then
+  RULES_CANDIDATES+=("$DOTFILES/ai-agents/_shared/$RULES_NAME")
+fi
+RULES_PATH=""
+for candidate in "${RULES_CANDIDATES[@]}"; do
+  if [ -f "$candidate" ]; then
+    RULES_PATH="$candidate"
+    break
   fi
 done
 
-# Command is safe — allow it through.
-exit 0
+# Quote scrubbing and matching, mirroring claude/block-destructive-vcs.ps1: each double-quoted
+# (escape-aware) or single-quoted span, in one alternation, is deleted unless it matches the
+# shared keepQuoted pattern, in which case it is unquoted in place. Rules then match in order,
+# case-sensitively. Exit 0 = allow, 3 = blocked (reason on stdout), 4 = rules unusable.
+# shellcheck disable=SC2016 # Perl source, not shell expansions.
+PERL_MATCH='
+use strict; use warnings; use JSON::PP;
+my ($path, $runtime) = @ARGV;
+my $cmd = $ENV{GUARD_COMMAND};
+open(my $fh, "<", $path) or exit 4;
+my $raw = do { local $/; <$fh> };
+close $fh;
+my $data = eval { JSON::PP->new->decode($raw) };
+exit 4 unless ref $data eq "HASH" && ref $data->{rules} eq "ARRAY" && defined $data->{keepQuoted};
+my $keep = eval { qr/$data->{keepQuoted}/ } or exit 4;
+my @rules;
+for my $rule (@{ $data->{rules} }) {
+  next unless ref $rule->{runtimes} eq "ARRAY" && grep { $_ eq $runtime } @{ $rule->{runtimes} };
+  my $re = eval { qr/$rule->{pattern}/ } or exit 4;
+  push @rules, [$re, $rule->{reason}];
+}
+(my $scrubbed = $cmd) =~ s{"((?:\\.|[^"\\])*)"|\x27([^\x27]*)\x27}{
+  my $inner = defined $1 ? $1 : $2;
+  $inner =~ $keep ? $inner : "";
+}ge;
+for my $rule (@rules) {
+  if ($scrubbed =~ $rule->[0]) { print $rule->[1]; exit 3; }
+}
+exit 0;
+'
+
+mentions_git() {
+  echo "$COMMAND" | grep -qE '(^|[^[:alnum:]_])git([^[:alnum:]_]|$)'
+}
+
+if [ -z "$RULES_PATH" ] || ! command -v perl &>/dev/null; then
+  if mentions_git; then
+    block "the dangerous-git guardrail cannot load its rules ($RULES_NAME not found in: ${RULES_CANDIDATES[*]}, or perl is missing), so git commands are refused until it is restored."
+  fi
+  exit 0
+fi
+
+status=0
+REASON=$(GUARD_COMMAND="$COMMAND" perl -e "$PERL_MATCH" "$RULES_PATH" codex 2>/dev/null) || status=$?
+case "$status" in
+  0) exit 0 ;;
+  3) block "$REASON" ;;
+  *)
+    if mentions_git; then
+      block "the dangerous-git guardrail cannot read $RULES_PATH (unreadable or invalid), so git commands are refused until it is restored."
+    fi
+    exit 0
+    ;;
+esac

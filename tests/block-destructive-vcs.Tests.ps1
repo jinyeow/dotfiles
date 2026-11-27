@@ -109,6 +109,150 @@ Describe 'claude/block-destructive-vcs.ps1' {
         }
     }
 
+    Context 'refspec force-push and whole-tree discard bypasses are closed' {
+        It 'denies <Command>' -TestCases @(
+            @{ Command = 'git push origin +main' }
+            @{ Command = 'git push origin +HEAD:main' }
+            @{ Command = 'git push origin "+main"' }
+            @{ Command = 'git restore .' }
+            @{ Command = 'git restore -- .' }
+            @{ Command = 'git restore --staged --worktree .' }
+            @{ Command = 'git checkout -- .' }
+            @{ Command = 'git checkout .' }
+            @{ Command = 'git checkout HEAD -- .' }
+            @{ Command = 'git checkout -- "."' }
+        ) {
+            param($Command)
+            $out = Invoke-HookCmd -Command $Command
+            $out | Should -Match '"permissionDecision":"deny"'
+        }
+
+        It 'allows <Command>' -TestCases @(
+            @{ Command = 'git push origin main' }
+            @{ Command = 'git stash push -u' }
+            @{ Command = 'git restore --staged .' }
+            @{ Command = 'git restore file.txt' }
+            @{ Command = 'git checkout main' }
+            @{ Command = 'git checkout .gitignore' }
+            @{ Command = 'git commit -m "+1 restore ."' }
+        ) {
+            param($Command)
+            $out = Invoke-HookCmd -Command $Command
+            $out.Trim() | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'shared rules file' {
+        BeforeAll {
+            $script:SharedRules = Join-Path $script:RepoRoot 'ai-agents/_shared/destructive-git-rules.json'
+
+            # Installs a copy of the hook in its own directory, optionally with a sibling rules
+            # file, mirroring the ~/.claude install layout (script + sibling data file).
+            function New-HookCopy
+            {
+                param([string] $Name, [string] $RulesJson)
+                $dir = Join-Path $TestDrive $Name
+                New-Item -ItemType Directory -Path $dir -Force | Out-Null
+                Copy-Item -LiteralPath $script:Hook -Destination $dir
+                if ($RulesJson)
+                {
+                    Set-Content -LiteralPath (Join-Path $dir 'destructive-git-rules.json') -Value $RulesJson -NoNewline
+                }
+                return (Join-Path $dir 'block-destructive-vcs.ps1')
+            }
+
+            function Invoke-HookCopy
+            {
+                param([string] $HookPath, [string] $Command)
+                $json = @{ tool_input = @{ command = $Command } } | ConvertTo-Json -Compress
+                $savedDotfiles = $env:DOTFILES
+                $env:DOTFILES = $null
+                try
+                {
+                    return ($json | & pwsh -NoProfile -File $HookPath 2>&1 | Out-String)
+                }
+                finally
+                {
+                    $env:DOTFILES = $savedDotfiles
+                }
+            }
+        }
+
+        It 'reads its rules from the shared data file, not a hardcoded list' {
+            $rules = @{
+                keepQuoted = '^-{1,2}[A-Za-z][A-Za-z-]*$'
+                rules = @(@{
+                        id = 'fixture'; runtimes = @('claude'); pattern = '\bgit\b[^\n;|&]*\bfixture-marker\b'
+                        reason = 'fixture rule fired'
+                    })
+            } | ConvertTo-Json -Depth 5
+            $hookPath = New-HookCopy -Name 'fixture-rules' -RulesJson $rules
+            Invoke-HookCopy -HookPath $hookPath -Command 'git fixture-marker' | Should -Match 'fixture rule fired'
+            # The fixture omits reset-hard, so the hardcoded-list era behaviour is gone.
+            (Invoke-HookCopy -HookPath $hookPath -Command 'git reset --hard').Trim() | Should -BeNullOrEmpty
+        }
+
+        It 'skips rules scoped to other runtimes' {
+            $rules = @{
+                keepQuoted = '^$'
+                rules = @(@{ id = 'codex-only'; runtimes = @('codex', 'pi'); pattern = '\bgit\b'; reason = 'x' })
+            } | ConvertTo-Json -Depth 5
+            $hookPath = New-HookCopy -Name 'other-runtime' -RulesJson $rules
+            (Invoke-HookCopy -HookPath $hookPath -Command 'git status').Trim() | Should -BeNullOrEmpty
+        }
+
+        It 'fails closed for a git command when the rules file is missing' {
+            $hookPath = New-HookCopy -Name 'no-rules'
+            $out = Invoke-HookCopy -HookPath $hookPath -Command 'git status'
+            $out | Should -Match '"permissionDecision":"deny"'
+            $out | Should -Match 'destructive-git-rules\.json'
+        }
+
+        It 'still allows a non-git command when the rules file is missing' {
+            $hookPath = New-HookCopy -Name 'no-rules-nongit'
+            (Invoke-HookCopy -HookPath $hookPath -Command 'ls -la').Trim() | Should -BeNullOrEmpty
+        }
+
+        It 'fails closed for a git command when the rules file is malformed' {
+            $hookPath = New-HookCopy -Name 'bad-rules' -RulesJson '{not json'
+            Invoke-HookCopy -HookPath $hookPath -Command 'git status' | Should -Match '"permissionDecision":"deny"'
+        }
+
+        It 'fails closed for a git command when rules is <Case>' -TestCases @(
+            @{ Case = 'null'; RulesJson = '{"keepQuoted":"^x$","rules":null}' }
+            @{ Case = 'empty'; RulesJson = '{"keepQuoted":"^x$","rules":[]}' }
+            @{ Case = 'missing'; RulesJson = '{"keepQuoted":"^x$"}' }
+            @{ Case = 'a string'; RulesJson = '{"keepQuoted":"^x$","rules":"oops"}' }
+        ) {
+            param($Case, $RulesJson)
+            $hookPath = New-HookCopy -Name "bad-shape-$($Case -replace ' ', '-')" -RulesJson $RulesJson
+            Invoke-HookCopy -HookPath $hookPath -Command 'git push --force origin main' |
+                Should -Match '"permissionDecision":"deny"'
+        }
+
+        It 'the repository copy of the shared rules file exists and parses' {
+            $parsed = Get-Content -LiteralPath $script:SharedRules -Raw | ConvertFrom-Json
+            @($parsed.rules).Count | Should -BeGreaterThan 0
+        }
+    }
+
+    Context 'in-process pwsh-in-bash check (one hook process per Bash call)' {
+        It 'denies PowerShell sent to the Bash tool' {
+            $json = @{ tool_name = 'Bash'; tool_input = @{ command = 'Get-ChildItem -Path .' } } | ConvertTo-Json -Compress
+            Invoke-Hook -Payload $json | Should -Match 'looks like PowerShell'
+        }
+
+        It 'does not apply the pwsh-in-bash check to the PowerShell tool' {
+            $json = @{ tool_name = 'PowerShell'; tool_input = @{ command = 'Get-ChildItem -Path .' } } | ConvertTo-Json -Compress
+            (Invoke-Hook -Payload $json).Trim() | Should -BeNullOrEmpty
+        }
+
+        It 'reports the destructive-git deny ahead of the pwsh-in-bash check' {
+            $json = @{ tool_name = 'Bash'; tool_input = @{ command = 'git reset --hard; Get-ChildItem' } } | ConvertTo-Json -Compress
+            Invoke-Hook -Payload $json | Should -Match 'git reset --hard'
+        }
+    }
+
     Context 'fails open' {
         It 'allows on empty stdin' {
             (Invoke-Hook -Payload '').Trim() | Should -BeNullOrEmpty

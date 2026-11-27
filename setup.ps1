@@ -1515,7 +1515,7 @@ function Install-Codex
 
     # 4. Git guardrails PreToolUse hook (issue #170) — blocks dangerous git commands (push,
     #    reset --hard, clean -f, branch -D, checkout/restore .) before Codex executes them,
-    #    ported from the git-guardrails-claude-code skill in mattpocock/skills.
+    #    using the shared rules in ai-agents/_shared/destructive-git-rules.json.
     #    User-scope, matching this repo's Claude Code guardrail scope choice. The hook script
     #    copies like any other tracked file, but ~/.codex/hooks.json is not: herdr's own
     #    installer (`herdr integration install codex`) may already own a SessionStart entry
@@ -1527,6 +1527,13 @@ function Install-Codex
     $params = @{
         Dest = Join-Path $codexDir 'block-dangerous-git.sh'
         Source = Join-Path $Dotfiles 'codex\block-dangerous-git.sh'
+    }
+    Copy-Dotfile @params
+    # The hook reads its rules from this sibling file and fails closed (denies every git
+    # command) when it is missing, so it is copied with the hook.
+    $params = @{
+        Dest = Join-Path $codexDir 'destructive-git-rules.json'
+        Source = Join-Path $Dotfiles 'ai-agents\_shared\destructive-git-rules.json'
     }
     Copy-Dotfile @params
 
@@ -1576,6 +1583,14 @@ function Install-Codex
         {
             Write-Warn 'ai-reference-guard.sh or its wordlist not found — skipping the AI-reference PreToolUse merge (a merged-but-broken entry fails closed on every Codex Bash call). Re-run once both exist: .\setup.ps1 -Module codex'
             $skipAiReferenceGuardMerge = $true
+        }
+        # block-dangerous-git.sh denies every git command when destructive-git-rules.json is
+        # missing (copied beside it in step 4), so skip its merge for the same reason.
+        $destructiveGitRulesSource = Join-Path $Dotfiles 'ai-agents\_shared\destructive-git-rules.json'
+        if (-not (Test-Path -LiteralPath $destructiveGitRulesSource))
+        {
+            Write-Warn 'destructive-git-rules.json not found — skipping the git guardrail PreToolUse merge (a merged-but-broken entry denies every git command). Re-run once it exists: .\setup.ps1 -Module codex'
+            $skipGuardrailMerge = $true
         }
         # On Windows, rewrite each tracked `bash ~/.codex/<script>.sh` command to a resolved
         # absolute Git-for-Windows bash.exe + absolute script path — see Resolve-CodexGuardrailBash.

@@ -1,8 +1,9 @@
 #Requires -Version 7
 # Behavioural tests for codex/block-dangerous-git.sh — the Codex CLI PreToolUse hook
-# ported from the git-guardrails-claude-code skill in mattpocock/skills (issue #170). Drives the script directly with the hook's stdin JSON payload shape
-# ({"tool_input":{"command":"..."}}), the same way ctags-hook.Tests.ps1 drives a bash
-# hook script — no live Codex CLI dependency, so this covers the script's own logic.
+# (issue #170), which reads ai-agents/_shared/destructive-git-rules.json. Drives the script
+# directly with the hook's stdin JSON payload shape ({"tool_input":{"command":"..."}}),
+# the same way ctags-hook.Tests.ps1 drives a bash hook script — no live Codex CLI
+# dependency, so this covers the script's own logic.
 
 BeforeAll {
     . (Join-Path $PSScriptRoot 'TestSafety.ps1')
@@ -141,6 +142,100 @@ Describe 'codex/block-dangerous-git.sh' {
     It 'allows unparseable, non-JSON input' {
         $result = Invoke-GuardrailHookRawPayload -Payload 'not json at all'
         $result.ExitCode | Should -Be 0
+    }
+
+    Context 'refspec force-push and whole-tree discard bypasses' {
+        It 'blocks <Command>' -TestCases @(
+            @{ Command = 'git push origin +main' }
+            @{ Command = 'git restore .' }
+            @{ Command = 'git restore -- .' }
+            @{ Command = 'git checkout -- .' }
+            @{ Command = 'git checkout HEAD -- .' }
+            @{ Command = 'git reset "--hard" HEAD' }
+        ) {
+            param($Command)
+            $result = Invoke-GuardrailHook -Command $Command
+            $result.ExitCode | Should -Be 2
+            $result.Output | Should -Match 'Reason: Blocked'
+        }
+
+        It 'allows <Command>' -TestCases @(
+            @{ Command = 'git restore --staged .' }
+            @{ Command = 'git restore file.txt' }
+            @{ Command = 'git checkout main' }
+            @{ Command = 'git checkout .gitignore' }
+            @{ Command = 'git stash push -u' }
+            @{ Command = 'git commit -m "please reset --hard now"' }
+        ) {
+            param($Command)
+            $result = Invoke-GuardrailHook -Command $Command
+            $result.ExitCode | Should -Be 0
+        }
+    }
+
+    Context 'shared rules file' {
+        BeforeAll {
+            # Copies the hook into its own directory, optionally with a sibling rules file —
+            # the ~/.codex install layout (script + sibling data file).
+            function New-HookCopy
+            {
+                param([string] $Name, [string] $RulesJson)
+                $dir = Join-Path $TestDrive $Name
+                New-Item -ItemType Directory -Path $dir -Force | Out-Null
+                Copy-Item -LiteralPath $script:HookScript -Destination $dir
+                if ($RulesJson)
+                {
+                    Set-Content -LiteralPath (Join-Path $dir 'destructive-git-rules.json') -Value $RulesJson -NoNewline
+                }
+                return (Join-Path $dir 'block-dangerous-git.sh')
+            }
+
+            function Invoke-HookCopy
+            {
+                param([string] $HookPath, [string] $Command)
+                $payload = @{ tool_input = @{ command = $Command } } | ConvertTo-Json -Compress
+                $output = $payload | & $script:Bash -c 'unset DOTFILES; bash "$1"' _ ($HookPath -replace '\\', '/') 2>&1
+                return [PSCustomObject]@{ ExitCode = $LASTEXITCODE; Output = ($output -join "`n") }
+            }
+        }
+
+        It 'reads its rules from the shared data file, not a hardcoded list' {
+            $rules = @{
+                keepQuoted = '^$'
+                rules = @(@{ id = 'fixture'; runtimes = @('codex'); pattern = '\bgit\b[^\n;|&]*\bfixture-marker\b'; reason = 'fixture rule fired' })
+            } | ConvertTo-Json -Depth 5
+            $hookPath = New-HookCopy -Name 'fixture-rules' -RulesJson $rules
+            $hit = Invoke-HookCopy -HookPath $hookPath -Command 'git fixture-marker'
+            $hit.ExitCode | Should -Be 2
+            $hit.Output | Should -Match 'fixture rule fired'
+            (Invoke-HookCopy -HookPath $hookPath -Command 'git push origin main').ExitCode | Should -Be 0
+        }
+
+        It 'skips rules scoped to other runtimes' {
+            $rules = @{
+                keepQuoted = '^$'
+                rules = @(@{ id = 'claude-only'; runtimes = @('claude'); pattern = '\bgit\b'; reason = 'x' })
+            } | ConvertTo-Json -Depth 5
+            $hookPath = New-HookCopy -Name 'other-runtime' -RulesJson $rules
+            (Invoke-HookCopy -HookPath $hookPath -Command 'git status').ExitCode | Should -Be 0
+        }
+
+        It 'fails closed for a git command when the rules file is missing' {
+            $hookPath = New-HookCopy -Name 'no-rules'
+            $result = Invoke-HookCopy -HookPath $hookPath -Command 'git status'
+            $result.ExitCode | Should -Be 2
+            $result.Output | Should -Match 'destructive-git-rules\.json'
+        }
+
+        It 'still allows a non-git command when the rules file is missing' {
+            $hookPath = New-HookCopy -Name 'no-rules-nongit'
+            (Invoke-HookCopy -HookPath $hookPath -Command 'ls -la').ExitCode | Should -Be 0
+        }
+
+        It 'fails closed for a git command when the rules file is malformed' {
+            $hookPath = New-HookCopy -Name 'bad-rules' -RulesJson '{not json'
+            (Invoke-HookCopy -HookPath $hookPath -Command 'git status').ExitCode | Should -Be 2
+        }
     }
 
     Context 'grep/sed fallback tier (python unavailable)' {

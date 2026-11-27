@@ -1,0 +1,62 @@
+{
+  "_comment": [
+    "Single source of the destructive-git guard rules shared by three runtimes, so they cannot drift:",
+    "  claude/block-destructive-vcs.ps1 (.NET regex), codex/block-dangerous-git.sh (Perl regex),",
+    "  pi/extensions/git-guardrails.ts (JavaScript regex).",
+    "Every pattern must stay within the common subset of those three dialects: no named groups,",
+    "no variable-length lookbehind, no inline flags. Patterns are matched case-sensitively",
+    "(git branch -d is safe, -D is not) against the command after quote scrubbing.",
+    "Quote scrubbing: each double-quoted (escape-aware) or single-quoted span, matched in one",
+    "alternation, is deleted unless its content matches keepQuoted, in which case it is unquoted",
+    "in place. keepQuoted covers shapes the shell expands identically to the bare token (flags,",
+    "+refspecs, whole-tree pathspecs), so quoting them cannot bypass a rule.",
+    "runtimes: which guards apply the rule. Claude allows ordinary pushes; Codex and Pi have no",
+    "authority to push at all. Rules are tried in order and the first match's reason is reported.",
+    "[^\\n;|&]* keeps a match inside one shell segment, so a phrase in a later command can't chain."
+  ],
+  "keepQuoted": "^(?:-{1,2}[A-Za-z][A-Za-z-]*|\\+[^\\s+]\\S*|\\.{1,2}/?|:/)$",
+  "rules": [
+    {
+      "id": "push-force",
+      "runtimes": ["claude", "codex", "pi"],
+      "pattern": "\\bgit\\b[^\\n;|&]*\\bpush\\b[^\\n;|&]*(?:--force(?!-(?:with-lease|if-includes))\\b|(?<![\\w-])-[a-z]*f|(?<!\\S)\\+[^\\s+])",
+      "reason": "Blocked `git push --force` (or a `+<refspec>` force push) - it can clobber the remote. Use `--force-with-lease` instead."
+    },
+    {
+      "id": "push",
+      "runtimes": ["codex", "pi"],
+      "pattern": "\\bgit\\b(?:[^\\n;|&]*\\S)?(?<!\\bstash)\\s+push(?:\\s|$)",
+      "reason": "Blocked `git push` - this agent has no authority to push to a remote."
+    },
+    {
+      "id": "reset-hard",
+      "runtimes": ["claude", "codex", "pi"],
+      "pattern": "\\bgit\\b[^\\n;|&]*\\breset\\b[^\\n;|&]*--hard\\b",
+      "reason": "Blocked `git reset --hard` - it discards uncommitted work. Stash or commit first."
+    },
+    {
+      "id": "clean-force",
+      "runtimes": ["claude", "codex", "pi"],
+      "pattern": "\\bgit\\b[^\\n;|&]*\\bclean\\b[^\\n;|&]*(?:--force\\b|(?<![\\w-])-[A-Za-z]*f)",
+      "reason": "Blocked `git clean -f` - it permanently deletes untracked files. Run `git clean -n` to preview first."
+    },
+    {
+      "id": "branch-force-delete",
+      "runtimes": ["claude", "codex", "pi"],
+      "pattern": "\\bgit\\b[^\\n;|&]*\\bbranch\\b[^\\n;|&]*(?:(?<![\\w-])-[a-z]*D|--delete\\b[^\\n;|&]*--force\\b|--force\\b[^\\n;|&]*--delete\\b)",
+      "reason": "Blocked `git branch -D` - it force-deletes an unmerged branch. Use `-d` (safe) or confirm the branch is merged."
+    },
+    {
+      "id": "checkout-whole-tree",
+      "runtimes": ["claude", "codex", "pi"],
+      "pattern": "\\bgit\\b[^\\n;|&]*\\bcheckout\\b[^\\n;|&]*(?<!\\S)(?:\\.{1,2}/?|:/)(?=\\s|$)",
+      "reason": "Blocked `git checkout -- .` - it discards every unstaged change in the working tree. Stash or commit first, or name specific files."
+    },
+    {
+      "id": "restore-whole-tree",
+      "runtimes": ["claude", "codex", "pi"],
+      "pattern": "\\bgit\\b[^\\n;|&]*\\brestore\\b(?:(?![^\\n;|&]*(?<!\\S)(?:--staged|-S)(?=\\s|$))|(?=[^\\n;|&]*(?<!\\S)(?:--worktree|-W)(?=\\s|$)))[^\\n;|&]*(?<!\\S)(?:\\.{1,2}/?|:/)(?=\\s|$)",
+      "reason": "Blocked `git restore .` - it discards every unstaged change in the working tree. Stash or commit first, or name specific files (`--staged` alone only unstages and is allowed)."
+    }
+  ]
+}
