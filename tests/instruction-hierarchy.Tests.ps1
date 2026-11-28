@@ -5,17 +5,8 @@ BeforeAll {
     $script:RepoRoot = Split-Path $PSScriptRoot -Parent
     $script:AgentsPath = Join-Path $script:RepoRoot 'AGENTS.md'
     $script:ClaudePath = Join-Path $script:RepoRoot 'CLAUDE.md'
-    $script:AgentWorkflowPath = Join-Path $script:RepoRoot '.agents/workflow.md'
-    $script:SetupAgentSkillsPath = Join-Path $script:RepoRoot 'ai-agents/skills/setup-agent-skills/SKILL.md'
+    $script:AgentDocsPath = Join-Path $script:RepoRoot 'docs/agents'
     $script:WorkGitignorePath = Join-Path $script:RepoRoot 'git/gitignore-work'
-    $script:WorkflowConsumerPaths = @(
-        'ai-agents/skills/spec-review/SKILL.md',
-        'ai-agents/skills/to-hld/SKILL.md',
-        'ai-agents/skills/to-spec/SKILL.md',
-        'ai-agents/skills/to-tickets/SKILL.md',
-        'ai-agents/skills/triage/SKILL.md',
-        'ai-agents/skills/wayfinder/SKILL.md'
-    )
     $script:RationalePath = Join-Path $script:RepoRoot 'docs/adr/agent-instructions-rationale.md'
     $script:AzProfileRationalePath = Join-Path $script:RepoRoot 'docs/adr/az-cli-profile-isolation.md'
 }
@@ -58,49 +49,33 @@ Describe 'repository instruction hierarchy' {
         ($claude -split "`n").Count | Should -BeLessThan 15
     }
 
-    It 'keeps cross-harness workflow configuration on demand with a private override' {
+    It 'keeps the agent-skill configuration in docs/agents behind an Agent skills block' {
         $agents = Get-Content -Raw $script:AgentsPath
-        $agentWorkflow = Get-Content -Raw $script:AgentWorkflowPath
-        $setupAgentSkills = Get-Content -Raw $script:SetupAgentSkillsPath
-        $workGitignore = Get-Content -Raw $script:WorkGitignorePath
 
-        $agents | Should -Not -Match '## Agent skills'
-        $agents | Should -Match ([regex]::Escape('[`.agents/workflow.md`](.agents/workflow.md)'))
-        $agentWorkflow | Should -Match '^# Agent workflow'
-        $agentWorkflow | Should -Match 'explicit cross-harness convention'
-        $agentWorkflow | Should -Match 'GitHub Issues in `jinyeow/dotfiles`'
-        $agentWorkflow | Should -Match '`wayfinder:map`'
-        $setupAgentSkills | Should -Match ([regex]::Escape('.agents/workflow.local.md'))
-        $setupAgentSkills | Should -Match ([regex]::Escape('.agents/workflow.md'))
-        $setupAgentSkills | Should -Match 'git rev-parse --git-path info/exclude'
-        $setupAgentSkills | Should -Match 'Do not duplicate this configuration under `.claude/`, `.codex/`, or `.pi/`'
-        $workGitignore | Should -Match ([regex]::Escape('.agents/*'))
-        $workGitignore | Should -Match ([regex]::Escape('!.agents/workflow.md'))
-
-        foreach ($consumerPath in $script:WorkflowConsumerPaths)
+        $agents | Should -Match '## Agent skills'
+        foreach ($name in @('issue-tracker.md', 'triage-labels.md', 'domain.md'))
         {
-            $consumer = Get-Content -Raw (Join-Path $script:RepoRoot $consumerPath)
-            $localIndex = $consumer.IndexOf('.agents/workflow.local.md')
-            $sharedIndex = $consumer.IndexOf('.agents/workflow.md')
-
-            $localIndex | Should -BeGreaterOrEqual 0 -Because "$consumerPath should read the private override"
-            $sharedIndex | Should -BeGreaterThan $localIndex -Because "$consumerPath should fall back to shared config"
+            $agents | Should -Match ([regex]::Escape("docs/agents/$name"))
+            Test-Path (Join-Path $script:AgentDocsPath $name) | Should -BeTrue
         }
+        Test-Path (Join-Path $script:RepoRoot 'GLOSSARY.md') | Should -BeTrue
+        Test-Path (Join-Path $script:RepoRoot 'CONTEXT.md') | Should -BeFalse
+        Test-Path (Join-Path $script:RepoRoot '.agents/workflow.md') | Should -BeFalse
     }
 
-    It 'keeps private workflow config untracked without hiding shared config in work repos' {
+    It 'keeps the glossary private in work repos without hiding shared agent docs' {
         $repo = Join-Path $TestDrive 'work-repo'
-        $agentsDir = Join-Path $repo '.agents'
-        New-Item -ItemType Directory -Path $agentsDir -Force | Out-Null
-        Set-Content -Path (Join-Path $agentsDir 'workflow.local.md') -Value '# private'
-        Set-Content -Path (Join-Path $agentsDir 'workflow.md') -Value '# shared'
+        $agentDocs = Join-Path $repo 'docs/agents'
+        New-Item -ItemType Directory -Path $agentDocs -Force | Out-Null
+        Set-Content -Path (Join-Path $repo 'GLOSSARY.md') -Value '# private'
+        Set-Content -Path (Join-Path $agentDocs 'issue-tracker.md') -Value '# shared'
 
         git -C $repo init --quiet
         git -C $repo config core.excludesFile $script:WorkGitignorePath
 
-        git -C $repo check-ignore --quiet .agents/workflow.local.md
+        git -C $repo check-ignore --quiet GLOSSARY.md
         $LASTEXITCODE | Should -Be 0
-        git -C $repo check-ignore --quiet .agents/workflow.md
+        git -C $repo check-ignore --quiet docs/agents/issue-tracker.md
         $LASTEXITCODE | Should -Be 1
     }
 
@@ -116,7 +91,7 @@ Describe 'repository instruction hierarchy' {
             @('Herdr', 'herdr/README.md', 'herdr/config.toml'),
             @('Yazi', 'yazi/yazi.toml', 'yazi/keymap.toml', 'yazi/theme.toml'),
             @('Setup', 'setup.ps1', 'setup.sh', 'tests/setup.Tests.ps1'),
-            @('Agent workflow', '.agents/workflow.md', 'ai-agents/skills/setup-agent-skills/SKILL.md'),
+            @('Agent workflow', 'docs/agents/', 'ai-agents/skills/setup-matt-pocock-skills/SKILL.md'),
             @('Claude', 'claude/README.md', 'ai-agents/AGENTS.md'),
             @('Codex', 'codex/README.md', 'codex/config.toml'),
             @('Pi', 'pi/README.md', 'pi/settings.json')

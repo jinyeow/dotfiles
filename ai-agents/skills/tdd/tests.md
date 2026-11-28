@@ -39,7 +39,7 @@ Red flags:
 
 - Mocking internal collaborators
 - Testing private methods
-- Asserting on call counts/order as the primary check (see _Result-driven over invocation-spying_ for the narrow exceptions)
+- Asserting on call counts/order
 - Test breaks when refactoring without behavior change
 - Test name describes HOW not WHAT
 - Verifying through external means instead of interface
@@ -60,29 +60,18 @@ test("createUser makes user retrievable", async () => {
 });
 ```
 
-## Result-driven over invocation-spying
-
-Prefer asserting on the **returned value or observable state**. Fall back to invocation checks only for behaviour that is invisible in the return.
+**Tautological tests**: Expected value restates the implementation, so the test passes by construction.
 
 ```typescript
-// BAD: spies on the call; passes even if the returned order is wrong
-test("checkout charges the card", async () => {
-  const pay = jest.fn();
-  await checkout(cart, { charge: pay });
-  expect(pay).toHaveBeenCalledWith(100);
+// BAD: Expected value is recomputed the way the code computes it
+test("calculateTotal sums line items", () => {
+  const items = [{ price: 10 }, { price: 5 }];
+  const expected = items.reduce((sum, i) => sum + i.price, 0);
+  expect(calculateTotal(items)).toBe(expected);
 });
 
-// GOOD: asserts the outcome the caller receives.
-// The mock echoes its input into its return, so the result proves the
-// right amount was charged - no spying required.
-test("checkout confirms the order and reports the charged total", async () => {
-  const result = await checkout(cart, { charge: (amount) => ({ id: "ch_1", amount }) });
-  expect(result.status).toBe("confirmed");
-  expect(result.charge.id).toBe("ch_1"); // mock-only value: proves the boundary was actually used
-  expect(result.charge.amount).toBe(100); // echoed input: proves the right amount was wired through
+// GOOD: Expected value is an independent, known literal
+test("calculateTotal sums line items", () => {
+  expect(calculateTotal([{ price: 10 }, { price: 5 }])).toBe(15);
 });
 ```
-
-Assert a **mock-only** value (here `id: "ch_1"`) alongside the echoed input — the echoed value alone can pass even if the code skips the boundary and synthesizes the same shape.
-
-Legitimate invocation checks have no return to assert on: a debounce/backoff `sleep`, a "did **not** create a duplicate" guarantee, a `--dry-run` / `-WhatIf` no-op. Never both return a value from a mock and assert its invocation for the same behaviour.

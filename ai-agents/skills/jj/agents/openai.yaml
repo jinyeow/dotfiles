@@ -1,0 +1,3 @@
+interface:
+  display_name: "Jujutsu"
+  short_description: "Work in a Jujutsu (jj) repository"

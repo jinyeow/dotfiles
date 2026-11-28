@@ -21,18 +21,13 @@ tags
 **/.worktrees
 .worktrees
 
-# Agent project-local configuration (private override; shared configuration is tracked)
-.agents/workflow.local.md
-
 # Claude Code project-local settings (auto-modified by sessions; intentional config goes in settings.json)
 .claude/settings.local.json
 
 # azure-boards-organiser skill: real ADO project/team/iteration values stay out of git (copy config.example.json)
 claude/skills/azure-boards-organiser/config.json
 
-# Claude Code session working-state (handoff notes + deferred plans; local-only, not for the public remote)
-.claude/handoff.md
-.claude/handoff-*.consumed.md
+# Claude Code session working-state (deferred plans; local-only, not for the public remote)
 .claude/plans/
 
 # Pester test output (Invoke-Pester -OutputFile)

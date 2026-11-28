@@ -1,6 +1,6 @@
 ---
 name: to-pullrequest
-description: "Create a pull request on GitHub (`gh pr create`) or Azure DevOps (`az repos pr create`) with a drafted title/body that has been run through the `write` skill first, so AI-sounding prose never ships in a PR description. Use when the user says 'open a PR', 'create a pull request', 'make a PR for this', 'submit this branch for review', or similar phrasing that asks for a brand-new PR to be opened. NOT for reviewing an existing PR (use `review-ado-pr` for Azure DevOps, `quick-review`/`deep-review` for GitHub), NOT for merging/completing a PR, NOT for editing an already-open PR's description, and NOT for CI/merge-gate checks or review-thread resolution — this skill stops once the PR is created."
+description: "Create a pull request on GitHub (`gh pr create`) or Azure DevOps (`az repos pr create`) with a drafted title/body that has been run through the `write` skill first, so AI-sounding prose never ships in a PR description. Use when the user says 'open a PR', 'create a pull request', 'make a PR for this', 'submit this branch for review', or similar phrasing that asks for a brand-new PR to be opened. NOT for reviewing an existing PR (use `pr-review` for someone else's PR, `code-review` for your own), NOT for merging/completing a PR, NOT for editing an already-open PR's description, and NOT for CI/merge-gate checks or review-thread resolution — this skill stops once the PR is created."
 metadata:
   author: justin
   version: "1.0.0"
@@ -10,15 +10,15 @@ metadata:
 
 Creates a new pull request on GitHub or Azure DevOps with a title and body that have gone
 through the `write` skill before the PR is opened — closing the generation-time gap where
-"open a PR" routes straight to a raw CLI call with no prose-quality step. See `CONTEXT.md`'s
+"open a PR" routes straight to a raw CLI call with no prose-quality step. See `GLOSSARY.md`'s
 "Generation-time gap" entry for why widening `write`'s own trigger alone doesn't fix this.
 
 ## When to use
 
 - The user asks to open/create a pull request, on GitHub or Azure DevOps, for the current
   branch's committed work.
-- NOT for reviewing an existing PR (`review-ado-pr` for Azure DevOps; `quick-review`/
-  `deep-review` for GitHub — both take a PR target).
+- NOT for reviewing an existing PR (`pr-review` for someone else's PR on GitHub or Azure
+  DevOps; `code-review` for your own, which takes a PR target).
 - NOT for merging, completing, or setting auto-complete on a PR.
 - NOT for editing the description of a PR that already exists.
 - NOT for CI/merge-gate readiness or resolving review threads — out of scope, see below.
@@ -77,8 +77,11 @@ this skill — they belong to a separate skill if one is wanted later.
      repo root, `.azuredevops/`, or `docs/` — ADO checks all three by default — or a path
      configured in project settings if none of those are present. If found, fill it in the
      same way.
-   - No template found in either case: draft a freeform body (what changed, why, how to
-     verify).
+   - No template found in either case: draft the body from [BODY-TEMPLATE.md](BODY-TEMPLATE.md).
+     It has three sections: a Summary that shows the change with the smallest visual that makes
+     it clear (pseudocode, a call tree, a file tree, Mermaid, or a diff sketch), before-and-after
+     Evidence that it works, and a Merge Danger call (one-way or two-way door, plus blast
+     radius).
 
 6. **Draft the body, then run it through `write`.** Compose the full title + body from steps
    3–5, then invoke the `write` skill on that draft before it goes anywhere near `gh`/`az`.
@@ -150,5 +153,6 @@ this skill — they belong to a separate skill if one is wanted later.
 ## Related
 
 - `write` — the prose-quality pass this skill routes every drafted title/body through (step 6).
-- `review-ado-pr` — reviews an *existing* Azure DevOps PR; this skill only creates new ones.
+- [BODY-TEMPLATE.md](BODY-TEMPLATE.md) — the default body when the repository has no PR template, adapted from mattpocock/skills' `pr`.
+- `pr-review` — reviews an *existing* PR; this skill only creates new ones.
 - `AGENTS.md` → "Git worktrees" — the branch-guard convention referenced in step 1.

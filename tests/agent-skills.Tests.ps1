@@ -53,49 +53,31 @@ Describe 'agent skill source layout' {
         $hits | Should -BeNullOrEmpty
     }
 
-    It 'owns council skills only in the portable source area' {
-        foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc'))
-        {
-            Test-Path (Join-Path $portable "$name/SKILL.md") | Should -BeTrue
-            Test-Path (Join-Path $claude $name) | Should -BeFalse
-            Test-Path (Join-Path $codex $name) | Should -BeFalse
-            Test-Path (Join-Path $pi $name) | Should -BeFalse
-        }
+    It 'owns the council skill only in the portable source area' {
+        Test-Path (Join-Path $portable 'council/SKILL.md') | Should -BeTrue
+        Test-Path (Join-Path $claude 'council') | Should -BeFalse
+        Test-Path (Join-Path $codex 'council') | Should -BeFalse
+        Test-Path (Join-Path $pi 'council') | Should -BeFalse
     }
 
-    It 'keeps the review-support contract portable-projected, plus a separate source-only copy' {
-        # #115: dimensions.md / findings-schema.md / review-rubric.md / reviewer-models.md live at
+    It 'keeps the review-support contract portable-projected only' {
+        # #115: lenses.md / findings-schema.md / review-rubric.md / reviewer-models.md live at
         # the portable ai-agents/skills/_shared/ (projected with the review skills below) — the
         # Claude-scoped claude/skills/_shared/ no longer exists. ai-agents/_shared/ (no `skills/`
-        # segment) is a separate, unrelated, source-only copy that predates the split and is not
-        # projected — the two must not be confused.
+        # segment) holds only the hooks' banned-ai-terms.txt wordlist; the stale review-contract
+        # copy that used to sit beside it is gone and must not come back.
         $portableSkillsShared = Join-Path $portable '_shared'
-        foreach ($name in @('dimensions.md', 'findings-schema.md', 'review-rubric.md', 'reviewer-models.md'))
+        foreach ($name in @('lenses.md', 'findings-schema.md', 'review-rubric.md', 'reviewer-models.md', 'review-comments.md'))
         {
             Test-Path (Join-Path $portableSkillsShared $name) | Should -BeTrue
         }
-        # ai-agents/_shared/ (source-only, unrelated) predates the #101 skill split and never
-        # picked up reviewer-models.md — only the three original files.
-        foreach ($name in @('dimensions.md', 'findings-schema.md', 'review-rubric.md'))
+        foreach ($name in @('lenses.md', 'findings-schema.md', 'review-rubric.md'))
         {
-            Test-Path (Join-Path $portableSupport $name) | Should -BeTrue
+            Test-Path (Join-Path $portableSupport $name) | Should -BeFalse
         }
         Test-Path (Join-Path $portableSkillsShared 'SKILL.md') | Should -BeFalse
         Test-Path (Join-Path $portableSupport 'SKILL.md') | Should -BeFalse
         Test-Path (Join-Path $claude '_shared') | Should -BeFalse
-    }
-
-    It 'keeps council aliases thin and linked to the portable contract' {
-        foreach ($name in @('council-code', 'council-business', 'council-plan', 'council-doc'))
-        {
-            $aliasPath = Join-Path $portable "$name/SKILL.md"
-            $content = Get-Content $aliasPath -Raw
-            $contractLink = [regex]::Match($content, '\]\((\.\./council/SKILL\.md)\)').Groups[1].Value
-            $contractLink | Should -Not -BeNullOrEmpty
-            Test-Path (Join-Path (Split-Path $aliasPath -Parent) $contractLink) | Should -BeTrue
-            $content | Should -Match 'Pass through'
-            $content | Should -Not -Match '(?s)NORMALIZE.*CAPABILITIES.*SELECT'
-        }
     }
 
     It 'defines runtime-neutral council contracts' {
@@ -115,103 +97,172 @@ Describe 'agent skill source layout' {
     }
 }
 
-Describe 'review skill split' {
+Describe 'review skills' {
     BeforeAll {
         $repo = Split-Path $PSScriptRoot -Parent
         $claudeSkills = Join-Path $repo 'claude/skills'
         $portableSkills = Join-Path $repo 'ai-agents/skills'
-        $quickReview = Get-Content (Join-Path $portableSkills 'quick-review/SKILL.md') -Raw -ErrorAction SilentlyContinue
-        $deepReview = Get-Content (Join-Path $portableSkills 'deep-review/SKILL.md') -Raw
-        $loop = Get-Content (Join-Path $portableSkills 'review-fix-loop/SKILL.md') -Raw
+        $codeReview = Get-Content (Join-Path $portableSkills 'code-review/SKILL.md') -Raw
+        $loop = Get-Content (Join-Path $portableSkills 'refine-until-ready/SKILL.md') -Raw
         $fixFindings = Get-Content (Join-Path $portableSkills 'fix-findings/SKILL.md') -Raw
-        $reviewerModels = Get-Content (Join-Path $portableSkills '_shared/reviewer-models.md') -Raw -ErrorAction SilentlyContinue
-        $deepReviewReference = Get-Content (Join-Path $portableSkills 'deep-review/REFERENCE.md') -Raw
+        $lenses = Get-Content (Join-Path $portableSkills '_shared/lenses.md') -Raw
+        $rubric = Get-Content (Join-Path $portableSkills '_shared/review-rubric.md') -Raw
+        $schema = Get-Content (Join-Path $portableSkills '_shared/findings-schema.md') -Raw
+        $reviewerModels = Get-Content (Join-Path $portableSkills '_shared/reviewer-models.md') -Raw
         $claudeAdapter = Get-Content (Join-Path $repo 'claude/CLAUDE.md') -Raw
     }
 
-    It 'owns quick-review as a portable skill classified in SKILL-OWNERSHIP (#115)' {
-        Test-Path (Join-Path $portableSkills 'quick-review/SKILL.md') | Should -BeTrue
-        Test-Path (Join-Path $claudeSkills 'quick-review') | Should -BeFalse
-        Get-Content (Join-Path $repo 'ai-agents/SKILL-OWNERSHIP.md') -Raw | Should -Match '`quick-review`'
-    }
-
-    It 'owns deep-review, review-fix-loop, and fix-findings as portable skills (#115)' {
-        foreach ($name in @('deep-review', 'review-fix-loop', 'fix-findings'))
+    It 'owns code-review, refine-until-ready, and fix-findings as portable skills' {
+        foreach ($name in @('code-review', 'refine-until-ready', 'fix-findings'))
         {
             Test-Path (Join-Path $portableSkills "$name/SKILL.md") | Should -BeTrue
+            Test-Path (Join-Path $portableSkills "$name/agents/openai.yaml") | Should -BeTrue
             Test-Path (Join-Path $claudeSkills $name) | Should -BeFalse
         }
+        Get-Content (Join-Path $repo 'ai-agents/SKILL-OWNERSHIP.md') -Raw | Should -Match '`refine-until-ready`'
     }
 
-    It 'folds quick-review onto the existing dimension labels and the shared pipeline' {
-        foreach ($dimension in @('correctness', 'conventions', 'tests'))
+    It 'names the upstream code-review commit and links the shared contracts' {
+        $codeReview | Should -Match '(?s)^---\s*\nname:\s*code-review\s*\n'
+        $codeReview | Should -Match ([regex]::Escape('mattpocock/skills `code-review` at commit `6f7f783`'))
+        foreach ($contract in @('lenses.md', 'review-rubric.md', 'findings-schema.md'))
         {
-            $quickReview | Should -Match "``$dimension``"
-        }
-        $quickReview | Should -Match ([regex]::Escape('../_shared/findings-schema.md'))
-        $quickReview | Should -Match ([regex]::Escape('../_shared/dimensions.md'))
-        $quickReview | Should -Not -Match "dimension``?: ``?quick"
-    }
-
-    It 'defaults review-fix-loop to quick-review with an opt-in deep flag' {
-        $loop | Should -Match 'quick-review'
-        $loop | Should -Match ([regex]::Escape('--deep'))
-        $loop | Should -Match ([regex]::Escape('quick-review → fix-findings'))
-        $deepReview | Should -Match 'opt-in'
-    }
-
-    It 'routes routine review phrasing to quick-review, not deep-review' {
-        $quickDescription = [regex]::Match($quickReview, '(?s)^---.*?description:(.*?)\n---').Groups[1].Value
-        $deepDescription = [regex]::Match($deepReview, '(?s)^---.*?description:(.*?)\n---').Groups[1].Value
-        $quickDescription | Should -Match 'default'
-        $quickDescription | Should -Match 'review the diff'
-        $deepDescription | Should -Not -Match 'review and fix'
-        $deepDescription | Should -Match 'quick-review, the default'
-    }
-
-    It 'documents --reviewers on the reviewer skills and the loop, resolving the sol alias' {
-        foreach ($content in @($quickReview, $loop, $deepReview))
-        {
-            $content | Should -Match ([regex]::Escape('--reviewers'))
-        }
-        $reviewerModels | Should -Match 'gpt-5\.6-sol'
-        $reviewerModels | Should -Match 'model_reasoning_effort'
-        $reviewerModels | Should -Match 'reviewer'
-    }
-
-    It 'flags --reviewers as unsupported on Codex CLI on the reviewer skills Args tables and the loop' {
-        # Row-specific: assert against the Args table row itself, not the whole file, so a
-        # regression in that row can't hide behind matching wording elsewhere in the file.
-        foreach ($content in @($quickReview, $deepReviewReference, $loop))
-        {
-            $row = @($content -split "`n" | Where-Object { $_ -match '\|.*--reviewers.*\|' })
-            $row | Should -Not -BeNullOrEmpty
-            $row | Should -Match ([regex]::Escape('unsupported on Codex CLI'))
-            $row | Should -Not -Match ([regex]::Escape('no-op on Codex CLI'))
-        }
-        $deepReview | Should -Match ([regex]::Escape('unsupported on Codex CLI'))
-        $deepReview | Should -Not -Match ([regex]::Escape('no-op on Codex CLI'))
-        $reviewerModels | Should -Match ([regex]::Escape('actionable error'))
-        $reviewerModels | Should -Not -Match ([regex]::Escape('no wired resolution'))
-        foreach ($content in @($quickReview, $deepReview, $deepReviewReference, $loop))
-        {
-            $content | Should -Match 'stop and\s+report an actionable error'
+            $codeReview | Should -Match ([regex]::Escape("../_shared/$contract"))
         }
     }
 
-    It 'keeps --reviewers away from fixer model selection' {
-        $fixFindings | Should -Match ([regex]::Escape('`--reviewers` argument does not apply here'))
-        $reviewerModels | Should -Match 'Reviewer-only'
-        $reviewerModels | Should -Match 'never\s+touches fixer model selection'
+    It 'validates every finding and reports what was not covered' {
+        $codeReview | Should -Match 'validation subagent'
+        $codeReview | Should -Match 'not_reproduced'
+        $codeReview | Should -Match 'Not covered'
+        $codeReview | Should -Match 'Ready to merge'
+        $codeReview | Should -Match 'Not ready: N blocking findings'
+    }
+
+    It 'rates severity as likelihood x impact with a blocking rule' {
+        foreach ($row in @('| HIGH | HIGH | HIGH | MED |', '| MED | HIGH | MED | LOW |', '| LOW | MED | LOW | LOW |'))
+        {
+            $rubric | Should -Match ([regex]::Escape($row))
+        }
+        $rubric | Should -Match 'blocking'
+        $rubric | Should -Match 'Do not flag'
+        $rubric | Should -Not -MatchExactly 'CLEANUP'
+    }
+
+    It 'validates each finding from a neutral claim with four verdicts, keeping unverifiable ones' {
+        $validation = [regex]::Match($lenses, '(?s)## Validation pass\s*\n(.*)').Groups[1].Value
+        foreach ($verdict in @('CONFIRMED', 'PARTIAL', 'REFUTED', 'UNVERIFIABLE'))
+        {
+            $validation | Should -MatchExactly $verdict
+            $codeReview | Should -MatchExactly $verdict
+        }
+        $validation | Should -Match 'Failure scenario'
+        $validation | Should -Match 'Leave out the lens''s likelihood, impact, severity'
+        $validation | Should -Match 'how many raised it'
+        $validation | Should -Match 'corrected'
+        $validation | Should -Match 'read-only\s+commands'
+        $codeReview | Should -Match 'list them under Not covered'
+        foreach ($token in @('`validation_verdict`', '`reported_location`', '`unverified`'))
+        {
+            $schema | Should -Match ([regex]::Escape($token))
+        }
+    }
+
+    It 'separates blocking from severity with named blocking criteria and dispositions' {
+        $rubric | Should -Match 'Severity and blocking are separate'
+        foreach ($criterion in @('severity', 'spec', 'convention', 'untested-logic', 'mode-parameter'))
+        {
+            $rubric | Should -Match ([regex]::Escape("| ``$criterion`` |"))
+        }
+        foreach ($disposition in @('blocking', 'deferred', 'note'))
+        {
+            $rubric | Should -Match ([regex]::Escape("- ``$disposition``:"))
+        }
+        $rubric | Should -Match 'always LOW'
+        $schema | Should -Match ([regex]::Escape('`blocking_criterion`'))
+        $schema | Should -Match ([regex]::Escape('`disposition`'))
+        $schema | Should -Match 'true when `origin` is `introduced` and `blocking_criterion` is not `none`'
+    }
+
+    It 'adds the conditional Pipelines and Docs lenses and the acceptance-criteria checklist' {
+        foreach ($lens in @('pipelines', 'docs'))
+        {
+            $lenses | Should -Match ([regex]::Escape("| ``$lens`` | on trigger |"))
+            $schema | Should -Match ([regex]::Escape("``$lens``"))
+        }
+        $lenses | Should -Match '### Pipelines'
+        $lenses | Should -Match '### Docs'
+        $lenses | Should -Match 'after merge'
+        $codeReview | Should -Match 'Others'' PR mode'
+        $codeReview | Should -Match 'Record the call, never the conclusion'
+        $codeReview | Should -Match 'merged tree'
+    }
+
+    It 'defines the posted comment format as Conventional Comments with no internal ids' {
+        $comments = Get-Content (Join-Path $portableSkills '_shared/review-comments.md') -Raw
+        foreach ($label in @('**issue (blocking):**', '**issue (non-blocking):**', '**suggestion (non-blocking):**'))
+        {
+            $comments | Should -Match ([regex]::Escape($label))
+        }
+        $comments | Should -Match 'conventionalcomments\.org'
+        $comments | Should -Match '<Severity> risk:'
+        $comments | Should -Match 'finding IDs, fingerprints'
+        $comments | Should -Match 'Use full URLs only'
+        $comments | Should -Match 'Links to local files'
+        $comments | Should -Match 'any\s+reference to AI'
+    }
+
+    It 'escalates sensitive and multi-part claims to the stronger reviewer model' {
+        $reviewerModels | Should -Match 'Escalation to `opus`'
+        $reviewerModels | Should -Match 'RBAC'
+        $reviewerModels | Should -Match 'multi-part claim'
+        $reviewerModels | Should -Match 'tie-break'
+    }
+
+    It 'gives the named smell baseline to the Standards lens' {
+        $standardsCharter = [regex]::Match($lenses, '(?s)### Standards\s*\n(.*?)\n### ').Groups[1].Value
+        $standardsCharter | Should -Match 'smell baseline'
+        $standardsCharter | Should -Match 'judgement call'
+        $rubric | Should -Match 'Named smell baseline'
+        $rubric | Should -Match 'Refused Bequest'
+    }
+
+    It 'records likelihood, impact, and the fixer and loop statuses in the findings schema' {
+        foreach ($token in @('`likelihood`', '`impact`', '`blocking`', '`validated`', '`rejected`', '`parked`', '`reviewed_range`', '`fix_lines_added`'))
+        {
+            $schema | Should -Match ([regex]::Escape($token))
+        }
+        $schema | Should -Not -Match 'adversarial_verified'
+        $schema | Should -Not -Match '`confidence`'
+    }
+
+    It 'checks each finding before fixing and keeps fixes minimal' {
+        $fixFindings | Should -Match 'Check before fixing'
+        $fixFindings | Should -Match '`rejected`'
+        $fixFindings | Should -Match 'Minimal fix'
+        $fixFindings | Should -Match 'needs redesign'
+    }
+
+    It 'bounds refine-until-ready with a cap of 5 and scope, size budget, and oscillation rails' {
+        $loop | Should -Match '(?s)^---\s*\nname:\s*refine-until-ready\s*\n'
+        $loop | Should -Match ([regex]::Escape('--cap 5'))
+        $loop | Should -Match 'default 5'
+        foreach ($rail in @('scope', 'size budget', 'reappearance', 'oscillation', 'no progress'))
+        {
+            $loop | Should -Match "\|\s*$rail\s*\|"
+        }
+        $loop | Should -Not -Match ([regex]::Escape('--reviewers'))
+        $loop | Should -Not -Match ([regex]::Escape('--floor'))
     }
 
     It 'centralizes the fixer model pin at _shared/reviewer-models.md and points every dispatching doc at it' {
         # Canonical home carries the literal policy.
         $reviewerModels | Should -Match 'Fixer pin'
-        $reviewerModels | Should -Match 'Opus 4\.8'
-        $reviewerModels | Should -Match 'Sonnet 5'
-        $reviewerModels | Should -Match 'never Opus 5'
+        $reviewerModels | Should -Match 'Default: `sonnet`'
+        $reviewerModels | Should -Match '`opus` for a hard'
+        $reviewerModels | Should -Not -Match 'Opus 4\.8'
         $reviewerModels | Should -Match 'Never `fable`|never `fable`'
+        $reviewerModels | Should -Not -Match ([regex]::Escape('--reviewers'))
 
         # Every dispatching doc points at the canonical home instead of restating the pin.
         foreach ($content in @($loop, $fixFindings))
@@ -225,25 +276,17 @@ Describe 'review skill split' {
         $claudeAdapter | Should -Not -Match 'Opus 4\.8'
     }
 
-    It 'sets the Codex sandbox and approval policy per call in both reviewer skills' {
-        foreach ($content in @($quickReview, $deepReview))
-        {
-            $content | Should -Match ([regex]::Escape('approval-policy: never'))
-            $content | Should -Match ([regex]::Escape('sandbox: read-only'))
-        }
-
-        # deep-review calls Codex twice (fan out + the verify second voice); both call sites carry it.
-        foreach ($token in @('approval-policy: never', 'sandbox: read-only'))
-        {
-            [regex]::Matches($deepReview, [regex]::Escape($token)).Count | Should -BeGreaterOrEqual 2
-        }
+    It 'sets the Codex sandbox and approval policy per call in reviewer-models.md' {
+        $reviewerModels | Should -Match ([regex]::Escape('approval-policy: never'))
+        $reviewerModels | Should -Match ([regex]::Escape('sandbox: read-only'))
+        $codeReview | Should -Match ([regex]::Escape('../_shared/reviewer-models.md'))
     }
 
-    It 'records quick-review in the routing and standing-consent surfaces' {
-        Get-Content (Join-Path $claudeSkills 'router/SKILL.md') -Raw | Should -Match 'quick-review'
-        Get-Content (Join-Path $repo 'claude/CLAUDE.md') -Raw | Should -Match 'quick-review'
-        Get-Content (Join-Path $repo 'claude/README.md') -Raw | Should -Match 'quick-review'
-        Get-Content (Join-Path $repo 'README.md') -Raw | Should -Match 'quick-review'
+    It 'records refine-until-ready in the routing and standing-consent surfaces' {
+        Get-Content (Join-Path $claudeSkills 'router/SKILL.md') -Raw | Should -Match 'refine-until-ready'
+        Get-Content (Join-Path $repo 'claude/CLAUDE.md') -Raw | Should -Match 'refine-until-ready'
+        Get-Content (Join-Path $repo 'claude/README.md') -Raw | Should -Match 'refine-until-ready'
+        Get-Content (Join-Path $repo 'README.md') -Raw | Should -Match 'refine-until-ready'
     }
 }
 
@@ -337,9 +380,87 @@ Describe 'to-pullrequest skill' {
         $toPullrequest | Should -Match ([regex]::Escape('--work-items'))
     }
 
+    It 'drafts a body from BODY-TEMPLATE.md when the repository has no PR template' {
+        $toPullrequest | Should -Match ([regex]::Escape('[BODY-TEMPLATE.md](BODY-TEMPLATE.md)'))
+        $template = Get-Content (Join-Path (Split-Path $skillPath -Parent) 'BODY-TEMPLATE.md') -Raw
+        foreach ($section in @('## Summary', '## Evidence', '## Merge Danger'))
+        {
+            $template | Should -Match ([regex]::Escape($section))
+        }
+        $template | Should -Match 'Dex Horthy'
+    }
+
     It 'declares CI/merge-gate readiness, review-thread resolution, and auto-complete out of scope' {
         $toPullrequest | Should -Match 'out of scope'
         $toPullrequest | Should -Match 'CI/merge-gate'
         $toPullrequest | Should -Match 'auto-complete'
+    }
+}
+
+Describe 'pr-review skill' {
+    BeforeAll {
+        $repo = Split-Path $PSScriptRoot -Parent
+        $skillDir = Join-Path $repo 'ai-agents/skills/pr-review'
+        $prReview = Get-Content (Join-Path $skillDir 'SKILL.md') -Raw
+        $voteSection = [regex]::Match($prReview, '(?s)### 8\. Vote, only on request\s*\n(.*?)\n## ').Groups[1].Value
+    }
+
+    It 'is a portable skill that replaces the Azure DevOps-only review skill everywhere' {
+        $prReview | Should -Match '(?s)^---\s*\nname:\s*pr-review\s*\n'
+        Test-Path (Join-Path $skillDir 'agents/openai.yaml') | Should -BeTrue
+        Test-Path (Join-Path $repo 'ai-agents/skills/review-ado-pr') | Should -BeFalse
+        Get-Content (Join-Path $repo 'ai-agents/skills/review/SKILL.md') -Raw | Should -Match 'run `pr-review`'
+        Get-Content (Join-Path $repo 'claude/skills/router/SKILL.md') -Raw | Should -Match '/pr-review'
+        Get-Content (Join-Path $repo 'README.md') -Raw | Should -Match '\| `pr-review` \|'
+    }
+
+    It 'runs code-review in others'' PR mode and posts with the shared comment format' {
+        $prReview | Should -Match 'Run `code-review` in others'' PR mode'
+        $prReview | Should -Match ([regex]::Escape('../_shared/review-comments.md'))
+    }
+
+    It 'posts only after the user''s explicit go-ahead in this invocation' {
+        $prReview | Should -Match 'Post nothing until the user gives an explicit go-ahead in this\s+invocation'
+        $prReview | Should -Match 'An approval from an earlier run, or\s+for a different PR, does not count'
+        $prReview | Should -Match 'Deferred follow-up work items, only when the user asks for them'
+    }
+
+    It 'votes only when the user explicitly asks, after confirming, with no REST fallback' {
+        $voteSection | Should -Not -BeNullOrEmpty
+        $voteSection | Should -Match 'Never vote unless the user explicitly asks for a vote in this invocation'
+        $voteSection | Should -Match 'confirm before\s+casting it'
+        $voteSection | Should -Match ([regex]::Escape('az repos pr set-vote'))
+        $voteSection | Should -Match 'no REST fallback'
+        $prReview | Should -Not -Match '(?i)auto-approve|approves? the PR when nothing blocks'
+    }
+
+    It 'keeps live Azure reads opt-in, with no secret-returning reads by default' {
+        $liveChecks = Join-Path $skillDir 'references/ado-live-checks.md'
+        Test-Path $liveChecks | Should -BeTrue
+        $prReview | Should -Match 'Live Azure and Azure DevOps reads are off by default'
+        $live = Get-Content $liveChecks -Raw
+        $live | Should -Match 'Load this file only when the user opts in'
+        $live | Should -Match '## Never, unless the user names the exact call'
+        $live | Should -Match 'Reads that return secrets'
+    }
+
+    It 'reads machine-local values from git config and ships no environment-specific values' {
+        foreach ($key in @('work.adoOrgUrl', 'work.adoProject', 'prReview.reportDir', 'prReview.cloneRoot', 'prReview.deferralParentId', 'prReview.workItemType', 'prReview.conventionSource'))
+        {
+            $prReview | Should -Match ([regex]::Escape("``$key``"))
+        }
+        $prReview | Should -Match ([regex]::Escape('~/.gitconfig.local'))
+        $hits = Get-ChildItem $skillDir -Recurse -File |
+            Select-String -Pattern '(?<![A-Za-z0-9_])[A-Za-z]:[\\/]+[A-Za-z]', '/Users/', '@[A-Za-z0-9-]+\.[A-Za-z]{2,}'
+        $hits | Should -BeNullOrEmpty
+    }
+
+    It 'ships its scripts without tests, which live in tests/' {
+        foreach ($name in @('AdoRest.ps1', 'Post-PrThreads.ps1', 'New-DeferredWorkItem.ps1', 'Add-WorkItemComments.ps1'))
+        {
+            Test-Path (Join-Path $skillDir "scripts/$name") | Should -BeTrue
+        }
+        @(Get-ChildItem $skillDir -Recurse -Filter '*.Tests.ps1').Count | Should -Be 0
+        Test-Path (Join-Path $PSScriptRoot 'pr-review-scripts.Tests.ps1') | Should -BeTrue
     }
 }

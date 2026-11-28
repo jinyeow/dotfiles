@@ -26,8 +26,8 @@ The loop goes **red** when any gate fails; green only when all pass:
 5. **fixtures** (where they earn it) — Pester assertions over the compiled ARM shape
 
 > **Out of scope — these touch the tenant.** `az deployment ... what-if`, `azd provision`,
-> `New-AzResourceGroupDeployment`, deployment stacks. That's the `azure-validate` →
-> `azure-deploy` path, and it leaves audit-log traces. This skill stops at compiled ARM.
+> `New-AzResourceGroupDeployment`, deployment stacks. Those leave audit-log traces.
+> This skill stops at compiled ARM.
 
 > Written against **Bicep CLI 0.44** and **PSRule.Rules.Azure 1.x**. If a flag below is
 > rejected, check `bicep <cmd> --help` / `Get-Help Assert-PSRule` rather than guessing.

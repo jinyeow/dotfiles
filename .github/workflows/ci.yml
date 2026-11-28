@@ -37,9 +37,8 @@ jobs:
         run: |
           $results = Invoke-ScriptAnalyzer -Path . -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
           # Vendored third-party code is out of scope per AGENTS.md (psmux/plugins/ is
-          # upstream code pinned by SHA, and the azure-prepare skill is Microsoft's MIT
-          # payload), not ours to lint - do not gate on it.
-          $legacy = '[\\/](psmux[\\/]plugins|ai-agents[\\/]skills[\\/]azure-prepare)[\\/]'
+          # upstream code pinned by SHA), not ours to lint - do not gate on it.
+          $legacy = '[\\/]psmux[\\/]plugins[\\/]'
           $gated = $results | Where-Object { $_.ScriptPath -notmatch $legacy }
           $vendored = @($results).Count - @($gated).Count
           Write-Host "PSScriptAnalyzer: $(@($results).Count) result(s), $vendored in vendored paths (not gated)."

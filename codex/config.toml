@@ -37,17 +37,17 @@ hooks = true
 # Official Bicep MCP server (Azure.Bicep.McpServer), run via the .NET SDK's `dnx` tool
 # runner. Buys file diagnostics, formatting, decompile, resource-type schemas, and
 # best-practices lookup for .bicep files — not symbol-level go-to-definition/references,
-# which stays out of scope (see .agents/specs/bicep-code-intelligence.md, Track D). Not
+# which stays out of scope. Not
 # registered for Claude Code: the Azure MCP plugin's `bicepschema` tool plus the
 # self-authored LSP plugin already cover that ground there.
 [mcp_servers.bicep]
 command = "dnx"
 args = ["-y", "Azure.Bicep.McpServer"]
 
-# Per-dimension custom agents for the portable review skills (quick-review / deep-review /
-# review-fix-loop / fix-findings, ai-agents/skills/). Dispatched via the `multi_agent`
-# feature's `spawn_agent` tool with `agent_type: "review_<dimension>"`. See
-# ai-agents/skills/deep-review/DISPATCH.md (Codex CLI section) for the dispatch shape.
+# Custom agents for the portable review skills (code-review / refine-until-ready / fix-findings,
+# ai-agents/skills/). Dispatched via the `multi_agent` feature's `spawn_agent` tool with
+# `agent_type: "reviewer"` (every review lens and the validation pass) or `agent_type: "fixer"`.
+# See codex/README.md ("Skills") for the dispatch shape.
 #
 # At the pinned codex-cli 0.147.0, an `[agents.<name>]` table only recognizes `config_file`,
 # `description`, and `nickname_candidates` — per-role `model` / `model_reasoning_effort` / `sandbox_mode` / `developer_instructions`
@@ -55,76 +55,24 @@ args = ["-y", "Azure.Bicep.McpServer"]
 # only in `description` (model-visible spawn guidance, not runtime-enforced); real enforcement
 # is the orchestrating session's own top-level `sandbox_mode` above — which may itself be
 # `workspace-write`, in which case nothing enforces a reviewer's read-only posture. See
-# ai-agents/skills/deep-review/DISPATCH.md (Codex CLI section) for the full schema evidence.
-[agents.review_correctness]
+# codex/README.md ("Skills") for the schema evidence.
+[agents.reviewer]
 description = """
-deep-review: correctness dimension. Read-only reviewer: apply the
-`correctness` charter from ~/.codex/skills/_shared/dimensions.md and the
-~/.codex/skills/_shared/review-rubric.md bar; report findings only, never edit, write,
-or run commands that mutate state.
-"""
-
-[agents.review_security]
-description = """
-deep-review: security dimension. Read-only reviewer: apply the `security` charter from
-~/.codex/skills/_shared/dimensions.md and the ~/.codex/skills/_shared/review-rubric.md
-bar; read callers/config beyond the diff to confirm exploitability. Report findings
-only, never edit, write, or run commands that mutate state.
-"""
-
-[agents.review_performance]
-description = """
-deep-review: performance dimension. Read-only reviewer: apply the `performance` charter
-from ~/.codex/skills/_shared/dimensions.md and the
-~/.codex/skills/_shared/review-rubric.md bar; report findings only, never edit, write,
-or run commands that mutate state.
-"""
-
-[agents.review_structural]
-description = """
-deep-review: structural dimension. Read-only reviewer: apply the `structural` charter
-from ~/.codex/skills/_shared/dimensions.md and the
-~/.codex/skills/_shared/review-rubric.md bar; report findings only, never edit, write,
-or run commands that mutate state.
-"""
-
-[agents.review_architecture]
-description = """
-deep-review: architecture dimension. Read-only reviewer: apply the `architecture`
-charter from ~/.codex/skills/_shared/dimensions.md and the
-~/.codex/skills/_shared/review-rubric.md bar; read beyond the diff for cross-system fit.
-Report findings only, never edit, write, or run commands that mutate state.
-"""
-
-[agents.review_conventions]
-description = """
-deep-review: conventions dimension. Read-only reviewer: apply the
-`conventions` charter from ~/.codex/skills/_shared/dimensions.md and the
-~/.codex/skills/_shared/review-rubric.md bar, checking against ~/.codex/AGENTS.md.
-Report findings only, never edit, write, or run commands that mutate state.
-"""
-
-[agents.review_tests]
-description = """
-deep-review: tests dimension. Read-only reviewer: apply the `tests`
-charter from ~/.codex/skills/_shared/dimensions.md and the
-~/.codex/skills/_shared/review-rubric.md bar; report findings only, never edit, write,
-or run commands that mutate state.
-"""
-
-[agents.review_folded]
-description = """
-quick-review: folded correctness+conventions+tests reviewer. Read-only reviewer: apply
-the `correctness`, `conventions`, and `tests` charters from
-~/.codex/skills/_shared/dimensions.md and the ~/.codex/skills/_shared/review-rubric.md
-bar, checking conventions against ~/.codex/AGENTS.md. Report findings only, never edit,
-write, or run commands that mutate state.
+code-review: runs one review lens, or the validation pass, read-only. For a lens, apply the
+charter named in your task from ~/.codex/skills/_shared/lenses.md and the
+~/.codex/skills/_shared/review-rubric.md bar, checking standards against ~/.codex/AGENTS.md.
+For validation, try to refute the claim in your task against the actual code, and return the
+verdict block from the "Validation pass" in lenses.md (CONFIRMED, PARTIAL, REFUTED or
+UNVERIFIABLE). You may run read-only commands to reproduce a claim. Report findings only, never
+edit, write, or run commands that mutate state.
 """
 
 [agents.fixer]
 description = """
-fix-findings: applies fixes for confirmed, introduced findings (write access). Fix only
-the findings assigned in your task. Lint only the files you touched before returning —
+fix-findings (run on its own or by refine-until-ready): applies the minimal fix for
+confirmed, introduced, blocking findings (write access). Fix only the findings assigned in
+your task and touch only their intended files; if a proper fix needs more, return
+"rejected: needs redesign" and change nothing. Lint only the files you touched before returning —
 the full test suite and full-tree lint run once, after all fixers return, owned by the
 orchestrator; do not run them yourself. Never write to the findings store yourself —
 return your result to the orchestrator, which is the store's sole writer.

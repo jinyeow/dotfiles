@@ -1,0 +1,3 @@
+interface:
+  display_name: "Prompt Lint"
+  short_description: "Score and rewrite an existing prompt"

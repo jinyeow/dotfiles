@@ -6,11 +6,11 @@ read-only second-opinion reviewer for Claude Code.
 ## How it fits with Claude Code
 
 Claude Code is the primary driver. Codex is registered as the `codex` MCP server so Claude
-can ask it for a cross-model review on demand (see the `/codex-review` skill and the "Codex
-second opinion" section in `claude/CLAUDE.md`). The integration is one-way: Claude → Codex.
-`codex-review` is portable and also projects to Pi, but the MCP registration below is
-currently Claude-only (`claude mcp add`) — Pi has no equivalent registration yet, so it
-cannot use `codex-review` until that is added (tracked in #208).
+can ask it for a cross-model review on demand: `code-review` offers it as a second opinion
+(see the "Second opinion: Claude Code mechanics" section in `claude/CLAUDE.md`). The
+integration is one-way: Claude → Codex. The MCP registration below is currently Claude-only
+(`claude mcp add`). Pi has no equivalent registration yet, so Pi cannot add the Codex second
+opinion until that is added (tracked in #208).
 
 Two permission postures, one config file:
 
@@ -197,17 +197,19 @@ per skill), so the installer projects skills into `~/.codex/skills/` from two so
 
 Claude-native skills and Claude support content under `claude/skills/` are never projected to Codex.
 
-The shared `council` skill, its four aliases, and the review→fix skills (`quick-review`,
-`deep-review`, `review-fix-loop`, `fix-findings`) are available after setup. They are prompt
+The shared `council` skill, its four aliases, and the review and fix skills (`code-review`,
+`refine-until-ready`, `fix-findings`) are available after setup. They are prompt
 orchestration contracts, not installed custom agents: the host must use a Codex version
 whose native delegation can isolate at least two workers, or report
 `unsupported-capability`. Quick mode is the default; debate and external Codex are opt-in.
 On a Codex host, `--codex` is rejected unless a separately configured adapter supplies a
-genuinely independent provider/context. The review→fix skills' findings-store write path
-on a Codex host is an open gap — a live probe on this machine could not get
-`workspace-write` to engage — so the four stateful skills are not yet proven end-to-end
-on Codex; see `ai-agents/skills/deep-review/DISPATCH.md` ("Sole-writer invariant under
-Codex") for the recorded probe.
+genuinely independent provider/context. The findings-store write path on a Codex host is an
+open gap. The store lives under `~/.codex/`, outside the workspace root. On Windows,
+`codex exec -s workspace-write` stays read-only (upstream
+[openai/codex#34961](https://github.com/openai/codex/issues/34961)), so a live probe could
+not test whether the orchestrator can write the store. Until a probe passes on a host where
+`workspace-write` works, `code-review`, `refine-until-ready` and `fix-findings` are not proven
+end-to-end on Codex.
 
 **Confirmed minimum version and invocation syntax** (smoke-tested 2026-08-12, closing the
 open item previously here): `codex-cli 0.147.0` is confirmed working — `codex features
@@ -231,17 +233,21 @@ primary thread is the sole writer of its own final response. This smoke test spa
 anonymous generic subagents only, not the named `[agents.<name>]` roles below, so it
 proves the `spawn_agent`/`wait` dispatch primitive, not per-role behavior.
 
-Per-dimension custom agents (read-only reviewers, a workspace-write fixer) are declared
-as `[agents.<name>]` tables in `config.toml`, resolved by name as `agent_type` — see
-`ai-agents/skills/deep-review/DISPATCH.md` (Codex CLI section) for the full mapping.
-Per-role `sandbox_mode`/`developer_instructions`/`mcp_servers` are unsupported at the
-pinned codex-cli 0.147.0 (`description` is the only working per-role channel); real
-enforcement is the orchestrating session's own top-level `sandbox_mode` — which may itself
-be `workspace-write`, in which case nothing enforces a reviewer's read-only posture — see
-DISPATCH.md for the schema evidence and the live test that confirmed table names
-resolve as `agent_type`. Not exercised by this smoke test: the four skills' complete
-pipelines end-to-end, named custom roles, or per-role sandbox enforcement — only the
-underlying anonymous-subagent dispatch primitive.
+The review skills' custom agents are two `[agents.<name>]` tables in `config.toml`:
+`reviewer` (read-only, used for every `code-review` lens and its validation pass) and `fixer`
+(workspace-write, used by `fix-findings`). Each resolves by table name as `spawn_agent`'s
+`agent_type`. At the pinned codex-cli 0.147.0, codex-rs's `config.schema.json` defines
+`AgentRoleToml` with `additionalProperties: false`, limited to `config_file`, `description`
+and `nickname_candidates` (the same three fields as `agent_roles.rs`'s `AgentRoleConfig`).
+Other keys such as `sandbox_mode`, `developer_instructions` and `mcp_servers` parse without
+error but are silently dropped, so `description` is the only working per-role channel. Real
+enforcement is the orchestrating session's own top-level `sandbox_mode`, which may itself be
+`workspace-write`; then nothing enforces a reviewer's read-only posture. A live test confirmed
+that a table passed with `-c` resolves as `agent_type` in `codex exec`, while a TOML file
+dropped under `<CODEX_HOME>/agents/` did not surface in `codex debug prompt-input`. Not
+exercised by this smoke test: the review skills' complete pipelines end-to-end, named custom
+roles, or per-role sandbox enforcement. Only the underlying anonymous-subagent dispatch
+primitive is proven.
 
 Codex's own built-in skills live alongside at `~/.codex/skills/.system/` and are never
 touched by this installer. Claude-specific frontmatter fields (e.g. `disable-model-invocation`)

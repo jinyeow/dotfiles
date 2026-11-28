@@ -48,6 +48,7 @@ as an optional convenience only:
 | `team` | Team name for `@CurrentIteration` and iteration queries | `CloudPlatform Team` |
 | `iterationRoot` | Root iteration path for `UNDER` scoping | `CloudPlatform\Team\2026` |
 | `areaPathDefault` | Default Area Path for new items | `CloudPlatform` |
+| `assignee` | Your UPN, used wherever a command assigns to or filters on "me" | `you@example.com` |
 | `tags` | Team tag taxonomy used for suggestions | `["bicep", "networking", …]` |
 
 **At the start of any command**, read `config.json`. If it is missing, or `org` is absent from it, tell the user to copy `config.example.json` and fill it in, then stop — do not guess org/team/iteration values.
@@ -257,8 +258,13 @@ az boards work-item relation add --id $task.id --relation-type parent --target-i
 
 ## Commands
 
+Each command is a workflow file in this skill's `commands/` folder. Claude Code does not register
+these as slash commands. When the user names one (for example "/new-pbi" or "new-pbi") or asks for
+what one does, read `commands/<name>.md` and follow it.
+
 | Command | Purpose |
 |---------|---------|
+| `/board-triage` | Personal triage over the whole board, joined against the project-brain initiative files. Read-only. |
 | `/new-pbi` | Draft and create a new PBI from a plain-language description. |
 | `/prepare-pbi <ID>` | Analyse, enrich, and optionally decompose a PBI into Tasks. |
 | `/split-pbi <ID>` | Split an oversized/vague PBI into child or replacement PBIs. |

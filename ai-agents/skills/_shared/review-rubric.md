@@ -1,10 +1,10 @@
 # Review Rubric — AGENTS.md conformance + thermo-nuclear structural quality
 
-The shared **quality bar** for the review skills (`codex-review`, `deep-review`, and via the loop,
-`review-fix-loop`). Companion contracts: the dimension registry + charters live in
-[`dimensions.md`](dimensions.md); the finding record schema, fingerprint, origin/`fix_verification`
+The shared quality bar for `code-review`, and through the findings store for `fix-findings` and
+`refine-until-ready`. Companion contracts: the lens registry and charters live in
+[`lenses.md`](lenses.md); the finding record schema, fingerprint, origin and `fix_verification`
 metadata, and store discipline live in [`findings-schema.md`](findings-schema.md). This file is the
-bar; those map it onto dimensions and a store.
+bar and the severity rule. Those files map it onto lenses and a store.
 
 Two layers:
 
@@ -78,8 +78,8 @@ direct. Prefer deleting complexity over rearranging it.
    contracts and explicit boundaries. (Reinforces Layer 1 strict-typing.)
 6. **Canonical layer + reuse.** Call out feature logic leaking into shared paths, implementation
    details leaking through APIs, and bespoke one-offs where a canonical utility already exists. Push
-   code toward the package/module/layer that already owns the concept. *(Owned by the `architecture`
-   dimension in `dimensions.md` — `structural` does not report this item, to avoid double-counting.)*
+   code toward the package/module/layer that already owns the concept. *(Owned by the Architecture
+   lens in `lenses.md`. The Standards lens reports it only when Architecture does not run.)*
 7. **Atomicity and avoidable orchestration.** If independent work is serialized for no reason, ask
    whether it should run in parallel. If related updates can leave state half-applied, push for a
    more atomic structure. Don't over-index on micro-optimizations.
@@ -88,7 +88,8 @@ direct. Prefer deleting complexity over rearranging it.
 
 A supplement to the code-judo moves above — named smells to match against the diff. Two rules bind
 them: a **documented repo standard always overrides**, and each is a **judgement call** ("possible
-Feature Envy"), never a hard violation. **Skip anything tooling already enforces.**
+Feature Envy"), never a hard violation. **Skip anything tooling already enforces.** *(Owned by the
+Standards lens in `lenses.md`.)*
 
 - **Mysterious Name** — a name that doesn't reveal what it does or holds → rename; if no honest name comes, the design's murky.
 - **Duplicated Code** — the same logic shape in more than one hunk or file → extract it, call from both.
@@ -105,21 +106,74 @@ Feature Envy"), never a hard violation. **Skip anything tooling already enforces
 
 ---
 
-## Severity scale
+## Severity: likelihood × impact
 
-Canonical 5-level scale. `codex-review` collapses to three buckets for its output
-(CRITICAL+HIGH → **HIGH**, MEDIUM → **MEDIUM**, LOW+CLEANUP → **LOW**).
+Rate every finding on two axes. Each axis is HIGH, MED or LOW.
 
-| Level | Meaning |
+Likelihood is how often the problem happens. For a security finding, likelihood is
+exploitability.
+
+| Likelihood | Meaning |
 |---|---|
-| CRITICAL | Silent data loss, unhandled termination, security (secret exposure, injection). |
-| HIGH | Incorrect output, race, infinite loop, **structural regression** (1k-line explosion, spaghetti growth, leaked-boundary feature logic). |
-| MEDIUM | Latent correctness bug, missing escape, wrong type, unjustified abstraction/wrapper, missing test. |
-| LOW | Wrong diagnostic message, observability gap, missed decomposition opportunity. |
-| CLEANUP | Duplication, dead code, style — no correctness impact. |
+| HIGH | Happens in normal use. |
+| MED | A plausible edge case, or a specific configuration. |
+| LOW | Needs unusual conditions. |
 
-A flag/mode parameter that switches logic (AGENTS.md) is a **presumptive block** regardless of level
-until raised with the user.
+Impact is how bad it is when it happens.
+
+| Impact | Meaning |
+|---|---|
+| HIGH | Data loss, a security breach, an outage, silently wrong results, or a broken deploy. |
+| MED | A degraded feature, a misleading error, or a maintainability cost that will bite soon. |
+| LOW | Cosmetic, or a minor maintainability cost. |
+
+Severity comes from the matrix. Read the likelihood row, then the impact column.
+
+| Likelihood \ Impact | HIGH | MED | LOW |
+|---|---|---|---|
+| HIGH | HIGH | HIGH | MED |
+| MED | HIGH | MED | LOW |
+| LOW | MED | LOW | LOW |
+
+A structural regression (a file pushed past 1k lines, spaghetti growth, a leaked boundary) costs
+every later change, so its likelihood is HIGH.
+
+### Blocking rule
+
+Severity and blocking are separate. Only `introduced` findings block: a `pre-existing` finding
+is reported separately and never blocks. An introduced finding blocks when one of these
+criteria holds. Record the first that applies as its `blocking_criterion`:
+
+| Criterion | Blocks when |
+|---|---|
+| `severity` | its severity is HIGH or MED. |
+| `spec` | the change fails a requirement or acceptance criterion of the linked spec, issue or work item. With several, check against all of them. An `after merge` criterion never counts. With no spec, this criterion does not apply. |
+| `convention` | it breaks a documented convention from a valid convention source (see `code-review` step 3) and the fix is quick: a lint, coding-standard or convention fix. The finding cites the source file and rule. A named smell is a judgement call and never meets this criterion. |
+| `untested-logic` | it adds or changes production logic (a branch, a calculation, externally visible behaviour) and no test in the change exercises it. Exempt: config (pipeline triggers, conditions, parameters and job or stage wiring included), docs, generated code, string-only changes, and pure refactors that existing tests cover. |
+| `mode-parameter` | it adds a flag or mode parameter that switches logic (AGENTS.md). It blocks until it is raised with the user. |
+
+When none holds, the criterion is `none` and the finding is non-blocking, so a LOW finding can
+still block and a MED finding always does. A blocking finding stops blocking when the user
+explicitly accepts it as a documented trade-off.
+
+Each confirmed, introduced finding gets one disposition:
+
+- `blocking`: a blocking criterion holds.
+- `note`: the finding is about documentation, a code comment, help text, or the PR description
+  being inaccurate, incomplete or out of date. Its severity is always LOW and its criterion is
+  always `none`, whatever the lens or validator rated it, and even when a convention covers it.
+- `deferred`: every other non-blocking finding. In others' PR mode it can become a follow-up
+  work item when the user asks.
+
+---
+
+## Do not flag
+
+- Pre-existing issues outside the diff. Report them separately as `pre-existing`.
+- Anything a linter, type-checker or test run already reports.
+- Pedantry, and style points the repo does not document.
+- Speculation about code the reviewer has not seen.
+- Generic hygiene advice with no concrete trigger in the diff.
 
 ---
 
@@ -127,7 +181,7 @@ until raised with the user.
 
 - **High-conviction over nit-floods.** Prefer a small number of strong findings to a long list of
   cosmetic notes. Do not bury a structural regression under renames.
-- **Each finding:** `file:line`, severity, one-line rationale, and a concrete remedy (prefer
+- **Each finding:** `file:line`, likelihood × impact, one-line rationale, and a concrete remedy (prefer
   "delete this layer" / "reframe so these branches disappear" over "maybe rename this").
 - **Prioritize:** structural regressions → missed simplification (code-judo) → spaghetti/branching
   → boundary/type/contract → file-size/decomposition → modularity → legibility.

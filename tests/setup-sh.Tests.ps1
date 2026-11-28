@@ -146,7 +146,7 @@ Describe 'setup.sh --dry-run' -Skip:$IsWindows {
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m pi --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
-            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc', 'codex-review'))
+            foreach ($name in @('council', 'code-review'))
             {
                 $out | Should -Match "\.pi/agent/skills/$name -> .*ai-agents/skills/$name"
             }
@@ -169,15 +169,13 @@ Describe 'setup.sh --dry-run' -Skip:$IsWindows {
             $out = & $script:Bash $script:SetupSh -m claude --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
             $out | Should -Match '\.claude/skills/council -> .*ai-agents/skills/council'
-            $out | Should -Match '\.claude/skills/codex-review -> .*ai-agents/skills/codex-review'
+            $out | Should -Match '\.claude/skills/code-review -> .*ai-agents/skills/code-review'
             # _shared moved portable with the review skills (#115): now sourced from
             # ai-agents/skills/_shared, not the removed claude/skills/_shared, and not the
             # unrelated, still-source-only ai-agents/_shared (no `skills/` segment).
             $out | Should -Match '\.claude/skills/_shared -> .*ai-agents/skills/_shared'
             $out | Should -Not -Match '\.claude/skills/_shared -> .*ai-agents/_shared'
-            $out | Should -Match '\.claude/skills/quick-review -> .*ai-agents/skills/quick-review'
-            $out | Should -Match '\.claude/skills/deep-review -> .*ai-agents/skills/deep-review'
-            $out | Should -Match '\.claude/skills/review-fix-loop -> .*ai-agents/skills/review-fix-loop'
+            $out | Should -Match '\.claude/skills/refine-until-ready -> .*ai-agents/skills/refine-until-ready'
             $out | Should -Match '\.claude/skills/fix-findings -> .*ai-agents/skills/fix-findings'
         }
         finally
@@ -460,15 +458,11 @@ Describe 'setup.sh Codex skill projection' -Skip:$IsWindows {
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m codex --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
-            foreach ($name in @('council', 'council-code', 'council-business', 'council-plan', 'council-doc', 'quick-review', 'deep-review', 'review-fix-loop', 'fix-findings', '_shared'))
+            foreach ($name in @('council', 'code-review', 'refine-until-ready', 'fix-findings', '_shared'))
             {
                 $out | Should -Match "\.codex/skills/$name -> .*ai-agents/skills/$name"
             }
-            # codex-review is portable (ai-agents/skills/) but excluded from Codex on purpose:
-            # it is a self-review with no target, since Codex would be reviewing itself.
-            $out | Should -Not -Match '\.codex/skills/codex-review ->'
-            $out | Should -Not -Match '\.codex/skills/handoff ->'
-            $out | Should -Not -Match '\.codex/skills/git-guardrails-claude-code ->'
+            $out | Should -Not -Match '\.codex/skills/router ->'
         }
         finally
         {
@@ -933,13 +927,13 @@ Describe 'setup.sh relative-link migration safety' -Skip:$IsWindows {
         # introduced in 57b243d) and has only ever symlinked from ai-agents/skills and
         # codex/skills. It never wrote into claude/skills, so a link that happens to resolve
         # under that root must stay untouched by Codex's cleanup, not be silently removed as
-        # "obsolete managed". Uses an existing claude/skills entry (handoff) as the fixture
+        # "obsolete managed". Uses an existing claude/skills entry (router) as the fixture
         # source so the test mutates no repo state.
         $tmpHome = Join-Path ([IO.Path]::GetTempPath()) ('setup-sh-codex-claudeskillsroot-' + [guid]::NewGuid())
         $skillsDir = Join-Path $tmpHome '.codex/skills'
-        $claudeOnlySkill = Join-Path $script:Repo 'claude/skills/handoff'
+        $claudeOnlySkill = Join-Path $script:Repo 'claude/skills/router'
         New-Item -ItemType Directory -Path $skillsDir -Force | Out-Null
-        $link = Join-Path $skillsDir 'handoff'
+        $link = Join-Path $skillsDir 'router'
         $origHome = $env:HOME
         try
         {
@@ -949,7 +943,7 @@ Describe 'setup.sh relative-link migration safety' -Skip:$IsWindows {
             $env:HOME = $tmpHome
             $out = & $script:Bash $script:SetupSh -m codex --dry-run 2>&1 | Out-String
             $LASTEXITCODE | Should -Be 0
-            $out | Should -Not -Match 'remove obsolete Codex skill link.*handoff'
+            $out | Should -Not -Match 'remove obsolete Codex skill link.*router'
             Test-Path -LiteralPath $link | Should -BeTrue
         }
         finally

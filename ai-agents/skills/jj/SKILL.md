@@ -20,8 +20,8 @@ This repo's PowerShell prompt already renders jj (`Set-Prompt.ps1` → `Get-JjPr
 so the user works in jj day to day. Match its terminology: **change-id**, **bookmark**,
 `--ignore-working-copy`.
 
-> Written against **jj 0.42**. The CLI still moves fast — if a flag below is rejected,
-> check `jj <cmd> --help` rather than guessing.
+> Written against **jj 0.42** and updated for jj 0.47. The CLI still moves fast — if a flag
+> below is rejected, check `jj <cmd> --help` rather than guessing.
 
 ## Mental model
 
@@ -49,8 +49,12 @@ Avoid any command that drops you into `$EDITOR` and hangs:
   `--use-destination-message` to reuse the destination's), which suppresses the editor.
 - **`jj new` does *not* open an editor.** It creates a new (undescribed) change; `-m` is
   optional and just sets that change's description inline.
-- **`jj split` is interactive by default** (when no filesets are given it opens a diff
-  editor). To move a file between changes non-interactively, prefer `jj restore`:
+- **`jj split` is non-interactive only with both `-m` and paths.**
+  `jj split -r <change> -m "type: first part" <path>...` moves those paths into a new first
+  commit and leaves the rest, with the original description, in the second. Without paths it
+  opens a diff editor; without `-m` it opens the description editor. Never pass
+  `-i`/`--interactive` to `jj split`, `jj squash`, `jj absorb` or `jj commit`. To push one
+  file's content into another change, `jj restore` also works:
   - `jj restore --from @ --into @- <path>` — push a file's content from `@` down into its
     parent.
   - `jj restore <path>` — discard a file's working-copy changes back to the parent (with
@@ -73,6 +77,7 @@ jj edit <change-id>         # move @ onto an existing change to keep editing it
 
 jj git fetch                # fetch from the remote
 jj rebase -o main           # rebase @ (and descendants) onto the latest main (-o = --onto)
+jj absorb                   # move each hunk of @ into the mutable ancestor that last touched it
 jj git push --bookmark feature/x   # push + start tracking that bookmark in one step
 jj git push                 # push all tracking bookmarks
 ```
@@ -83,6 +88,7 @@ jj git push                 # push all tracking bookmarks
 jj bookmark list                       # show bookmarks and what they point at
 jj bookmark set feature/x -r @         # point/move bookmark feature/x at @
 jj bookmark move feature/x --to @      # advance an existing bookmark to @
+jj bookmark advance                    # move the nearest bookmark(s) on @'s ancestry to @
 jj git push --bookmark feature/x       # push it (creates + tracks remote on first push)
 ```
 
@@ -94,11 +100,18 @@ change you want to publish, then push.
 ```powershell
 jj workspace add ../repo-feature       # second working copy sharing one repo/op log
 jj workspace list
-jj workspace forget <name>             # detach a workspace you no longer need
+jj workspace remove <name>             # snapshot its @, forget it, delete its directory
+jj workspace forget <name>             # stop tracking it; leaves the directory on disk
 ```
 
 Use a workspace when you'd reach for a git worktree (parallel work on the same repo without
-re-cloning).
+re-cloning). In a colocated repo (jj 0.46+), `jj workspace add` also creates a Git worktree
+with a detached HEAD, so git tooling works there too. `--colocate`/`--no-colocate` or the
+`git.colocate` setting controls this.
+
+`jj workspace remove` keeps the working-copy commit in history. It deletes the directory,
+including ignored files such as `.env` and build output. Check before removing a workspace
+someone else created.
 
 ## Conventional commits
 
@@ -131,13 +144,16 @@ Before generating or changing any description:
 
 ```powershell
 jj op log                    # every operation, newest first, with op-ids
-jj undo                      # undo the last operation
+jj undo                      # undo the last operation (refuses one from another workspace)
+jj op revert <op-id>         # revert one specific operation, keeping later ones
 jj op restore <op-id>        # restore the whole repo state to a prior operation
 ```
 
 If a rebase, squash, or describe went wrong, `jj undo` reverses it; `jj op restore` jumps to
 any earlier point. Reach for these instead of git reflog gymnastics. (`jj undo` does not
-un-push commits already sent to a remote.)
+un-push commits already sent to a remote.) By default `jj undo`/`jj redo` refuse an
+operation made in another workspace. Use `jj op revert <op-id>` for that operation, and pass
+`--allow-cross-workspace` only when the user asks for it.
 
 ## Differences from git (quick reference)
 
@@ -154,8 +170,14 @@ un-push commits already sent to a remote.)
 ## Notes
 
 - `jj tug` is **not** a built-in — it's a popular user alias (advance the closest bookmark to
-  `@`). Use the portable form `jj bookmark move <name> --to @` (or `jj git fetch` +
-  `jj rebase -o <trunk>` to sync) unless the user has defined `tug` themselves.
+  `@`; it does not fetch or rebase). Use the built-in `jj bookmark advance` (or
+  `jj bookmark move <name> --to @`, and `jj git fetch` + `jj rebase -o <trunk>` to sync)
+  unless the user has defined `tug` themselves. Rebase with `-o`/`--onto`; `-d` still works
+  but is deprecated.
+- Signing on push is set with `revsets.git-sign-on-push` (jj 0.47.1+, a revset such as
+  `~signed() & mine()`), which replaces the deprecated `git.sign-on-push = true`. Since 0.47,
+  `jj git push` signs in its own operation first, so a failed push leaves the commits signed
+  and a retry does not sign again.
 - A push may prompt for **auth** (SSH key passphrase, ssh-agent, or a credential helper) —
   that's normal credential interaction, not OS elevation. Surface any auth error; don't
   silently skip the push.

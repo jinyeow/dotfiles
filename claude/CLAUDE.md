@@ -38,30 +38,20 @@ where you put it.
 
 See `AGENTS.md` → "Subagent Orchestration" for the tool-agnostic parallel-dispatch default; the rest below is Claude Code-specific.
 
-- **Plan → implement → review loop**. Non-trivial changes run this loop, each stage dispatched to a fit-for-purpose subagent: **plan** — a Fable subagent is fine; **implement** — Opus or Sonnet subagents, never Fable; **review** — a Fable subagent for a light pass, or the `council` skill for a thorough one. Council and fixer seat model selection, including what the `opus`/`sonnet`/`haiku`/`fable` aliases resolve to today (the bare `opus` alias is whatever Opus build Claude Code currently defaults to, Opus 5 today), is centralized in [`ai-agents/skills/_shared/reviewer-models.md`](../ai-agents/skills/_shared/reviewer-models.md). The **`review-fix-loop`** reviews on **Opus or Sonnet, never Fable unless I explicitly ask** (its `--reviewers` flag overrides that per run); its `fix-findings` children stay pinned per that same doc's Fixer pin section.
+- **Plan → implement → review loop**. Non-trivial changes run this loop, each stage dispatched to a fit-for-purpose subagent: **plan** — a Fable subagent is fine; **implement** — Opus or Sonnet subagents, never Fable; **review** — a Fable subagent for a light pass, or the `council` skill for a thorough one. Council and fixer seat model selection is centralized in [`ai-agents/skills/_shared/reviewer-models.md`](../ai-agents/skills/_shared/reviewer-models.md). The **`refine-until-ready`** loop reviews on **Opus or Sonnet, never Fable unless I explicitly ask**; its `fix-findings` children stay pinned per that same doc's Fixer pin section.
 - **Model to task**. Fable 5.1 for judgement work: planning, design, review, decisions. Sonnet for execution. Opus for reviews, refactors, or execution that needs more judgement than Sonnet gives. For effort on routine execution, run Sonnet 5 at `high`, stepping down to `medium` where quality holds; reserve `xhigh`/`max` for hard or agentic coding, or when correctness outweighs cost. Prefer per-task `/effort` over a model downgrade for routine work.
 - **Fable subagents**. When a subagent runs on Fable, lever-5 prompting hygiene applies to the prompts you write for it — never demand its private step-by-step reasoning (a standing 'explain your reasoning step by step' trips Fable's `reasoning_extraction` → Opus fallback); ask for short rationale + assumptions + evidence instead. See `AGENTS.md` → "Prompting downstream models" for the full lever set.
 - **Lock the contract first**. Fix shared schemas/signatures and assign non-overlapping files before fanning out.
 - **Orchestrator mode dispatch**. Rule text is in AGENTS.md → "Subagent Orchestration"; only Claude mechanics here. Pass `model:` on every `Agent` call (`haiku`, `sonnet`, `opus`; `fable` for a plan or light-review seat only). Effort has no call parameter; Claude subagents (custom or built-in, including `Explore` and `general-purpose`) inherit the session effort. Research and verification go to `Explore` or `general-purpose` on Sonnet or Haiku; fixes follow the Plan → implement → review pins above; Fable seats get short-rationale prompts per "Fable subagents".
 - **No writes to shared files without a merge step**.
 
-## Codex second opinion
+## Second opinion: Claude Code mechanics
 
-Codex CLI is wired in as a read-only MCP reviewer (the `codex` MCP server). Use it as a
-cross-model second opinion — its strengths differ from mine, so it catches things I miss.
-
-- Codex reviews have my standing OK. After implementing a feature or non-trivial fix, run
-  `/codex-review` (or call the `codex` MCP tool on the current diff) before I commit, without
-  asking first. Summarise the findings grouped by severity (HIGH / MEDIUM / LOW). I decide what
-  to apply; never auto-apply findings.
-- The standing OK covers reviews only. When I am stuck on a bug after ~2 attempts, suggest
-  delegating the debugging context to Codex before trying a third approach, and wait for my
-  go-ahead.
-- The reviewer is read-only and non-interactive; it returns findings only and cannot edit
-  my working tree. Applying fixes is your job (with my approval).
-- `quick-review` / `deep-review` / `review-fix-loop` include Codex as a reviewer/verifier when
-  its MCP is present. Council includes external Codex only with explicit `--codex`. When a run
-  uses Codex, report it visibly in the run summary.
+The rule is in `AGENTS.md` → "Second opinions from another model". On Claude Code the usual
+second opinion is Codex CLI through the read-only `codex` MCP server. `code-review` offers it
+when the MCP server is present, including when `refine-until-ready` runs `code-review`. Council
+includes Codex only with explicit `--codex`. When a run uses Codex,
+report it visibly in the run summary.
 
 ## Local machine-specific context
 @~/.claude/CLAUDE.local.md

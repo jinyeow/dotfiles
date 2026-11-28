@@ -1,0 +1,3 @@
+interface:
+  display_name: "Refine Until Ready"
+  short_description: "Review and fix a diff until nothing blocks"

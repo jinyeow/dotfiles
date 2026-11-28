@@ -42,7 +42,6 @@ not download or change the machine.
 | `statusline-command.sh` | `~/.claude/statusline-command.sh` | Token usage statusline script |
 | `no-claude-session-trailer.sh` | `~/.claude/no-claude-session-trailer.sh` | PreToolUse hook (wired in `settings.json`) that hard-blocks AI/Claude/Codex/Copilot/co-authored-by references from landing in a commit, PR, or Azure Boards item, and denies git's `--no-verify` outright (issue #219) |
 | `../ai-agents/_shared/banned-ai-terms.txt` | `~/.claude/banned-ai-terms.txt` | Wordlist `no-claude-session-trailer.sh` reads as a sibling file — shared with the same hook's Codex and Pi ports |
-| `inject-handoff.ps1` | `~/.claude/inject-handoff.ps1` | SessionStart hook that injects `.claude/handoff.md` (from the `handoff` skill) into a fresh session |
 | `block-destructive-vcs.ps1` | `~/.claude/block-destructive-vcs.ps1` | PreToolUse(Bash\|PowerShell) hook that denies destructive git (`push --force` or `+<refspec>`, `reset --hard`, `clean -f`, `branch -D`, `checkout -- .`, `restore .`). Reads its rules from `ai-agents/_shared/destructive-git-rules.json` through its symlink target |
 | `block-pwsh-in-bash.ps1` | `~/.claude/block-pwsh-in-bash.ps1` | Denies PowerShell mis-sent to the Bash tool, pointing at the PowerShell tool. `block-destructive-vcs.ps1` runs it in the same process for Bash calls |
 | `lint-powershell.ps1` | `~/.claude/lint-powershell.ps1` | PostToolUse(Edit\|Write) hook that runs PSScriptAnalyzer on edited `.ps1/.psm1/.psd1` and feeds findings back |
@@ -51,13 +50,13 @@ not download or change the machine.
 | `warn-reasoning-extraction.ps1` | `~/.claude/warn-reasoning-extraction.ps1` | UserPromptSubmit + PreToolUse(Edit\|Write) hook that flags reasoning-extraction phrasing that trips Fable-5's `reasoning_extraction` → Opus fallback |
 | `ai-agents/skills/<name>/` | `~/.claude/skills/<name>/` | Portable custom skills (also projected to Codex and Pi) |
 | `claude/skills/<name>/` | `~/.claude/skills/<name>/` | Claude-native skills and projected Claude support content |
-| `ai-agents/_shared/` | — | Portable support content; source-only, not projected as a skill (its `banned-ai-terms.txt` is the one exception — symlinked individually, see above) |
+| `ai-agents/_shared/` | — | Holds only `banned-ai-terms.txt`, symlinked individually (see above); not projected as a skill |
 | `ai-agents/agents/<name>.md` | `~/.claude/agents/<name>.md` | User-scope subagents (whole dir junctioned/symlinked) |
 | `output-styles/<name>.md` | `~/.claude/output-styles/<name>.md` | Output styles (whole dir junctioned); active style pinned by `outputStyle` in `settings.json` |
 
 **Install method.** `settings.json`, `CLAUDE.md`, `AGENTS.md`,
-`statusline-command.sh`, `no-claude-session-trailer.sh`, `banned-ai-terms.txt`, and the seven pwsh hook scripts
-(`inject-handoff.ps1`, `block-destructive-vcs.ps1`, `block-pwsh-in-bash.ps1`, `lint-powershell.ps1`,
+`statusline-command.sh`, `no-claude-session-trailer.sh`, `banned-ai-terms.txt`, and the six pwsh hook scripts
+(`block-destructive-vcs.ps1`, `block-pwsh-in-bash.ps1`, `lint-powershell.ps1`,
 `warn-legacy-files.ps1`, `warn-hardcoded-secrets.ps1`, `warn-reasoning-extraction.ps1`) are
 **symlinked** into `~/.claude`, and each skill directory is
 **junctioned** (Windows) / symlinked (Linux). Windows file symlinks require **Developer
@@ -82,13 +81,13 @@ old copy-based install + planned live→repo sync.)
 | `agentPushNotifEnabled` | `true` | Mobile push notifications (cloud/background agents — not local CLI) |
 | `teammateMode` | `in-process` | How spawned **teammates** execute (`auto`/`tmux`/`iterm2`/`in-process`). Pinned to `in-process` so agent teams run inline and spawn **no panes**. At `auto`, Claude's backend detection sees `$TMUX` (psmux sets it) and picks the tmux backend, which emits a hardcoded POSIX launch line (`cd . && env VAR=x 'path/to/claude' .`) that is invalid in a pwsh pane — panes open to a bare prompt and the fan-out silently does nothing ([#42848](https://github.com/anthropics/claude-code/issues/42848); psmux-as-a-backend [#34150](https://github.com/anthropics/claude-code/issues/34150) is closed/not-planned). Revisit if upstream ships a shell-aware launch formatter. Note: this pin is global, so it also disables *working* bash panes under real tmux on Linux. Claude Code has no user-scope `settings.local.json`, so a Linux override would need its own `~/.claude/settings.json` or a per-project `.claude/settings.local.json`. Ordinary **subagents** (Agent/Task tool) are unaffected — they always ran in-process |
 | `preferredNotifChannel` | `terminal_bell` | Built-in bell on the **needs-input** notification → marks the Zellij tab |
-| `hooks` | SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop, Notification | SessionStart: injects a pending `.claude/handoff.md`. UserPromptSubmit: warns on reasoning-extraction phrasing (Fable-5 fallback). PreToolUse: hard-blocks AI/Claude/Codex/Copilot/co-authored-by references from a commit, PR, or Azure Boards item (and denies git's `--no-verify`), denies destructive git, denies PowerShell mis-sent to the Bash tool, asks to confirm edits to legacy dotfiles, and asks before writing a reasoning-extraction phrase into config. PostToolUse: PSScriptAnalyzer lint-on-edit and hardcoded-secret warn. Stop: local completion alert. Notification: local completion alert — see Hooks and Notifications. For an end-of-session self-review, run the portable `wrapup` skill (`/wrapup`) before `/clear`/`/compact`/quitting — `SessionEnd`/`PreCompact` hooks can't force the model to answer (see Hooks) |
+| `hooks` | SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop, Notification | SessionStart: loads the project-brain context. UserPromptSubmit: warns on reasoning-extraction phrasing (Fable-5 fallback). PreToolUse: hard-blocks AI/Claude/Codex/Copilot/co-authored-by references from a commit, PR, or Azure Boards item (and denies git's `--no-verify`), denies destructive git, denies PowerShell mis-sent to the Bash tool, asks to confirm edits to legacy dotfiles, and asks before writing a reasoning-extraction phrase into config. PostToolUse: PSScriptAnalyzer lint-on-edit and hardcoded-secret warn. Stop: local completion alert. Notification: local completion alert — see Hooks and Notifications. For an end-of-session self-review, run the portable `wrapup` skill (`/wrapup`) before `/clear`/`/compact`/quitting — `SessionEnd`/`PreCompact` hooks can't force the model to answer (see Hooks) |
 | `statusLine` | command | Runs `statusline-command.sh` |
 
 ## Hooks
 
-Beyond the notification beeps, `settings.json` wires a handoff injector, deterministic
-guardrails, and a lint pass. The seven pwsh hooks read the hook
+Beyond the notification beeps, `settings.json` wires a project-brain loader, deterministic
+guardrails, and a lint pass. The six pwsh hooks read the hook
 JSON on stdin and are invoked through `bash` (so `~` expands) as
 `pwsh -NoProfile -File ~/.claude/<script>.ps1`; they need
 **pwsh** on PATH, and the lint hook additionally needs the **PSScriptAnalyzer** module (it
@@ -96,7 +95,6 @@ self-skips if absent). All allow silently and only emit JSON when they act.
 
 | Event / matcher | Script | Behaviour |
 |---|---|---|
-| `SessionStart` | `inject-handoff.ps1` | On a fresh session (`startup`/`clear`), injects the workspace's `.claude/handoff.md` (written by the `handoff` skill) via `additionalContext` so the next agent reads it first, then archives it to `handoff-<timestamp>.consumed.md` so it is delivered once (not replayed into every later session). No-ops if the file is absent or the session was resumed/compacted |
 | `SessionStart` | `skills/project-brain/scripts/session-start.ps1` | Resolves the session cwd to a project-brain initiative and injects its `core.md` + `STATUS.md` via `additionalContext`. Lives inside the `project-brain` skill directory (junctioned with the skill, not a top-level symlink); fails safe — any error or no match exits 0 with no output |
 | `PreToolUse` (Bash\|PowerShell) | `no-claude-session-trailer.sh` | Hard-blocks AI/Claude/Codex/Copilot/co-authored-by references (`ai-agents/_shared/banned-ai-terms.txt`) from a `git commit`, PR create/update (`gh pr`/`az repos pr`), or Azure Boards update (`az boards`/`az devops invoke`) — the wordlist is matched only against recognized message-bearing flag values (`-m`/`--title`/`--body`/`--fields`/etc., plus `gh pr create\|edit`'s own `-t`/`-b`), not the whole raw command line, so a path segment like `claude/settings.json` can't self-block; denies `git … commit`/`push` using `--no-verify` outright, and `-n` clustered anywhere in a short-flag token (e.g. `-nm`) as `--no-verify`'s short form (`git push -n` means `--dry-run`, not `--no-verify`, and stays allowed), since that bypasses the global git hooks carrying the same scan (see `git/README.md`); an exported `SKIP_AI_REFERENCE_SCAN`/`SKIP_GITLEAKS=1` bypassing those same hooks is denied too. Scoped to work repos only (`git config --type=bool work.aiReferenceScan` must be `true`; `git/gitconfig-work` sets it, and unset or false means no scan), mirroring `git/README.md`'s `commit-msg` scoping — the check runs against the actual target repo of the command's `git commit`/`git push` (or, failing that, its `git … --no-verify`) when it carries `-C <path>`, `--git-dir` or `--work-tree` (quoted or bare, single- or multi-word; all passed on in their original order, as git applies them), not just the hook's inherited cwd, so `git -C "<work-repo>" commit --no-verify -m "..."` from an unrelated cwd is still caught; `cd <path> && git ...` shell-state tracking remains a known, accepted limitation. Fails closed only when the wordlist itself is missing/unreadable — the installed sibling path resolves it, but a run straight from this repo (no wordlist sibling under `claude/`) fails closed the same way (issue #219) |
 | `PreToolUse` (Bash\|PowerShell) | `block-destructive-vcs.ps1` | Denies destructive **git** — `push --force` or a `+<refspec>` push (allows `--force-with-lease`), `reset --hard`, `clean -f`, `branch -D`, `checkout -- .`, `restore .` (allows `restore --staged .`). jj is left ungated (its op-log makes rewrites recoverable). The rules come from `ai-agents/_shared/destructive-git-rules.json`, which the Codex and Pi guards also read. A missing or invalid rules file denies every git command. Strips quoted substrings before matching (escape-aware, so an escaped quote in a message doesn't mangle the match), except content that matches the shared `keepQuoted` pattern (a flag, a `+refspec`, a `.` pathspec), which is unquoted in place, so a quoted flag is still denied |
@@ -202,15 +200,15 @@ mishandles escape sequences (see `docs/zellij-windows-terminal-colors.md`).
 ai-agents/skills/
   my-skill/
     SKILL.md            ← skill definition (frontmatter: name + description)
-    commands/           ← optional: slash-command prompt files
+    commands/           ← optional: sub-workflow files that SKILL.md tells the agent to read
     references/         ← optional: progressive-disclosure docs loaded on demand
 ```
 
 The installer junctions (Windows) or symlinks (Linux) each skill directory into
 `~/.claude/skills/`, making it available in every project. To add a portable skill, create its subdirectory under `ai-agents/skills/`; for a
 Claude-native skill, use `claude/skills/`. The review-support contract lives at the portable
-`ai-agents/skills/_shared/` and is projected alongside every other portable skill; the
-independent `ai-agents/_shared/` copy is source-only and may diverge — see `../ai-agents/README.md`.
+`ai-agents/skills/_shared/` and is projected alongside every other portable skill — see
+`../ai-agents/README.md`.
 Re-run `setup.ps1 -Module claude` afterward.
 
 The codex module projects only portable skill directories into `~/.codex/skills/`,
@@ -224,78 +222,53 @@ Claude-native skills:
   process: read and write PBIs, Bugs, and Tasks; run sprint and backlog WIQL queries;
   enrich, decompose, prioritise, and report. Needs a one-time local setup: copy its
   `config.example.json` to `config.json` (gitignored) and fill in your ADO project / team /
-  iteration root; the org is read from `az devops configure`. Prefers the Azure DevOps MCP
+  iteration root. The org also comes from `config.json` and is passed on every `az` call; the
+  `az devops configure` default is not used. Its sub-workflows live in `commands/` and are read
+  on request, not registered as slash commands. Prefers the Azure DevOps MCP
   server when connected and falls back to PowerShell-native `az boards` CLI.
 - **`fastmail`** — Pull a live Fastmail digest: unread emails, upcoming calendar events,
   and other inbox signals.
-- **`handoff`** — Compact the current conversation into a handoff document for another
-  agent to pick up, saved to `.claude/handoff.md` and picked up by the `inject-handoff.ps1`
-  SessionStart hook (see Hooks below). This repo's own skill, not a harness built-in.
-- **`router`** — Ask which skill or flow fits your situation: a router over the skills in
-  this repo.
+- **`router`** — Ask which of your own skills fits your situation. It defers the
+  mattpocock flow to the portable `ask-matt` skill.
 
 `council` is a shared, cost-bounded prompt orchestration contract for adversarial review
 of a **non-diff artifact**. Claude's native isolated workers receive portable critic/chair
 contracts; there are no named council custom agents. `/council ...` defaults to quick
 (three critics + chair); add `--debate` for four critics plus rebuttals, and `--codex` only
 when an external Codex seat is explicitly wanted. Charter seats are limited to 2–5 and
-normal calls to 12. The four `/council-code`, `/council-business`, `/council-plan`, and
-`/council-doc` aliases pin their panel. Reports use `.agents/council/reports/`. For branch
-diffs/PRs use `quick-review` (or `deep-review`), not council.
+normal calls to 12. A positional panel (`/council code <target>`) pins it. Reports use `.agents/council/reports/`. For branch
+diffs/PRs use `code-review`.
 
-The portable `dispatch-implement` skill is a thin wrapper around `implement`: given one or more
-`#ticket` references, it dispatches one subagent per ticket to run `/implement` unmodified —
-`implement/SKILL.md` itself carries no dispatch logic
-(`docs/adr/implement-stays-minimal-dispatch-in-wrapper-skill.md`). It judges file/scope overlap
-pairwise and picks a model per ticket under the implement-stage pin (Opus or Sonnet, never
-Fable), but parallel dispatch is currently gated off in favor of sequential-only pending a trial
-(#213). Claude Code only for now — Codex CLI (#211) and Pi (#212) dispatch are tracked
-separately.
-
-The portable `walkthrough` skill is the post-`implement` mentoring stage of the main flow: it
+The portable `walk-me-through-it` skill is the post-`implement` mentoring stage of the main flow: it
 walks the user through a diff like a senior pairing with a junior (checkpoint tour /
 overview-then-Q&A / socratic, chosen at start or via `--mode`), chunked into narrative beats and
 framed against the driving spec/ticket when one can be found. It explains rather than judges —
-findings stay with `code-review` / `spec-review`. It keeps a two-grain **learner profile** seeded
+findings stay with `code-review`. It keeps a two-grain **learner profile** seeded
 into every tour and updated at close-out (delta shown for veto): general-skill observations in
 `~/.claude/learner-profile.md` (untracked, created on first use), domain-specific ones in the
 resolved project-brain's `learner.md`.
 
-The review→fix skills are portable (`ai-agents/skills/`) and compose around the portable
-`_shared/` contract: **`quick-review`** is the default pass — one folded reviewer (correctness +
-conventions + tests) plus Codex, two participants; **`deep-review`** is the opt-in heavy version
-of the same pipeline, fanning out all seven per-dimension reviewers + Codex. Both adversarially
-verify their findings and emit them to the same findings store. **`fix-findings`** consumes that
-store and applies fixes (parallel, partitioned by conflict-set, one commit per fix-unit);
-**`review-fix-loop`** is the thin orchestrator that chains a review pass with the fix pass each
-cycle and loops to a deterministic clean gate — `quick-review` by default, `deep-review` under
-`--deep`. `--reviewers <model>[,<model>][:<effort>]` picks the reviewer models (reviewer-only;
-fixers stay pinned). On Claude Code the fan-out dispatches one `Agent` tool call per reviewer
-dimension, restricted to that dimension's read-only tool allowlist
-(`ai-agents/skills/deep-review/DISPATCH.md`); the same four skills also project to Codex CLI and
-Pi. Pi's per-dimension scoping is expressed via `pi-subagents`' `tools:` frontmatter; Codex's
-`[agents.<name>]` tables in `codex/config.toml` carry description-only spawn guidance —
-per-role `sandbox_mode`/`mcp_servers` are unsupported at codex-cli 0.147.0, so enforcement
-is the orchestrating session's own top-level `sandbox_mode` (which may itself be
-`workspace-write`, in which case nothing enforces a reviewer's read-only posture) —
-dispatched through Codex's native `spawn_agent` tool; see DISPATCH.md for the schema
-evidence and what the Codex smoke test actually confirmed (the `spawn_agent` dispatch
-primitive, not per-role scoping).
-`codex-review` is the standalone lightweight Codex second-opinion pass. It is portable
-(`ai-agents/skills/codex-review/`), projected to Claude Code and Pi, but excluded from
-Codex CLI itself — a Codex-on-Codex review has no target.
+The review and fix skills are portable (`ai-agents/skills/`) and compose around the portable
+`_shared/` contract. `code-review` runs the Standards, Spec and Bugs lenses on every diff, plus
+the Security, Performance, Tests and Architecture lenses when the diff touches their area. It
+validates every finding against the code, rates it likelihood × impact, and writes confirmed
+findings to the findings store. `fix-findings` consumes that store and applies minimal fixes
+(parallel, partitioned by conflict-set, one commit per fix-unit). `refine-until-ready` is the thin
+orchestrator that runs the two each cycle until nothing blocking is left or a rail stops it. On
+Claude Code each lens is an `Agent` tool call restricted to `Read`, `Grep` and `Glob`, and each
+validator adds `Bash` to reproduce a claim (`ai-agents/skills/_shared/lenses.md`). The same skills also project to Codex CLI and Pi. Pi
+expresses the read-only scoping through `pi-subagents`' `tools:` frontmatter. Codex dispatches
+the `reviewer` and `fixer` roles in `codex/config.toml` through its native `spawn_agent` tool;
+those roles carry description-only guidance, so enforcement is the session's own top-level
+`sandbox_mode` (see `codex/README.md`, "Skills").
 
 `ai-agents/skills/_shared/` is **not a skill** — see `../ai-agents/README.md` for what it
-holds and how it differs from the independent, source-only `ai-agents/_shared/` copy. It has
-no `SKILL.md`, so the harness ignores it as a skill; `ai-agents/skills/codex-review/SKILL.md`
-still reaches it via `../_shared/<file>`, resolved at the installed destination. On Codex CLI
-itself, `--reviewers` is unsupported, so the orchestrating skill refuses it with an actionable
-error rather than falling back to defaults — see `reviewer-models.md`'s Scope note for the
-mechanism and `docs/adr/reviewers-flag-unsupported-on-codex-cli.md` for the decision; Pi still
-has no native equivalent.
+holds. It has no `SKILL.md`, so the harness ignores it as a skill; the review skills reach it
+via `../_shared/<file>`, resolved at the installed destination.
 
-Built-in Claude Code skills (`code-review`, `compact`, `deep-research`, `security-review`,
-`verify`, etc.) are provided by the harness and do not need to be installed.
+Built-in Claude Code skills (`compact`, `deep-research`, `security-review`, `verify`, etc.) are
+provided by the harness and do not need to be installed. The portable `code-review` skill
+replaces the built-in `/code-review`.
 
 ## Agents
 

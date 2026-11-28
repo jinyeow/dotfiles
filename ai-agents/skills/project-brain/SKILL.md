@@ -58,8 +58,8 @@ worktree deletes that scratch. Put the state in the brain.
   as the Claude Code plugin) reads it.
 - A brain per workspace (its own repo, or the Home Repo's `brain/` folder): `index.md`, `log.md`, `registry.json`,
   `adr/`, `templates/`, `reports/`, `initiatives/<id>/`, and optionally `learner.md`, the
-  `/walkthrough` skill's workspace-level learner profile (domain knowledge the user has
-  demonstrated; written by walkthrough close-out, read to pitch tour depth). It sits at workspace
+  `/walk-me-through-it` skill's workspace-level learner profile (domain knowledge the user has
+  demonstrated; written by walk-me-through-it close-out, read to pitch tour depth). It sits at workspace
   level because the user's knowledge spans initiatives.
 - An initiative: `core.md` (stable, auto-loaded), `STATUS.md` (volatile, auto-loaded),
   `log.md` (session history for this initiative, read on demand, not auto-loaded), `adr/`,

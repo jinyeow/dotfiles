@@ -1,0 +1,3 @@
+interface:
+  display_name: "To Pull Request"
+  short_description: "Open a GitHub or Azure DevOps PR"

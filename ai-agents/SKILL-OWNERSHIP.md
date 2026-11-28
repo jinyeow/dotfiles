@@ -8,77 +8,53 @@ or orchestration surface. PR #63 changes only source layout, not skill classific
 
 This is the canonical home for runtime-neutral Agent Skills. It is projected to Claude Code,
 Codex CLI, and Pi where each runtime is configured to load it. This includes `council`,
-`council-code`, `council-business`, `council-plan`, `council-doc`, `project-brain` (the
+`project-brain` (the
 `SessionStart` auto-injection hook is Claude-specific and stays a `claude/settings.json`
-entry; the skill's resolve-and-read procedure itself is tool-agnostic), and, since #115,
-`quick-review`, `deep-review`, `review-fix-loop`, and `fix-findings` — the review→fix skill
-set. `deep-review`'s per-dimension subagent fan-out (previously the blocker below) is proven
-out on Pi via `pi-subagents`' `tools:` frontmatter allowlist (same grain as Claude's named-tool
-allowlist); see `ai-agents/skills/deep-review/DISPATCH.md`. Codex-native porting of these four
-skills is implemented by #116 (per
-`docs/adr/portable-review-skills-migration-sequencing.md`): `[agents.<name>]` role tables in
-`codex/config.toml` are description-only spawn guidance — per-role `sandbox_mode`/
-`developer_instructions`/`mcp_servers` are unsupported at codex-cli 0.147.0, so enforcement
-is the orchestrating session's own top-level `sandbox_mode` — which may itself be
-`workspace-write`, in which case nothing enforces a reviewer's read-only posture — see
-`ai-agents/skills/deep-review/DISPATCH.md` for the schema evidence; the orchestrator's
-findings-store write path on Codex hosts remains an open gap. `storm-research` is portable
+entry; the skill's resolve-and-read procedure itself is tool-agnostic), and the review and
+fix skills: `code-review`, `refine-until-ready` and `fix-findings`, plus `pr-review`, which runs
+`code-review` on someone else's PR and keeps its Azure DevOps posting scripts under `scripts/`
+(their Pester tests live in `tests/`). Their read-only lens subagents
+are scoped on Pi through `pi-subagents`' `tools:` frontmatter allowlist (the same grain as
+Claude's named-tool allowlist); see `ai-agents/skills/_shared/lenses.md`. On Codex, the
+`reviewer` and `fixer` role tables in `codex/config.toml` are description-only spawn guidance.
+Per-role `sandbox_mode`, `developer_instructions` and `mcp_servers` are unsupported at
+codex-cli 0.147.0, so enforcement is the orchestrating session's own top-level `sandbox_mode`,
+which may itself be `workspace-write`. See `codex/README.md` ("Skills") for the schema
+evidence. The orchestrator's findings-store write path on Codex hosts remains an open gap. `storm-research` is portable
 too, as of #172 resolving the #95 spike below: its five expert-lens prompts and
 citation-verifier fan-out need only parallel dispatch with distinct per-child prompts, no
 per-child tool scoping. At the pinned `pi-subagents@0.60.0` this is `subagent({ workflowScript:
 "return runs.all([...])" })` reusing the builtin `researcher` agent — the top-level
 `tasks: [...]` call shape this note previously named was removed upstream at 0.41.0; see
-`ai-agents/skills/storm-research/DISPATCH.md`. `walkthrough`
+`ai-agents/skills/storm-research/DISPATCH.md`. `walk-me-through-it`
 is portable too, as of #91: its `~/.claude/learner-profile.md` path now resolves to the
-runtime's own config home (`~/.claude/`, `~/.codex/`, `~/.pi/agent/`); its stale
-`.claude/tickets.md`/`.claude/specs/*.md` reference was corrected to the current
-`.agents/tickets.md`/`.agents/specs/*.md` convention, and its project-brain resolution was
-already portable. `codex-review` is portable too, as of #98: its only Claude coupling was its
-own directory living under `claude/skills/` — its `../_shared/review-rubric.md` link already
-resolved to the portable `ai-agents/skills/_shared/` copy at the installed destination (#115),
-so the move itself was the fix. It is projected to Claude Code and Pi but deliberately excluded
-from Codex CLI (`setup.ps1`/`setup.sh` filter it out of the Codex projection list) — asking
-Codex to review its own changes has no target. Pi's projection is not yet functional: the
-`codex` MCP server is only registered for Claude Code, so the skill's precondition fails on
-Pi until #208 wires up the registration. `dispatch-implement` is portable too, as of #210:
-its ticket parsing, parallel-vs-sequential overlap judgment, and per-ticket model selection are
-runtime-neutral, and it wraps the portable `implement` without changing it. It is projected to
-all three runtimes, but only Claude Code's dispatch is wired (the `Agent` tool, with
-`isolation: "worktree"` for parallel children so they do not race one shared `.git/index`); on
-Codex CLI (`[agents.implementer]` + `spawn_agent`, #211) and Pi (`pi-subagents`, #212) the skill
-stops and reports instead of dispatching until those tickets land. Parallel dispatch is gated off
-in favor of sequential-only until #213 confirms the base flow against real usage. `implement-spec`
-is portable too: it only orchestrates calls into `to-spec`, `to-tickets`, `dispatch-implement`,
-`review-fix-loop`, and `to-pullrequest` — all already portable or tracked as such — so it carries
-no runtime-specific mechanics of its own. It inherits `dispatch-implement`'s current Claude-Code-
-only dispatch and sequential-only gate at each frontier batch until that skill's own blockers
-clear. `critique-plan`
-is portable too, and new: it dispatches one isolated read-only subagent to critique a drafted
-plan against the domain model, reusing `domain-modeling`'s `CONTEXT.md`/`ADR-FORMAT.md`/
-`CONTEXT-FORMAT.md` conventions rather than a runtime-specific mechanism. Marked trial in
-`ai-agents/README.md` — adapted from
-[ayoubben18/ab-method](https://github.com/ayoubben18/ab-method) (MIT); not yet a settled
-convention. `domain-modeling` is portable too, split out of `grill-with-docs` to match
-[mattpocock/skills](https://github.com/mattpocock/skills)' current design: the CONTEXT.md/ADR
-discipline stands on its own, independently model-invocable, while `grilling` (also
-mattpocock/skills) carries the interview mechanics and `grill-with-docs` is now a thin pointer
-skill invoking both. No runtime-specific mechanism involved. `setup-home-repo` is portable too: it
+runtime's own config home (`~/.claude/`, `~/.codex/`, `~/.pi/agent/`); its spec
+lookup follows `docs/agents/issue-tracker.md`, and its project-brain resolution was already
+portable. The skills vendored from
+[mattpocock/skills](https://github.com/mattpocock/skills) (`ask-matt`, `grill-with-docs`, `grilling`,
+`domain-modeling`, `implement`, `implement-spec`, `handoff` and the rest listed in `ai-agents/README.md`)
+are portable as shipped upstream: they are unedited copies with upstream's `agents/openai.yaml` Codex
+metadata, and their config lives in the repository's `docs/agents/`. `code-review` started from
+upstream's copy and is now a local skill. `critique-plan` is portable
+too: it dispatches one isolated read-only subagent to critique a plan against `GLOSSARY.md` and the
+ADRs, using `domain-modeling`'s `GLOSSARY-FORMAT.md`/`ADR-FORMAT.md` conventions. Marked trial in
+`ai-agents/README.md`; adapted from [ayoubben18/ab-method](https://github.com/ayoubben18/ab-method)
+(MIT). `setup-home-repo` is portable too: it
 is user-invoked (`disable-model-invocation: true`) and uses only git and file operations, so it
 has no runtime-specific mechanism. `project-brain`'s "New workspace" section names it as the
 optional way to set up a Home Repo.
 
 ## Portable support (`ai-agents/skills/_shared/`)
 
-Portable review support resources — `dimensions.md`, `findings-schema.md`, `review-rubric.md`,
-`reviewer-models.md` — live here, projected alongside the skills above into every runtime's
-skills directory (`quick-review` and friends reach it via `../_shared/<file>`, resolved at the
-installed destination). Not a standalone skill (no `SKILL.md`). `reviewer-models.md` documents
-only the Claude Code / Codex-MCP dispatch surfaces today — see its own scope note.
+Portable review support resources — `lenses.md`, `findings-schema.md`, `review-rubric.md`,
+`reviewer-models.md`, `review-comments.md` — live here, projected alongside the skills above into every runtime's
+skills directory (`code-review` and the other review skills reach it via `../_shared/<file>`,
+resolved at the installed destination). Not a standalone skill (no `SKILL.md`).
+`reviewer-models.md` documents only the Claude Code / Codex-MCP dispatch surfaces today — see
+its own scope note.
 
-A separate, unrelated `ai-agents/_shared/` (no `skills/` in the path) holds an older,
-independently-owned, source-only copy of the same three filenames, predating the #101 split
-of `deep-review` into `quick-review` + `deep-review` — not projected, and not kept in sync.
-No ticket currently tracks consolidating or removing it; do not confuse the two paths.
+A separate, unrelated `ai-agents/_shared/` (no `skills/` in the path) holds only
+`banned-ai-terms.txt`, the AI-reference hooks' wordlist. It is not projected as a skill.
 
 ## Claude-native (`claude/skills/`)
 
@@ -109,11 +85,8 @@ migration ticket is even writable:
 **Needs design work** — the skill's value depends on a Claude-only *convenience trigger*
 (not a missing primitive), so portability needs a designed equivalent, not a spike:
 
-- `handoff` — the value is the *next Claude Code session's* `SessionStart` hook
-  auto-picking up `.claude/handoff.md`. Design ticket: #99.
-- `router` — hardcodes references to skill names/built-ins that are themselves still
-  being migrated; its map can't be rebuilt until those land. Design ticket: #100,
-  explicitly blocked on #91/#92/#93/#94/#95/#97/#98/#99.
+- `router` — maps your own skills and defers the mattpocock flow to the portable `ask-matt`;
+  it names Claude Code built-ins. Design ticket: #100.
 
 **Portable candidates — migration ticket filed, not yet moved:**
 

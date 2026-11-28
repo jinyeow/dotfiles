@@ -627,8 +627,6 @@ install_claude() {
     make_symlink "$DOTFILES/claude/warn-hardcoded-secrets.ps1" "$HOME/.claude/warn-hardcoded-secrets.ps1"
     # UserPromptSubmit advisory + PreToolUse ask on reasoning-extraction phrasing (Fable fallback risk).
     make_symlink "$DOTFILES/claude/warn-reasoning-extraction.ps1" "$HOME/.claude/warn-reasoning-extraction.ps1"
-    # SessionStart hook: inject a pending .claude/handoff.md (from the handoff skill) into a fresh session.
-    make_symlink "$DOTFILES/claude/inject-handoff.ps1" "$HOME/.claude/inject-handoff.ps1"
 
     # Skills — project portable and Claude-native resources into ~/.claude/skills/.
     # Native names win collisions; ai-agents/_shared is source-only and is not enumerated.
@@ -794,9 +792,6 @@ install_codex() {
     while IFS= read -r -d '' skill_dir; do
         skill_name="$(basename "$skill_dir")"
         [[ -n "${native_names[$skill_name]:-}" ]] && continue
-        # codex-review asks Codex itself for a second opinion — meaningless as self-review, so
-        # it is portable everywhere except Codex.
-        [[ "$skill_name" == 'codex-review' ]] && continue
         desired_names["$skill_name"]=1
     done < <(find "$portable_skills_root" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
     if [[ -d "$skills_dst" ]]; then
@@ -828,7 +823,6 @@ install_codex() {
     while IFS= read -r -d '' skill_dir; do
         skill_name="$(basename "$skill_dir")"
         [[ -n "${native_names[$skill_name]:-}" ]] && continue
-        [[ "$skill_name" == 'codex-review' ]] && continue
         project_codex_skill "$skill_dir"
     done < <(find "$portable_skills_root" -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null)
     while IFS= read -r -d '' skill_dir; do

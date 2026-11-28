@@ -1,6 +1,6 @@
 ---
 name: critique-plan
-description: Stress-test a drafted plan against the project's domain model before any code is written — terminology drift, wrong bounded context, ADR contradictions, bad dependency edges, reinvented concepts. Use before implementing from a spec or ticket set, or when the user asks to critique, pressure-test, or sanity-check a plan against the domain model.
+description: Stress-test a drafted plan against the project's domain model before any code is written — terminology drift, wrong bounded context, ADR contradictions, bad dependency edges, reinvented concepts, workarounds a reshape would remove. Use after to-tickets and before implementing from a spec or ticket set, or when the user asks to critique, pressure-test, or sanity-check a plan against the domain model.
 metadata:
   status: trial
 ---
@@ -14,15 +14,16 @@ Silence is the expected outcome. A plan that speaks the canonical language and r
 documented decisions gets a one-line "No objections." Do not manufacture concerns to look
 thorough.
 
-"The plan" is whatever came out of `to-spec` or `to-tickets`, a set of tickets already on the
-tracker, or whatever the user pastes in standalone.
+"The plan" is the spec and tickets that came out of `to-spec` and `to-tickets` (the main chain
+runs this skill between `to-tickets` and `implement`), a set of tickets already on the tracker,
+or whatever the user pastes in standalone.
 
 ## Process
 
 ### 1. Load the domain model
 
 Read only what exists; skip missing files silently — don't flag them or offer to create them.
-Look for `CONTEXT.md` (or `CONTEXT-MAP.md` plus each context's own `CONTEXT.md`, per
+Look for `GLOSSARY.md` (or `GLOSSARY-MAP.md` plus each context's own `GLOSSARY.md`, per
 [domain-modeling](../domain-modeling/SKILL.md#file-structure)) and `docs/adr/`.
 
 If neither exists, say so in one line and stop — there is no domain model to critique against.
@@ -35,7 +36,7 @@ planning session's context. Its brief:
 
 Fire only on a genuine conflict, one of:
 
-- **Terminology drift** — the plan names a concept differently from the glossary/`CONTEXT.md`, or
+- **Terminology drift** — the plan names a concept differently from the glossary/`GLOSSARY.md`, or
   reuses a canonical term for a new meaning.
 - **Wrong bounded context** — work placed in the wrong context, or a unit that straddles a
   documented boundary.
@@ -46,9 +47,15 @@ Fire only on a genuine conflict, one of:
   several tickets dressed as one).
 - **Reinvents a named concept** — introduces a new abstraction for something the domain model
   already names.
+- Fits around a design it should reshape: the plan adds a special case, flag, adapter or second
+  path to get past the current design. Or it cuts or stages a capability the spec asks for, or
+  defers part of it to "later" with no real boundary forcing the split. Cite the ticket and the
+  workaround, and sketch the reshape that removes it. Effort is no reason to keep the fit. An
+  ADR, an external contract or persisted data is, so don't fire when the plan or an ADR names
+  one. This is the one check not anchored in the domain model.
 
 For each, return: **What** (the ticket/decision in question), **Conflicts with** (the exact
-term / `CONTEXT.md` section / `ADR-NNNN`), **Why it matters** (concrete cost, not taste),
+term / `GLOSSARY.md` section / `ADR-NNNN`), **Why it matters** (concrete cost, not taste),
 **Suggested resolution**.
 
 Example pushback: "Ticket 3 calls it `archiveOrder`, but the glossary defines archiving as
@@ -61,10 +68,14 @@ placeholder itself conflicts with the domain model: it contradicts an ADR, or it
 redefines a canonical term.
 
 Out of scope for this critic: implementation quality, performance, tests, code style, "you could
-also…" ideas — anything not anchored in the domain model. Those belong to `spec-review` (does the
-diff match the spec) or `quick-review`/`deep-review` (code quality), which run after
-implementation. With nothing anchored, the critic returns exactly:
+also…" ideas — anything not anchored in the domain model, apart from the reshape check. Those
+belong to `code-review`, which runs after implementation. With nothing anchored, the critic
+returns exactly:
 `No objections — the plan is consistent with the domain model.`
+
+Every return, clean or not, ends with one evidence line:
+`Checked: <the GLOSSARY.md files and ADRs it actually read, and any other files it opened>`. A
+clean result with no evidence line is a pass that didn't happen. Re-run the critic.
 
 ### 3. Surface pushbacks — advisory, never blocking
 
@@ -76,8 +87,8 @@ Bring the pushbacks back into the planning session. The user resolves each their
   [domain-modeling's ADR-FORMAT.md](../domain-modeling/ADR-FORMAT.md). Skip ephemeral ("not now")
   and self-evident reasons.
 
-When a resolution sharpens a term, update `CONTEXT.md` inline using
-[domain-modeling's CONTEXT-FORMAT.md](../domain-modeling/CONTEXT-FORMAT.md).
+When a resolution sharpens a term, update `GLOSSARY.md` inline using
+[domain-modeling's GLOSSARY-FORMAT.md](../domain-modeling/GLOSSARY-FORMAT.md).
 
 If the critic returned "No objections," say so in one line and move on. Don't pad it.
 

@@ -112,8 +112,8 @@ installed versions rather than a guessed command example.
 `storm-research` (`ai-agents/skills/storm-research/`) is portable too, as of #172 resolving its
 prior blocker (#95): its five expert-lens prompts (Practitioner, Academic, Skeptic, Economist,
 Historian) and its citation-verifier fan-out both dispatch as parallel children with distinct
-prompts and no per-child tool scoping — a lighter bar than `deep-review`'s per-dimension tool
-allowlists. At the pinned `pi-subagents@0.60.0`, the top-level `tasks: [...]` call shape no
+prompts and no per-child tool scoping — a lighter bar than `code-review`'s read-only lens
+allowlist. At the pinned `pi-subagents@0.60.0`, the top-level `tasks: [...]` call shape no
 longer exists: it was removed at 0.41.0 in favor of `workflowScript` as the sole public
 multi-agent orchestration surface (confirmed in the package's own `CHANGELOG.md` and in
 `src/extension/schemas.ts`, whose public call schema carries no `tasks` field). Dispatch is now
@@ -135,24 +135,20 @@ usage-limit block, not a credentials problem. Retry the smoke test (call `subage
 `workflowScript` containing 2+ distinct-prompt `runs.all` entries) once the limit clears before
 relying on this skill for a real run.
 
-`quick-review`, `deep-review`, `review-fix-loop`, and `fix-findings` (the review→fix skill set)
-are portable too, projected here from `ai-agents/skills/` alongside `council`. `deep-review`'s
-seven reviewer dimensions need something `council`'s symmetric critics don't: a distinct
-read-only tool allowlist per dimension. On Pi this is expressed as each spawned child's `tools:`
-frontmatter — confirmed present in the pinned `pi-subagents@0.60.0` shipped source
-(`RunnerSubagentStep.tools?: string[]`, `src/runs/shared/parallel-utils.ts`) — per the (derived,
-not transcribed from `dimensions.md`) mapping in `ai-agents/skills/deep-review/DISPATCH.md`.
-`tools` is an agent-definition frontmatter field, not a per-call parameter, at this version too
-(there is no `tools` field on the public `subagent` tool-call schema), so the dispatch mechanism
-is unaffected by 0.41.0 removing the top-level `tasks[]` call shape (see the `storm-research`
-paragraph above). Dispatch uses ad-hoc multi-call rather than the scripted `runs.all`/
-`workflowScript` API, reasoned from `council`'s unscripted isolated-worker contract plus
-pinned-source evidence — not from a live Pi run driven this session; see DISPATCH.md for the
-source-verified-vs-live-smoke-tested distinction behind that choice. This choice held up well:
-`workflowScript` is now the *only* way to batch several children in one call, since `tasks[]`
-and `runs.all` are no longer alternatives but the sole surface, so ad-hoc multi-call (repeated
-single-child `subagent({ agent, task })` calls in one turn) remains the simpler, still-valid
-path deep-review always used. The
+`code-review`, `refine-until-ready`, and `fix-findings` (the review and fix skills) are portable
+too, projected here from `ai-agents/skills/` alongside `council`. `code-review`'s lens and
+validation subagents need something `council`'s critics don't: a read-only tool allowlist. On Pi
+this is each spawned child's `tools:` frontmatter, set to `read, grep, glob` for a lens and
+`read, grep, glob, bash` for a validator, which may run read-only commands to reproduce a claim
+(see `ai-agents/skills/_shared/lenses.md`). The field is confirmed present in the pinned
+`pi-subagents@0.60.0` shipped source (`RunnerSubagentStep.tools?: string[]`,
+`src/runs/shared/parallel-utils.ts`). `tools` is an agent-definition frontmatter field, not a
+per-call parameter, at this version too (there is no `tools` field on the public `subagent`
+tool-call schema), so the dispatch mechanism is unaffected by 0.41.0 removing the top-level
+`tasks[]` call shape (see the `storm-research` paragraph above). Dispatch uses ad-hoc
+multi-call (repeated single-child `subagent({ agent, task })` calls in one turn), matching
+`council`'s unscripted isolated-worker contract. This is reasoned from pinned-source evidence,
+not from a live Pi run. The
 findings store's sole-writer invariant (reviewers/fixers return text, never write the store
 themselves) holds under Pi because a child's `outputMode` defaults to `"inline"` at the pinned
 version, confirmed in source (`src/shared/settings.ts`: `task.outputMode ?? config.outputMode ??

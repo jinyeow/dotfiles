@@ -1,0 +1,5 @@
+interface:
+  display_name: "Wrap Up"
+  short_description: "Two-question self-review before ending a session"
+policy:
+  allow_implicit_invocation: false

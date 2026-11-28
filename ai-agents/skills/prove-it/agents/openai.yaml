@@ -1,0 +1,5 @@
+interface:
+  display_name: "Prove It"
+  short_description: "Diff observed behaviour between base and branch"
+policy:
+  allow_implicit_invocation: false

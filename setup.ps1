@@ -1100,8 +1100,6 @@ function Install-Claude
     New-FileSymlink -Link (Join-Path $claudeDir 'warn-hardcoded-secrets.ps1') -Target (Join-Path $Dotfiles 'claude\warn-hardcoded-secrets.ps1')
     # UserPromptSubmit advisory + PreToolUse ask on reasoning-extraction phrasing (Fable fallback risk).
     New-FileSymlink -Link (Join-Path $claudeDir 'warn-reasoning-extraction.ps1') -Target (Join-Path $Dotfiles 'claude\warn-reasoning-extraction.ps1')
-    # SessionStart hook: inject a pending .claude/handoff.md (from the handoff skill) into a fresh session.
-    New-FileSymlink -Link (Join-Path $claudeDir 'inject-handoff.ps1') -Target (Join-Path $Dotfiles 'claude\inject-handoff.ps1')
 
     # Skills — project portable and Claude-native resources into ~/.claude/skills/.
     # Native names win collisions so each destination receives exactly one link.
@@ -1820,9 +1818,6 @@ function Install-Codex
     $codexSkills = @(Get-ChildItem -Path (Join-Path $Dotfiles 'codex\skills') -Directory -ErrorAction SilentlyContinue)
     $codexSkillNames = @($codexSkills.ForEach('Name'))
     $portableSkills = @($portableSkills | Where-Object { $_.Name -notin $codexSkillNames })
-    # codex-review asks Codex itself for a second opinion — meaningless as self-review, so it
-    # is portable everywhere except Codex.
-    $portableSkills = @($portableSkills | Where-Object { $_.Name -ne 'codex-review' })
     $desiredSkillNames = @($portableSkills | ForEach-Object Name) + @($codexSkills | ForEach-Object Name)
     # Scoped to roots the Codex installer itself (current or historical) has ever written into —
     # claude\skills was the shared source Codex projected from before the ai-agents rehome, and
@@ -2147,7 +2142,7 @@ function Install-BicepTools
     # Microsoft publishes the Bicep language server as a .NET global tool (learn.microsoft.com/
     # azure/azure-resource-manager/bicep/install), documented for AI coding tools and other LSP
     # clients — this is binary-only: it installs bicep-ls and nothing else. Agent registration
-    # (Claude/Codex/Pi) is a separate, later slice; see .agents/specs/bicep-code-intelligence.md.
+    # is separate: Codex registers the Bicep MCP server in codex/config.toml.
     $package = 'Azure.Bicep.LangServer'
 
     if ($Backup)

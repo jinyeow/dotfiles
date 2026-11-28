@@ -1,6 +1,6 @@
 ---
 name: write
-description: "Remove AI-sounding wording from any text another human will read — commit messages, code comments, config comments, CHANGELOG and README entries, in-repo docs, drafts, long-form articles, PR and ticket descriptions, acceptance criteria, and PR/ticket comments — while preserving the author's intent and voice. Use when asked to de-AI, polish, rewrite, proofread, tighten, or review prose, check paragraph coherence, or draft release notes from commits. Not for auto-generated boilerplate, test fixture/sample data, log messages, or error messages."
+description: "Remove AI-sounding wording from any text another human will read — commit messages, code comments, config comments, CHANGELOG and README entries, in-repo docs, drafts, long-form articles, PR and ticket descriptions, acceptance criteria, and PR/ticket comments — while preserving the author's intent and voice. Use when asked to de-AI, polish, rewrite, proofread, tighten, or review prose, check paragraph coherence, clarify ambiguous technical instructions, or draft release notes from commits. Not for auto-generated boilerplate, test fixture/sample data, log messages, or error messages."
 ---
 
 # Write: Cut the AI Taste
@@ -19,7 +19,7 @@ Strip AI patterns from prose and rewrite it to sound human. Do not improve vocab
 This skill is a catalog of smells, not a checklist to run top to bottom. Use it to recognize AI taste, then make judgment calls. The reference file `references/write-en.md` is long because it accumulated examples over many sessions; do not try to apply every rule to every text. Applying more rules is not doing a better job.
 
 - **Over-editing is failure, equal to under-editing.** If a sentence is already natural, clear, and stable, leave it. Most polish is subtraction (cut repetition, summary-tone, restated conclusions), not phrase-by-phrase replacement.
-- **The author's voice wins.** Keep the author's existing colloquial words, cadence, and stance. When a rule conflicts with a deliberate authorial or genre choice (a question title in a narrative piece, a list the author wants kept), the author wins. Rules are defaults, not laws (Orwell's sixth rule: break any of these sooner than write something outright barbarous).
+- **The author's voice wins.** Keep the author's existing colloquial words, cadence, and stance. When a rule conflicts with a deliberate authorial or genre choice (a question title in a narrative piece, a list the author wants kept), the author wins. Rules are defaults, not laws (Orwell's sixth rule: break any of these sooner than write something outright barbarous). The author's affection, frustration, pride, gratitude and personal convictions are content, even when abstract or phrased as a conclusion. Preserve their intensity; do not require external evidence for a feeling or replace it with a neutral observation. Protect authentic colloquialisms, emotional markers and deliberate series titles; remove synthetic PR buzzwords. Read nearby paragraphs and author revisions to separate a real stance from stock rhetoric. If that distinction is uncertain, keep the sentence. Do not invent emotion or turn "what I did" into "what you must do".
 - **Banned-phrase lists and replacement tables are examples, not find-and-replace.** A flagged word that reads naturally in context stays. Match the smell, not the string.
 - **Prefer fewer, stronger edits.** Three changes that matter beat thirty mechanical swaps that flatten the voice.
 
@@ -37,6 +37,7 @@ Two layers, two triggers:
 1. **Text present?** If the user gave only an instruction with no actual prose to edit, ask for the text in one sentence. Do not proceed.
 2. **Audience locked?** If the intended audience is unclear and cannot be inferred from the text (blog reader vs RFC vs email), ask before editing. Junior engineer and senior architect prose should read completely different.
 3. **Load `references/write-en.md`** for the AI-taste pattern catalog before editing.
+4. **Instructions to clarify?** For installation steps, operating instructions, troubleshooting text, tool descriptions, or wording-only edits to agent instructions, also load `references/write-technical.md` for those passages.
 
 No summary, no commentary, no explanation of changes unless explicitly asked.
 

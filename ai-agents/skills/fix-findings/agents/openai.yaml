@@ -1,0 +1,3 @@
+interface:
+  display_name: "Fix Findings"
+  short_description: "Apply review findings, one commit per fix"

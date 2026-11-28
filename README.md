@@ -103,24 +103,32 @@ See `fzf/`, `ripgrep/`, `lazygit/`, `tig/`, and `nvim/` for tool-specific `READM
 
 ## Claude Code skills
 
-Portable skills live in `ai-agents/skills/`; Claude-native skills live in `claude/skills/`, Codex-native variants in `codex/skills/`, and Pi-native variants in `pi/skills/`. Claude projects portable plus Claude-native skills, Codex (Windows and Linux) projects portable plus Codex-native skills, and Pi projects portable plus Pi-native skills. The portable review-support contract at `ai-agents/skills/_shared/` (`quick-review`, `deep-review`, `review-fix-loop`, `fix-findings`) is projected with every runtime; the independent `ai-agents/_shared/` copy is source-only and may diverge. User-scope agent definitions live under `ai-agents/agents/` and are projected to Claude Code. Installers safely migrate existing whole-directory links from the historical `ai-agents/shared/agents/` path without replacing user-owned entries.
+Portable skills live in `ai-agents/skills/`; Claude-native skills live in `claude/skills/`, Codex-native variants in `codex/skills/`, and Pi-native variants in `pi/skills/`. Claude projects portable plus Claude-native skills, Codex (Windows and Linux) projects portable plus Codex-native skills, and Pi projects portable plus Pi-native skills. The portable review-support contract at `ai-agents/skills/_shared/` (`code-review`, `refine-until-ready`, `fix-findings`, `pr-review`) is projected with every runtime; `ai-agents/_shared/` holds only the hooks' `banned-ai-terms.txt` wordlist. User-scope agent definitions live under `ai-agents/agents/` and are projected to Claude Code. Installers safely migrate existing whole-directory links from the historical `ai-agents/shared/agents/` path without replacing user-owned entries.
 
-Not sure which one fits? Run `/router` — a manual index that maps these as flows and decision tables. Built-in Claude Code skills (`code-review`, `compact`, `deep-research`, `security-review`, `verify`) are provided by the harness and aren't listed here.
+Not sure which one fits? Run `/router` — a manual index that maps these as flows and decision tables. Built-in Claude Code skills (`compact`, `deep-research`, `security-review`, `verify`) are provided by the harness and aren't listed here. The `code-review` skill below replaces the built-in `/code-review`; the built-in's `/review` alias still runs Claude Code's own review. The `mattpocock/skills` rows are unedited copies of upstream at commit `6f7f783` (2026-11-25), including each skill's `agents/openai.yaml` Codex metadata; re-sync by copying the folders again. `code-review` is a local skill adapted from upstream's `code-review` at that commit, so a re-sync skips it. The customized versions they replaced are at commit `c7a774c`.
 
 | Skill | Source | Purpose |
 |---|---|---|
-| `grill-with-docs` | mattpocock/skills | Thin pointer invoking `grilling` and `domain-modeling` together |
+| `grill-with-docs` | mattpocock/skills | Grill a plan against the domain model, updating `GLOSSARY.md` and ADRs as decisions land |
 | `grilling` | mattpocock/skills | Relentless-interview primitive to stress-test a plan, in batched frontier rounds |
-| `domain-modeling` | mattpocock/skills | Challenge terminology against `CONTEXT.md`, sharpen fuzzy language, record ADRs |
+| `domain-modeling` | mattpocock/skills | Challenge terminology against `GLOSSARY.md`, sharpen fuzzy language, record ADRs |
 | `prototype` | mattpocock/skills | Throwaway prototype for a state/logic question or UI exploration |
 | `to-spec` | mattpocock/skills | Turn the conversation into a spec |
 | `to-hld` | local | Turn the discussion into a high-level design doc — decisions + mermaid |
 | `to-tickets` | mattpocock/skills | Split a plan into tracer-bullet tickets with blocking edges |
+| `critique-plan` | ayoubben18/ab-method | Check the spec and tickets against the domain model before implementing (trial) |
 | `implement` | mattpocock/skills | Build from a spec/ticket — TDD at seams, review, commit |
+| `implement-spec` | mattpocock/skills | Implement a whole spec with implementer subagents on one integration branch |
+| `redraft` | local | Scrap a hacky fix and redo it properly with what the first attempt taught |
 | `tdd` | mattpocock/skills | Red-green-refactor TDD loop |
-| `spec-review` | local | Review a diff for conformance to its originating spec/ticket |
-| `walkthrough` | local | Walk me through a diff like a senior mentoring a junior — pair-programming style, chunk by chunk, concise, open to questions |
-| `setup-agent-skills` | mattpocock/skills | Writes private `.agents/workflow.local.md` or shared `.agents/workflow.md` for the spec → tickets → wayfinding flow |
+| `code-review` | local (adapted from mattpocock/skills) | Review a diff on Standards, Spec and Bugs plus lenses picked by what it touches; validates findings, rates likelihood × impact, gives a merge verdict; replaces the built-in `/code-review` |
+| `review` | local | Route a review: code to `code-review`, someone else's PR to `pr-review`, documents and plans to `council`, spec-and-tickets fit to `critique-plan` |
+| `walk-me-through-it` | local | Walk me through a diff like a senior mentoring a junior — pair-programming style, chunk by chunk, concise, open to questions |
+| `cross-examine` | local | Explain each piece of a diff to a junior and defend it to its reviewer before the PR |
+| `to-pullrequest` | local | Open a GitHub or Azure DevOps PR with a body run through `write` |
+| `wrapup` | local | Two-question self-review before clearing or ending a session |
+| `retro` | mattpocock/skills | Session retrospective aimed at the agent's environment, not the code |
+| `setup-matt-pocock-skills` | mattpocock/skills | Write `docs/agents/` (issue tracker, triage labels, domain docs) for the engineering skills |
 | `triage` | mattpocock/skills | State-machine triage of issues/PRs you didn't create |
 | `diagnosing-bugs` | mattpocock/skills | Diagnosis loop for hard bugs and regressions |
 | `wayfinder` | mattpocock/skills | Chart a huge, foggy effort as a map of investigation tickets |
@@ -128,35 +136,38 @@ Not sure which one fits? Run `/router` — a manual index that maps these as flo
 | `techdebt` | local | Inventory non-architectural tech debt from existing tool output; hand off to `to-tickets` |
 | `worktree-janitor` | local | Post-merge worktree cleanup — merge/completion or STATUS.md signal, then remove + branch delete |
 | `codebase-design` | mattpocock/skills | Deep-module vocabulary for designing a module's shape |
-| `codex-review` | local | Read-only cross-model Codex second opinion on a diff |
-| `quick-review` | local | Default review of a diff/PR — one folded reviewer + Codex → findings store |
-| `deep-review` | local | Opt-in heavy review — all seven dimensions + Codex → findings store |
-| `fix-findings` | local | Apply review findings — partitioned, one commit per fix-unit |
-| `review-fix-loop` | local | Chain quick-review (or `--deep`) + fix-findings until the diff passes clean |
+| `prove-it` | local | Diff observed behaviour between the base branch and the current branch |
+| `pr-review` | local | Review someone else's GitHub or Azure DevOps PR with `code-review` in others' PR mode; posts back only on your go-ahead |
+| `fix-findings` | local | Apply blocking review findings as minimal fixes, one commit per fix-unit |
+| `refine-until-ready` | local | Loop code-review and fix-findings until nothing blocking is left, within rails |
 | `council` | local | Adversarial panel for a non-diff artifact (idea/design/plan/doc) |
-| `council-{code,business,plan,doc}` | local | Thin aliases pinning `council`'s panel by artifact type |
 | `prompt-draft` | local | Draft a new prompt against the 12-lever checklist |
 | `prompt-lint` | local | Score, critique, and rewrite an existing prompt |
 | `azure-boards-organiser` | local | Azure Boards work items — PBIs/Bugs/Tasks, sprint planning |
-| `azure-devops` | MicrosoftDocs/Agent-Skills | ADO org/project management, Analytics/OData, permissions |
-| `azure-pipelines` | MicrosoftDocs/Agent-Skills | YAML pipelines, service connections, Key Vault secrets, agents |
+| `rfc` | local | Draft and create an Azure DevOps Request for Change (RFC) work item |
 | `azure-resource-manager` | MicrosoftDocs/Agent-Skills | Bicep/ARM troubleshooting, deployment stacks, template specs |
 | `bicep-tdd` | local | Offline RED→GREEN loop for authoring Azure Bicep |
-| `azure-prepare` | microsoft/azure-skills | Prepare apps for Azure deployment — IaC, Dockerfiles, `azure.yaml` |
 | `azure-enterprise-infra-planner` | microsoft/azure-skills | Architect enterprise infra — landing zones, hub-spoke, Bicep/Terraform |
-| `azure-validate` | microsoft/azure-skills | Pre-deployment validation — Bicep/Terraform, RBAC, what-if |
 | `azure-compliance` | microsoft/azure-skills | Compliance/security audits via `azqr`, Key Vault expiry checks |
 | `write` | tw93/Waza | De-AI and polish English prose (drafts, READMEs, release notes) |
 | `teach` | mattpocock/skills | Learn a concept over multiple sessions (stateful workspace) |
-| `zoom-out` | mattpocock/skills | Step back and assess the bigger picture |
-| `quick-research` | mattpocock/skills | Background-agent primary-source research → a cited Markdown file |
+| `grill-me` | mattpocock/skills | Grilling without a repo, saving nothing |
+| `wait-what` | mattpocock/skills | Re-pitch something that didn't land, simpler and with the missing context |
+| `to-questionnaire` | mattpocock/skills | Turn a decision you can't answer into a questionnaire for someone else |
+| `wizard` | mattpocock/skills | Generate a bash wizard that walks a human through steps only they can do |
+| `research` | mattpocock/skills | Background-agent primary-source research → a cited Markdown file |
 | `storm-research` | local | Multi-perspective, citation-verified HTML research briefing |
+| `llmwiki-insights` | local | Turn an LLM-maintained wiki into prioritized findings about its subject |
 | `jj` | local | Jujutsu (jj) VCS workflow — Windows/pwsh-native (adapts HotThoughts/jj-skills) |
-| `resolving-merge-conflicts` | mattpocock/skills | Resolve an in-progress git merge/rebase conflict |
-| `handoff` | local | Compact the conversation into a handoff doc for a fresh session |
+| `handoff` | mattpocock/skills | Compact the conversation into a handoff doc in the OS temp directory |
 | `project-brain` | local | Durable cross-repo initiative knowledge (core/STATUS/ADRs), auto-loaded by a SessionStart hook |
+| `setup-home-repo` | local | Set up or adopt a workspace's Home Repo, with an approval gate |
+| `agent-staging` | local | Per-workspace drop zone for files between you and your agents |
 | `health` | tw93/Waza | Audit the agent setup — config drift, hooks, MCP, skills, memory |
-| `router` | mattpocock/skills | Manual index over this roster, as flows and decision tables (from ask-matt) |
-| `writing-great-skills` | mattpocock/skills | Reference for writing and editing skills well |
+| `refactor-agents-md` | local | Split an AGENTS.md into a minimal root plus linked category files |
+| `i-have-adhd` | ayghri/i-have-adhd | Shape replies for a reader with ADHD until "stop adhd mode" |
+| `ask-matt` | mattpocock/skills | Router over the mattpocock skills and the main flow |
+| `router` | local | Index over your own skills, as flows and decision tables; defers the mattpocock flow to `ask-matt` |
+| `writing-for-agents` | mattpocock/skills | Reference for writing skills, AGENTS.md and CLAUDE.md for agents |
 | `fastmail` | local | Live inbox + calendar digest |
 | `linkedin-jobs` | local | Parse LinkedIn job-alert emails and InMails into cards |
