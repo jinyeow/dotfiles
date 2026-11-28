@@ -1,25 +1,38 @@
 #!/bin/sh
-# Hard-blocks AI/Claude/Codex/Copilot/co-authorship references in commit messages.
-# Layer 2 of #219 — a hard-block backstop for the prompt-level "don't reference AI
-# tools in commits" rule, which already failed once. Global hook via the
-# [hook "dotfiles-commit-msg"] stanza in git/gitconfig; git invokes commit-msg as
-# `commit-msg <path-to-commit-msg-file>`, which already gives the final message
-# text regardless of -m/-F/editor/--amend/merge — no need to parse argv.
+# Commit-message hard blocks. Global hook via the [hook "dotfiles-commit-msg"] stanza in
+# git/gitconfig; git invokes commit-msg as `commit-msg <path-to-commit-msg-file>`, which
+# already gives the final message text regardless of -m/-F/editor/--amend/merge — no
+# need to parse argv. Two independent checks run from this one hook. Each has its own
+# config key and its own bypass, and both run, so one commit reports every problem.
 #
-# Scoped to work repos only: the scan runs when
-# `git config --type=bool --get work.aiReferenceScan` prints `true`. git/gitconfig-work
-# sets that key, and the [includeIf] blocks in the untracked ~/.gitconfig.local load
-# that file for the same repos that get the work identity, with or without a remote.
-# GitHub repos (dotfiles, wiki, brain) legitimately say "Claude"/"Codex" in their own
-# subject matter and must stay unscanned. If the key is unset, false or not a boolean,
-# or this is not a repo, ALLOW.
+#  1. Commit-format check. Runs when
+#     `git config --type=bool --get work.commitFormat` prints `true`. Nothing sets the
+#     key by default (see git/README.md). The subject line (first non-comment, non-blank
+#     line, CR stripped) must match  <type>(<scope>)?!?: [#<id>] <description>  with type
+#     one of feat|fix|refactor|chore|docs|style|test|ci|build|perf|revert, e.g.
+#     `feat(api): [#123] add the endpoint`. Subjects starting `Merge `, `Revert "`,
+#     `Reapply "`, `fixup! `, `squash! ` or `amend! ` pass untouched. When the subject
+#     uses an old style (`[#123]-feat...` prefix, `AB#123`, bare `#123` without
+#     brackets) the error says so.
+#     Bypass one commit:  SKIP_COMMIT_FORMAT=1 git commit ...
 #
-# Fails OPEN on everything except one case: scoped-in AND the wordlist itself is
-# missing/unreadable, which fails CLOSED. That mirrors the config-hook guard in
-# git/gitconfig: fail-open covers "not installed yet", never "installed but broken";
-# a missing wordlist in a scoped-in repo is the latter.
+#  2. AI-reference scan. Hard-blocks AI/Claude/Codex/Copilot/co-authorship references.
+#     Layer 2 of #219 — a hard-block backstop for the prompt-level "don't reference AI
+#     tools in commits" rule, which already failed once.
+#     Scoped to work repos only: the scan runs when
+#     `git config --type=bool --get work.aiReferenceScan` prints `true`. git/gitconfig-work
+#     sets that key, and the [includeIf] blocks in the untracked ~/.gitconfig.local load
+#     that file for the same repos that get the work identity, with or without a remote.
+#     GitHub repos (dotfiles, wiki, brain) legitimately say "Claude"/"Codex" in their own
+#     subject matter and must stay unscanned.
+#     Fails OPEN on everything except one case: scoped-in AND the wordlist itself is
+#     missing/unreadable, which fails CLOSED. That mirrors the config-hook guard in
+#     git/gitconfig: fail-open covers "not installed yet", never "installed but broken";
+#     a missing wordlist in a scoped-in repo is the latter.
+#     Bypass one commit:  SKIP_AI_REFERENCE_SCAN=1 git commit ...
 #
-# Bypass one commit:  SKIP_AI_REFERENCE_SCAN=1 git commit ...
+# For either key: if it is unset, false or not a boolean, or this is not a repo, that
+# check ALLOWS.
 
 MSG_FILE="$1"
 
@@ -31,38 +44,79 @@ MSG_FILE="$1"
 DIR="$(cd "$(dirname "$0")" && pwd)"
 WORDLIST="$DIR/../../../ai-agents/_shared/banned-ai-terms.txt"
 
-[ "$(git config --type=bool --get work.aiReferenceScan 2>/dev/null)" = "true" ] || exit 0
+PATTERNS=""
+trap '[ -z "$PATTERNS" ] || rm -f "$PATTERNS"' EXIT
 
-[ "$SKIP_AI_REFERENCE_SCAN" = "1" ] && exit 0
+check_commit_format() {
+    [ "$(git config --type=bool --get work.commitFormat 2>/dev/null)" = "true" ] || return 0
+    [ "$SKIP_COMMIT_FORMAT" = "1" ] && return 0
 
-if [ ! -r "$WORDLIST" ]; then
-    echo "AI-reference scan blocked this commit: wordlist not found or unreadable at $WORDLIST (this repo is scoped in for the check — see git/README.md)." >&2
-    exit 1
-fi
+    # git drops leading blank lines, so the subject is the first non-blank one.
+    subject=$(grep -v '^#' "$MSG_FILE" | tr -d '\r' | grep -v '^[[:space:]]*$' | head -n 1)
+    [ -n "$subject" ] || return 0
 
-# The wordlist's '#' comments and blank lines are documented as consumer-stripped,
-# not grep-safe as-is (a comment line containing an unbalanced paren breaks
-# grep -E). Filter to a scratch file of patterns only.
-PATTERNS=$(mktemp) || exit 1
-trap 'rm -f "$PATTERNS"' EXIT
-grep -Ev '^#|^$' "$WORDLIST" > "$PATTERNS"
+    case "$subject" in
+        "Merge "*|'Revert "'*|'Reapply "'*|"fixup! "*|"squash! "*|"amend! "*) return 0 ;;
+    esac
 
-# Belt-and-braces on top of the -r check above: on Windows/MSYS bash, [ -r ] can
-# report a file readable even when an NTFS ACL deny blocks the actual read (a
-# verified platform quirk, not a hypothetical), which would otherwise silently
-# empty PATTERNS and let grep -Eiqf match nothing below. Any wordlist that
-# yields zero usable patterns — unreadable or genuinely empty — is "installed
-# but broken", which fails CLOSED per this hook's documented contract.
-if [ ! -s "$PATTERNS" ]; then
-    echo "AI-reference scan blocked this commit: wordlist at $WORDLIST yielded no usable patterns (unreadable or empty)." >&2
-    exit 1
-fi
+    if printf '%s\n' "$subject" | grep -Eq '^(feat|fix|refactor|chore|docs|style|test|ci|build|perf|revert)(\([^)]+\))?!?: \[#[0-9]+\] [^[:space:]]'; then
+        return 0
+    fi
 
-if grep -Eiqf "$PATTERNS" "$MSG_FILE"; then
     echo "" >&2
-    echo "AI-reference scan blocked this commit: the message matches a banned AI/Claude/Codex/Copilot/co-authorship term (ai-agents/_shared/banned-ai-terms.txt)." >&2
-    echo "Fix the message, or bypass this one commit with:  SKIP_AI_REFERENCE_SCAN=1 git commit ..." >&2
-    exit 1
-fi
+    echo "Commit-format check blocked this commit: the subject does not match the format." >&2
+    echo "  subject:  $subject" >&2
+    echo "  expected: <type>(<scope>)?!?: [#<work item id>] <description>" >&2
+    echo "  example:  feat(api): [#123] add the endpoint" >&2
+    echo "  types:    feat fix refactor chore docs style test ci build perf revert" >&2
+    if printf '%s\n' "$subject" | grep -Eq '^\[#[0-9]+\]'; then
+        echo "  The subject uses the old style with a leading [#id] prefix. Put the type first, then the id: feat(scope): [#123] description" >&2
+    elif printf '%s\n' "$subject" | grep -Eq 'AB#[0-9]+'; then
+        echo "  The subject uses the old style with an AB#id reference. Write [#id] after the type instead: feat(scope): [#123] description" >&2
+    elif printf '%s\n' "$subject" | grep -Eq '(^|[[:space:]])#[0-9]+'; then
+        echo "  The subject uses the old style with a bare #id. Write the id in brackets after the type: feat(scope): [#123] description" >&2
+    fi
+    echo "Fix the message, or bypass this one commit with:  SKIP_COMMIT_FORMAT=1 git commit ..." >&2
+    return 1
+}
 
-exit 0
+check_ai_reference() {
+    [ "$(git config --type=bool --get work.aiReferenceScan 2>/dev/null)" = "true" ] || return 0
+    [ "$SKIP_AI_REFERENCE_SCAN" = "1" ] && return 0
+
+    if [ ! -r "$WORDLIST" ]; then
+        echo "AI-reference scan blocked this commit: wordlist not found or unreadable at $WORDLIST (this repo is scoped in for the check — see git/README.md)." >&2
+        return 1
+    fi
+
+    # The wordlist's '#' comments and blank lines are documented as consumer-stripped,
+    # not grep-safe as-is (a comment line containing an unbalanced paren breaks
+    # grep -E). Filter to a scratch file of patterns only.
+    PATTERNS=$(mktemp) || return 1
+    grep -Ev '^#|^$' "$WORDLIST" > "$PATTERNS"
+
+    # Belt-and-braces on top of the -r check above: on Windows/MSYS bash, [ -r ] can
+    # report a file readable even when an NTFS ACL deny blocks the actual read (a
+    # verified platform quirk, not a hypothetical), which would otherwise silently
+    # empty PATTERNS and let grep -Eiqf match nothing below. Any wordlist that
+    # yields zero usable patterns — unreadable or genuinely empty — is "installed
+    # but broken", which fails CLOSED per this hook's documented contract.
+    if [ ! -s "$PATTERNS" ]; then
+        echo "AI-reference scan blocked this commit: wordlist at $WORDLIST yielded no usable patterns (unreadable or empty)." >&2
+        return 1
+    fi
+
+    if grep -Eiqf "$PATTERNS" "$MSG_FILE"; then
+        echo "" >&2
+        echo "AI-reference scan blocked this commit: the message matches a banned AI/Claude/Codex/Copilot/co-authorship term (ai-agents/_shared/banned-ai-terms.txt)." >&2
+        echo "Fix the message, or bypass this one commit with:  SKIP_AI_REFERENCE_SCAN=1 git commit ..." >&2
+        return 1
+    fi
+
+    return 0
+}
+
+status=0
+check_commit_format || status=1
+check_ai_reference || status=1
+exit "$status"

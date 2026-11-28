@@ -249,7 +249,10 @@ jobs:
             git/templates/hooks/commit-msg \
             git/templates/hooks/pre-commit \
             git/templates/hooks/prepare-commit-msg \
-            git/templates/hooks/prepare-commit-msg.sh
+            git/templates/hooks/prepare-commit-msg.sh \
+            git/templates/work-hooks/checks \
+            git/templates/work-hooks/push-lint \
+            git/templates/work-hooks/push-warnings
 
   gitleaks:
     name: gitleaks (secret scan)

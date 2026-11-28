@@ -9,19 +9,21 @@ Git configuration, global ignore rules and attributes, commit template, and glob
 | git 2.54+ | Config-based hooks (`[hook]` stanzas). Older git ignores them, so no global hook runs | `winget install Git.Git` |
 | [delta](https://github.com/dandavison/delta) | Pager, diff viewer | `winget install dandavison.delta` / `cargo install git-delta` |
 | [nvim](https://neovim.io) | Commit editor | see `nvim/` |
-| pwsh 7+ | PowerShell hook variant | `winget install Microsoft.PowerShell` |
+| pwsh 7+ | PowerShell hook variant; the JSON check and PowerShell lint in the work hooks | `winget install Microsoft.PowerShell` |
+| PSScriptAnalyzer (optional) | PowerShell lint in the work `push-lint` hook | `Install-Module PSScriptAnalyzer -Scope CurrentUser` |
+| bicep (optional) | Bicep lint in the work `push-lint` hook | `winget install Microsoft.Bicep` |
 
 ## Files
 
 | File | Installed as | Notes |
 |---|---|---|
 | `gitconfig` | `~/.gitconfig` | Base config for all machines. Ends by including the untracked `~/.gitconfig.local` |
-| `gitconfig-work` | `~/.gitconfig-work` | Work overrides; included per repo by the `[includeIf]` blocks in `~/.gitconfig.local`. Sets `work.aiReferenceScan = true`. Ends by including the untracked `~/.gitconfig-work.local` |
+| `gitconfig-work` | `~/.gitconfig-work` | Work overrides; included per repo by the `[includeIf]` blocks in `~/.gitconfig.local`. Sets `work.aiReferenceScan = true` and adds the work-only hook stanzas. Ends by including the untracked `~/.gitconfig-work.local` |
 | `gitignore` | `~/.gitignore` | Global ignore rules |
 | `gitignore-work` | `~/.gitignore-work` | Global ignore rules for work repos. Replaces `gitignore` there via `core.excludesFile` in `gitconfig-work`. Adds .NET, Terraform, and Azure Functions build output, plus AI tooling files |
 | `gitmessage` | `~/.gitmessage` | Commit message template |
 | `gitattributes` | `~/.gitattributes` | Global attributes (`core.attributesfile`). Per-type whitespace rules for formats indented with tabs (Go, Makefiles, `.gitmodules`, TSV) |
-| `templates/` | `~/.git_templates/` | Global hook scripts in `templates/hooks/`, run by the `[hook "dotfiles-<event>"]` stanzas in `gitconfig` |
+| `templates/` | `~/.git_templates/` | Global hook scripts in `templates/hooks/`, run by the `[hook "dotfiles-<event>"]` stanzas in `gitconfig`. Work-only hook scripts in `templates/work-hooks/`, run by the `[hook "work-*"]` stanzas in `gitconfig-work` |
 
 ## Key settings
 
@@ -263,11 +265,51 @@ out to cross-platform binaries.
 
 ### `commit-msg`
 
+Two independent checks: the commit-format check and the AI-reference scan. Each has
+its own config key and its own bypass variable. Both run, so one commit reports every
+problem. Git invokes `commit-msg <path-to-commit-msg-file>`, so the hook sees the final
+message text regardless of `-m`, `-F`, an editor, `--amend`, or a merge.
+
+#### Commit-format check
+
+Blocks a commit whose subject does not match this format:
+
+```text
+<type>(<scope>)?!?: [#<work item id>] <description>
+```
+
+The type is one of `feat`, `fix`, `refactor`, `chore`, `docs`, `style`, `test`, `ci`,
+`build`, `perf` or `revert`. For example, `feat(api): [#123] add the endpoint`. The
+subject is the first line that is not a comment and not blank. Subjects that start with
+`Merge `, `Revert "`, `Reapply "`, `fixup! `, `squash! ` or `amend! ` pass. When the
+subject uses an old style (a leading `[#123]` prefix, `AB#123`, or a bare `#123`), the
+error message says which one.
+
+The check runs only when `git config --type=bool --get work.commitFormat` prints
+`true`. No tracked file sets the key, so the check is off by default.
+`prepare-commit-msg` writes the work item as a `Refs:` trailer at the end of the
+message. The check needs `[#id]` in the subject, so with the check on, every commit that
+`prepare-commit-msg` prepares is blocked until you edit the subject. To turn the check on
+in every work repo, add the key to `~/.gitconfig-work.local`:
+
+```ini
+[work]
+    commitFormat = true
+```
+
+To turn it on in one repo only:
+
+```sh
+git config work.commitFormat true
+```
+
+Bypass one commit: `SKIP_COMMIT_FORMAT=1 git commit ...`
+
+#### AI-reference scan
+
 Blocks a commit whose message matches `ai-agents/_shared/banned-ai-terms.txt` —
 the hard-block layer for AI/Claude/Codex/Copilot/co-authorship references
 (issue #219 layer 2), replacing a prompt-level rule that already failed once.
-Git invokes `commit-msg <path-to-commit-msg-file>`, so this sees the final
-message text regardless of `-m`, `-F`, an editor, `--amend`, or a merge.
 
 Scoped to work repos only. The scan runs when
 `git config --type=bool --get work.aiReferenceScan` prints `true`. `gitconfig-work`
@@ -301,6 +343,7 @@ repo's own `.git/hooks` script runs **last**. Verify:
 ```console
 $ git hook list pre-commit
 dotfiles-pre-commit                 # <- gitleaks and the AI-reference scan
+work-checks                         # <- only in work repos
 hook from hookdir                   # <- only if the repo has its own pre-commit
 ```
 
@@ -315,7 +358,7 @@ git --version
 
 Below 2.54 git **ignores every `[hook]` stanza silently**. There is no error, and
 `git hook list` does not exist. No global hook runs: not gitleaks, not the
-AI-reference scan. `setup.ps1`/`setup.sh -Module git` check the
+AI-reference scan, not the work hooks. `setup.ps1`/`setup.sh -Module git` check the
 version and warn at install time. Verified on 2.56.1.windows.1. Debian bookworm ships
 2.39.2, so WSL needs a newer git before any hook runs there.
 
@@ -324,6 +367,64 @@ ignored (unknown hook keys always are) — measured identical serial timing with
 without it on 2.55. Only `git hook run --jobs=N` runs same-event hooks
 concurrently, and git does not use it on the commit path, so `git commit` is
 serial regardless.
+
+## Work hooks (`templates/work-hooks/`)
+
+`gitconfig-work` runs these scripts as config-based hooks, so they run only in the repos
+that load it: the repos that get the work identity. They are reached through the
+`~/.git_templates` link, so setup adds no extra link. Each stanza uses the same guarded
+command as the stanzas in `gitconfig`, so a hook fails open until `~/.git_templates` is
+installed:
+
+```ini
+[hook "work-checks"]
+    event = pre-commit
+    command = "f=\"$HOME/.git_templates/work-hooks/checks\"; test -f \"$f\" || exit 0; exec \"$f\""
+```
+
+| Hook | Event | What it does | Bypass for one run |
+|---|---|---|---|
+| `checks` | pre-commit | Blocks a commit on a protected branch, merge conflict markers, CRLF in a `.sh` file, and a `.json` file that does not parse | `SKIP_PROTECTED_BRANCH=1`, `SKIP_CONFLICT_MARKERS=1`, `SKIP_SH_CRLF=1`, `SKIP_JSON_CHECK=1` |
+| `push-warnings` | pre-push | Warns when the upstream of a pushed branch is gone, or when the branch is more than 20 commits behind the default branch. Never blocks | none |
+| `push-lint` | pre-push | Blocks on PSScriptAnalyzer findings in the changed PowerShell files, and on `bicep lint` findings in the changed `.bicep` files | `SKIP_PUSH_LINT=1` |
+
+`git commit --no-verify` and `git push --no-verify` skip every hook.
+
+### `checks`
+
+Runs every check, so one commit reports every problem:
+
+- Protected branch: blocks a commit on `main`, `master` or `wikiMaster` (the default
+  branch of an Azure DevOps code wiki). The list is fixed in the script. A detached
+  HEAD, an unborn branch, and a repo with no remote pass.
+- Conflict markers: blocks an added line that starts with `<<<<<<<` or `>>>>>>>`. A
+  bare `=======` is a Markdown setext heading, so it never counts.
+- CRLF in `.sh`: blocks a staged `.sh` file with a CR in its staged content. A CRLF
+  copy in the working tree over an LF staged copy passes.
+- JSON: every staged `.json` file must parse. `checks-json.ps1` does the parsing in one
+  pwsh process. It accepts JSONC comments, trailing commas, a BOM, and keys that differ
+  only by case. An empty file fails. When pwsh is not on `PATH`, the check warns and
+  skips.
+
+The CRLF and JSON checks read the staged content.
+
+### `push-warnings` and `push-lint`
+
+Both read the pushed refs from stdin and skip tags and branch deletes. They use the
+local remote-tracking refs and do not fetch. The default branch is the branch that
+`origin/HEAD` points at. If `origin/HEAD` is not set (for example, the remote was added
+by hand), it is `origin/main`, then `origin/master`. To set `origin/HEAD`, run
+`git remote set-head origin --auto`.
+
+`push-lint` lints the files that changed between the merge base with the default
+branch and the pushed commit. Without a default branch, every file in the commit
+counts as changed. It reads the working tree copy of each file, so it skips a pushed
+branch that is not checked out, with a warning. PowerShell files are linted with the
+repo's own `.vscode/PSScriptAnalyzerSettings.psd1` or `PSScriptAnalyzerSettings.psd1`,
+never with the default rules. The lint warns and skips when the repo has no settings
+file, or when pwsh, the PSScriptAnalyzer module, or the `bicep` CLI is missing. An
+error from PSScriptAnalyzer itself blocks the push. Any output from `bicep lint`,
+warnings included, counts as a finding.
 
 ## fsmonitor
 

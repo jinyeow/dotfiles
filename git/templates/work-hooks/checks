@@ -1,0 +1,84 @@
+#!/bin/sh
+# Work-only pre-commit checks. Wired via [hook "work-checks"] in git/gitconfig-work, so it
+# runs ONLY in repos that load that file (the [includeIf] blocks in ~/.gitconfig.local).
+#
+# Every check runs, so one commit attempt reports every problem. Each check has its
+# own bypass variable; `git commit --no-verify` skips them all.
+
+DIR="$(cd "$(dirname "$0")" && pwd)"
+failed=0
+
+fail() {
+    echo "work-checks: $1" >&2
+    echo "work-checks: bypass this check for one commit with:  $2=1 git commit ..." >&2
+    failed=1
+}
+
+# a) No commits straight onto a protected branch: main, master or wikiMaster (the
+# default branch of an Azure DevOps code wiki). Detached HEAD has no branch name and
+# an unborn branch has no history to protect, so both pass. A repo with no remote at
+# all is local-only (nothing to open a PR against), so it passes too.
+check_protected_branch() {
+    [ "$SKIP_PROTECTED_BRANCH" = "1" ] && return 0
+    branch=$(git symbolic-ref -q --short HEAD) || return 0
+    case "$branch" in
+        main|master|wikiMaster) ;;
+        *) return 0 ;;
+    esac
+    git rev-parse -q --verify HEAD >/dev/null || return 0
+    [ -n "$(git remote)" ] || return 0
+    fail "commit blocked: HEAD is on protected branch '$branch'. Create a feature branch first." SKIP_PROTECTED_BRANCH
+}
+
+# b) No conflict markers in added lines. Only `<<<<<<<` and `>>>>>>>` count (alone or
+# followed by a space; a trailing CR is tolerated). A bare `=======` is a Markdown
+# setext heading, so it is never treated as a marker.
+check_conflict_markers() {
+    [ "$SKIP_CONFLICT_MARKERS" = "1" ] && return 0
+    hits=$(git -c core.quotePath=false diff --cached -U0 --no-color --no-ext-diff --no-textconv \
+            --src-prefix=a/ --dst-prefix=b/ --diff-filter=ACMR |
+        awk '
+            /^\+\+\+ / { file = substr($0, 7); sub(/\t$/, "", file); next }
+            /^\+(<<<<<<<|>>>>>>>)( |\r?$)/ { print "  " file ": " substr($0, 2) }
+        ')
+    if [ -n "$hits" ]; then
+        printf '%s\n' "$hits" >&2
+        fail "commit blocked: staged lines above contain merge conflict markers." SKIP_CONFLICT_MARKERS
+    fi
+}
+
+# c) No CR in staged shell scripts: sh on Linux build agents fails on CRLF. Reads the
+# index blob, so a CRLF worktree copy over an LF staged copy is fine.
+check_sh_crlf() {
+    [ "$SKIP_SH_CRLF" = "1" ] && return 0
+    # Counts CRs with tr: Git for Windows' grep strips CR before matching.
+    bad=$(git -c core.quotePath=false diff --cached --name-only --diff-filter=ACMR -- '*.sh' |
+        while IFS= read -r f; do
+            [ "$(git cat-file blob ":$f" | tr -dc '\r' | wc -c)" -gt 0 ] && printf '  %s\n' "$f"
+        done)
+    if [ -n "$bad" ]; then
+        printf '%s\n' "$bad" >&2
+        fail "commit blocked: staged .sh files above have CRLF line endings. Convert them to LF and re-stage." SKIP_SH_CRLF
+    fi
+}
+
+# d) Staged .json files must parse. The parsing lives in checks-json.ps1 (one pwsh
+# process for all files; see its header for what counts as valid). pwsh starts only
+# when a .json file is staged, and a missing pwsh warns and skips.
+check_json() {
+    [ "$SKIP_JSON_CHECK" = "1" ] && return 0
+    [ -n "$(git diff --cached --name-only --diff-filter=ACMR -- '*.json')" ] || return 0
+    if ! command -v pwsh >/dev/null 2>&1; then
+        echo "work-checks: pwsh not found on PATH; skipping the JSON check." >&2
+        return 0
+    fi
+    pwsh -NoLogo -NoProfile -NonInteractive -File "$DIR/checks-json.ps1" ||
+        fail "commit blocked: staged .json files above do not parse." SKIP_JSON_CHECK
+}
+
+check_protected_branch
+check_conflict_markers
+check_sh_crlf
+check_json
+
+exit "$failed"
