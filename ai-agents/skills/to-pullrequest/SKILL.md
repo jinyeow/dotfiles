@@ -1,6 +1,6 @@
 ---
 name: to-pullrequest
-description: "Create a pull request on GitHub (`gh pr create`) or Azure DevOps (`az repos pr create`) with a drafted title/body that has been run through the `write` skill first, so AI-sounding prose never ships in a PR description. Use when the user says 'open a PR', 'create a pull request', 'make a PR for this', 'submit this branch for review', or similar phrasing that asks for a brand-new PR to be opened. NOT for reviewing an existing PR (use `review-ado-pr` for Azure DevOps, `code-review` for GitHub), NOT for merging/completing a PR, NOT for editing an already-open PR's description, and NOT for CI/merge-gate checks or review-thread resolution — this skill stops once the PR is created."
+description: "Create a pull request on GitHub (`gh pr create`) or Azure DevOps (`az repos pr create`) with a drafted title/body that has been run through the `write` skill first, so AI-sounding prose never ships in a PR description. Use when the user says 'open a PR', 'create a pull request', 'make a PR for this', 'submit this branch for review', or similar phrasing that asks for a brand-new PR to be opened. NOT for reviewing an existing PR (use `pr-review` for someone else's PR, `code-review` for your own), NOT for merging/completing a PR, NOT for editing an already-open PR's description, and NOT for CI/merge-gate checks or review-thread resolution — this skill stops once the PR is created."
 metadata:
   author: justin
   version: "1.0.0"
@@ -17,8 +17,8 @@ through the `write` skill before the PR is opened — closing the generation-tim
 
 - The user asks to open/create a pull request, on GitHub or Azure DevOps, for the current
   branch's committed work.
-- NOT for reviewing an existing PR (`review-ado-pr` for Azure DevOps; `code-review` for
-  GitHub, which takes a PR target).
+- NOT for reviewing an existing PR (`pr-review` for someone else's PR on GitHub or Azure
+  DevOps; `code-review` for your own, which takes a PR target).
 - NOT for merging, completing, or setting auto-complete on a PR.
 - NOT for editing the description of a PR that already exists.
 - NOT for CI/merge-gate readiness or resolving review threads — out of scope, see below.
@@ -154,5 +154,5 @@ this skill — they belong to a separate skill if one is wanted later.
 
 - `write` — the prose-quality pass this skill routes every drafted title/body through (step 6).
 - [BODY-TEMPLATE.md](BODY-TEMPLATE.md) — the default body when the repository has no PR template, adapted from mattpocock/skills' `pr`.
-- `review-ado-pr` — reviews an *existing* Azure DevOps PR; this skill only creates new ones.
+- `pr-review` — reviews an *existing* PR; this skill only creates new ones.
 - `AGENTS.md` → "Git worktrees" — the branch-guard convention referenced in step 1.

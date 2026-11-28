@@ -11,7 +11,9 @@ Codex CLI, and Pi where each runtime is configured to load it. This includes `co
 `project-brain` (the
 `SessionStart` auto-injection hook is Claude-specific and stays a `claude/settings.json`
 entry; the skill's resolve-and-read procedure itself is tool-agnostic), and the review and
-fix skills: `code-review`, `refine-until-ready` and `fix-findings`. Their read-only lens subagents
+fix skills: `code-review`, `refine-until-ready` and `fix-findings`, plus `pr-review`, which runs
+`code-review` on someone else's PR and keeps its Azure DevOps posting scripts under `scripts/`
+(their Pester tests live in `tests/`). Their read-only lens subagents
 are scoped on Pi through `pi-subagents`' `tools:` frontmatter allowlist (the same grain as
 Claude's named-tool allowlist); see `ai-agents/skills/_shared/lenses.md`. On Codex, the
 `reviewer` and `fixer` role tables in `codex/config.toml` are description-only spawn guidance.

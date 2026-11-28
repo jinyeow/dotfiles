@@ -5,9 +5,9 @@ modules, and ownership is expressed by the directory rather than inferred from s
 
 - `skills/` — portable (agent-agnostic) skills projected to supported runtimes, including
   `skills/_shared/` — the projected review-support contract (`lenses.md`,
-  `findings-schema.md`, `review-rubric.md`, `reviewer-models.md`) shared by `code-review`,
-  `refine-until-ready`, and `fix-findings`, all three of which are portable skills under `skills/`
-  too.
+  `findings-schema.md`, `review-rubric.md`, `reviewer-models.md`, `review-comments.md`) shared by
+  `code-review`, `refine-until-ready`, `fix-findings` and `pr-review`, all of which are portable
+  skills under `skills/` too.
 - `_shared/` — holds only `banned-ai-terms.txt`, the wordlist the AI-reference hooks read
   (symlinked individually by the installers). Not a skill and not projected; unrelated to
   `skills/_shared/`.
@@ -69,6 +69,7 @@ from upstream's `code-review` at that commit but is now a local skill, so a re-s
 - **`linkedin-jobs`** — Read LinkedIn job alert emails and recruiter InMails, extract role details, and present them as structured cards grouped by inferred category.
 - **`llmwiki-insights`** — Read an LLM-maintained wiki (Karpathy's LLM Wiki pattern) and synthesize prioritized, actionable findings about the subject matter it documents.
 - **`project-brain`** — Load and maintain the "project brain": durable cross-repo initiative knowledge (core context, volatile STATUS, ADRs, research, reports) that lives in a git repo outside any single code repo, so work spanning multiple repos/worktrees/spikes stays coherent between sessions. Also packaged as a Claude Code plugin for machines without these dotfiles; see [Standalone project-brain plugin](#standalone-project-brain-plugin).
+- **`pr-review`** — Review someone else's pull request on GitHub or Azure DevOps, end to end.
 - **`prompt-draft`** — Draft a new prompt from a task description, applying the 12-lever prompting checklist from scratch.
 - **`prompt-lint`** — Score, critique, and rewrite an existing prompt against the 12-lever prompting checklist: output format, acceptance criteria, scope, and reasoning-extraction risk.
 - **`prototype`** — Build a throwaway prototype to answer a design question.
@@ -78,7 +79,6 @@ from upstream's `code-review` at that commit but is now a local skill, so a re-s
 - **`research`** — Investigate a question against high-trust primary sources and capture the findings as a Markdown file in the repo.
 - **`retro`** — Conduct a retrospective on a coding session.
 - **`review`** — Review whatever the user points at by routing it to the right reviewer.
-- **`review-ado-pr`** — Review an Azure DevOps pull request locally, end-to-end.
 - **`refine-until-ready`** — Review a change and fix what blocks it, in small in-scope fixes, until nothing blocking is left.
 - **`rfc`** — Draft and create an Azure DevOps "Request for Change RFC" work item in the configured work project.
 - **`setup-home-repo`**: Set up or adopt a Home Repo (`gateroom`) for a workspace on any machine, in four steps with an approval gate before any change.

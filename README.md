@@ -103,7 +103,7 @@ See `fzf/`, `ripgrep/`, `lazygit/`, `tig/`, and `nvim/` for tool-specific `READM
 
 ## Claude Code skills
 
-Portable skills live in `ai-agents/skills/`; Claude-native skills live in `claude/skills/`, Codex-native variants in `codex/skills/`, and Pi-native variants in `pi/skills/`. Claude projects portable plus Claude-native skills, Codex (Windows and Linux) projects portable plus Codex-native skills, and Pi projects portable plus Pi-native skills. The portable review-support contract at `ai-agents/skills/_shared/` (`code-review`, `refine-until-ready`, `fix-findings`) is projected with every runtime; `ai-agents/_shared/` holds only the hooks' `banned-ai-terms.txt` wordlist. User-scope agent definitions live under `ai-agents/agents/` and are projected to Claude Code. Installers safely migrate existing whole-directory links from the historical `ai-agents/shared/agents/` path without replacing user-owned entries.
+Portable skills live in `ai-agents/skills/`; Claude-native skills live in `claude/skills/`, Codex-native variants in `codex/skills/`, and Pi-native variants in `pi/skills/`. Claude projects portable plus Claude-native skills, Codex (Windows and Linux) projects portable plus Codex-native skills, and Pi projects portable plus Pi-native skills. The portable review-support contract at `ai-agents/skills/_shared/` (`code-review`, `refine-until-ready`, `fix-findings`, `pr-review`) is projected with every runtime; `ai-agents/_shared/` holds only the hooks' `banned-ai-terms.txt` wordlist. User-scope agent definitions live under `ai-agents/agents/` and are projected to Claude Code. Installers safely migrate existing whole-directory links from the historical `ai-agents/shared/agents/` path without replacing user-owned entries.
 
 Not sure which one fits? Run `/router` — a manual index that maps these as flows and decision tables. Built-in Claude Code skills (`compact`, `deep-research`, `security-review`, `verify`) are provided by the harness and aren't listed here. The `code-review` skill below replaces the built-in `/code-review`; the built-in's `/review` alias still runs Claude Code's own review. The `mattpocock/skills` rows are unedited copies of upstream at commit `6f7f783` (2026-11-25), including each skill's `agents/openai.yaml` Codex metadata; re-sync by copying the folders again. `code-review` is a local skill adapted from upstream's `code-review` at that commit, so a re-sync skips it. The customized versions they replaced are at commit `c7a774c`.
 
@@ -122,7 +122,7 @@ Not sure which one fits? Run `/router` — a manual index that maps these as flo
 | `redraft` | local | Scrap a hacky fix and redo it properly with what the first attempt taught |
 | `tdd` | mattpocock/skills | Red-green-refactor TDD loop |
 | `code-review` | local (adapted from mattpocock/skills) | Review a diff on Standards, Spec and Bugs plus lenses picked by what it touches; validates findings, rates likelihood × impact, gives a merge verdict; replaces the built-in `/code-review` |
-| `review` | local | Route a review: code to `code-review`, documents and plans to `council`, spec-and-tickets fit to `critique-plan` |
+| `review` | local | Route a review: code to `code-review`, someone else's PR to `pr-review`, documents and plans to `council`, spec-and-tickets fit to `critique-plan` |
 | `walk-me-through-it` | local | Walk me through a diff like a senior mentoring a junior — pair-programming style, chunk by chunk, concise, open to questions |
 | `cross-examine` | local | Explain each piece of a diff to a junior and defend it to its reviewer before the PR |
 | `to-pullrequest` | local | Open a GitHub or Azure DevOps PR with a body run through `write` |
@@ -137,7 +137,7 @@ Not sure which one fits? Run `/router` — a manual index that maps these as flo
 | `worktree-janitor` | local | Post-merge worktree cleanup — merge/completion or STATUS.md signal, then remove + branch delete |
 | `codebase-design` | mattpocock/skills | Deep-module vocabulary for designing a module's shape |
 | `prove-it` | local | Diff observed behaviour between the base branch and the current branch |
-| `review-ado-pr` | local | Review an Azure DevOps PR locally; posts back only on approval |
+| `pr-review` | local | Review someone else's GitHub or Azure DevOps PR with `code-review` in others' PR mode; posts back only on your go-ahead |
 | `fix-findings` | local | Apply blocking review findings as minimal fixes, one commit per fix-unit |
 | `refine-until-ready` | local | Loop code-review and fix-findings until nothing blocking is left, within rails |
 | `council` | local | Adversarial panel for a non-diff artifact (idea/design/plan/doc) |

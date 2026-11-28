@@ -396,3 +396,71 @@ Describe 'to-pullrequest skill' {
         $toPullrequest | Should -Match 'auto-complete'
     }
 }
+
+Describe 'pr-review skill' {
+    BeforeAll {
+        $repo = Split-Path $PSScriptRoot -Parent
+        $skillDir = Join-Path $repo 'ai-agents/skills/pr-review'
+        $prReview = Get-Content (Join-Path $skillDir 'SKILL.md') -Raw
+        $voteSection = [regex]::Match($prReview, '(?s)### 8\. Vote, only on request\s*\n(.*?)\n## ').Groups[1].Value
+    }
+
+    It 'is a portable skill that replaces the Azure DevOps-only review skill everywhere' {
+        $prReview | Should -Match '(?s)^---\s*\nname:\s*pr-review\s*\n'
+        Test-Path (Join-Path $skillDir 'agents/openai.yaml') | Should -BeTrue
+        Test-Path (Join-Path $repo 'ai-agents/skills/review-ado-pr') | Should -BeFalse
+        Get-Content (Join-Path $repo 'ai-agents/skills/review/SKILL.md') -Raw | Should -Match 'run `pr-review`'
+        Get-Content (Join-Path $repo 'claude/skills/router/SKILL.md') -Raw | Should -Match '/pr-review'
+        Get-Content (Join-Path $repo 'README.md') -Raw | Should -Match '\| `pr-review` \|'
+    }
+
+    It 'runs code-review in others'' PR mode and posts with the shared comment format' {
+        $prReview | Should -Match 'Run `code-review` in others'' PR mode'
+        $prReview | Should -Match ([regex]::Escape('../_shared/review-comments.md'))
+    }
+
+    It 'posts only after the user''s explicit go-ahead in this invocation' {
+        $prReview | Should -Match 'Post nothing until the user gives an explicit go-ahead in this\s+invocation'
+        $prReview | Should -Match 'An approval from an earlier run, or\s+for a different PR, does not count'
+        $prReview | Should -Match 'Deferred follow-up work items, only when the user asks for them'
+    }
+
+    It 'votes only when the user explicitly asks, after confirming, with no REST fallback' {
+        $voteSection | Should -Not -BeNullOrEmpty
+        $voteSection | Should -Match 'Never vote unless the user explicitly asks for a vote in this invocation'
+        $voteSection | Should -Match 'confirm before\s+casting it'
+        $voteSection | Should -Match ([regex]::Escape('az repos pr set-vote'))
+        $voteSection | Should -Match 'no REST fallback'
+        $prReview | Should -Not -Match '(?i)auto-approve|approves? the PR when nothing blocks'
+    }
+
+    It 'keeps live Azure reads opt-in, with no secret-returning reads by default' {
+        $liveChecks = Join-Path $skillDir 'references/ado-live-checks.md'
+        Test-Path $liveChecks | Should -BeTrue
+        $prReview | Should -Match 'Live Azure and Azure DevOps reads are off by default'
+        $live = Get-Content $liveChecks -Raw
+        $live | Should -Match 'Load this file only when the user opts in'
+        $live | Should -Match '## Never, unless the user names the exact call'
+        $live | Should -Match 'Reads that return secrets'
+    }
+
+    It 'reads machine-local values from git config and ships no environment-specific values' {
+        foreach ($key in @('work.adoOrgUrl', 'work.adoProject', 'prReview.reportDir', 'prReview.cloneRoot', 'prReview.deferralParentId', 'prReview.workItemType', 'prReview.conventionSource'))
+        {
+            $prReview | Should -Match ([regex]::Escape("``$key``"))
+        }
+        $prReview | Should -Match ([regex]::Escape('~/.gitconfig.local'))
+        $hits = Get-ChildItem $skillDir -Recurse -File |
+            Select-String -Pattern '(?<![A-Za-z0-9_])[A-Za-z]:[\\/]+[A-Za-z]', '/Users/', '@[A-Za-z0-9-]+\.[A-Za-z]{2,}'
+        $hits | Should -BeNullOrEmpty
+    }
+
+    It 'ships its scripts without tests, which live in tests/' {
+        foreach ($name in @('AdoRest.ps1', 'Post-PrThreads.ps1', 'New-DeferredWorkItem.ps1', 'Add-WorkItemComments.ps1'))
+        {
+            Test-Path (Join-Path $skillDir "scripts/$name") | Should -BeTrue
+        }
+        @(Get-ChildItem $skillDir -Recurse -Filter '*.Tests.ps1').Count | Should -Be 0
+        Test-Path (Join-Path $PSScriptRoot 'pr-review-scripts.Tests.ps1') | Should -BeTrue
+    }
+}

@@ -28,7 +28,7 @@ For upkeep beside `/improve-codebase-architecture`, **`/techdebt`** inventories 
 
 ## Reviewing & verifying — a ladder by target
 
-Not sure which? **`/review`** routes for you: code goes to `/code-review`, documents and plans go to `/council`. Otherwise pick by **what you're reviewing** and **how hard**. Each rung escalates.
+Not sure which? **`/review`** routes for you: code goes to `/code-review`, someone else's PR goes to `/pr-review`, documents and plans go to `/council`. Otherwise pick by **what you're reviewing** and **how hard**. Each rung escalates.
 
 - **`/code-review`** — the diff on Standards, Spec and Bugs, plus Security, Performance, Tests and Architecture lenses when the diff touches their area. It validates every finding, rates it likelihood × impact, and ends with a merge verdict. It offers a second opinion from another model (Codex) when one is available. It replaces the built-in `/code-review`, though `/review` still runs the built-in. `/implement` and `/implement-spec` call it before committing.
 - **`/refine-until-ready`** — the loop: `/code-review`, then **`/fix-findings`** (minimal fixes, one commit per fix-unit), until nothing blocking is left or a rail stops it (cap, scope, size budget, reappearance, oscillation, no progress). Reach here for "review and fix until clean"; reach for `/code-review` alone when you only want the findings.
@@ -36,7 +36,7 @@ Not sure which? **`/review`** routes for you: code goes to `/code-review`, docum
 - **`/security-review`** (built-in) — a security-focused pass over the pending changes.
 - **`/verify`** (built-in) — build and run the app and look at the result, to confirm the change does what it should.
 - **`/prove-it`** — drive the change on the base branch and on yours and diff the observed behaviour, not just the tests.
-- **`/review-ado-pr`** — an **Azure DevOps** PR end-to-end: fetch it into the review worktree, run the Bicep gates, review across models, and post threads or a vote only on your go-ahead.
+- **`/pr-review`** — **someone else's PR** on GitHub or Azure DevOps, end to end: resolve it (or list the PRs waiting on you), check it out in the review worktree, run the Bicep gates and `/code-review` in others' PR mode, and post threads or a vote only on your go-ahead.
 
 *Not a rung: to have a diff **explained to you** rather than judged, use **`/walk-me-through-it`** (see Writing & docs) — it tours the change like a senior pairing with a junior and emits no findings.*
 
