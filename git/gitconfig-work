@@ -20,8 +20,35 @@
 # The [includeIf] blocks that apply the work identity also apply this key, so repos with
 # no remote are covered too. A repo can opt out with:
 #   git config work.aiReferenceScan false
+#
+# The commit-format check in the commit-msg hook reads work.commitFormat, which is left
+# unset here. prepare-commit-msg writes the work item as a `Refs:` trailer, and the check
+# needs `[#id]` in the subject. Turn it on for all work repos in ~/.gitconfig-work.local,
+# or for one repo with:
+#   git config work.commitFormat true
 [work]
     aiReferenceScan = true
+
+# Work-only hooks in ~/.git_templates/work-hooks/, run as config-based hooks (Git >= 2.54),
+# like the [hook "dotfiles-<event>"] stanzas in gitconfig. Each command uses the same form
+# as gitconfig, for the same reasons: double quotes (`;` starts a comment), a quoted "$HOME/...", and `test -f` so
+# the hook fails open until ~/.git_templates is installed. Pinned by
+# tests/git-config.Tests.ps1. Inspect: git hook list pre-push
+
+# Protected branch, conflict markers, CRLF in .sh, JSON that does not parse.
+[hook "work-checks"]
+    event = pre-commit
+    command = "f=\"$HOME/.git_templates/work-hooks/checks\"; test -f \"$f\" || exit 0; exec \"$f\""
+
+# Upstream gone, far behind origin's default branch. Never blocks.
+[hook "work-push-warnings"]
+    event = pre-push
+    command = "f=\"$HOME/.git_templates/work-hooks/push-warnings\"; test -f \"$f\" || exit 0; exec \"$f\""
+
+# PSScriptAnalyzer and bicep lint of the files the push changes. Blocks on findings.
+[hook "work-push-lint"]
+    event = pre-push
+    command = "f=\"$HOME/.git_templates/work-hooks/push-lint\"; test -f \"$f\" || exit 0; exec \"$f\""
 
 # Machine-local work settings, loaded last so they win. ~/.gitconfig-work.local is untracked
 # and holds the work [user] email. See git/README.md.

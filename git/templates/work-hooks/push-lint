@@ -1,0 +1,129 @@
+#!/bin/sh
+# Work-only pre-push lint. Wired via [hook "work-push-lint"] in git/gitconfig-work, so it
+# runs ONLY in repos that load that file (the [includeIf] blocks in ~/.gitconfig.local).
+#
+# Lints the PowerShell and Bicep files the push changes, and blocks on any finding.
+# The pushed range per branch is merge-base(<default>, local sha)..local sha. The
+# default is the branch origin/HEAD points at, else origin/main, else origin/master,
+# whichever ref exists first; with none, every file at the local sha counts as changed.
+# Files deleted in the range are skipped. The lint reads the working tree copy of each
+# file. A missing pwsh, PSScriptAnalyzer module, settings file or bicep CLI warns and
+# skips that lint.
+# Bypass for one push with SKIP_PUSH_LINT=1; `git push --no-verify` skips every hook.
+#
+# Git passes one line per pushed ref on stdin:
+#   <local ref> <local sha> <remote ref> <remote sha>
+# Deletes (all-zero local sha) and pushes to anything other than a remote branch (tags)
+# are skipped. The decision uses the remote ref, because the local ref is whatever was
+# typed (`git push origin HEAD` gives `HEAD`). A pushed commit other than HEAD is not
+# what the working tree holds, so its lint is skipped with a warning.
+
+[ "$SKIP_PUSH_LINT" = "1" ] && exit 0
+
+DIR="$(cd "$(dirname "$0")" && pwd)"
+TOPLEVEL="$(git rev-parse --show-toplevel)"
+HEAD_SHA="$(git rev-parse -q --verify HEAD)"
+
+warn() {
+    echo "work-push-lint: warning: $1" >&2
+}
+
+# origin/HEAD is unset in a repo whose origin was added by hand, so fall back to the
+# usual names. An unset origin/HEAD gives an empty first entry, which is skipped.
+default=""
+for ref in "$(git symbolic-ref -q refs/remotes/origin/HEAD)" refs/remotes/origin/main refs/remotes/origin/master; do
+    [ -n "$ref" ] || continue
+    if git show-ref -q --verify "$ref"; then
+        default="$ref"
+        break
+    fi
+done
+empty_tree="$(git hash-object -t tree /dev/null)"
+
+changed=""
+# The fourth field (the remote sha) is read into _ so that it does not join remote_ref.
+while read -r local_ref local_sha remote_ref _; do
+    case "$local_sha" in *[!0]*) ;; *) continue ;; esac
+    case "$remote_ref" in refs/heads/*) ;; *) continue ;; esac
+    if [ "$local_sha" != "$HEAD_SHA" ]; then
+        name="${local_ref#refs/heads/}"
+        warn "skipping lint for $name: $name is not checked out, so the working tree does not hold its files."
+        continue
+    fi
+    base="$empty_tree"
+    if [ -n "$default" ]; then
+        base="$(git merge-base "$default" "$local_sha")" || base="$empty_tree"
+    fi
+    changed="$changed
+$(git -c core.quotePath=false diff --name-only --diff-filter=ACMR "$base" "$local_sha")"
+done
+
+failed=0
+fail() {
+    echo "work-push-lint: $1" >&2
+    echo "work-push-lint: bypass the lint for one push with:  SKIP_PUSH_LINT=1 git push ..." >&2
+    failed=1
+}
+
+# PowerShell: lint the changed files (arguments, relative to the repo root) in one pwsh
+# process, with the repo's own settings file. Never lint without one: the default
+# ruleset reports rules the repo excludes.
+# shellcheck disable=SC2317  # called through run_on_changed
+lint_powershell() {
+    settings=""
+    for s in "$TOPLEVEL/.vscode/PSScriptAnalyzerSettings.psd1" "$TOPLEVEL/PSScriptAnalyzerSettings.psd1"; do
+        if [ -f "$s" ]; then
+            settings="$s"
+            break
+        fi
+    done
+    if [ -z "$settings" ]; then
+        warn "PowerShell files changed but the repo has no PSScriptAnalyzerSettings.psd1 (.vscode/ or root); skipping PSScriptAnalyzer."
+        return 0
+    fi
+    if ! command -v pwsh >/dev/null 2>&1; then
+        warn "pwsh not found on PATH; skipping PSScriptAnalyzer."
+        return 0
+    fi
+    pwsh -NoLogo -NoProfile -NonInteractive -File "$DIR/push-lint.ps1" -Root "$TOPLEVEL" -Settings "$settings" "$@" </dev/null ||
+        fail "push blocked: PSScriptAnalyzer failed or reported findings (see above)."
+}
+
+# Bicep: lint each changed file. Any output counts as a finding (warnings included).
+# shellcheck disable=SC2317  # called through run_on_changed
+lint_bicep() {
+    if ! command -v bicep >/dev/null 2>&1; then
+        warn "Bicep files changed but bicep not found on PATH; skipping bicep lint."
+        return 0
+    fi
+    bicep_failed=0
+    for f in "$@"; do
+        out="$(bicep lint "$TOPLEVEL/$f" 2>&1 </dev/null)"
+        rc=$?
+        if [ "$rc" -ne 0 ] || [ -n "$out" ]; then
+            printf '%s\n' "$out" >&2
+            bicep_failed=1
+        fi
+    done
+    [ "$bicep_failed" -eq 0 ] || fail "push blocked: bicep lint findings above."
+}
+
+# Collects the changed files whose names match the grep pattern $1 as "./"-prefixed
+# positional parameters (so a name starting with "-" is never read as an option),
+# then calls $2 with them.
+run_on_changed() {
+    pattern="$1"
+    linter="$2"
+    set --
+    while IFS= read -r f; do
+        [ -n "$f" ] && set -- "$@" "./$f"
+    done <<EOF
+$(printf '%s\n' "$changed" | grep "$pattern" | sort -u)
+EOF
+    [ "$#" -gt 0 ] && "$linter" "$@"
+}
+
+run_on_changed '\.ps[dm]\{0,1\}1$' lint_powershell
+run_on_changed '\.bicep$' lint_bicep
+
+exit "$failed"

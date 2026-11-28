@@ -12,7 +12,7 @@ Describe 'setup.ps1 git module' {
         $output = & pwsh -NoProfile -File $script:SetupScript -Module git -DryRun 2>&1 | Out-String
         $LASTEXITCODE | Should -Be 0
         $output | Should -Match '=== Git'
-        # There are no work-only hooks to link.
+        # The work-only hooks live in ~/.git_templates/work-hooks, so they need no link of their own.
         $output | Should -Not -Match '\.git_work_hooks'
         # core.attributesfile points at ~/.gitattributes, and the config-based hooks in
         # git/gitconfig run scripts under ~/.git_templates/hooks.

@@ -101,10 +101,13 @@ Describe 'git/gitconfig global hooks' {
         Get-GitConfigValue -Key "hook.dotfiles-$HookEvent.event" | Should -Be $HookEvent
     }
 
-    It 'stores every script in git/templates/hooks as executable' {
+    It 'stores every script in <Dir> as executable' -ForEach @(
+        @{ Dir = 'git/templates/hooks' }
+        @{ Dir = 'git/templates/work-hooks' }
+    ) {
         # The stanzas and the post-* scripts exec these files directly. On Linux and macOS a
-        # file without the executable bit fails with exit 126 on every checkout and commit.
-        $entries = @(& git -C $script:RepoRoot ls-files --stage -- 'git/templates/hooks')
+        # file without the executable bit fails with exit 126 on every checkout, commit or push.
+        $entries = @(& git -C $script:RepoRoot ls-files --stage -- $Dir)
         $entries.Count | Should -BeGreaterThan 0
         $notExecutable = @($entries | Where-Object { $_ -notmatch '^100755 ' } | ForEach-Object { ($_ -split "`t", 2)[1] })
         $notExecutable | Should -BeNullOrEmpty
@@ -272,9 +275,72 @@ Describe 'git/gitconfig-work' {
         $entries | Should -Contain 'work.aireferencescan=true'
     }
 
-    It 'defines no hook stanza' {
-        $hooks = @(& git config --file $script:WorkConfig --get-regexp '^hook\.')
-        $hooks | Should -BeNullOrEmpty
+    It 'defines exactly the work hook stanzas, each on its event' {
+        $events = @(& git config --file $script:WorkConfig --get-regexp '^hook\..*\.event$' | Sort-Object)
+        $expected = @(
+            'hook.work-checks.event pre-commit'
+            'hook.work-push-lint.event pre-push'
+            'hook.work-push-warnings.event pre-push'
+        ) | Sort-Object
+        $events | Should -Be $expected
+    }
+
+    It 'quotes the <Name> command so the text after the first ; survives' -ForEach @(
+        @{ Name = 'work-checks'; Script = 'checks' }
+        @{ Name = 'work-push-warnings'; Script = 'push-warnings' }
+        @{ Name = 'work-push-lint'; Script = 'push-lint' }
+    ) {
+        # The same form as the dotfiles-<event> commands in git/gitconfig, run from
+        # ~/.git_templates/work-hooks. The script must exist, or the stanza would always
+        # fail open.
+        Test-Path -LiteralPath (Join-Path $script:RepoRoot "git/templates/work-hooks/$Script") -PathType Leaf |
+            Should -BeTrue
+        $expected = 'f="$HOME/.git_templates/work-hooks/' + $Script + '"; test -f "$f" || exit 0; exec "$f"'
+        & git config --file $script:WorkConfig --get "hook.$Name.command" | Should -Be $expected
+    }
+
+    It 'leaves the commit-format check off' {
+        # prepare-commit-msg writes the work item as a Refs: trailer, so the check would
+        # block every commit it prepares. See git/README.md for how to turn it on.
+        & git config --file $script:WorkConfig --get work.commitFormat | Should -BeNullOrEmpty
+    }
+}
+
+Describe 'git/gitconfig-work hooks at run time' -Skip:(-not $script:HasConfigHooks) {
+    BeforeAll {
+        # A global config that includes git/gitconfig and git/gitconfig-work, as a work repo
+        # sees them. HOME has no ~/.git_templates, which is the not-yet-installed state.
+        $workGlobal = Join-Path $script:Root 'work-global.gitconfig'
+        $includes = @($script:GitConfig, (Join-Path $script:RepoRoot 'git/gitconfig-work')) |
+            ForEach-Object { "[include]`n    path = $($_ -replace '\\', '/')`n" }
+        Set-Content -Path $workGlobal -Value (($includes -join '') + "[core]`n    fsmonitor = false`n") -Encoding ASCII -NoNewline
+        $script:SavedWorkGlobal = $env:GIT_CONFIG_GLOBAL
+        $env:GIT_CONFIG_GLOBAL = $workGlobal
+
+        $script:WorkRepo = Join-Path $script:Root 'work-repo'
+        New-Item -ItemType Directory -Path $script:WorkRepo -Force | Out-Null
+        & git -C $script:WorkRepo init -q .
+    }
+
+    AfterAll {
+        $env:GIT_CONFIG_GLOBAL = $script:SavedWorkGlobal
+    }
+
+    It 'lists <Name> for <HookEvent>' -ForEach @(
+        @{ Name = 'work-checks'; HookEvent = 'pre-commit' }
+        @{ Name = 'work-push-warnings'; HookEvent = 'pre-push' }
+        @{ Name = 'work-push-lint'; HookEvent = 'pre-push' }
+    ) {
+        $out = & git -C $script:WorkRepo hook list $HookEvent 2>&1 | Out-String
+        $out | Should -Match $Name
+    }
+
+    It 'fails open for <HookEvent> when the work hooks are not installed' -ForEach @(
+        @{ HookEvent = 'pre-commit' }
+        @{ HookEvent = 'pre-push' }
+    ) {
+        $out = & git -C $script:WorkRepo hook run $HookEvent 2>&1 | Out-String
+        $LASTEXITCODE | Should -Be 0 -Because $out
     }
 }
 
