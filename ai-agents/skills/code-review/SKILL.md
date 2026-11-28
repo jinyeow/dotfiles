@@ -5,7 +5,7 @@ description: "Review the diff since a fixed point on Standards, Spec and Bugs, p
 
 Adapted from mattpocock/skills `code-review` at commit `6f7f783`; steps 1–3 and the two-axis rule come from there.
 
-Review the diff between `HEAD` and a fixed point. Find real defects, check each one against the code, and say whether the change can merge. This skill reports findings and writes them to the findings store. `fix-findings` fixes them, and `review-to-green` runs the two in a loop.
+Review the diff between `HEAD` and a fixed point. Find real defects, check each one against the code, and say whether the change can merge. This skill reports findings and writes them to the findings store. `fix-findings` fixes them, and `refine-until-ready` runs the two in a loop.
 
 Read these contracts before you start:
 
@@ -100,7 +100,7 @@ Write the report in this order:
 6. Not covered: lenses skipped or failed, tools that could not run, and "no spec" when there was none.
 7. The verdict line: `Ready to merge` or `Not ready: N blocking findings`.
 
-Write every confirmed and every `not_reproduced` finding to the findings store, as `findings-schema.md` describes. You are the only writer. Subagents return text and never write the store. `review-to-green` and `fix-findings` read the store.
+Write every confirmed and every `not_reproduced` finding to the findings store, as `findings-schema.md` describes. You are the only writer. Subagents return text and never write the store. `refine-until-ready` and `fix-findings` read the store.
 
 ## Why separate axes
 

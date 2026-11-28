@@ -1,12 +1,12 @@
 ---
 name: fix-findings
-description: Apply fixes for blocking findings from code-review. Reads the findings store, re-checks each finding and rejects the wrong or not-worth-it ones with a reason, fixes the rest with minimal in-scope fixes in parallel (no two fixers on one file), runs tests and linter, and commits one fix-unit at a time. Use when asked to "fix the findings", "apply the review fixes", "fix the introduced issues", or after a code-review. review-to-green runs it each cycle.
+description: Apply fixes for blocking findings from code-review. Reads the findings store, re-checks each finding and rejects the wrong or not-worth-it ones with a reason, fixes the rest with minimal in-scope fixes in parallel (no two fixers on one file), runs tests and linter, and commits one fix-unit at a time. Use when asked to "fix the findings", "apply the review fixes", "fix the introduced issues", or after a code-review. refine-until-ready runs it each cycle.
 ---
 
 # Fix Findings
 
 Consume the findings store, fix the blocking findings, commit. This skill consumes a snapshot
-that `code-review` wrote. It does not review or loop: `review-to-green` does that. It is
+that `code-review` wrote. It does not review or loop: `refine-until-ready` does that. It is
 independently invocable.
 
 Contracts: the record schema and store discipline are

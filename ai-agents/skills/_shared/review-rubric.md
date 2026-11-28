@@ -1,7 +1,7 @@
 # Review Rubric — AGENTS.md conformance + thermo-nuclear structural quality
 
 The shared quality bar for `code-review`, and through the findings store for `fix-findings` and
-`review-to-green`. Companion contracts: the lens registry and charters live in
+`refine-until-ready`. Companion contracts: the lens registry and charters live in
 [`lenses.md`](lenses.md); the finding record schema, fingerprint, origin and `fix_verification`
 metadata, and store discipline live in [`findings-schema.md`](findings-schema.md). This file is the
 bar and the severity rule. Those files map it onto lenses and a store.

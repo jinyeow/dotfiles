@@ -1,6 +1,6 @@
 # Reviewer and fixer models
 
-Shared by `code-review`, `fix-findings` and `review-to-green`. It sets which models the review
+Shared by `code-review`, `fix-findings` and `refine-until-ready`. It sets which models the review
 and fixer subagents run on, and how a review calls Codex read-only. When a second opinion from
 another model runs, and how its approval works, is set in `AGENTS.md` → "Second opinions from
 another model".
@@ -13,13 +13,13 @@ skips the Codex second opinion.
 ## Reviewer models
 
 On Claude Code, lens and validation subagents run on `sonnet` or `opus`. A standalone
-`code-review` may run them on `fable` for a light pass. Under `review-to-green` they never run on
+`code-review` may run them on `fable` for a light pass. Under `refine-until-ready` they never run on
 `fable` unless the user asks.
 
 ## Fixer pin
 
 This is the single home for fixer-subagent model selection. It applies to `fix-findings`'s fixer
-children (also when `review-to-green` runs it), and to any other seat whose child applies and
+children (also when `refine-until-ready` runs it), and to any other seat whose child applies and
 commits code rather than only reviewing (for example a council seat asked to implement).
 
 - Default: `sonnet`. `haiku` is fine for a fully specified single-hunk edit. `opus` for a hard

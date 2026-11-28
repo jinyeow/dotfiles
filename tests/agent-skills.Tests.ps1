@@ -103,7 +103,7 @@ Describe 'review skills' {
         $claudeSkills = Join-Path $repo 'claude/skills'
         $portableSkills = Join-Path $repo 'ai-agents/skills'
         $codeReview = Get-Content (Join-Path $portableSkills 'code-review/SKILL.md') -Raw
-        $loop = Get-Content (Join-Path $portableSkills 'review-to-green/SKILL.md') -Raw
+        $loop = Get-Content (Join-Path $portableSkills 'refine-until-ready/SKILL.md') -Raw
         $fixFindings = Get-Content (Join-Path $portableSkills 'fix-findings/SKILL.md') -Raw
         $lenses = Get-Content (Join-Path $portableSkills '_shared/lenses.md') -Raw
         $rubric = Get-Content (Join-Path $portableSkills '_shared/review-rubric.md') -Raw
@@ -112,14 +112,14 @@ Describe 'review skills' {
         $claudeAdapter = Get-Content (Join-Path $repo 'claude/CLAUDE.md') -Raw
     }
 
-    It 'owns code-review, review-to-green, and fix-findings as portable skills' {
-        foreach ($name in @('code-review', 'review-to-green', 'fix-findings'))
+    It 'owns code-review, refine-until-ready, and fix-findings as portable skills' {
+        foreach ($name in @('code-review', 'refine-until-ready', 'fix-findings'))
         {
             Test-Path (Join-Path $portableSkills "$name/SKILL.md") | Should -BeTrue
             Test-Path (Join-Path $portableSkills "$name/agents/openai.yaml") | Should -BeTrue
             Test-Path (Join-Path $claudeSkills $name) | Should -BeFalse
         }
-        Get-Content (Join-Path $repo 'ai-agents/SKILL-OWNERSHIP.md') -Raw | Should -Match '`review-to-green`'
+        Get-Content (Join-Path $repo 'ai-agents/SKILL-OWNERSHIP.md') -Raw | Should -Match '`refine-until-ready`'
     }
 
     It 'names the upstream code-review commit and links the shared contracts' {
@@ -173,8 +173,8 @@ Describe 'review skills' {
         $fixFindings | Should -Match 'needs redesign'
     }
 
-    It 'bounds review-to-green with a cap of 5 and scope, size budget, and oscillation rails' {
-        $loop | Should -Match '(?s)^---\s*\nname:\s*review-to-green\s*\n'
+    It 'bounds refine-until-ready with a cap of 5 and scope, size budget, and oscillation rails' {
+        $loop | Should -Match '(?s)^---\s*\nname:\s*refine-until-ready\s*\n'
         $loop | Should -Match ([regex]::Escape('--cap 5'))
         $loop | Should -Match 'default 5'
         foreach ($rail in @('scope', 'size budget', 'reappearance', 'oscillation', 'no progress'))
@@ -212,11 +212,11 @@ Describe 'review skills' {
         $codeReview | Should -Match ([regex]::Escape('../_shared/reviewer-models.md'))
     }
 
-    It 'records review-to-green in the routing and standing-consent surfaces' {
-        Get-Content (Join-Path $claudeSkills 'router/SKILL.md') -Raw | Should -Match 'review-to-green'
-        Get-Content (Join-Path $repo 'claude/CLAUDE.md') -Raw | Should -Match 'review-to-green'
-        Get-Content (Join-Path $repo 'claude/README.md') -Raw | Should -Match 'review-to-green'
-        Get-Content (Join-Path $repo 'README.md') -Raw | Should -Match 'review-to-green'
+    It 'records refine-until-ready in the routing and standing-consent surfaces' {
+        Get-Content (Join-Path $claudeSkills 'router/SKILL.md') -Raw | Should -Match 'refine-until-ready'
+        Get-Content (Join-Path $repo 'claude/CLAUDE.md') -Raw | Should -Match 'refine-until-ready'
+        Get-Content (Join-Path $repo 'claude/README.md') -Raw | Should -Match 'refine-until-ready'
+        Get-Content (Join-Path $repo 'README.md') -Raw | Should -Match 'refine-until-ready'
     }
 }
 

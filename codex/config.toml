@@ -44,7 +44,7 @@ hooks = true
 command = "dnx"
 args = ["-y", "Azure.Bicep.McpServer"]
 
-# Custom agents for the portable review skills (code-review / review-to-green / fix-findings,
+# Custom agents for the portable review skills (code-review / refine-until-ready / fix-findings,
 # ai-agents/skills/). Dispatched via the `multi_agent` feature's `spawn_agent` tool with
 # `agent_type: "reviewer"` (every review lens and the validation pass) or `agent_type: "fixer"`.
 # See codex/README.md ("Skills") for the dispatch shape.
@@ -67,7 +67,7 @@ findings only, never edit, write, or run commands that mutate state.
 
 [agents.fixer]
 description = """
-fix-findings (run on its own or by review-to-green): applies the minimal fix for
+fix-findings (run on its own or by refine-until-ready): applies the minimal fix for
 confirmed, introduced, blocking findings (write access). Fix only the findings assigned in
 your task and touch only their intended files; if a proper fix needs more, return
 "rejected: needs redesign" and change nothing. Lint only the files you touched before returning —

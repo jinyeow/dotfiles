@@ -198,7 +198,7 @@ per skill), so the installer projects skills into `~/.codex/skills/` from two so
 Claude-native skills and Claude support content under `claude/skills/` are never projected to Codex.
 
 The shared `council` skill, its four aliases, and the review and fix skills (`code-review`,
-`review-to-green`, `fix-findings`) are available after setup. They are prompt
+`refine-until-ready`, `fix-findings`) are available after setup. They are prompt
 orchestration contracts, not installed custom agents: the host must use a Codex version
 whose native delegation can isolate at least two workers, or report
 `unsupported-capability`. Quick mode is the default; debate and external Codex are opt-in.
@@ -208,7 +208,7 @@ open gap. The store lives under `~/.codex/`, outside the workspace root. On Wind
 `codex exec -s workspace-write` stays read-only (upstream
 [openai/codex#34961](https://github.com/openai/codex/issues/34961)), so a live probe could
 not test whether the orchestrator can write the store. Until a probe passes on a host where
-`workspace-write` works, `code-review`, `review-to-green` and `fix-findings` are not proven
+`workspace-write` works, `code-review`, `refine-until-ready` and `fix-findings` are not proven
 end-to-end on Codex.
 
 **Confirmed minimum version and invocation syntax** (smoke-tested 2026-08-12, closing the

@@ -6,7 +6,7 @@ modules, and ownership is expressed by the directory rather than inferred from s
 - `skills/` — portable (agent-agnostic) skills projected to supported runtimes, including
   `skills/_shared/` — the projected review-support contract (`lenses.md`,
   `findings-schema.md`, `review-rubric.md`, `reviewer-models.md`) shared by `code-review`,
-  `review-to-green`, and `fix-findings`, all three of which are portable skills under `skills/`
+  `refine-until-ready`, and `fix-findings`, all three of which are portable skills under `skills/`
   too.
 - `_shared/` — holds only `banned-ai-terms.txt`, the wordlist the AI-reference hooks read
   (symlinked individually by the installers). Not a skill and not projected; unrelated to
@@ -79,7 +79,7 @@ from upstream's `code-review` at that commit but is now a local skill, so a re-s
 - **`retro`** — Conduct a retrospective on a coding session.
 - **`review`** — Review whatever the user points at by routing it to the right reviewer.
 - **`review-ado-pr`** — Review an Azure DevOps pull request locally, end-to-end.
-- **`review-to-green`** — Review a change and fix what blocks it, in small in-scope fixes, until nothing blocking is left.
+- **`refine-until-ready`** — Review a change and fix what blocks it, in small in-scope fixes, until nothing blocking is left.
 - **`rfc`** — Draft and create an Azure DevOps "Request for Change RFC" work item in the configured work project.
 - **`setup-home-repo`**: Set up or adopt a Home Repo (`gateroom`) for a workspace on any machine, in four steps with an approval gate before any change.
 - **`setup-matt-pocock-skills`** — Configure this repo for the engineering skills: set up its issue tracker, triage label vocabulary, and domain doc layout.

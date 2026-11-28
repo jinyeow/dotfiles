@@ -1,9 +1,9 @@
 # Findings Store — schema, fingerprint, store discipline
 
 Shared contract for the review and fix skills. `code-review` emits findings, `fix-findings`
-consumes them, and `review-to-green` owns the loop's cycles and rail decisions. Each skill's
+consumes them, and `refine-until-ready` owns the loop's cycles and rail decisions. Each skill's
 orchestrator owns its own status writes: `code-review` sets `candidate`, `confirmed` and
-`not_reproduced`; `fix-findings` sets `fixing`, `fixed` and `rejected`; `review-to-green` sets
+`not_reproduced`; `fix-findings` sets `fixing`, `fixed` and `rejected`; `refine-until-ready` sets
 `parked`. Whichever skill is talking to the user records `wontfix`. The store is the seam between
 the skills: each skill's input and output is explicit, and no skill reaches into another's
 internals.
@@ -65,7 +65,7 @@ candidate ──(validation confirms)──▶ confirmed ──▶ fixing ──
 - `rejected`: `fix-findings` checked the finding before or while fixing it and disputed it. The
   finding is wrong, already fixed, not worth fixing, or needs a redesign beyond the change's
   scope. `status_reason` says which.
-- `parked`: `review-to-green` stopped on a rail with this finding still open. `status_reason`
+- `parked`: `refine-until-ready` stopped on a rail with this finding still open. `status_reason`
   names the rail.
 - `wontfix`: the user explicitly declined the finding, or accepted it as a documented trade-off.
   Reserved for a user decision. Pre-existing findings do not use it.
@@ -158,7 +158,7 @@ silently.
   `not_reproduced` after validation.
 - `fix-findings`: fixer subagents return results; the orchestrator updates `status` and makes the
   commits.
-- `review-to-green`: the orchestrator writes the ledger's loop fields and sets `parked`.
+- `refine-until-ready`: the orchestrator writes the ledger's loop fields and sets `parked`.
 - One writer gives a single source of truth and no partial-record corruption.
 
 ---
@@ -192,7 +192,7 @@ or `subject`, so they keep separate fingerprints. Do not force-collapse them to 
 
 ## Loop rails
 
-`review-to-green` computes every rail from the per-cycle ledger and the store, on fingerprints,
+`refine-until-ready` computes every rail from the per-cycle ledger and the store, on fingerprints,
 never on line numbers. When one trips, it stops, sets each open blocking finding to `parked` with
 the rail as `status_reason`, and hands back to the user.
 

@@ -805,7 +805,7 @@ Describe 'setup.ps1 Claude skill projection safety' {
             # unrelated, still-source-only ai-agents\_shared (no `skills\` segment).
             $output | Should -Match '\.claude\\skills\\_shared -> .*ai-agents\\skills\\_shared'
             $output | Should -Not -Match '\.claude\\skills\\_shared -> .*ai-agents\\_shared'
-            $output | Should -Match '\.claude\\skills\\review-to-green -> .*ai-agents\\skills\\review-to-green'
+            $output | Should -Match '\.claude\\skills\\refine-until-ready -> .*ai-agents\\skills\\refine-until-ready'
             $output | Should -Match '\.claude\\skills\\fix-findings -> .*ai-agents\\skills\\fix-findings'
         }
         finally
@@ -1280,7 +1280,7 @@ Describe 'setup.ps1 codex module shared skills' {
             # Patterns anchor on the "link -> target" separator so `tdd` can't false-match a
             # future `tdd-something` skill (`\b` treats the hyphen as a word boundary).
             $output | Should -Match '\[DRY RUN\] junction .*\.codex\\skills\\tdd ->'
-            foreach ($name in @('council', 'code-review', 'review-to-green', 'fix-findings', '_shared'))
+            foreach ($name in @('council', 'code-review', 'refine-until-ready', 'fix-findings', '_shared'))
             {
                 $output | Should -Match "\\.codex\\skills\\$name -> .*ai-agents\\skills\\$name"
             }

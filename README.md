@@ -103,7 +103,7 @@ See `fzf/`, `ripgrep/`, `lazygit/`, `tig/`, and `nvim/` for tool-specific `READM
 
 ## Claude Code skills
 
-Portable skills live in `ai-agents/skills/`; Claude-native skills live in `claude/skills/`, Codex-native variants in `codex/skills/`, and Pi-native variants in `pi/skills/`. Claude projects portable plus Claude-native skills, Codex (Windows and Linux) projects portable plus Codex-native skills, and Pi projects portable plus Pi-native skills. The portable review-support contract at `ai-agents/skills/_shared/` (`code-review`, `review-to-green`, `fix-findings`) is projected with every runtime; `ai-agents/_shared/` holds only the hooks' `banned-ai-terms.txt` wordlist. User-scope agent definitions live under `ai-agents/agents/` and are projected to Claude Code. Installers safely migrate existing whole-directory links from the historical `ai-agents/shared/agents/` path without replacing user-owned entries.
+Portable skills live in `ai-agents/skills/`; Claude-native skills live in `claude/skills/`, Codex-native variants in `codex/skills/`, and Pi-native variants in `pi/skills/`. Claude projects portable plus Claude-native skills, Codex (Windows and Linux) projects portable plus Codex-native skills, and Pi projects portable plus Pi-native skills. The portable review-support contract at `ai-agents/skills/_shared/` (`code-review`, `refine-until-ready`, `fix-findings`) is projected with every runtime; `ai-agents/_shared/` holds only the hooks' `banned-ai-terms.txt` wordlist. User-scope agent definitions live under `ai-agents/agents/` and are projected to Claude Code. Installers safely migrate existing whole-directory links from the historical `ai-agents/shared/agents/` path without replacing user-owned entries.
 
 Not sure which one fits? Run `/router` — a manual index that maps these as flows and decision tables. Built-in Claude Code skills (`compact`, `deep-research`, `security-review`, `verify`) are provided by the harness and aren't listed here. The `code-review` skill below replaces the built-in `/code-review`; the built-in's `/review` alias still runs Claude Code's own review. The `mattpocock/skills` rows are unedited copies of upstream at commit `6f7f783` (2026-11-25), including each skill's `agents/openai.yaml` Codex metadata; re-sync by copying the folders again. `code-review` is a local skill adapted from upstream's `code-review` at that commit, so a re-sync skips it. The customized versions they replaced are at commit `c7a774c`.
 
@@ -139,7 +139,7 @@ Not sure which one fits? Run `/router` — a manual index that maps these as flo
 | `prove-it` | local | Diff observed behaviour between the base branch and the current branch |
 | `review-ado-pr` | local | Review an Azure DevOps PR locally; posts back only on approval |
 | `fix-findings` | local | Apply blocking review findings as minimal fixes, one commit per fix-unit |
-| `review-to-green` | local | Loop code-review and fix-findings until nothing blocking is left, within rails |
+| `refine-until-ready` | local | Loop code-review and fix-findings until nothing blocking is left, within rails |
 | `council` | local | Adversarial panel for a non-diff artifact (idea/design/plan/doc) |
 | `prompt-draft` | local | Draft a new prompt against the 12-lever checklist |
 | `prompt-lint` | local | Score, critique, and rewrite an existing prompt |

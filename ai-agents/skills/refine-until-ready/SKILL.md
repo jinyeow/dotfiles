@@ -1,22 +1,22 @@
 ---
-name: review-to-green
-description: Review a change and fix what blocks it, in small in-scope fixes, until nothing blocking is left. Each cycle runs code-review, then fix-findings, re-runs prove-it's case when there is one, and stops when the change is green or a rail trips (cap, scope, size budget, reappearance, oscillation, no progress). Use when asked to "review and fix", "fix all issues", "clean up the branch", "review until green", "iterative review loop", or "keep fixing until clean".
+name: refine-until-ready
+description: Review a change and fix what blocks it, in small in-scope fixes, until nothing blocking is left. Each cycle runs code-review, then fix-findings, re-runs prove-it's case when there is one, and stops when the change is ready or a rail trips (cap, scope, size budget, reappearance, oscillation, no progress). Use when asked to "review and fix", "fix all issues", "clean up the branch", "review until green", "refine until ready", "iterative review loop", or "keep fixing until clean".
 ---
 
-# Review To Green
+# Refine Until Ready
 
 Review a change and fix what blocks it, in small in-scope fixes, until nothing blocking is left.
 
 This skill is a thin orchestrator. [`code-review`](../code-review/SKILL.md) emits findings,
 [`fix-findings`](../fix-findings/SKILL.md) fixes them, and this skill decides whether to go
-again. It owns the loop, the green gate and the rails. It does not review or fix anything
+again. It owns the loop, the ready gate and the rails. It does not review or fix anything
 itself. The store, the ledger and the rail definitions are in
 [`../_shared/findings-schema.md`](../_shared/findings-schema.md).
 
 ## Quick start
 
 ```
-/review-to-green [ref-or-range | --pr <n>] [--cap 5]
+/refine-until-ready [ref-or-range | --pr <n>] [--cap 5]
 ```
 
 The scope argument goes to `code-review` step 1. `--cap` sets the cycle limit (default 5). The
@@ -39,11 +39,11 @@ code-review → fix-findings → prove-it case → evaluate → repeat | stop
    [`../prove-it/SKILL.md`](../prove-it/SKILL.md)), run that case again on the new head. A
    behaviour regression is a blocking finding (lens `bugs`, origin `introduced`) for the next
    cycle.
-4. Evaluate the green gate, then the rails. Go again or stop.
+4. Evaluate the ready gate, then the rails. Go again or stop.
 
-### Green gate
+### Ready gate
 
-Stop and report "Green" when all of these hold:
+Stop and report "Ready" when all of these hold:
 
 - No confirmed, introduced, blocking finding is left unfixed. Rejected, parked and accepted
   (`wontfix`) findings do not count.
@@ -70,7 +70,7 @@ All rails work on fingerprints, never on line numbers (findings-schema.md).
 
 ## Final report
 
-End with the outcome (Green, or the rail that stopped the loop), the cycles run, the findings
+End with the outcome (Ready, or the rail that stopped the loop), the cycles run, the findings
 fixed, rejected and parked with their reasons, the findings outside the reviewed deltas, the
 pre-existing and LOW findings, and what was not covered.
 

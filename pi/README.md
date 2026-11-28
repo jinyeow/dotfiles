@@ -135,7 +135,7 @@ usage-limit block, not a credentials problem. Retry the smoke test (call `subage
 `workflowScript` containing 2+ distinct-prompt `runs.all` entries) once the limit clears before
 relying on this skill for a real run.
 
-`code-review`, `review-to-green`, and `fix-findings` (the review and fix skills) are portable
+`code-review`, `refine-until-ready`, and `fix-findings` (the review and fix skills) are portable
 too, projected here from `ai-agents/skills/` alongside `council`. `code-review`'s lens and
 validation subagents need something `council`'s critics don't: a read-only tool allowlist. On Pi
 this is each spawned child's `tools:` frontmatter, set to `read, grep, glob` (see
