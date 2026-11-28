@@ -140,12 +140,30 @@ every later change, so its likelihood is HIGH.
 
 ### Blocking rule
 
-HIGH and MED findings are blocking. LOW findings are non-blocking. Only `introduced` findings
-block: a `pre-existing` finding is reported separately and never blocks. A blocking finding stops
-blocking when the user explicitly accepts it as a documented trade-off.
+Severity and blocking are separate. Only `introduced` findings block: a `pre-existing` finding
+is reported separately and never blocks. An introduced finding blocks when one of these
+criteria holds. Record the first that applies as its `blocking_criterion`:
 
-A flag or mode parameter that switches logic (AGENTS.md) blocks, whatever its rating, until it is
-raised with the user.
+| Criterion | Blocks when |
+|---|---|
+| `severity` | its severity is HIGH or MED. |
+| `spec` | the change fails a requirement or acceptance criterion of the linked spec, issue or work item. With several, check against all of them. An `after merge` criterion never counts. With no spec, this criterion does not apply. |
+| `convention` | it breaks a documented convention from a valid convention source (see `code-review` step 3) and the fix is quick: a lint, coding-standard or convention fix. The finding cites the source file and rule. A named smell is a judgement call and never meets this criterion. |
+| `untested-logic` | it adds or changes production logic (a branch, a calculation, externally visible behaviour) and no test in the change exercises it. Exempt: config (pipeline triggers, conditions, parameters and job or stage wiring included), docs, generated code, string-only changes, and pure refactors that existing tests cover. |
+| `mode-parameter` | it adds a flag or mode parameter that switches logic (AGENTS.md). It blocks until it is raised with the user. |
+
+When none holds, the criterion is `none` and the finding is non-blocking, so a LOW finding can
+still block and a MED finding always does. A blocking finding stops blocking when the user
+explicitly accepts it as a documented trade-off.
+
+Each confirmed, introduced finding gets one disposition:
+
+- `blocking`: a blocking criterion holds.
+- `note`: the finding is about documentation, a code comment, help text, or the PR description
+  being inaccurate, incomplete or out of date. Its severity is always LOW and its criterion is
+  always `none`, whatever the lens or validator rated it, and even when a convention covers it.
+- `deferred`: every other non-blocking finding. In others' PR mode it can become a follow-up
+  work item when the user asks.
 
 ---
 

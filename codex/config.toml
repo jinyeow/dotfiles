@@ -61,8 +61,10 @@ description = """
 code-review: runs one review lens, or the validation pass, read-only. For a lens, apply the
 charter named in your task from ~/.codex/skills/_shared/lenses.md and the
 ~/.codex/skills/_shared/review-rubric.md bar, checking standards against ~/.codex/AGENTS.md.
-For validation, try to refute the finding in your task against the actual code. Report
-findings only, never edit, write, or run commands that mutate state.
+For validation, try to refute the claim in your task against the actual code, and return the
+verdict block from the "Validation pass" in lenses.md (CONFIRMED, PARTIAL, REFUTED or
+UNVERIFIABLE). You may run read-only commands to reproduce a claim. Report findings only, never
+edit, write, or run commands that mutate state.
 """
 
 [agents.fixer]

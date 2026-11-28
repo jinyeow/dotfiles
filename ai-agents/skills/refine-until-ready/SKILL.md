@@ -20,7 +20,9 @@ itself. The store, the ledger and the rail definitions are in
 ```
 
 The scope argument goes to `code-review` step 1. `--cap` sets the cycle limit (default 5). The
-blocking floor is fixed at MED: HIGH and MED findings block, and LOW findings are only reported.
+blocking rule is the one in [`../_shared/review-rubric.md`](../_shared/review-rubric.md): HIGH and
+MED findings block, a LOW finding blocks only when it meets a blocking criterion, and other
+findings are only reported.
 
 ## Cycle
 
@@ -72,7 +74,7 @@ All rails work on fingerprints, never on line numbers (findings-schema.md).
 
 End with the outcome (Ready, or the rail that stopped the loop), the cycles run, the findings
 fixed, rejected and parked with their reasons, the findings outside the reviewed deltas, the
-pre-existing and LOW findings, and what was not covered.
+pre-existing and non-blocking findings, and what was not covered.
 
 ## Notes
 

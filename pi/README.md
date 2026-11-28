@@ -138,8 +138,9 @@ relying on this skill for a real run.
 `code-review`, `refine-until-ready`, and `fix-findings` (the review and fix skills) are portable
 too, projected here from `ai-agents/skills/` alongside `council`. `code-review`'s lens and
 validation subagents need something `council`'s critics don't: a read-only tool allowlist. On Pi
-this is each spawned child's `tools:` frontmatter, set to `read, grep, glob` (see
-`ai-agents/skills/_shared/lenses.md`). The field is confirmed present in the pinned
+this is each spawned child's `tools:` frontmatter, set to `read, grep, glob` for a lens and
+`read, grep, glob, bash` for a validator, which may run read-only commands to reproduce a claim
+(see `ai-agents/skills/_shared/lenses.md`). The field is confirmed present in the pinned
 `pi-subagents@0.60.0` shipped source (`RunnerSubagentStep.tools?: string[]`,
 `src/runs/shared/parallel-utils.ts`). `tools` is an agent-definition frontmatter field, not a
 per-call parameter, at this version too (there is no `tools` field on the public `subagent`

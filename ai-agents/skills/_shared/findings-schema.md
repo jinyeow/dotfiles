@@ -3,7 +3,7 @@
 Shared contract for the review and fix skills. `code-review` emits findings, `fix-findings`
 consumes them, and `refine-until-ready` owns the loop's cycles and rail decisions. Each skill's
 orchestrator owns its own status writes: `code-review` sets `candidate`, `confirmed` and
-`not_reproduced`; `fix-findings` sets `fixing`, `fixed` and `rejected`; `refine-until-ready` sets
+`not_reproduced` and `unverified`; `fix-findings` sets `fixing`, `fixed` and `rejected`; `refine-until-ready` sets
 `parked`. Whichever skill is talking to the user records `wontfix`. The store is the seam between
 the skills: each skill's input and output is explicit, and no skill reaches into another's
 internals.
@@ -25,18 +25,22 @@ Quality bar and severity matrix: [`review-rubric.md`](review-rubric.md). Lenses:
 | `file` | string | path relative to repo root |
 | `scope` | string | enclosing symbol (function/class/block); fallback `module` / `top-level` / config-key-path / test-name / md-heading |
 | `lines` | string | display only (e.g. `120-134`); never part of identity |
-| `lens` | enum | primary lens (display only): the highest-severity contributor, ties broken alphabetically. One of `standards` \| `spec` \| `bugs` \| `security` \| `performance` \| `tests` \| `architecture` \| `second-opinion` |
+| `reported_location` | string \| null | the lens's `file:line` when the validator corrected it; `file`, `scope` and `lines` then hold the corrected location |
+| `lens` | enum | primary lens (display only): the highest-severity contributor, ties broken alphabetically. One of `standards` \| `spec` \| `bugs` \| `security` \| `performance` \| `tests` \| `architecture` \| `pipelines` \| `docs` \| `second-opinion` |
 | `contributing_lenses` | string[] | every lens that reported this defect (sorted) |
 | `likelihood` | enum | `HIGH` \| `MED` \| `LOW` (see review-rubric.md) |
 | `impact` | enum | `HIGH` \| `MED` \| `LOW` (see review-rubric.md) |
 | `severity` | enum | `HIGH` \| `MED` \| `LOW`, derived from `likelihood` × `impact` with the rubric's matrix |
-| `blocking` | bool | derived: true when `severity` is `HIGH` or `MED` and `origin` is `introduced` |
+| `blocking_criterion` | enum | `severity` \| `spec` \| `convention` \| `untested-logic` \| `mode-parameter` \| `none`, from the rubric's Blocking rule; the validator decides it |
+| `blocking` | bool | derived: true when `origin` is `introduced` and `blocking_criterion` is not `none` |
+| `disposition` | enum \| null | `blocking` \| `deferred` \| `note` (see the rubric's Blocking rule); null unless the finding is `confirmed` and `introduced` |
 | `origin` | enum | `introduced` \| `pre-existing` |
 | `origin_reason` | enum | `changed_hunk` \| `new_call_path` \| `new_config_exposure` \| `new_dependency` (required when `origin=introduced`) |
 | `fix_verification` | enum | `test` \| `lint` \| `manual-static` \| `not-applicable`: how the fix is validated; `test` means TDD |
-| `validated` | bool | true once the validation pass confirmed the finding against the code |
+| `validation_verdict` | enum \| null | `CONFIRMED` \| `PARTIAL` \| `REFUTED` \| `UNVERIFIABLE`, from the validation pass (see `lenses.md`); null while `candidate` |
+| `validated` | bool | true once the validation pass confirmed the finding against the code (`CONFIRMED` or `PARTIAL`) |
 | `intended_files` | string[] \| null | files the fix will touch; may be null at review time, resolved before fix-scheduling |
-| `status` | enum | `candidate` \| `confirmed` \| `not_reproduced` \| `fixing` \| `fixed` \| `rejected` \| `parked` \| `wontfix` |
+| `status` | enum | `candidate` \| `confirmed` \| `not_reproduced` \| `unverified` \| `fixing` \| `fixed` \| `rejected` \| `parked` \| `wontfix` |
 | `status_reason` | string \| null | one line; required for `rejected`, `parked` and `wontfix` |
 | `summary` | string | one-line problem statement |
 | `fix_approach` | string | concrete remedy (prefer "delete X" over "rename Y") |
@@ -53,13 +57,16 @@ candidate ──(validation confirms)──▶ confirmed ──▶ fixing ──
     │                                    ├────────────┴──(fixer disputes, with reason)──▶ rejected
     │                                    ├────────────┬──(loop stops with it open)──────▶ parked
     │                                    └──(user declines or accepts the trade-off)────▶ wontfix
-    └──(validation refutes)──▶ not_reproduced
+    ├──(validation refutes)──▶ not_reproduced
+    └──(validation cannot settle it)──▶ unverified
 ```
 
 - `candidate`: emitted by a lens or the second opinion and not yet validated. No finding stays
   here after validation.
 - `confirmed`: the validation pass confirmed it against the code (`validated=true`).
 - `not_reproduced`: the validation pass refuted it. Kept as a record, not deleted.
+- `unverified`: the validator returned `UNVERIFIABLE`. Kept as a record and listed under Not
+  covered in the report, with what was missing. It never blocks and is never fixed.
 - `fixing` / `fixed`: `fixed` is set only after the fix's `fix_verification` passes (test green,
   lint clean or static check) and the commit lands.
 - `rejected`: `fix-findings` checked the finding before or while fixing it and disputed it. The
@@ -126,7 +133,7 @@ A standalone `code-review` writes one entry.
 | `head_sha` | HEAD at the start of this cycle (moves as fixes commit) |
 | `reviewed_range` | the range reviewed this cycle: `<base_sha>...<head>` on cycle 1, then `<previous head>..<head>` |
 | `lenses_run` | lenses that ran this cycle, plus the second-opinion model when one ran |
-| `not_covered` | lenses skipped or failed, tools that could not run, and `no spec` when there was none |
+| `not_covered` | lenses skipped or failed, tools that could not run, `unverified` fingerprints, and `no spec` when there was none |
 | `observed_fingerprints` | every fingerprint this cycle's review surfaced |
 | `confirmed_introduced` | the open set after this cycle's review: fingerprints at `confirmed`, `introduced` and `blocking` |
 | `fixed_this_cycle` | fingerprints `fix-findings` marked `fixed` this cycle |
@@ -154,8 +161,8 @@ silently.
 - Lens, validation and fixer subagents return structured results to the orchestrator. They never
   write the store. The single-threaded orchestrator serializes all writes, so no locks and no
   event-sourcing are needed.
-- `code-review`: the orchestrator writes `candidate`s, then sets each to `confirmed` or
-  `not_reproduced` after validation.
+- `code-review`: the orchestrator writes `candidate`s, then sets each to `confirmed`,
+  `not_reproduced` or `unverified` after validation.
 - `fix-findings`: fixer subagents return results; the orchestrator updates `status` and makes the
   commits.
 - `refine-until-ready`: the orchestrator writes the ledger's loop fields and sets `parked`.
@@ -184,6 +191,10 @@ candidate by fingerprint (`file + scope + issue_kind + subject`) and keep all me
 `likelihood` and `impact` from its highest-severity member (ties: the higher impact), sets
 `contributing_lenses` to the sorted set, and sets the display `lens` to the highest-severity
 contributor (ties alphabetical).
+
+When the validator corrects a finding's location, record the lens's location in
+`reported_location`, update `file`, `scope` and `lines`, and recompute the fingerprint. If the
+new fingerprint matches another finding, merge the two.
 
 Validate the merged cluster, not a lone member. Genuinely distinct issues differ in `issue_kind`
 or `subject`, so they keep separate fingerprints. Do not force-collapse them to save tokens.

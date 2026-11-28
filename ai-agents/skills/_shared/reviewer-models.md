@@ -16,6 +16,21 @@ On Claude Code, lens and validation subagents run on `sonnet` or `opus`. A stand
 `code-review` may run them on `fable` for a light pass. Under `refine-until-ready` they never run on
 `fable` unless the user asks.
 
+### Escalation to `opus`
+
+Use `opus`, never `sonnet` or `fable`, for these seats:
+
+- The lens that covers a change to RBAC, PIM or other role and permission assignments, to
+  production configuration, or to what runs automatically (pipeline triggers, schedules,
+  conditions, branch policies, build validation). This is usually Security or Pipelines.
+- A validator batch that holds a multi-part claim a lens rated HIGH or MED: a claim with more
+  than one separate fact that needs its own check, for example "the trigger fires on merge" and
+  "the connection has no approval check". Use the lens's rating here, because the validator has
+  not rated the claim yet.
+- Every tie-break validator.
+
+Record each seat's model in the report.
+
 ## Fixer pin
 
 This is the single home for fixer-subagent model selection. It applies to `fix-findings`'s fixer

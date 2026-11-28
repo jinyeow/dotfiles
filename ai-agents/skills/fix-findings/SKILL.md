@@ -38,13 +38,15 @@ workers **return** their results to you; they don't write the store or run git.
 ### Step 1 — Load
 
 Resolve the snapshot (arg or current-session pointer). Select findings at `status: confirmed` with
-`blocking: true` (HIGH or MED, `origin: introduced`). Leave `pre-existing` findings alone: they are
-reported, and fixing them breaks surgical changes. Leave LOW findings reported but unfixed. Order
-the selected set build-breakers first (a parse or compile error fails the lint and test gate for
-the whole file, so fix it before any test-verified fix can run), then HIGH, then MED.
+`blocking: true` (`origin: introduced` and a blocking criterion from the Blocking rule in
+[`../_shared/review-rubric.md`](../_shared/review-rubric.md)).
+Leave `pre-existing` findings alone: they are reported, and fixing them breaks surgical changes.
+Leave non-blocking findings reported but unfixed. Order the selected set build-breakers first (a
+parse or compile error fails the lint and test gate for the whole file, so fix it before any
+test-verified fix can run), then HIGH, then MED, then LOW.
 
 **Done when:** the working set is the confirmed blocking findings, ordered build-breakers first,
-then HIGH, then MED.
+then HIGH, then MED, then LOW.
 
 ### Step 2 — Check before fixing
 
@@ -142,8 +144,8 @@ fingerprints, and any scope breach.
 
 ## Notes
 
-- **Blocking and introduced only.** `code-review` reports pre-existing and LOW findings; this skill
-  never auto-fixes them.
+- **Blocking and introduced only.** `code-review` reports pre-existing and non-blocking findings;
+  this skill never auto-fixes them.
 - **Model.** Fixer model selection is centralized in
   [`../_shared/reviewer-models.md`](../_shared/reviewer-models.md) § Fixer pin — read it before
   dispatching. Other runtimes select through their own defaults — no equivalent pin is defined yet.

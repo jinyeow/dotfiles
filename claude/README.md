@@ -255,8 +255,8 @@ validates every finding against the code, rates it likelihood × impact, and wri
 findings to the findings store. `fix-findings` consumes that store and applies minimal fixes
 (parallel, partitioned by conflict-set, one commit per fix-unit). `refine-until-ready` is the thin
 orchestrator that runs the two each cycle until nothing blocking is left or a rail stops it. On
-Claude Code each lens is an `Agent` tool call restricted to `Read`, `Grep` and `Glob`
-(`ai-agents/skills/_shared/lenses.md`). The same skills also project to Codex CLI and Pi. Pi
+Claude Code each lens is an `Agent` tool call restricted to `Read`, `Grep` and `Glob`, and each
+validator adds `Bash` to reproduce a claim (`ai-agents/skills/_shared/lenses.md`). The same skills also project to Codex CLI and Pi. Pi
 expresses the read-only scoping through `pi-subagents`' `tools:` frontmatter. Codex dispatches
 the `reviewer` and `fixer` roles in `codex/config.toml` through its native `spawn_agent` tool;
 those roles carry description-only guidance, so enforcement is the session's own top-level

@@ -67,7 +67,7 @@ Describe 'agent skill source layout' {
         # segment) holds only the hooks' banned-ai-terms.txt wordlist; the stale review-contract
         # copy that used to sit beside it is gone and must not come back.
         $portableSkillsShared = Join-Path $portable '_shared'
-        foreach ($name in @('lenses.md', 'findings-schema.md', 'review-rubric.md', 'reviewer-models.md'))
+        foreach ($name in @('lenses.md', 'findings-schema.md', 'review-rubric.md', 'reviewer-models.md', 'review-comments.md'))
         {
             Test-Path (Join-Path $portableSkillsShared $name) | Should -BeTrue
         }
@@ -147,6 +147,76 @@ Describe 'review skills' {
         $rubric | Should -Match 'blocking'
         $rubric | Should -Match 'Do not flag'
         $rubric | Should -Not -MatchExactly 'CLEANUP'
+    }
+
+    It 'validates each finding from a neutral claim with four verdicts, keeping unverifiable ones' {
+        $validation = [regex]::Match($lenses, '(?s)## Validation pass\s*\n(.*)').Groups[1].Value
+        foreach ($verdict in @('CONFIRMED', 'PARTIAL', 'REFUTED', 'UNVERIFIABLE'))
+        {
+            $validation | Should -MatchExactly $verdict
+            $codeReview | Should -MatchExactly $verdict
+        }
+        $validation | Should -Match 'Failure scenario'
+        $validation | Should -Match 'Leave out the lens''s likelihood, impact, severity'
+        $validation | Should -Match 'how many raised it'
+        $validation | Should -Match 'corrected'
+        $validation | Should -Match 'read-only\s+commands'
+        $codeReview | Should -Match 'list them under Not covered'
+        foreach ($token in @('`validation_verdict`', '`reported_location`', '`unverified`'))
+        {
+            $schema | Should -Match ([regex]::Escape($token))
+        }
+    }
+
+    It 'separates blocking from severity with named blocking criteria and dispositions' {
+        $rubric | Should -Match 'Severity and blocking are separate'
+        foreach ($criterion in @('severity', 'spec', 'convention', 'untested-logic', 'mode-parameter'))
+        {
+            $rubric | Should -Match ([regex]::Escape("| ``$criterion`` |"))
+        }
+        foreach ($disposition in @('blocking', 'deferred', 'note'))
+        {
+            $rubric | Should -Match ([regex]::Escape("- ``$disposition``:"))
+        }
+        $rubric | Should -Match 'always LOW'
+        $schema | Should -Match ([regex]::Escape('`blocking_criterion`'))
+        $schema | Should -Match ([regex]::Escape('`disposition`'))
+        $schema | Should -Match 'true when `origin` is `introduced` and `blocking_criterion` is not `none`'
+    }
+
+    It 'adds the conditional Pipelines and Docs lenses and the acceptance-criteria checklist' {
+        foreach ($lens in @('pipelines', 'docs'))
+        {
+            $lenses | Should -Match ([regex]::Escape("| ``$lens`` | on trigger |"))
+            $schema | Should -Match ([regex]::Escape("``$lens``"))
+        }
+        $lenses | Should -Match '### Pipelines'
+        $lenses | Should -Match '### Docs'
+        $lenses | Should -Match 'after merge'
+        $codeReview | Should -Match 'Others'' PR mode'
+        $codeReview | Should -Match 'Record the call, never the conclusion'
+        $codeReview | Should -Match 'merged tree'
+    }
+
+    It 'defines the posted comment format as Conventional Comments with no internal ids' {
+        $comments = Get-Content (Join-Path $portableSkills '_shared/review-comments.md') -Raw
+        foreach ($label in @('**issue (blocking):**', '**issue (non-blocking):**', '**suggestion (non-blocking):**'))
+        {
+            $comments | Should -Match ([regex]::Escape($label))
+        }
+        $comments | Should -Match 'conventionalcomments\.org'
+        $comments | Should -Match '<Severity> risk:'
+        $comments | Should -Match 'finding IDs, fingerprints'
+        $comments | Should -Match 'Use full URLs only'
+        $comments | Should -Match 'Links to local files'
+        $comments | Should -Match 'any\s+reference to AI'
+    }
+
+    It 'escalates sensitive and multi-part claims to the stronger reviewer model' {
+        $reviewerModels | Should -Match 'Escalation to `opus`'
+        $reviewerModels | Should -Match 'RBAC'
+        $reviewerModels | Should -Match 'multi-part claim'
+        $reviewerModels | Should -Match 'tie-break'
     }
 
     It 'gives the named smell baseline to the Standards lens' {

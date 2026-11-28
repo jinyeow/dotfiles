@@ -45,7 +45,7 @@ optional way to set up a Home Repo.
 ## Portable support (`ai-agents/skills/_shared/`)
 
 Portable review support resources — `lenses.md`, `findings-schema.md`, `review-rubric.md`,
-`reviewer-models.md` — live here, projected alongside the skills above into every runtime's
+`reviewer-models.md`, `review-comments.md` — live here, projected alongside the skills above into every runtime's
 skills directory (`code-review` and the other review skills reach it via `../_shared/<file>`,
 resolved at the installed destination). Not a standalone skill (no `SKILL.md`).
 `reviewer-models.md` documents only the Claude Code / Codex-MCP dispatch surfaces today — see
