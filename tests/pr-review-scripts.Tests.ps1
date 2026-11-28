@@ -72,7 +72,7 @@ Describe 'Post-PrThreads' {
 
     BeforeEach {
         $Posts = [System.Collections.Generic.List[hashtable]]::new()
-        $ExistingThreads = @()
+        $MockThreads = @()
         $PostFailures = @{}
         Mock az { 'fake-token' }
         Mock Start-Sleep {}
@@ -90,7 +90,7 @@ Describe 'Post-PrThreads' {
             }
             if ($Method -eq 'GET' -and $Uri -match '/threads\?')
             {
-                return [pscustomobject]@{ value = $ExistingThreads }
+                return [pscustomobject]@{ value = $MockThreads }
             }
             if ($Method -eq 'POST')
             {
@@ -159,7 +159,7 @@ Describe 'Post-PrThreads' {
             threadContext = [pscustomobject]@{ filePath = '/src/app.ps1'; rightFileStart = [pscustomobject]@{ line = 10 } }
             comments = @([pscustomobject]@{ content = "**issue (blocking):** the loop never ends`n`nOlder wording." })
         }
-        $ExistingThreads = @($thread)
+        $MockThreads = @($thread)
         $comments = @(
             @{ key = 'c1'; filePath = '/src/app.ps1'; startLine = 10; content = "**issue (blocking):** the loop never ends`n`nNew wording." }
             @{ key = 'c2'; filePath = '/src/app.ps1'; startLine = 20; content = '**issue (blocking):** another problem' }
