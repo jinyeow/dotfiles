@@ -59,6 +59,7 @@ $(git -c core.quotePath=false diff --name-only --diff-filter=ACMR "$base" "$loca
 done
 
 failed=0
+# shellcheck disable=SC2317,SC2329  # called only from the lint functions
 fail() {
     echo "work-push-lint: $1" >&2
     echo "work-push-lint: bypass the lint for one push with:  SKIP_PUSH_LINT=1 git push ..." >&2
@@ -68,7 +69,7 @@ fail() {
 # PowerShell: lint the changed files (arguments, relative to the repo root) in one pwsh
 # process, with the repo's own settings file. Never lint without one: the default
 # ruleset reports rules the repo excludes.
-# shellcheck disable=SC2317  # called through run_on_changed
+# shellcheck disable=SC2317,SC2329  # called through run_on_changed
 lint_powershell() {
     settings=""
     for s in "$TOPLEVEL/.vscode/PSScriptAnalyzerSettings.psd1" "$TOPLEVEL/PSScriptAnalyzerSettings.psd1"; do
@@ -90,7 +91,7 @@ lint_powershell() {
 }
 
 # Bicep: lint each changed file. Any output counts as a finding (warnings included).
-# shellcheck disable=SC2317  # called through run_on_changed
+# shellcheck disable=SC2317,SC2329  # called through run_on_changed
 lint_bicep() {
     if ! command -v bicep >/dev/null 2>&1; then
         warn "Bicep files changed but bicep not found on PATH; skipping bicep lint."
